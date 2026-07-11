@@ -223,7 +223,7 @@ func EntryFormFragment(soldier models.Soldier, spouseCandidates []models.Soldier
 // EventList wraps templates.EventList. Used by the /events
 // landing page.
 func EventList(events []models.Soldier, page, total int) templ.Component {
-	return templates.EventList(viewmodel.PersonRecordsFromModels(events), page, total)
+	return templates.EventList(viewmodel.EventRecordsFromModels(events, nil, nil), page, total)
 }
 
 // EventDetail wraps templates.EventDetail. The links slice
@@ -235,7 +235,12 @@ func EventList(events []models.Soldier, page, total int) templ.Component {
 // (records.EventLink rows) is projected to the viewmodel shape
 // the Linked Person Records section renders. The tags slice is
 // pulled via a tag query so the section has chip data; the
-// Event's `Records` projection flows through PersonRecordFromModel.
+// Event's `Records` projection flows through EventRecordFromModel.
+// #343 #1: the Event projection is now EventRecord, not
+// PersonRecord. The Event-only fields (Kind, BeginDate,
+// EndDate, Description, EventSources, LinkedPersons) belong
+// on EventRecord; the base identity (DisplayID, Tags) lives
+// on the embedded PersonRecord.
 func EventDetail(tags []records.Tag, event *records.EventWithLinks) templ.Component {
 	linked := make([]viewmodel.PersonRecord, 0, len(event.Links))
 	for _, link := range event.Links {
@@ -244,7 +249,11 @@ func EventDetail(tags []records.Tag, event *records.EventWithLinks) templ.Compon
 			DisplayID: link.PersonDisplay,
 		})
 	}
-	vm := viewmodel.PersonRecordFromModel(event.Event)
+	// Per-Event sources (event_sources table) live on the
+	// records.EventWithLinks.Event.EventSources field, populated
+	// by EventService.GetEventByID from the dedicated table.
+	sources := event.Event.EventSources
+	vm := viewmodel.EventRecordFromModel(event.Event, nil, sources)
 	if len(tags) > 0 {
 		vm.Tags = make([]viewmodel.TagOption, 0, len(tags))
 		for _, t := range tags {
@@ -257,8 +266,9 @@ func EventDetail(tags []records.Tag, event *records.EventWithLinks) templ.Compon
 // EventForm wraps templates.EventForm. The handler builds the
 // defaults from newEventDefaults (or the existing row on edit)
 // and hands the resulting models.Soldier to this helper.
+// #343 #1: the Event projection is now EventRecord.
 func EventForm(event models.Soldier, isEdit bool) templ.Component {
-	return templates.EventForm(viewmodel.PersonRecordFromModel(event), isEdit)
+	return templates.EventForm(viewmodel.EventRecordFromModel(event, nil, nil), isEdit)
 }
 
 // EventFormWithLinks (issue #361 slice 2) renders the Event
@@ -267,9 +277,9 @@ func EventForm(event models.Soldier, isEdit bool) templ.Component {
 // path) and passes them in; the presentation layer maps them
 // to viewmodel and renders. New-event callers continue to
 // use EventForm (no links possible for an un-persisted id).
+// #343 #1: projection is EventRecord.
 func EventFormWithLinks(event models.Soldier, linked []models.Soldier, isEdit bool) templ.Component {
-	vm := viewmodel.PersonRecordFromModel(event)
-	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm := viewmodel.EventRecordFromModel(event, linked, nil)
 	return templates.EventForm(vm, isEdit)
 }
 
@@ -281,26 +291,27 @@ func EventFormWithLinks(event models.Soldier, linked []models.Soldier, isEdit bo
 // detail page has its own event-detail rendering pipeline
 // (handlers load tags separately there); this is the
 // edit-form-only population.
+// #343 #1: projection is EventRecord.
 func EventFormWithLinksAndTags(event models.Soldier, linked []models.Soldier, tags []records.Tag, isEdit bool) templ.Component {
-	vm := viewmodel.PersonRecordFromModel(event)
-	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm := viewmodel.EventRecordFromModel(event, linked, nil)
 	vm.Tags = viewmodel.TagsFromModels(tags)
 	return templates.EventForm(vm, isEdit)
 }
 
 // EventFormWithError mirrors EntryFormWithError: same body,
 // toast header for the form-level validation message.
+// #343 #1: projection is EventRecord.
 func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) templ.Component {
-	return templates.EventFormWithError(viewmodel.PersonRecordFromModel(event), isEdit, errorMessage)
+	return templates.EventFormWithError(viewmodel.EventRecordFromModel(event, nil, nil), isEdit, errorMessage)
 }
 
 // EventFormWithErrorAndLinks (issue #361 slice 2) mirrors
 // EventFormWithError but populates the Linked Persons section.
 // Used by the POST error-rendering path so the user sees their
 // existing links + the validation error on the same surface.
+// #343 #1: projection is EventRecord.
 func EventFormWithErrorAndLinks(event models.Soldier, linked []models.Soldier, isEdit bool, errorMessage string) templ.Component {
-	vm := viewmodel.PersonRecordFromModel(event)
-	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm := viewmodel.EventRecordFromModel(event, linked, nil)
 	return templates.EventFormWithError(vm, isEdit, errorMessage)
 }
 
@@ -309,9 +320,9 @@ func EventFormWithErrorAndLinks(event models.Soldier, linked []models.Soldier, i
 // inline Tags section. The POST error-rendering path needs
 // both so the user sees their existing links + tags alongside
 // the validation error.
+// #343 #1: projection is EventRecord.
 func EventFormWithErrorAndLinksAndTags(event models.Soldier, linked []models.Soldier, tags []records.Tag, isEdit bool, errorMessage string) templ.Component {
-	vm := viewmodel.PersonRecordFromModel(event)
-	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm := viewmodel.EventRecordFromModel(event, linked, nil)
 	vm.Tags = viewmodel.TagsFromModels(tags)
 	return templates.EventFormWithError(vm, isEdit, errorMessage)
 }
@@ -322,8 +333,11 @@ func EventFormWithErrorAndLinksAndTags(event models.Soldier, linked []models.Sol
 // eventsFacade.ListForPerson; the template renders it as a
 // table of Display ID + Kind + Date Range (D2 of #322 applied
 // here too — no biography excerpt).
+// #343 #1: the linked rows are now projected as EventRecord so
+// the Kind + BeginDate + EndDate fields render without a
+// separate PersonRecord unmarshalling.
 func PersonEventsTab(personID int64, linked []models.Soldier) templ.Component {
-	return templates.PersonEventsTab(personID, viewmodel.PersonRecordsFromModels(linked))
+	return templates.PersonEventsTab(personID, viewmodel.EventRecordsFromModels(linked, nil, nil))
 }
 
 // viewmodelCountsFromModels translates models.ArchiveCounts to the

@@ -12,7 +12,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ EventList(events []viewmodel.PersonRecord, page, total int) {
+templ EventList(events []viewmodel.EventRecord, page, total int) {
 	@Layout("Events") {
 		<div id={ uiids.PageEventList } class="relative mx-auto max-w-4xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -32,7 +32,7 @@ templ EventList(events []viewmodel.PersonRecord, page, total int) {
 	}
 }
 
-templ EventCard(event viewmodel.PersonRecord) {
+templ EventCard(event viewmodel.EventRecord) {
 	<div class="card rounded-2xl p-4 sm:p-5">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div class="min-w-0">
@@ -46,7 +46,7 @@ templ EventCard(event viewmodel.PersonRecord) {
 	</div>
 }
 
-func eventDateRange(event viewmodel.PersonRecord) string {
+func eventDateRange(event viewmodel.EventRecord) string {
 	begin := strings.TrimSpace(event.BeginDate)
 	end := strings.TrimSpace(event.EndDate)
 	switch {
@@ -60,9 +60,11 @@ func eventDateRange(event viewmodel.PersonRecord) string {
 	return ""
 }
 
-func eventBadgeLabel(event viewmodel.PersonRecord) string {
+func eventBadgeLabel(event viewmodel.EventRecord) string {
 	if event.EntryType == models.EntryTypeEvent {
 		return "Event"
 	}
-	return entryBadgeLabel(event)
+	// #343 #1: pass the embedded PersonRecord explicitly; Go does
+	// not auto-promote embedded structs in argument positions.
+	return entryBadgeLabel(event.PersonRecord)
 }

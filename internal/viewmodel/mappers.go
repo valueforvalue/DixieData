@@ -60,15 +60,6 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		Biography:             input.Biography,
 		PDFExcerptOverride:    input.PDFExcerptOverride,
 		Notes:                 input.Notes,
-		// v60 (issue #320): Event Record subtype fields. The
-		// source models.Soldier already carries Kind /
-		// BeginDate / EndDate / Description; the viewmodel
-		// projection copies them so .templ files can render
-		// event-only fields without importing internal/models.
-		Kind:                  input.Kind,
-		BeginDate:             input.BeginDate,
-		EndDate:               input.EndDate,
-		Description:           input.Description,
 		NeedsReview:           input.NeedsReview,
 		ReviewReason:          input.ReviewReason,
 		AddedBy:               input.AddedBy,
@@ -85,12 +76,6 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		SourceRecordCount:     input.RecordCount,
 		ImageCount:            input.ImageCount,
 		SourceRecords:         SourceRecordsFromModels(input.Records),
-		// Issue #340 / v61: Event sources now live in their own
-		// table. For Person Records this stays empty; for Events
-		// it carries the per-Event sources. The Sources panel on
-		// event_detail.templ reads EventSources (slice 5 of the
-		// v61 decomposition) instead of SourceRecords.
-		EventSources:          SourceRecordsFromModels(input.EventSources),
 		Images:                ImagesFromModels(input.Images),
 		// Issue #377 / #423: row provenance fields (slice 3
 		// surfaces in the Soldier detail page footer + the
@@ -139,6 +124,53 @@ func PersonRecordsFromModels(inputs []models.Soldier) []PersonRecord {
 // SoldiersFromModels converts a domain-type value into its viewmodel projection.
 func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
 	return PersonRecordsFromModels(inputs)
+}
+
+// EventRecordFromModel converts a domain-type value into its
+// EventRecord projection. The mapper takes the per-Event sources
+// and linked persons as dedicated parameters (rather than reading
+// them off the input row) so callers control the source/links
+// flow rather than relying on what the input row happens to have
+// populated. Empty slices are valid for the new-event path where
+// no sources or links exist yet.
+//
+// #343 #1: the projection of the v60/v61 Event Record surface.
+// The base identity (DisplayID, SyncID, Tags, ...) lives on the
+// embedded PersonRecord so templates read event.DisplayID via
+// field promotion. The six Event-only fields (Kind / BeginDate /
+// EndDate / Description / EventSources / LinkedPersons) belong
+// here, not on PersonRecord — the architecture-review finding
+// notes the prior polymorphism-in-data was a shallow-module
+// signal.
+func EventRecordFromModel(input models.Soldier, linked []models.Soldier, sources []models.Record) EventRecord {
+	return EventRecord{
+		PersonRecord: PersonRecordFromModel(input),
+		Kind:         input.Kind,
+		BeginDate:    input.BeginDate,
+		EndDate:      input.EndDate,
+		Description:  input.Description,
+		// The mapper does NOT read sources from the input row's
+		// EventSources field; callers pass the per-Event sources
+		// (loaded from the event_sources table by EventService
+		// .ListSourcesForEvent) explicitly so the projection is
+		// deterministic. See event_service_test.go::
+		// TestEventService_SourceRoundTripOnEventSourcesTable.
+		EventSources:  SourceRecordsFromModels(sources),
+		LinkedPersons: PersonRecordsFromModels(linked),
+	}
+}
+
+// EventRecordsFromModels projects a list of Event Record rows
+// into EventRecord viewmodels, applying EventRecordFromModel
+// element-wise. linked + sources are passed once and reused
+// across every row in the slice — use the single-row mapper
+// when the per-row sources differ.
+func EventRecordsFromModels(inputs []models.Soldier, linked []models.Soldier, sources []models.Record) []EventRecord {
+	items := make([]EventRecord, 0, len(inputs))
+	for _, input := range inputs {
+		items = append(items, EventRecordFromModel(input, linked, sources))
+	}
+	return items
 }
 
 // PersonRecordsFromModelsWithTags builds PersonRecord viewmodels and

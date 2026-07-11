@@ -42,19 +42,6 @@ type PersonRecord struct {
 	Biography             string
 	PDFExcerptOverride    string
 	Notes                 string
-	// v60 (issue #320): Event Record subtype fields. Kind is
-	// free-text (e.g. "Battle", "Earthquake", "Hospital Stay");
-	// BeginDate / EndDate follow the soldiers MM/DD/YYYY canonical
-	// date shape so the existing date filter predicates apply.
-	// Description is the long-form write-up (mirrors the
-	// Person Record Biography field). All four are also stored
-	// on the domain models.Soldier type; the viewmodel copies
-	// them so .templ files can render event-only fields without
-	// importing internal/models directly.
-	Kind                  string
-	BeginDate             string
-	EndDate               string
-	Description           string
 	NeedsReview           bool
 	ReviewReason          string
 	AddedBy               string
@@ -71,20 +58,8 @@ type PersonRecord struct {
 	SourceRecordCount     int
 	ImageCount            int
 	SourceRecords         []SourceRecord
-	// EventSources is populated only for Event Record rows
-	// (entry_type = 'event'). Person Records always leave it
-	// empty. Issue #340 / v61: per-Event sources live in their
-	// own event_sources table; SourceRecords (above) belongs to
-	// Person Records.
-	EventSources          []SourceRecord
 	Images                []Image
 	Tags                  []TagOption
-	// LinkedPersons is populated only for Event Record rows
-	// (entry_type = 'event'). Carries the Person Records linked
-	// via event_person_links so the event editor can render an
-	// inline link/unlink surface without a second round-trip.
-	// Issue #361 slice 2.
-	LinkedPersons         []PersonRecord
 	// Issue #377 / #423: row provenance fields. CreatedByVersion
 	// is the DixieData release that wrote the row (e.g.
 	// "v1.2.64"); CreatedByImportPath is the code path that
@@ -101,6 +76,40 @@ type PersonRecord struct {
 	CreatedByVersion      string
 	CreatedByImportPath   string
 	RestoredAt            string
+}
+
+// EventRecord is the UI-shaped projection of an Event Record
+// row (issue #320 / v60). Embeds PersonRecord so the base
+// identity (DisplayID, SyncID, Tags, ...) is reachable via
+// promotion (event.DisplayID, event.Tags). Adds the six
+// Event-only fields:
+//
+//   - Kind: free-text label ("Battle", "Earthquake", ...).
+//   - BeginDate / EndDate: MM/DD/YYYY canonical date shape so
+//     the existing date-filter predicates apply.
+//   - Description: long-form write-up (mirrors Person Record's
+//     Biography field).
+//   - EventSources: per-Event sources from the dedicated
+//     event_sources table (#340 / v61). Person Records always
+//     leave this empty.
+//   - LinkedPersons: per-Event Person Records linked via
+//     event_person_links (#361 slice 2).
+//
+// #343 #1 splits EventRecord out of PersonRecord. The split
+// follows the architecture-review finding that polymorphism in
+// data (5 always-empty fields on PersonRecord for non-Event
+// rows) was a shallow-module signal. The deletion-test signal:
+// remove EventSources from PersonRecord — does the v61
+// sources-wiped-on-Update bug come back? No. The table +
+// service carry the load; the viewmodel field is a mirror.
+type EventRecord struct {
+	PersonRecord
+	Kind          string
+	BeginDate     string
+	EndDate       string
+	Description   string
+	EventSources  []SourceRecord
+	LinkedPersons []PersonRecord
 }
 
 // SourceRecord is the UI-shaped projection of a Source Record

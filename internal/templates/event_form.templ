@@ -22,7 +22,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ EventForm(s viewmodel.PersonRecord, isEdit bool) {
+templ EventForm(s viewmodel.EventRecord, isEdit bool) {
 	@Layout(eventFormTitle(s, isEdit)) {
 		if isEdit {
 			<div id={ uiids.PageEventEdit }>
@@ -36,7 +36,7 @@ templ EventForm(s viewmodel.PersonRecord, isEdit bool) {
 	}
 }
 
-templ EventFormWithError(s viewmodel.PersonRecord, isEdit bool, errorMessage string) {
+templ EventFormWithError(s viewmodel.EventRecord, isEdit bool, errorMessage string) {
 	@Layout(eventFormTitle(s, isEdit)) {
 		if isEdit {
 			<div id={ uiids.PageEventEdit }>
@@ -50,7 +50,7 @@ templ EventFormWithError(s viewmodel.PersonRecord, isEdit bool, errorMessage str
 	}
 }
 
-templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage string) {
+templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage string) {
 	<div class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ eventFormTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
@@ -224,7 +224,7 @@ templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage stri
 	</div>
 }
 
-func eventFormTitle(s viewmodel.PersonRecord, isEdit bool) string {
+func eventFormTitle(s viewmodel.EventRecord, isEdit bool) string {
 	label := "Event Record"
 	if strings.TrimSpace(s.DisplayID) != "" {
 		label = "Event " + s.DisplayID
@@ -235,7 +235,7 @@ func eventFormTitle(s viewmodel.PersonRecord, isEdit bool) string {
 	return "New " + label
 }
 
-func eventFormBackHref(s viewmodel.PersonRecord, isEdit bool) string {
+func eventFormBackHref(s viewmodel.EventRecord, isEdit bool) string {
 	if isEdit && s.ID > 0 {
 		return fmt.Sprintf("/events/%d", s.ID)
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord) {
+templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) {
 	@Layout(eventDetailTitle(event)) {
 		<div id={ uiids.PageEventDetail } class="relative mx-auto max-w-4xl">
 			<div class="mb-4 flex flex-wrap gap-3">
@@ -185,14 +185,14 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 	}
 }
 
-func eventDetailTitle(event viewmodel.PersonRecord) string {
+func eventDetailTitle(event viewmodel.EventRecord) string {
 	if strings.TrimSpace(event.DisplayID) != "" {
 		return "Event " + event.DisplayID
 	}
 	return "Event Record"
 }
 
-func eventTitle(event viewmodel.PersonRecord) string {
+func eventTitle(event viewmodel.EventRecord) string {
 	kind := strings.TrimSpace(event.Kind)
 	range_ := eventDateRange(event)
 	switch {
