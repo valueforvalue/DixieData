@@ -112,8 +112,14 @@ func TestStressBridgeConcurrentSearchAndSave(t *testing.T) {
 			t.Fatalf("PostForm sequential save %d: %v", i, err)
 		}
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusSeeOther {
-			t.Fatalf("sequential save status=%d", resp.StatusCode)
+		// Issue #465 slice 4: the app uses the Option C redirect
+		// pattern (200 + X-DixieData-Redirect header) since commit
+		// b6067a3. Plain http.PostForm doesn't read that header,
+		// so we assert on the header presence rather than the
+		// legacy 303 status code. The JS dispatcher in
+		// frontend/app.js reads the header and navigates.
+		if got := resp.Header.Get("X-DixieData-Redirect"); got == "" {
+			t.Fatalf("sequential save %d: no X-DixieData-Redirect header, status=%d", i, resp.StatusCode)
 		}
 	}
 }
