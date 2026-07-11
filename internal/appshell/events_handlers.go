@@ -932,34 +932,6 @@ func (a *App) handleEventSourcesGet(w http.ResponseWriter, r *http.Request, even
 	a.renderEventSourcesListFragment(w, r, eventID)
 }
 
-// handleEventSourceAttach creates a new source record row for the
-// Event. The form fields mirror the Person-Record source row shape
-// (record_type, app_id, details). After the write, the handler
-// re-renders the Sources list fragment so the JS dispatcher can
-// swap the result into #data-event-sources-list in place (no page
-// navigation). Issue #341 — previously this handler set
-// X-DixieData-Redirect, which sent the browser to the
-// fragment-returning GET endpoint and displayed raw HTML as a
-// page.
-func (a *App) handleEventSourceAttach(w http.ResponseWriter, r *http.Request, eventID int64) {
-	if err := r.ParseForm(); err != nil {
-		respondValidation(w, r, "Could not read the source form.", err)
-		return
-	}
-	source := models.Record{
-		RecordType: strings.TrimSpace(r.FormValue("record_type")),
-		AppID:      strings.TrimSpace(r.FormValue("app_id")),
-		Details:    strings.TrimSpace(r.FormValue("details")),
-	}
-	sortOrder, _ := strconv.ParseInt(strings.TrimSpace(r.FormValue("sort_order")), 10, 64)
-	if _, err := a.events.AttachSourceToEvent(eventID, source, sortOrder); err != nil {
-		respondInternal(w, r, fmt.Sprintf("Could not attach source to event record %d.", eventID), err)
-		return
-	}
-	setToastHeader(w, "Success: source attached.")
-	a.renderEventSourcesListFragment(w, r, eventID)
-}
-
 // handleEventSourceDetach removes a source record row from the
 // Event. Service verifies the row belongs to the Event. After
 // the write, the handler re-renders the Sources list fragment
