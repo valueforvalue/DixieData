@@ -112,40 +112,8 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 						</ul>
 					}
 				</section>
-				<section class="relative mt-6">
-					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
-						<div class="flex items-center gap-3">
-							<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.EventSources)) }</span>
-							<button
-								type="button"
-								data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/edit", event.ID)) }
-								data-dixie-submit="true"
-								class="ghost-link"
-							>Edit Event</button>
-						</div>
-					</div>
-					<div id="data-event-sources-list">
-						@EventSourcesListFragment(event.ID, event.EventSources)
-					</div>
-				</section>
-				<section class="relative mt-6">
-					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>
-						<div class="flex items-center gap-3">
-							<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.Tags)) }</span>
-							<button
-								type="button"
-								data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/edit", event.ID)) }
-								data-dixie-submit="true"
-								class="ghost-link"
-							>Edit Event</button>
-						</div>
-					</div>
-					<div id="data-event-tags-list">
-						@EventTagsListFragment(event.ID, event.Tags)
-					</div>
-				</section>
+				@EventSectionPanel("Source Records", len(event.EventSources), "attached", fmt.Sprintf("%d", event.ID), "data-event-sources-list", EventSourcesListFragment(event.ID, event.EventSources))
+				@EventSectionPanel("Tags", len(event.Tags), "attached", fmt.Sprintf("%d", event.ID), "data-event-tags-list", EventTagsListFragment(event.ID, event.Tags))
 				<section class="relative mt-6">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
