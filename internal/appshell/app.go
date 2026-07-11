@@ -66,33 +66,36 @@ var embeddedQuotes []byte
 type App struct {
 	ctx                     context.Context
 	database                *db.DB
-	soldiers                personRecordsFacade
-	anniversary             anniversaryFacade
+	soldiers                *records.SoldierService
+	anniversary             *records.AnniversaryService
 	// v60 (issue #320): Event Record service. Wired in
 	// reloadServices() alongside soldiers (it borrows the same
 	// database handle). Handlers route Event-only operations
 	// through a.events, not a.soldiers, so the focused facade
 	// stays decoupled from the full SoldierService surface.
-	events                  eventsFacade
+	// Issue #343 finding #4: facade interfaces deleted; the App
+	// holds the concrete service types directly per the
+	// two-adapter rule (interfaces live at the consumer).
+	events                  *records.EventService
 	// v62 (issue #321): Article Record service. Wired in
 	// reloadServices() alongside soldiers + events. The slice-1
 	// surface is minimal (Create + GetByID); the facade debate
 	// (#343 candidate #4) deliberately deferred, so Article
 	// stays direct for v1.
 	articles                *records.ArticleService
-	calendar                calendarFacade
-	analytics               analyticsFacade
-	audit                   reviewFacade
+	calendar                *records.CalendarService
+	analytics               *records.AnalyticsService
+	audit                   *records.AuditService
 	exportTemplates         *records.ExportTemplateService
 	shareQueuePresets       *records.ShareQueuePresetService
 	tags                    *records.TagService
 	archiveMeta             *records.ArchiveMetaService
-	images                  imageFacade
-	export                  exportFacade
-	backup                  backupFacade
-	diagnostics             diagnosticsFacade
-	google                  integrationFacade
-	updater                 updaterFacade
+	images                  *archive.ImageService
+	export                  *archive.ExportService
+	backup                  *archive.BackupService
+	diagnostics             *archive.DiagnosticsService
+	google                  *integrations.GoogleService
+	updater                 *update.Service
 	restorePoints           *update.RestorePointManager
 	quotes                  []models.Quote
 	mux                     http.Handler
