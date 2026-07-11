@@ -684,58 +684,6 @@ func parseEventForm(r *http.Request) (models.Soldier, []models.Record, error) {
 }
 
 
-// handleEventResearchLog dispatches /events/{id}/research-log
-// requests (issue #320 slice #328). The research_tasks table
-// is FK-linked to soldiers(id) and Event records are rows in
-// the same table (entry_type = 'event'), so the handler can
-// call a.soldiers.ResearchLog/AddResearchTask/
-// ResolveResearchTask directly. Only the redirect URL
-// differs from the Person-Record counterpart.
-//
-//   GET    /events/{id}/research-log                          log page
-//   POST   /events/{id}/research-log/tasks                    create task
-//   POST   /events/{id}/research-log/tasks/{entryId}/resolve  resolve task
-func (a *App) handleEventResearchLog(w http.ResponseWriter, r *http.Request, eventID int64) {
-	suffix := strings.TrimPrefix(r.URL.Path, fmt.Sprintf("/events/%d/research-log", eventID))
-	suffix = strings.TrimPrefix(suffix, "/")
-	switch r.Method {
-	case http.MethodGet:
-		if suffix != "" {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		log, err := a.soldiers.ResearchLog(eventID)
-		if err != nil {
-			respondNotFound(w, r, fmt.Sprintf("Research log for event record %d not found.", eventID), err)
-			return
-		}
-		// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
-		// EmptyStateError fragment instead of leaving the user with an empty body.
-		if err := presentation.ResearchLogView(*log).Render(r.Context(), w); err != nil {
-			respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render the research log for event record %d.", eventID), err)
-		}
-	case http.MethodPost:
-		if suffix == "tasks" {
-			a.handleEventResearchTaskCreate(w, r, eventID)
-			return
-		}
-		if strings.HasPrefix(suffix, "tasks/") && strings.HasSuffix(suffix, "/resolve") {
-			taskSection := strings.TrimPrefix(suffix, "tasks/")
-			taskSection = strings.TrimSuffix(taskSection, "/resolve")
-			taskID, err := strconv.ParseInt(taskSection, 10, 64)
-			if err != nil {
-				respondValidation(w, r, "Invalid research task id.", err)
-				return
-			}
-			a.handleEventResearchTaskResolve(w, r, eventID, taskID)
-			return
-		}
-		http.Error(w, "not found", http.StatusNotFound)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
 // handleEventResearchTaskCreate is the Event-side equivalent of
 // the Person-Record handleResearchTaskCreate. Re-uses the
 // same service methods (research_tasks is subtype-agnostic
@@ -778,22 +726,6 @@ func (a *App) handleEventResearchTaskResolve(w http.ResponseWriter, r *http.Requ
 // the handlers.
 func eventResearchLogRedirect(eventID int64) string {
 	return fmt.Sprintf("/events/%d/research-log", eventID)
-}
-
-// handleEventResearchLogRoute is the chi route shim for
-// /events/{id}/research-log and its sub-paths.
-func (a *App) handleEventResearchLogRoute(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/events/"), "/")
-	if len(parts) < 2 {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	id, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	a.handleEventResearchLog(w, r, id)
 }
 
 // handleEditEventRoute is the chi route shim for
@@ -972,51 +904,6 @@ func (a *App) handleEventPDF(w http.ResponseWriter, r *http.Request, eventID int
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleEventSourcesRoute is the chi route shim for
-// /events/{id}/sources and its sub-paths (issue #320 slice #329).
-// Mirrors the research-log path-suffix dispatcher: GET returns the
-// linked sources; POST /attach creates a new source record row;
-// POST /{sourceId}/detach removes it.
-func (a *App) handleEventSourcesRoute(w http.ResponseWriter, r *http.Request) {
-	prefix := "/events/"
-	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
-	parts := strings.SplitN(trimmed, "/", 2)
-	if len(parts) < 2 || parts[1] == "" {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	eventID, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	suffix := parts[1]
-	switch r.Method {
-	case http.MethodGet:
-		a.handleEventSourcesGet(w, r, eventID)
-	case http.MethodPost:
-		switch suffix {
-		case "sources/attach":
-			a.handleEventSourceAttach(w, r, eventID)
-		default:
-			if strings.HasPrefix(suffix, "sources/") && strings.HasSuffix(suffix, "/detach") {
-				mid := strings.TrimPrefix(suffix, "sources/")
-				mid = strings.TrimSuffix(mid, "/detach")
-				sourceID, err := strconv.ParseInt(mid, 10, 64)
-				if err != nil {
-					respondValidation(w, r, "Invalid source id.", err)
-					return
-				}
-				a.handleEventSourceDetach(w, r, eventID, sourceID)
-				return
-			}
-			http.Error(w, "not found", http.StatusNotFound)
-		}
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
 // renderEventSourcesListFragment loads the Event's source
 // records and writes the per-Event Sources list HTML into w.
 // Shared by GET /events/{id}/sources (lazy-load probe) and
@@ -1087,51 +974,6 @@ func (a *App) handleEventSourceDetach(w http.ResponseWriter, r *http.Request, ev
 	a.renderEventSourcesListFragment(w, r, eventID)
 }
 
-
-// handleEventTagsRoute is the chi route shim for
-// /events/{id}/tags and its sub-paths (issue #320 slice #333).
-// Mirrors the sources / research-log path-suffix dispatcher:
-// GET renders the fragment, POST adds (no tagId segment),
-// POST .../{tagId}/detach removes.
-func (a *App) handleEventTagsRoute(w http.ResponseWriter, r *http.Request) {
-	prefix := "/events/"
-	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
-	parts := strings.SplitN(trimmed, "/", 2)
-	if len(parts) < 2 || parts[1] == "" {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	eventID, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	suffix := parts[1]
-	switch r.Method {
-	case http.MethodGet:
-		a.handleEventTagsGet(w, r, eventID)
-	case http.MethodPost:
-		switch suffix {
-		case "tags":
-			a.handleEventTagAdd(w, r, eventID)
-		default:
-			if strings.HasPrefix(suffix, "tags/") && strings.HasSuffix(suffix, "/detach") {
-				mid := strings.TrimPrefix(suffix, "tags/")
-				mid = strings.TrimSuffix(mid, "/detach")
-				tagID, err := strconv.ParseInt(mid, 10, 64)
-				if err != nil {
-					respondValidation(w, r, "Invalid tag id.", err)
-					return
-				}
-				a.handleEventTagDetach(w, r, eventID, tagID)
-				return
-			}
-			http.Error(w, "not found", http.StatusNotFound)
-		}
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
 
 // renderEventTagsListFragment loads the Event's tags and writes
 // the per-Event Tags chip HTML into w. Shared by GET
@@ -1227,43 +1069,6 @@ func (a *App) handleEventTagDetach(w http.ResponseWriter, r *http.Request, event
 	}
 	setToastHeader(w, "Success: tag detached.")
 	a.renderEventTagsListFragment(w, r, eventID)
-}
-
-// handleEventImagesRoute (issue #320 child #332, slot 16 of 16)
-// is the chi route shim for /events/{id}/images and its
-// sub-paths. Mirrors handleEventSourcesRoute shape:
-//   GET                            -> handleEventImagesGet (fragment)
-//   POST /images/import            -> handleEventImageImport (native dialog + job)
-//   POST /images/delete            -> handleEventImagesDelete (bulk delete + fragment)
-func (a *App) handleEventImagesRoute(w http.ResponseWriter, r *http.Request) {
-	prefix := "/events/"
-	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
-	parts := strings.SplitN(trimmed, "/", 2)
-	if len(parts) < 2 || parts[1] == "" {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	eventID, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	suffix := parts[1]
-	switch r.Method {
-	case http.MethodGet:
-		a.handleEventImagesGet(w, r, eventID)
-	case http.MethodPost:
-		switch suffix {
-		case "images/import":
-			a.handleEventImageImport(w, r, eventID)
-		case "images/delete":
-			a.handleEventImagesDelete(w, r, eventID)
-		default:
-			http.Error(w, "not found", http.StatusNotFound)
-		}
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 // renderEventImagesListFragment loads the Event's images and
