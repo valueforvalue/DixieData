@@ -43,6 +43,58 @@ without updating the route registration, navigation silently breaks.
 **Recommendation**: add `routebuilder.NavHome()`, `routebuilder.NavSearch()`,
 etc. for nav links.
 
+## Intentionally-orphan routes
+
+Routes that exist in the registered handler set but have no UI
+invoker. The `audit/discover_orphan_handlers.mjs` probe flags these
+as informational (exit 0, output-only); this section documents
+each one with its decision context so the probe output reads as
+a known allow-list rather than fresh drift.
+
+### `POST /events/{id}/sources/attach`
+
+- **Handler**: `handleEventSourceAttachForDispatch` dispatched via
+  `eventPanelRoute{method: POST, subPath: "attach"}` for the
+  `sources` panel (`internal/appshell/event_panel.go:231`).
+  Reachable via `POST /events/{id}/sources` catch-all
+  (`internal/appshell/routes.go:207-214`).
+- **Decision context**: issue **#360** explicitly removed the legacy
+  standalone attach form from `/events/{id}`'s Source Records panel
+  (the duplicate of the inline #357 attach surface on `/events/new`
+  + `/events/{id}/edit`). The route was kept "in case anyone
+  bookmarked it" — no UI invokes it after #360. The
+  `// expected-orphan-route` marker comment option that #360
+  offered for `routes.go` was **not** applied (the slice shipped
+  form-removal without the marker), so the orphan probe currently
+  flags the handler as drift.
+- **`.ddshare` replay claim** (from the issue #380 framing): the
+  source code does **NOT** use this route for `.ddshare` import
+  replay. Grep `ddshare` + `memorial_json` + `EventSourceAttach`
+  returns zero call sites. The framing in #380 inherits the
+  "orphan-by-design" wording from the route-survived rationale
+  without verifying the replay path; this entry corrects the
+  record. If the route is kept, the rationale is "backward
+  compatibility for bookmarks" only.
+- **Recommendation** (carried from #360's "decision deferred to
+  slice 2" + #380 Phase 3):
+  - **Delete** the handler + dispatcher entry + chi route
+    registration. Save: ~30 lines of dispatcher glue
+    (`handleEventSourceAttachForDispatch` body + the entry in
+    the sources panel route list + the `// POST /sources/attach`
+    comment at `routes.go:207`). Regression: anyone with a
+    bookmarked URL breaks; the orphan probe goes clean.
+  - **OR keep + mark** with a `// expected-orphan-route: kept for
+    backward-compat with bookmarks; see gaps.md` comment near
+    the handler so future probes (and the #369 regex-heuristic
+    fix) can add an allow-list entry. Cheaper, preserves
+    bookmarks.
+- **Issue tracking**: #380 Phase 3 will pick one path. Either way,
+  the chosen option must update this entry.
+
+(Add additional intentionally-orphan routes here as the audit
+surfaces them. Same shape: route + handler location + decision
+context + recommendation.)
+
 ## Surfaces not in uiids Registry
 
 (Empty so far — `uiids.go` Registry is well-curated. Add findings here
