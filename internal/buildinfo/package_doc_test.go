@@ -420,9 +420,28 @@ func discoverPackages(t *testing.T, root string) []string {
 	}
 	var dirs []string
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		if line != "" {
-			dirs = append(dirs, line)
+		if line == "" {
+			continue
 		}
+		// Filter out vendored / non-project packages. `go list ./...`
+		// includes Go packages under node_modules (e.g. the
+		// flatted vendored copy at node_modules\flatted\golang\pkg\flatted)
+		// which are not part of this module and can't be fixed
+		// by adding a package comment. The same applies to vendor/.
+		rel, err := filepath.Rel(root, line)
+		if err != nil {
+			dirs = append(dirs, line)
+			continue
+		}
+		if rel == "." {
+			continue
+		}
+		// Skip any path whose first segment is node_modules or vendor.
+		first := strings.SplitN(rel, string(filepath.Separator), 2)[0]
+		if first == "node_modules" || first == "vendor" {
+			continue
+		}
+		dirs = append(dirs, line)
 	}
 	return dirs
 }
