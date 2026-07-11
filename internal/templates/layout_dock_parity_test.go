@@ -15,7 +15,9 @@ import (
 //
 // Pre-#380 the dock had: Calendar, Search/Quick View, Browse,
 // Review Queue, Insights, Share, Tags, Settings, Add Person
-// Record (9 items).
+// Record (9 items). The 'Search/Quick View' label was renamed
+// to 'Search' in slice 5 (issue #380 OQ7 lock); URL stays
+// /soldiers.
 //
 // Post-#380 (slice 4) the dock has: Calendar, Search,
 // Share landing, Settings, Add Person Record (5 items).
@@ -84,7 +86,7 @@ func TestLayoutDockMirrorsParityRule(t *testing.T) {
 		`<a href="/share/queue"`,
 		`<a href="/share/sync"`,
 		`<a href="/research-collections"`,
-		`>Search/Quick View<`, // pre-#380 label must be gone (slice 5 also touches this)
+		`>Search/Quick View<`, // pre-#380 label must be gone (slice 5 renamed it to 'Search')
 	}
 	for _, bad := range mustNotContain {
 		if strings.Contains(dockNav, bad) {

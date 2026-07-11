@@ -113,20 +113,20 @@ function pathCrumbsForCurrentPath(currentPath) {
     return join("Anniversaries", "/anniversary", true);
   }
   if (cleanPath === "/soldiers") {
-    return join("Search/Quick View", "/soldiers", true);
+    return join("Search", "/soldiers", true);
   }
   if (cleanPath === "/soldiers/new") {
-    return join("Search/Quick View", "/soldiers", false, "Add Person", "/soldiers/new", true);
+    return join("Search", "/soldiers", false, "Add Person", "/soldiers/new", true);
   }
   if (cleanPath === "/soldiers/search") {
-    return join("Search/Quick View", "/soldiers", false, "Search", "/soldiers/search", true);
+    return join("Search", "/soldiers", false, "Search", "/soldiers/search", true);
   }
   if (cleanPath.startsWith("/soldiers/search/")) {
-    return join("Search/Quick View", "/soldiers", false, "Advanced Search", cleanPath, true);
+    return join("Search", "/soldiers", false, "Advanced Search", cleanPath, true);
   }
   if (cleanPath.startsWith("/soldiers/display/")) {
     const id = cleanPath.replace(/^\/soldiers\/display\//, "");
-    return join("Search/Quick View", "/soldiers", false, id, cleanPath, true);
+    return join("Search", "/soldiers", false, id, cleanPath, true);
   }
   if (
     cleanPath.startsWith("/soldiers/") &&
@@ -138,7 +138,7 @@ function pathCrumbsForCurrentPath(currentPath) {
     const id = parts[0];
     if (parts.length >= 2 && parts[1] === "tags") {
       return join(
-        "Search/Quick View",
+        "Search",
         "/soldiers",
         false,
         "#" + id,
@@ -149,7 +149,7 @@ function pathCrumbsForCurrentPath(currentPath) {
         true
       );
     }
-    return join("Search/Quick View", "/soldiers", false, "#" + id, cleanPath, true);
+    return join("Search", "/soldiers", false, "#" + id, cleanPath, true);
   }
   if (cleanPath === "/browse") return join("Browse", "/browse", true);
   if (cleanPath === "/browse/results") {
