@@ -2619,6 +2619,95 @@
     }
   }
 
+  // installMegaMenus wires every element with
+  // [data-mega-menu-trigger] to its [data-mega-menu-panel]
+  // (matched by the same data-* value). Issue #380 — the
+  // Records + Share & Review mega-menus use this selector pair
+  // (parallel to [data-foldout-*] used by the flat Share +
+  // Research & Review foldouts). The contract matches
+  // installFoldouts: click toggles, outside-click closes,
+  // aria-expanded mirrors open state. Arrow-key navigation
+  // falls through to the browser default (Tab cycles through
+  // the menuitems inside the panel in source order) — the
+  // primitive is a 2D grid, so arrow-key behavior matches the
+  // user's mental model of moving through a table.
+  function installMegaMenus() {
+    if (!window.__megaMenuInstallN) window.__megaMenuInstallN = 0;
+    window.__megaMenuInstallN++;
+
+    if (!window.__megaMenuDocHandlerBound) {
+      window.__megaMenuDocHandlerBound = true;
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Node)) return;
+        for (const trigger of document.querySelectorAll("[data-mega-menu-trigger]")) {
+          if (!(trigger instanceof HTMLElement)) continue;
+          if (trigger === target || trigger.contains(target)) continue;
+          const id = trigger.getAttribute("data-mega-menu-trigger");
+          if (!id) continue;
+          const panel = document.querySelector('[data-mega-menu-panel="' + id + '"]');
+          if (!(panel instanceof HTMLElement)) continue;
+          if (panel.classList.contains("hidden")) continue;
+          if (panel.contains(target)) continue;
+          panel.classList.add("hidden");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
+    if (!window.__megaMenuBoundTriggers) {
+      window.__megaMenuBoundTriggers = new WeakSet();
+    }
+    const triggers = document.querySelectorAll("[data-mega-menu-trigger]");
+    for (const trigger of triggers) {
+      if (!(trigger instanceof HTMLElement)) continue;
+      if (window.__megaMenuBoundTriggers.has(trigger)) continue;
+      const menuID = trigger.getAttribute("data-mega-menu-trigger");
+      if (!menuID) continue;
+      const panel = document.querySelector('[data-mega-menu-panel="' + menuID + '"]');
+      if (!(panel instanceof HTMLElement)) continue;
+      window.__megaMenuBoundTriggers.add(trigger);
+
+      const isOpen = () => !panel.classList.contains("hidden");
+      const open = () => {
+        for (const t of document.querySelectorAll("[data-mega-menu-trigger]")) {
+          if (t === trigger) continue;
+          const id = t.getAttribute("data-mega-menu-trigger");
+          if (!id) continue;
+          const p = document.querySelector('[data-mega-menu-panel="' + id + '"]');
+          if (p instanceof HTMLElement) p.classList.add("hidden");
+          t.setAttribute("aria-expanded", "false");
+        }
+        panel.classList.remove("hidden");
+        trigger.setAttribute("aria-expanded", "true");
+        const firstItem = panel.querySelector('[role="menuitem"]');
+        if (firstItem instanceof HTMLElement) firstItem.focus();
+      };
+      const close = (returnFocus) => {
+        panel.classList.add("hidden");
+        trigger.setAttribute("aria-expanded", "false");
+        if (returnFocus) trigger.focus();
+      };
+      const toggle = () => { isOpen() ? close(false) : open(); };
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggle();
+      });
+      trigger.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(true);
+        }
+      });
+      panel.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(true);
+        }
+      });
+    }
+  }
+
   // focusSibling moves focus to the next/previous menuitem in the
   // panel relative to the currently-focused element. Wraps around
   // so the user can keep pressing ArrowDown to cycle through the
@@ -3090,6 +3179,7 @@
     // navigated twice. See issue #285 + handoff:
     // .rdivide/handoff-foldout-click-race.md.
     installFoldouts();
+    installMegaMenus();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
 
@@ -5317,6 +5407,7 @@
     initializeLiveCounts(document);
     initializeFloatingNav();
     installFoldouts();
+    installMegaMenus();
     initializeBrowseFilterDrawer();
     applyCalendarAnniversaryDensity();
     syncPrintScopeState();

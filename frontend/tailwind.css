@@ -552,6 +552,40 @@ html { scrollbar-gutter: stable; }
   transform: scaleY(1) translateY(0);
   pointer-events: auto;
 }
+/* Issue #380: MegaMenu primitive (2D panel). Same open/close
+   transition as the foldout, but the panel uses display:grid
+   when shown so the grid-cols-2 / grid-cols-N layout inside
+   the panel renders correctly. The foldout-panel rule above
+   uses display:flex because its children are a flat <ul>;
+   the mega-menu-panel's children are a grid <div>. Both
+   rules share the same opacity + transform transition. */
+.mega-menu-panel {
+  display: none;
+  transform-origin: top right;
+  opacity: 0;
+  transform: scaleY(0.92) translateY(-4px);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  pointer-events: none;
+}
+.mega-menu-panel:not(.hidden) {
+  display: grid;
+  opacity: 1;
+  transform: scaleY(1) translateY(0);
+  pointer-events: auto;
+}
+/* Mega-menu items: pill-link is the base, but the menuitem
+   role means we drop the underline + tighten padding for
+   grid density. Same hover affordance as foldout-menuitem. */
+.mega-menu-item {
+  display: block;
+  text-align: left;
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.75rem;
+}
+.mega-menu-item:hover,
+.mega-menu-item:focus-visible {
+  background: rgba(255, 248, 230, 0.08);
+}
 .foldout-menuitem {
   display: block;
   text-align: left;
