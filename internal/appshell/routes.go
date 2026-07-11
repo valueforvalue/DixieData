@@ -187,41 +187,38 @@ func (a *App) setupRoutes() {
 	r.Get("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
 	r.Post("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
 	// Issue #320 slice #328: per-Event research log. The
-	// routes mirror the /soldiers/{id}/research-log shape
-	// (GET list, POST /tasks create, POST /tasks/{id}/resolve
-	// close) but dispatch through a.soldiers.ResearchLog /
-	// AddResearchTask / ResolveResearchTask because the
-	// research_tasks table is FK-linked to soldiers(id) and
-	// Events are rows in the same table (entry_type = 'event').
-	r.Get("/events/{id:[0-9]+}/research-log", a.handleEventResearchLogRoute)
-	r.Post("/events/{id:[0-9]+}/research-log/tasks", a.handleEventResearchLogRoute)
-	r.Post("/events/{id:[0-9]+}/research-log/tasks/{entryId:[0-9]+}/resolve", a.handleEventResearchLogRoute)
-	// Issue #320 slice #329: per-Event Sources panel. Source
-	// Records are rows in the `records` table keyed by
-	// person_record_id (Events are soldiers rows so the FK applies
-	// unchanged). The handler dispatches on r.URL.Path suffix.
-	r.Get("/events/{id:[0-9]+}/sources", a.handleEventSourcesRoute)
-	// Issue #360: the /events/{id}/sources/attach route has no UI
-	// caller as of this commit (the Sources panel on the detail
-	// page now points users to /events/{id}/edit, where #357's
-	// inline RecordInputRow covers attach). The route stays
-	// reachable because the attach/detach round-trip
-	// TestHandleEventSourcesAndScratchpad pins the backend wiring
-	// for any future programmatic attach path (e.g. .ddshare
-	// replay, bulk-import). Hand-coded as 'orphan' in the probe
-	// output by design — verify the route + handler still resolve
-	// before deleting in a future cleanup issue.
-	r.Post("/events/{id:[0-9]+}/sources/attach", a.handleEventSourcesRoute)
-	r.Post("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/detach", a.handleEventSourcesRoute)
+	// Issue #320 + #343 finding #3: per-Event panel routes are
+	// dispatched by handleEventPanelRoute (appshell/event_panel.go)
+	// through the eventPanels registry. Each chi route below
+	// covers one panel name + its (method, sub-path) variants;
+	// adding a new panel = one chi route + one registry entry.
+	// The collapse replaces four near-identical dispatcher shims
+	// (research-log, sources, tags, images) with one shared
+	// handler that walks a (panel, method, subPath) → handler
+	// table. The architecture-review body flagged the prior
+	// shape as a deletion-test signal: "delete the dispatcher,
+	// do the panels keep working? Yes. The handler functions
+	// are the real work; the dispatcher is glue."
+	r.Route("/events/{id:[0-9]+}/research-log", func(r chi.Router) {
+		r.Get("/*", a.handleEventPanelRoute)
+		r.Post("/*", a.handleEventPanelRoute)
+	})
+	r.Route("/events/{id:[0-9]+}/sources", func(r chi.Router) {
+		// GET /events/{id}/sources        + POST /sources/attach
+		// + POST /sources/{id}/detach all funnel through the
+		// dispatcher; PATCH /sources/{sourceId}/position stays
+		// on its dedicated handler (handleMoveEventSource is a
+		// separate concern, not a "panel" route).
+		r.Get("/*", a.handleEventPanelRoute)
+		r.Post("/*", a.handleEventPanelRoute)
+	})
 	// Issue #368 slice 2: PATCH endpoint for reordering an
 	// Event Source. Same shape as the soldier-side route.
 	r.Patch("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/position", a.handleMoveEventSource)
-	// Issue #320 slice #333: per-Event Tags chips. The
-	// person_record_tags junction FKs soldiers(id) so the
-	// same table covers Events.
-	r.Get("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
-	r.Post("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
-	r.Post("/events/{id:[0-9]+}/tags/{tagId:[0-9]+}/detach", a.handleEventTagsRoute)
+	r.Route("/events/{id:[0-9]+}/tags", func(r chi.Router) {
+		r.Get("/*", a.handleEventPanelRoute)
+		r.Post("/*", a.handleEventPanelRoute)
+	})
 	// Issue #361 slice 2: Event editor's Linked Persons section.
 	// POST /events/{id}/links takes a `display_id` form field
 	// and resolves it to a Person Record ID via the new
@@ -233,15 +230,10 @@ func (a *App) setupRoutes() {
 	// (not the detail page) after attaching/detaching.
 	r.Post("/events/{id:[0-9]+}/links", a.handleEventLinksAttachRoute)
 	r.Post("/events/{id:[0-9]+}/links/{personId:[0-9]+}/detach", a.handleEventLinksDetachRoute)
-	// Issue #320 child #332 (slot 16 of 16): per-Event images
-	// gallery. GET returns the fragment (lazy-load + post-action
-	// swap target); POST /import opens the native file picker
-	// and enqueues an image_import job; POST /delete re-renders
-	// the fragment in place (no X-DixieData-Redirect, per issue
-	// #341).
-	r.Get("/events/{id:[0-9]+}/images", a.handleEventImagesRoute)
-	r.Post("/events/{id:[0-9]+}/images/import", a.handleEventImagesRoute)
-	r.Post("/events/{id:[0-9]+}/images/delete", a.handleEventImagesRoute)
+	r.Route("/events/{id:[0-9]+}/images", func(r chi.Router) {
+		r.Get("/*", a.handleEventPanelRoute)
+		r.Post("/*", a.handleEventPanelRoute)
+	})
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic
