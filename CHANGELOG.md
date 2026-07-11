@@ -6149,6 +6149,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - **errors: new `frontend/debug.test.mjs` hostile-input regression net** (issue #436 Slice D). 5 node:test assertions prove the debug logger's `// intentional: never-throw logger` markers are honest. The test stubs `console`, `fetch`, `navigator.sendBeacon`, `window`, and `Blob`; loads `frontend/debug.js` once via dynamic import (the IIFE bails on the `window.__dixieDebug` guard, so re-importing wouldn't pick up new stubs); then mutates `fetch` / `debug.push` per test to exercise the 6 catch sites under hostile conditions. Run with `node --test frontend/debug.test.mjs`. Not wired into a CI runner yet — separate task.
 
+### Documentation
+
+- **ui-map: Research Picker wireframe (issue #381 slice 1)**. New `docs/ui-map/wireframes/research-picker.md` covers the `/research` picker landing page that the top-nav Research & Review foldout (#378) routes soldier-scoped sub-pages through when no `dd_person_ctx` cookie is set. Documents all 6 registered panels (`page.research.picker`, `panel.research.picker.{continue,search,results,pack-sub-screen,recent}`), the JS-hook `data-research-*` family, the htmx live-search wiring (`hx-target="[data-research-results]"`, the data-attribute selector per #453), the `/research/recent` JS-hydrated recents swap, the form `data-dixie-submit="true"` discipline (per #426 follow-up), and the Continue shortcut's per-action filtering (per #422 slice 2). Includes an explicit drift correction: the issue #381 body listed speculative literal markers (`data-research-picker-search`, `data-research-picker-recent`, `data-research-picker-continue`, `data-dd-person-ctx`) that were never wired — the implementation uses the panel-level uiids + the `data-research-*` JS-hook family instead. New row 12a in `docs/ui-map/INDEX.md` lists the picker alongside Review Queue Compare + Research Collections Hub; the trailing wireframe count updates 28 → 29. Sections B/C/D/G of #381 remain blocked on issue #380 Phase 1 maintainer decisions (Tools/Settings foldouts, promote/drop inventory) — deferred until those lock.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
