@@ -49,6 +49,7 @@ below but worth knowing:
 | 10 | Insights Drilldown | (panel-only) | — | — | [wireframes/10-insights-drilldown.md](wireframes/10-insights-drilldown.md) |
 | 11 | Review Queue | `panel.review-queue.list` | — | — | [wireframes/11-review-queue.md](wireframes/11-review-queue.md) |
 | 12 | Review Queue Compare | `panel.review-queue.compare` | — | — | [wireframes/12-review-queue-compare.md](wireframes/12-review-queue-compare.md) |
+| 12a | Research Picker | `page.research.picker`, `panel.research.picker.continue`, `panel.research.picker.search`, `panel.research.picker.results`, `panel.research.picker.pack-sub-screen`, `panel.research.picker.recent` | — | — | [wireframes/research-picker.md](wireframes/research-picker.md) |
 | 13 | Research Collections Hub | — | — | — | [wireframes/13-research-collections-hub.md](wireframes/13-research-collections-hub.md) |
 | 14 | Research Collection Detail | — | — | — | [wireframes/14-research-collection-detail.md](wireframes/14-research-collection-detail.md) |
 | 15 | Research Log | — | — | — | [wireframes/15-research-log.md](wireframes/15-research-log.md) |
@@ -67,9 +68,10 @@ below but worth knowing:
 | 27 | Event Edit | `panel.event.form.sources`, `panel.event.form.linked-persons`, `panel.event.form.tags` | — | — | [wireframes/27-event-edit.md](wireframes/27-event-edit.md) |
 | 28 | Event PDF | — | — | `overlay.print-config.modal` (via popout) | [wireframes/28-event-pdf.md](wireframes/28-event-pdf.md) |
 
-> All 28 wireframes drafted (v60 Event Records added in #342, top-nav
+> All 29 wireframes drafted (v60 Event Records added in #342, top-nav
 > Share foldout + floating-dock Menu + Tags link folded into the
-> Global section). Pilot validated — same format throughout.
+> Global section; Research Picker added per issue #381 slice 1).
+> Pilot validated — same format throughout.
 
 ## Cross-references
 
