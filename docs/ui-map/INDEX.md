@@ -34,6 +34,7 @@ below but worth knowing:
 
 | # | Screen | Panels | Tabs | Overlays | Wireframe |
 | --- | --- | --- | --- | --- | --- |
+| 00 | Global Layout Shell | `layout.research.menu{,.trigger}`, `layout.share.menu{,.trigger}`, `layout.tags.link`, `data-layout-research-review-count`, `data-floating-scratchpad-status`, `data-floating-nav-panel`, `data-share-queue-pill` | — | `overlay.floating.menu` (toggled from floating-dock Menu btn) | [wireframes/layout.md](wireframes/layout.md) |
 | 01 | Calendar | `panel.calendar.quote`, `panel.calendar.grid`, `panel.calendar.details` | — | `overlay.print-config.modal` (via popout) | [01-calendar.md](wireframes/01-calendar.md) |
 | 02 | Calendar Day | (inline w/ Calendar) | — | — | (in `01-calendar.md`) |
 | 03 | Soldiers List (Search/Quick View) | `panel.soldiers.search.basic`, `panel.soldiers.search.advanced`, `panel.soldiers.results` | `tab.soldiers.search.basic`, `tab.soldiers.search.advanced` | — | [wireframes/03-soldiers-list.md](wireframes/03-soldiers-list.md) |
@@ -68,9 +69,10 @@ below but worth knowing:
 | 27 | Event Edit | `panel.event.form.sources`, `panel.event.form.linked-persons`, `panel.event.form.tags` | — | — | [wireframes/27-event-edit.md](wireframes/27-event-edit.md) |
 | 28 | Event PDF | — | — | `overlay.print-config.modal` (via popout) | [wireframes/28-event-pdf.md](wireframes/28-event-pdf.md) |
 
-> All 29 wireframes drafted (v60 Event Records added in #342, top-nav
+> All 30 wireframes drafted (v60 Event Records added in #342, top-nav
 > Share foldout + floating-dock Menu + Tags link folded into the
-> Global section; Research Picker added per issue #381 slice 1).
+> Global section; Research Picker added per issue #381 slice 1;
+> Global Layout Shell wireframe added per issue #381 slice 2).
 > Pilot validated — same format throughout.
 
 ## Cross-references
