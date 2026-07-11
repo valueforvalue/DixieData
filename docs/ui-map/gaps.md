@@ -95,6 +95,103 @@ a known allow-list rather than fresh drift.
 surfaces them. Same shape: route + handler location + decision
 context + recommendation.)
 
+## Buried-surface decisions (locked — issue #380 Phase 1 leave-in-place inventory)
+
+Routes that the top-nav IA audit (#380, sweep 2026-07-05)
+confirmed should stay **deep-link only** (no top-nav promotion,
+no foldout promotion, no floating-dock promotion). Each is
+reachable from one or more cards / actions on the pages where
+its data makes sense; a nav surface would either bloat the
+top nav or break the conceptual scope of an existing foldout.
+
+This list is the **allow-list for any future "should we add
+this to the nav?" question.** If a maintainer asks "why isn't
+`/compare` in the top nav?", the answer points here.
+
+### Record-scoped actions (the header pattern)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/soldiers/{id}/edit` | GET + POST | Person Record header (`Edit` button) | Action from the page it edits; nav target would duplicate the soldier's own page |
+| `/events/{id}/edit` | GET + POST | Event Record header (`Edit Event` CTA — see EventSectionPanel wireframe) | Same shape — action from the page it edits |
+| `/articles/{id}/edit` | GET + POST | Article Record header (`Edit` button) | Same shape |
+| `/articles/{id}/snapshot` | POST | Article Record header (Revisions tab `Save copy` affordance) | Sub-action of the article; lives on the page |
+| `/articles/{id}/restore` | POST | Article Record header (Revisions tab per-snapshot `Restore` button) | Sub-action |
+| `/articles/{id}/snapshot/{snapshotID}` | DELETE | Article Record header (Revisions tab per-snapshot `Delete` button) | Sub-action |
+| `/articles/{id}/refs` | POST | Article picker modal (inline htmx panel) | Modal-internal — picker renders inside the article form, posts to the attach route |
+| `/articles/{id}/refs/{personId}` | DELETE | Article picker modal (htmx delete from selected-refs list) | Modal-internal |
+| `/articles/{id}/picker` | GET | Article form picker modal trigger | Modal-internal |
+| `/articles/{id}/revisions` | GET | Article Record Revisions tab (fragment load) | Tab-internal |
+| `/articles/{id}/pdf` | POST | Article Record header (Export PDF affordance) | Per-record export; lives on the article page |
+| `/articles/{id}/raw` | GET | Article Record header (download raw markdown) | Per-record download |
+
+### Cross-record comparison + export (the card pattern)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/compare` | GET | 5+ soldier cards via the `Compare` quick-link | Used from multiple source pages; promoting it to nav would imply it's a primary destination (it's not) |
+| `/soldiers/display/*` | GET/POST/PUT/DELETE | Internal catch-all for `display_id`-keyed soldier access (links from soldier_card etc.) | Cross-cuts the soldier identification model; not a nav destination |
+
+### Soldier-scoped tags (modal-internal)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/soldiers/{id}/tags` | GET | Tag autocomplete modal on Person Record header (`Add tag` inline) | Modal-internal — autocomplete results render in the modal |
+| `/soldiers/{id}/tags` | POST | Tag autocomplete modal submit | Modal-internal |
+| `/soldiers/{id}/tags/{tagId}` | POST | Tag chip `X` button on Person Record header | Tag detach is a row-level action |
+
+### Settings page sub-actions (page-internal)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/settings/initialize` | POST | Settings page (`Initialize Archive` button) | One-shot destructive action; lives on the page |
+| `/settings/debug-mode` | POST | Settings page (`Toggle Debug Mode` button) | Settings page affordance |
+| `/settings/updates` | POST | Settings page (`Apply latest update` button) | Settings page affordance |
+| `/settings/images/orphans/cleanup` | POST | Settings page (`Clean up image orphans` button) | Settings page affordance |
+| `/settings/quality/apply` | POST | Settings page (`Apply data quality findings` button) | Settings page affordance |
+| `/recovery` | GET + POST | First-launch redirect target (login-recovery flow) | Bare URL by design; the Settings page is the user-facing surface |
+
+### Debug-mode only (not for production nav)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/debug/state` | GET | Debug Console page | Debug-mode only — the entire Debug Console nav entry is debug-mode-gated per #380 |
+| `/debug/client-logs` | POST | Debug Console page | Same — only reachable when debug mode is on |
+
+### JS/HTMX-internal (not user-facing nav destinations)
+
+| Route | Method | Where invoked | Reason leave-in-place |
+| --- | --- | --- | --- |
+| `/media/*` | GET | `frontend/app.js` + templ image cards (for serving images out of data dir) | Asset-serving endpoint; not a destination page |
+| `/open-link` | POST | Export/Import handlers (opens native browser/explorer via `OpenFileDialog` after the download completes — the "show in folder" affordance) | Triggered by JS after a successful save; not a navigation target |
+| `/images/*` (POST) | — | Image upload + reorder handlers (used by Person Record `Add image` form + reorder controls) | Form/htmx-internal; lives on the page that owns the image |
+| `/jobs/{id}/log` | POST | `jobSummaryCard` `Download log` button (issue #159 fix) | Per-job affordance; not a destination |
+
+### What's NOT in this list (and why)
+
+- **`GET /soldiers/{id}/events`** (`handlePersonEventsTabRoute`) — this IS a tab on the Person Record (`Events` tab in the R&R surface per #455). It routes through the picker when no `dd_person_ctx` cookie; it's an inner-page tab, not a top-nav surface.
+- **`/soldiers/{id}/sources/{sourceId}/position`** (PATCH) — Source reorder control on the Person Record Sources panel; lives inline as `↑/↓` buttons. The Sources panel wire is documented inline; no nav.
+- **`/soldiers/{id}/events/quick-add` + `/soldiers/{id}/events/attach-by-display-id`** — quick-add affordances on the Person Record Events tab; tab-internal.
+- **Soldier Record image routes** (`/soldiers/{id}/images`) — gallery render; lives on the Person Record page (covered by [05-soldier-detail.md](wireframes/05-soldier-detail.md)).
+
+### Cross-cutting rule
+
+If a future slice adds a new route, the rule for deciding
+"nav vs. leave-in-place" is:
+
+1. **Could a user navigate to this from the home page without
+   losing context?** If yes, it's a nav candidate (and gets
+   added to the burial-inventory when promoted).
+2. **Is the route only useful in the context of one specific
+   page (the page it edits, the page it lists sub-records of,
+   the modal it lives inside)?** If yes, leave-in-place — it
+   belongs to that page's wireframe, not to the global layout.
+3. **Is the route debug-only or internal-only?** Leave-in-place
+   + register in the orphan probe allow-list (after #369 lands).
+
+If the maintainer wants to revisit any leave-in-place decision,
+update this entry — don't fork the list inline elsewhere.
+
 ## Surfaces not in uiids Registry
 
 (Empty so far — `uiids.go` Registry is well-curated. Add findings here
