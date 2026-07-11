@@ -2088,6 +2088,10 @@ func (a *App) reloadServices() error {
 	// .ddbak restore replaces the same handle; the Event facade
 	// is rebuilt against the fresh soldierSvc reference.
 	a.events = records.NewEventService(soldierSvc)
+	// Issue #343 finding #5: wire the back-reference so
+	// SoldierService.ServiceTimeline can delegate the linked-
+	// events-for-timeline JOIN to EventService.
+	soldierSvc.SetEvents(a.events)
 	a.articles = records.NewArticleService(soldierSvc, records.NewMarkdownRenderer())
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)

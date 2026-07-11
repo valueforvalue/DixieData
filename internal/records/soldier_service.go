@@ -37,6 +37,7 @@ const (
 // *SoldierService for soldier lookups.
 type SoldierService struct {
 	db                *db.DB
+	events            EventTimelineQuerier
 	formSuggestionsMu sync.RWMutex
 	formSuggestions   *models.SoldierFormSuggestions
 }
@@ -124,6 +125,34 @@ type ResearchCollectionDetail struct {
 // refreshed when the soldier writes a new value.
 func NewSoldierService(database *db.DB) *SoldierService {
 	return &SoldierService{db: database}
+}
+
+// EventTimelineQuerier is the narrow seam SoldierService
+// consumes for the linked-events-for-timeline query. Defined
+// at the SoldierService package boundary (per the two-adapter
+// rule from codebase-design) so the consumer doesn't depend
+// on the concrete EventService. *EventService satisfies this
+// implicitly; tests can substitute a fake without dragging
+// the whole Event facade.
+type EventTimelineQuerier interface {
+	LinkedEventsForTimeline(personID int64) ([]LinkedEventTimelineMarker, error)
+}
+
+// SetEvents wires the back-reference from SoldierService to
+// the Event-side timeline querier. Issue #343 finding #5
+// moved the linked-events-for-timeline query out of
+// SoldierService (which otherwise doesn't touch the Event-
+// side schema) into EventService (where the JOIN belongs).
+// The back-reference lets ServiceTimeline delegate the query
+// instead of carrying schema knowledge it shouldn't own.
+//
+// Production wiring (appshell/app.go) and the test bootstrap
+// (records/*_test.go) must call SetEvents after constructing
+// both services. If unset, ServiceTimeline skips the
+// linked-event markers (no events to surface) — the rest of
+// the timeline (Birth / Death / records / etc.) still renders.
+func (s *SoldierService) SetEvents(events EventTimelineQuerier) {
+	s.events = events
 }
 
 // Create persists a new Soldier and returns the assigned ID. Sets CreatedAt + UpdatedAt; the caller is responsible for the display ID.
@@ -1170,17 +1199,27 @@ func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, err
 
 	// Issue #320 slice #337: append one Timeline Marker per
 	// Event Record linked to this soldier via
-	// event_person_links. Date sourcing: the Event's
-	// begin_date wins; when begin_date is empty, end_date is
-	// used as the fallback. Events with neither date are
-	// skipped (the user has not yet back-filled the timeline
-	// fields). The marker is sorted inline below alongside
-	// the existing Birth / Death / record-derived markers,
-	// so the user sees a single chronological view.
-	linkedMarkers, err := s.linkedEventsForTimeline(soldierID)
-	if err != nil {
-		return nil, err
+	// event_person_links. Issue #343 finding #5: the JOIN +
+	// projection now live on EventService (where the Event
+	// schema belongs); ServiceTimeline delegates via the
+	// back-reference set by SetEvents. If the back-reference
+	// is nil (older wiring path or a test that didn't set it),
+	// the linked-event markers are skipped — the rest of the
+	// timeline still renders.
+	var linkedMarkers []LinkedEventTimelineMarker
+	if s.events != nil {
+		linkedMarkers, err = s.events.LinkedEventsForTimeline(soldierID)
+		if err != nil {
+			return nil, err
+		}
 	}
+	// Date sourcing: the Event's begin_date wins; when
+	// begin_date is empty, end_date is used as the fallback.
+	// Events with neither date are skipped (the user has not
+	// yet back-filled the timeline fields). The marker is
+	// sorted inline below alongside the existing Birth /
+	// Death / record-derived markers, so the user sees a
+	// single chronological view.
 	for _, marker := range linkedMarkers {
 		primary := strings.TrimSpace(marker.BeginDate)
 		if primary == "" {
@@ -2786,63 +2825,11 @@ func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
 }
 
 
-// LinkedEventTimelineMarker is the slim projection of an Event
-// Record suitable for inclusion on a Person Record's Service
-// Timeline (issue #320 slice #337). It carries only the fields
-// the timeline builder reads so the query stays narrow and the
-// builder can mint a ServiceTimelineEvent without an extra
-// GetByID round trip per Event.
-type LinkedEventTimelineMarker struct {
-	Kind        string // Event kind (free-text: "Battle", "Hospital Stay", ...)
-	BeginDate   string // canonical MM[/DD]/YYYY; falls back to EndDate
-	EndDate     string // canonical MM[/DD]/YYYY; used only if BeginDate is empty
-	Description string // long-form Event description; surfaced as the marker description
-	DisplayID   string // EVT-NNNNN; surfaced as the marker source label
-}
-
-// linkedEventsForTimeline returns the Event Records linked to
-// the central soldier via event_person_links, projected onto
-// LinkedEventTimelineMarker so ServiceTimeline can mint one
-// Timeline Marker per Event without an extra SoldierService.
-// GetByID round trip per Event. The query is index-friendly:
-// event_person_links has UNIQUE (event_id, person_id) so the
-// join hits the existing index, and the WHERE clause filters
-// by the indexed person_id side.
-//
-// Returns an empty slice (not nil) when no Events are linked.
-// Returns an error only on query failure; per-row scan errors
-// propagate. Dates are returned as the raw TEXT they were stored
-// as on the soldiers row; ServiceTimeline parses them through
-// dates.ParseCanonical.
-func (s *SoldierService) linkedEventsForTimeline(soldierID int64) ([]LinkedEventTimelineMarker, error) {
-	if soldierID < 1 {
-		return nil, fmt.Errorf("linkedEventsForTimeline: soldier id must be positive")
-	}
-	rows, err := s.db.Conn().Query(
-		`SELECT s.kind, s.begin_date, s.end_date, s.description, s.display_id
-		 FROM soldiers s
-		 JOIN event_person_links epl ON epl.event_id = s.id
-		 WHERE epl.person_id = ?`,
-		soldierID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("linkedEventsForTimeline query: %w", err)
-	}
-	defer debug.DeferCloseLog(rows, "linkedEventsForTimeline.rows")
-
-	markers := make([]LinkedEventTimelineMarker, 0)
-	for rows.Next() {
-		var m LinkedEventTimelineMarker
-		if err := rows.Scan(&m.Kind, &m.BeginDate, &m.EndDate, &m.Description, &m.DisplayID); err != nil {
-			return nil, fmt.Errorf("linkedEventsForTimeline scan: %w", err)
-		}
-		markers = append(markers, m)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("linkedEventsForTimeline rows: %w", err)
-	}
-	return markers, nil
-}
+// LinkedEventTimelineMarker moved to event_service.go as part
+// of issue #343 finding #5 — the JOIN against event_person_links
+// belongs on EventService, not SoldierService. ServiceTimeline
+// delegates to EventService.LinkedEventsForTimeline via the
+// back-reference set by SetEvents.
 
 func searchableFirstName(soldier models.Soldier) string {
 	return strings.TrimSpace(strings.TrimSpace(soldier.FirstName) + " " + strings.TrimSpace(soldier.MiddleName))

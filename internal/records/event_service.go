@@ -824,3 +824,68 @@ func (e *EventService) MoveEventSource(eventID, sourceID, position int64) error 
 
 	return tx.Commit()
 }
+
+// LinkedEventTimelineMarker is the slim projection of an Event
+// Record suitable for inclusion on a Person Record's Service
+// Timeline (issue #320 slice #337). It carries only the fields
+// the timeline builder reads so the query stays narrow and the
+// builder can mint a ServiceTimelineEvent without an extra
+// GetByID round trip per Event.
+//
+// Moved here from SoldierService as part of issue #343 finding #5 —
+// the JOIN against event_person_links belongs on EventService
+// (which already owns the Event-side schema), not on SoldierService
+// (which otherwise doesn't touch the event_person_links table).
+// SoldierService.ServiceTimeline consumes this projection via the
+// back-reference set by SoldierService.SetEvents.
+type LinkedEventTimelineMarker struct {
+	Kind        string // Event kind (free-text: "Battle", "Hospital Stay", ...)
+	BeginDate   string // canonical MM[/DD]/YYYY; falls back to EndDate
+	EndDate     string // canonical MM[/DD]/YYYY; used only if BeginDate is empty
+	Description string // long-form Event description; surfaced as the marker description
+	DisplayID   string // EVT-NNNNN; surfaced as the marker source label
+}
+
+// LinkedEventsForTimeline returns the Event Records linked to
+// the given person via event_person_links, projected onto
+// LinkedEventTimelineMarker so ServiceTimeline can mint one
+// Timeline Marker per Event without an extra GetByID round
+// trip. The query is index-friendly: event_person_links has
+// UNIQUE (event_id, person_id) so the join hits the existing
+// index, and the WHERE clause filters by the indexed person_id
+// side.
+//
+// Returns an empty slice (not nil) when no Events are linked.
+// Returns an error only on query failure; per-row scan errors
+// propagate. Dates are returned as the raw TEXT they were stored
+// as on the soldiers row; ServiceTimeline parses them through
+// dates.ParseCanonical.
+func (e *EventService) LinkedEventsForTimeline(personID int64) ([]LinkedEventTimelineMarker, error) {
+	if personID < 1 {
+		return nil, fmt.Errorf("LinkedEventsForTimeline: person id must be positive")
+	}
+	rows, err := e.soldiers.db.Conn().Query(
+		`SELECT s.kind, s.begin_date, s.end_date, s.description, s.display_id
+		 FROM soldiers s
+		 JOIN event_person_links epl ON epl.event_id = s.id
+		 WHERE epl.person_id = ?`,
+		personID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("LinkedEventsForTimeline query: %w", err)
+	}
+	defer debug.DeferCloseLog(rows, "LinkedEventsForTimeline.rows")
+
+	markers := make([]LinkedEventTimelineMarker, 0)
+	for rows.Next() {
+		var m LinkedEventTimelineMarker
+		if err := rows.Scan(&m.Kind, &m.BeginDate, &m.EndDate, &m.Description, &m.DisplayID); err != nil {
+			return nil, fmt.Errorf("LinkedEventsForTimeline scan: %w", err)
+		}
+		markers = append(markers, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("LinkedEventsForTimeline rows: %w", err)
+	}
+	return markers, nil
+}
