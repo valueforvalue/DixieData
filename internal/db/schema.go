@@ -718,7 +718,39 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 	return false, rows.Err()
 }
 
+// ensureSoldierFTS is the umbrella for the FTS5 setup that
+// runs in block-67's Up. Issue #343 finding #6 split the
+// single 250-LoC function into three independently-
+// reversible sub-helpers: ensureScratchpadCache (the table +
+// cascade cleanup), ensureSoldierFTSVirtualTable (DROP+CREATE
+// VIRTUAL TABLE + bulk INSERT from soldiers), and
+// ensureSoldierFTStriggers (the 6 FTS5 maintenance triggers).
+// dropSoldierFTS composes the matching inverses for the
+// v67→v66 downgrade path.
+//
+// v54+ is the supported floor (per the migrations.go
+// block-60 preamble); pre-v54 archives are out of scope.
+// The split makes each concern addressable on its own — a
+// future caller that needs to rebuild the FTS index after a
+// soldier-row schema change can call
+// ensureSoldierFTSVirtualTable alone without churning
+// scratchpad_cache or the triggers.
 func ensureSoldierFTS(tx *sql.Tx) error {
+	if err := ensureScratchpadCache(tx); err != nil {
+		return err
+	}
+	if err := ensureSoldierFTSVirtualTable(tx); err != nil {
+		return err
+	}
+	return ensureSoldierFTStriggers(tx)
+}
+
+// ensureScratchpadCache installs the scratchpad_cache table
+// (referenced by the soldiers FTS triggers) and prunes any
+// rows whose person_record_id no longer exists in soldiers.
+// Idempotent — CREATE TABLE IF NOT EXISTS + the DELETE is a
+// no-op when no orphans exist.
+func ensureScratchpadCache(tx *sql.Tx) error {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS scratchpad_cache (
 			person_record_id INTEGER PRIMARY KEY REFERENCES soldiers(id) ON DELETE CASCADE,
@@ -726,12 +758,44 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`DELETE FROM scratchpad_cache WHERE person_record_id NOT IN (SELECT id FROM soldiers)`,
-		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
-		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
-		`DROP TRIGGER IF EXISTS soldiers_fts_ad`,
-		`DROP TRIGGER IF EXISTS scratchpad_cache_ai`,
-		`DROP TRIGGER IF EXISTS scratchpad_cache_au`,
-		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// dropScratchpadCache removes the scratchpad_cache table.
+// Idempotent (DROP TABLE IF EXISTS). Not used by the v67→v66
+// downgrade path (dropSoldierFTS leaves scratchpad_cache in
+// place — it pre-dates block-67); exposed so a future caller
+// that needs to fully tear down the FTS5 surface has a
+// single seam.
+func dropScratchpadCache(tx *sql.Tx) error {
+	if _, err := tx.Exec(`DROP TABLE IF EXISTS scratchpad_cache`); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureSoldierFTSVirtualTable (re)creates the FTS5 virtual
+// table that indexes the searchable soldier columns and
+// performs the bulk INSERT that projects every existing
+// soldier row (and any scratchpad content) into the index.
+//
+// Requires scratchpad_cache to exist (the bulk INSERT LEFT
+// JOINs it). The ensureSoldierFTS umbrella satisfies this
+// ordering; a standalone caller must do the same.
+//
+// Does NOT install the 6 maintenance triggers — that is
+// ensureSoldierFTStriggers' job. Splitting these lets a
+// future "rebuild FTS index after a soldier-row schema
+// change" slice re-run this helper without churning trigger
+// DDL.
+func ensureSoldierFTSVirtualTable(tx *sql.Tx) error {
+	statements := []string{
 		`DROP TABLE IF EXISTS soldiers_fts`,
 		`CREATE VIRTUAL TABLE soldiers_fts USING fts5(
 			person_record_id UNINDEXED,
@@ -757,6 +821,56 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			notes,
 			scratch_pad
 		)`,
+		`INSERT INTO soldiers_fts (
+			rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+			unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
+			biography, notes, scratch_pad
+		)
+		SELECT
+			s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
+			COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
+			COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
+			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
+		FROM soldiers s
+		LEFT JOIN scratchpad_cache c ON c.person_record_id = s.id`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// dropSoldierFTSVirtualTable removes the FTS5 virtual table.
+// Idempotent (DROP TABLE IF EXISTS). Does not touch the
+// triggers — that is dropSoldierFTStriggers' job.
+func dropSoldierFTSVirtualTable(tx *sql.Tx) error {
+	if _, err := tx.Exec(`DROP TABLE IF EXISTS soldiers_fts`); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureSoldierFTStriggers installs the 6 FTS5 maintenance
+// triggers (3 on soldiers — INSERT/UPDATE/DELETE — and 3 on
+// scratchpad_cache — INSERT/UPDATE/DELETE) that keep
+// soldiers_fts in sync as the underlying rows change.
+//
+// Requires both soldiers and scratchpad_cache + soldiers_fts
+// to exist; the ensureSoldierFTS umbrella satisfies this
+// ordering, a standalone caller must do the same.
+//
+// Idempotent — drops the 6 triggers before recreating them
+// so a partial-install archive converges cleanly on re-run.
+func ensureSoldierFTStriggers(tx *sql.Tx) error {
+	statements := []string{
+		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_ad`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ai`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_au`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
 		`CREATE TRIGGER soldiers_fts_ai AFTER INSERT ON soldiers BEGIN
 			INSERT INTO soldiers_fts (
 				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
@@ -831,18 +945,6 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			FROM soldiers s
 			WHERE s.id = old.person_record_id;
 		END`,
-		`INSERT INTO soldiers_fts (
-			rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
-			unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-			biography, notes, scratch_pad
-		)
-		SELECT
-			s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
-			COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
-			COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
-			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
-		FROM soldiers s
-		LEFT JOIN scratchpad_cache c ON c.person_record_id = s.id`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(statement); err != nil {
@@ -852,20 +954,11 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 	return nil
 }
 
-// dropSoldierFTS is the inverse of ensureSoldierFTS (issue #459
-// companion). Mirrors the helpers in ensureSoldierFTS in
-// reverse order so a v_n→v_{n-1} downgrade loses the FTS5
-// virtual table + its 6 triggers without leaving dangling
-// references. Idempotent on archives that never had FTS5 (the
-// DROP TABLE / DROP TRIGGER statements are IF EXISTS).
-//
-// The schema_const's inline CREATE TABLE block in
-// `internal/db/schema.go::schema` does NOT define soldiers_fts
-// or any of its triggers for fresh installs — the FTS5 setup
-// runs in block-67's Up. So downgrading past block-67 leaves
-// the database in the v66 state (no FTS5) which the inline
-// schema already represents — consistent on both paths.
-func dropSoldierFTS(tx *sql.Tx) error {
+// dropSoldierFTStriggers removes the 6 FTS5 maintenance
+// triggers. Idempotent (DROP TRIGGER IF EXISTS). Leaves the
+// soldiers + scratchpad_cache + soldiers_fts tables intact
+// — those belong to the other sub-helpers.
+func dropSoldierFTStriggers(tx *sql.Tx) error {
 	statements := []string{
 		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
 		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
@@ -873,7 +966,6 @@ func dropSoldierFTS(tx *sql.Tx) error {
 		`DROP TRIGGER IF EXISTS scratchpad_cache_ai`,
 		`DROP TRIGGER IF EXISTS scratchpad_cache_au`,
 		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
-		`DROP TABLE IF EXISTS soldiers_fts`,
 	}
 	for _, stmt := range statements {
 		if _, err := tx.Exec(stmt); err != nil {
@@ -881,6 +973,20 @@ func dropSoldierFTS(tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+// dropSoldierFTS is the inverse of ensureSoldierFTS for the
+// v67→v66 downgrade path. Composes the per-concern inverses
+// for the FTS5 artifacts the upgrade added (soldiers_fts +
+// its 6 triggers); leaves scratchpad_cache in place because
+// it pre-dates block-67 and is part of the v66 schema. Issue
+// #343 finding #6 split the umbrella into per-concern
+// helpers so each concern is independently addressable.
+func dropSoldierFTS(tx *sql.Tx) error {
+	if err := dropSoldierFTStriggers(tx); err != nil {
+		return err
+	}
+	return dropSoldierFTSVirtualTable(tx)
 }
 
 // ensureArchiveMetaSeed (issue #183) backfills the three
