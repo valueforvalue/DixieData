@@ -143,64 +143,57 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							},
 						},
 					})
-					// Issue #380 slice 3 absorbs Insights into the
-					// Share & Review mega-menu. Until slice 3
-					// lands, Insights stays as a flat top-nav pill
-					// so users don't lose the destination.
-					<a href="/insights" class="pill-link top-nav-link">Insights</a>
-					// Issue #455 slice 1.5: R&R foldout gains
-					// a live-count badge inside the trigger
-					// button (between label and chevron),
-					// served by the existing
-					// /layout/review-count endpoint via
-					// the same hx-trigger="load, every
-					// 30s" hx-swap="innerHTML" wire the
-					// old top-nav RQ pill used. Foldout
-					// primitive gets the new
-					// FoldoutWithBadge variant (issue #455
-					// slice 1.5) which accepts an extra
-					// templ.Component slot; the Share
-					// foldout keeps the old Foldout()
-					// API unchanged. The badge content is
-					// a trusted templ.Raw span (internal
-					// template authoring only — see the
-					// foldout.templ badge htmx span for
-					// the canonical wire shape).
-					@components.FoldoutWithBadge("Research & Review", uiids.LayoutResearchMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`)) {
-						<li role="none">
-							if layoutHasOpenReview(ctx) {
-								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full border border-review-red/60 text-[#fbe1de] hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a>
-							} else {
-								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a>
-							}
-						</li>
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=timeline") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a>
-						</li>
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=research-log") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-research-log>Open Research Log</a>
-						</li>
-						<li role="none">
-							<a href="/research-collections" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-research-collections>Research Collections</a>
-						</li>
-						<li role="none">
-							<a href="/research" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-change-person>Change Person…</a>
-						</li>
-					}
-					@components.Foldout("Share", uiids.LayoutShareMenu, nil) {
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ShareExports()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a>
-						</li>
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ShareImports()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-import>Import</a>
-						</li>
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-queue-page-link>Share Queue</a>
-						</li>
-						<li role="none">
-							<a href={ templ.SafeURL(routebuilder.ShareSync()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-sync>Sync</a>
-						</li>
-					}
+					// Issue #380 slice 3 absorbed Insights into
+					// the Share & Review mega-menu's "Review &
+					// Research" column. No top-nav pill needed.
+					// Issue #380 slice 3: Share & Review mega-menu (2D
+					// panel, NN/g mega-menus-work-well pattern)
+					// absorbs the 2 prior foldouts (Research & Review
+					// + Share) + the standalone Insights pill into
+					// one 2D panel with 2 columns. The live-count
+					// badge wire (issue #455 slice 1.5) moves from
+					// the old R&R foldout trigger onto the new
+					// mega-menu trigger button; the wire shape (span
+					// + hx-get + hx-trigger + hx-swap + hx-target=
+					// "this") is byte-identical.
+					@components.MegaMenuWithBadge("Share & Review", uiids.LayoutShareReviewMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`), []components.MegaGroup{
+						// Column 1: Review & Research. The 5 items mirror
+						// the pre-#380 R&R foldout (issue #378 slice 2)
+						// + the standalone Insights pill that used to
+						// live to the left of the foldout.
+						{
+							Title: "Review & Research",
+							Items: []templ.Component{
+								// Review Queue menuitem: keeps the open-count
+								// flag echo logic (issue #460). When the
+								// /layout/review-count poll reports >0, the
+								// menuitem gains data-research-review-has-count
+								// + the red border classes. The badge in the
+								// trigger button is the JS wire; this menuitem
+								// flag is the server-rendered echo.
+								templ.Raw(reviewQueueMenuItem(layoutHasOpenReview(ctx))),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=timeline" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a></li>`),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=research-log" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-log>Open Research Log</a></li>`),
+								templ.Raw(`<li role="none"><a href="/research-collections" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-collections>Research Collections</a></li>`),
+								templ.Raw(`<li role="none"><a href="/research" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-change-person>Change Person…</a></li>`),
+								templ.Raw(`<li role="none"><a href="/insights" role="menuitem" class="mega-menu-item pill-link justify-start w-full">Insights</a></li>`),
+							},
+						},
+						// Column 2: Share. /share (Landing) is the NEW
+						// first item -- closes the /share vs
+						// /share/exports asymmetry footgun that was
+						// a discussion point in #380 Phase 1.
+						{
+							Title: "Share",
+							Items: []templ.Component{
+								templ.Raw(`<li role="none"><a href="/share" role="menuitem" class="mega-menu-item pill-link justify-start w-full">Share landing</a></li>`),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ShareExports() + `" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-share-menu-export>Export</a></li>`),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ShareImports() + `" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-share-menu-import>Import</a></li>`),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ShareQueuePage() + `" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-share-queue-page-link>Share Queue</a></li>`),
+								templ.Raw(`<li role="none"><a href="` + routebuilder.ShareSync() + `" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-share-menu-sync>Sync</a></li>`),
+							},
+						},
+					})
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>

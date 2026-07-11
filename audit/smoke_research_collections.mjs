@@ -92,15 +92,19 @@ async function testCreateCollectionForm(page) {
   return record('create-collection-form', true, { postStatus, stamped: stamp });
 }
 
-// 4. Top-nav → Research & Review → "Research Collections" link navigates to the hub.
+// 4. Top-nav → Share & Review mega-menu → "Research Collections" link navigates to the hub.
+// Issue #380 slice 3: the pre-#380 R&R foldout was absorbed into the
+// Share & Review mega-menu. The link's data-research-menu-research-collections
+// hook survives; only the trigger selector changed (data-foldout-trigger ->
+// data-mega-menu-trigger).
 async function testTopNavLink(page) {
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
   const link = page.locator('[data-research-menu-research-collections]');
   if ((await link.count()) === 0) {
     return record('topnav-research-collections-link', false, { reason: 'menu link missing' });
   }
-  // Foldout is closed by default; open the parent trigger first.
-  const trigger = page.locator('[data-foldout-trigger="layout.research.menu"]');
+  // Mega-menu is closed by default; open the parent trigger first.
+  const trigger = page.locator('[data-mega-menu-trigger="layout.share-review.menu"]');
   if (await trigger.count() > 0) {
     await trigger.first().click();
     await page.waitForTimeout(150);

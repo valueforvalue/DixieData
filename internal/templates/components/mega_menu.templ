@@ -69,6 +69,56 @@ templ MegaMenu(triggerLabel string, menuID string, triggerAttrs templ.Attributes
 	</div>
 }
 
+// MegaMenuWithBadge mirrors FoldoutWithBadge (issue #455
+// slice 1.5): the trigger button carries a slot between the
+// label and the chevron for a templ.Component (typically the
+// live-count htmx wire span). The badge content is a
+// trusted templ.Raw span; see the layout_test badge wiring
+// tests for the canonical wire shape.
+//
+// The slot is rendered AFTER the label and BEFORE the
+// chevron so the visual order is: Label (badge) ▾ — same as
+// the pre-#380 foldout trigger.
+templ MegaMenuWithBadge(triggerLabel string, menuID string, triggerAttrs templ.Attributes, badge templ.Component, groups []MegaGroup) {
+	<div class="mega-menu relative">
+		<button
+			type="button"
+			class="pill-link top-nav-link inline-flex items-center gap-1"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			aria-controls={ menuID }
+			data-mega-menu-trigger={ menuID }
+			{ foldoutAttrsExcludingClass(triggerAttrs)... }
+		>
+			{ triggerLabel }
+			if badge != nil {
+				@badge
+			}
+			<span aria-hidden="true" class="text-xs">▾</span>
+		</button>
+		<div
+			id={ menuID }
+			role="menu"
+			aria-label={ triggerLabel + " menu" }
+			data-mega-menu-panel={ menuID }
+			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+		>
+			<div class="grid grid-cols-2 gap-6">
+				for _, group := range groups {
+					<section aria-labelledby={ menuID + "-" + group.Title }>
+						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#cfb77a]">{ group.Title }</h3>
+						<ul class="flex flex-col gap-1">
+							for _, item := range group.Items {
+								@item
+							}
+						</ul>
+					</section>
+				}
+			</div>
+		</div>
+	</div>
+}
+
 // MegaGroup is one column in a MegaMenu's 2D panel. Items
 // render as a vertical list inside the group's section; the
 // group's Title becomes the <h3> heading used for both
