@@ -195,21 +195,11 @@ const (
 	LayoutShareReviewMenu       = "layout.share-review.menu"
 // LayoutShareReviewMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	LayoutShareReviewMenuTrigger = "layout.share-review.menu.trigger"
-	LayoutShareMenu       = "layout.share.menu"
-// LayoutShareMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
-	LayoutShareMenuTrigger = "layout.share.menu.trigger"
-	// LayoutResearchMenu is the top-nav foldout panel for the
-	// Research & Review surfaces (issue #378 slice 2; reshaped
-	// in issue #455 slice 1). Sits between Insights and the
-	// Share foldout; lists Review Queue + the 2 surviving
-	// soldier-scoped sub-pages (Timeline / Research Log) +
-	// Research Collections + Change Person…. The Camaraderie,
-	// Research Packs, and Merge Review Ledger menu items were
-	// removed when their dedicated sub-pages were slated for
-	// deletion in slices 3 + 4.
-	LayoutResearchMenu       = "layout.research.menu"
-// LayoutResearchMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
-	LayoutResearchMenuTrigger = "layout.research.menu.trigger"
+	// Issue #380 slice 3: LayoutShareMenu + LayoutShareMenuTrigger
+	// + LayoutResearchMenu + LayoutResearchMenuTrigger are RETIRED.
+	// The 2 pre-#380 top-nav foldouts (Share + Research &
+	// Review) collapsed into the single LayoutShareReviewMenu /
+	// LayoutShareReviewMenuTrigger mega-menu (declared above).
 
 	// Issue #378: Research & Review picker (slice 1 — picker landing).
 	// PageResearchPicker wraps the page-level main content area on
@@ -411,8 +401,6 @@ var Registry = []Surface{
 	{ID: OverlayTagPicker, Kind: "overlay", Description: "Inline tag-picker overlay used on the soldier detail page and in the Browse bulk-tag toolbar."},
 	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records table on the /share/queue management page (issue #193); each row carries a remove button + a per-row checkbox for bulk actions."},
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues card on the /share/queue management page (issue #310 PR 3, ported from the Share Build modal in issue #192) listing named presets with Load + Delete per row."},
-	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
-	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
 	// Issue #380: top-nav mega-menus (slice 2 + 3). The Records
 	// mega-menu collapses 5 flat pills (Search/Browse/Events/
 	// Articles/Tags) into one 2D panel. The Share & Review
@@ -423,8 +411,6 @@ var Registry = []Surface{
 	{ID: LayoutRecordsMenuTrigger, Kind: "nav", Description: "Top-nav Records mega-menu trigger button (issue #380 slice 2); clicking opens LayoutRecordsMenu. aria-controls points at the panel's id."},
 	{ID: LayoutShareReviewMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the Share & Review trigger (issue #380 slice 3); 2D grid with two groups (Review & Research: Review Queue with badge + Timeline + Research Log + Collections + Insights; Share: Landing + Export + Import + Share Queue + Sync)."},
 	{ID: LayoutShareReviewMenuTrigger, Kind: "nav", Description: "Top-nav Share & Review mega-menu trigger button (issue #380 slice 3); clicking opens LayoutShareReviewMenu. aria-controls points at the panel's id."},
-	{ID: LayoutResearchMenu, Kind: "nav", Description: "Top-nav foldout panel under the Research & Review trigger; lists Review Queue + Timeline + Research Log + Research Collections + Change Person… (issue #378 slice 2, reshaped in issue #455 slice 1). Soldier-scoped entries route through the picker when no dd_person_ctx cookie is set; the picker is being pivoted to ?person=ID query in slice 2."},
-	{ID: LayoutResearchMenuTrigger, Kind: "nav", Description: "Top-nav Research & Review foldout trigger button (issue #378 slice 2); clicking opens LayoutResearchMenu. Sits between Insights and Share per the slice-2 nav placement decision."},
 	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
 	{ID: PanelResearchPickerSearch, Kind: "panel", Description: "Search input region on the Research picker page; htmx target for the live results swap."},
 	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},

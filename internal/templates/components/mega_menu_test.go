@@ -185,3 +185,66 @@ func TestMegaMenu_TriggerAttrsPassThrough(t *testing.T) {
 		t.Errorf("expected aria-current to pass through; got:\n%s", got)
 	}
 }
+
+// TestMegaMenuWithBadge_RendersBadgeInsideTrigger pins that
+// the badge slot is rendered between the trigger label and
+// the chevron (mirrors FoldoutWithBadge — issue #455 slice
+// 1.5). The Share & Review mega-menu (issue #380 slice 3)
+// needs this slot for the live-count htmx wire span. If the
+// badge lands anywhere else (after the chevron, outside the
+// button, swallowed by templ), the trigger button fails to
+// re-render the count badge when /layout/review-count updates.
+func TestMegaMenuWithBadge_RendersBadgeInsideTrigger(t *testing.T) {
+	var buf bytes.Buffer
+	groups := []MegaGroup{
+		{Title: "Review & Research", Items: []templ.Component{megaMenuLink("/review-queue", "Open Review Queue", "")}},
+	}
+	badge := templ.Raw(`<span data-layout-research-review-count hx-get="/layout/review-count" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`)
+	err := MegaMenuWithBadge("Share & Review", "layout.share-review.menu", nil, badge, groups).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	// Trigger button must contain the badge span.
+	triggerIdx := strings.Index(got, `data-mega-menu-trigger="layout.share-review.menu"`)
+	if triggerIdx < 0 {
+		t.Fatalf("mega-menu trigger not found")
+	}
+	buttonOpenIdx := strings.LastIndex(got[:triggerIdx], `<button`)
+	if buttonOpenIdx < 0 {
+		t.Fatalf("could not find <button> open tag")
+	}
+	buttonCloseIdx := strings.Index(got[triggerIdx:], `</button>`)
+	if buttonCloseIdx < 0 {
+		t.Fatalf("could not find </button> close tag")
+	}
+	buttonCloseIdx += triggerIdx
+	triggerSpan := got[buttonOpenIdx : buttonCloseIdx+len(`</button>`)]
+	if !strings.Contains(triggerSpan, `data-layout-research-review-count`) {
+		t.Errorf("badge must live INSIDE the trigger button; got:\n%s", triggerSpan)
+	}
+	if !strings.Contains(triggerSpan, `hx-target="this"`) {
+		t.Errorf("badge wrapper must declare hx-target=\"this\"; got:\n%s", triggerSpan)
+	}
+}
+
+// TestMegaMenuWithBadge_NilBadgeSkipsSlot pins that passing
+// nil for the badge slot doesn't render an empty span or a
+// dangling chevron — the chevron still renders, but no
+// placeholder for the badge. Same behavior as FoldoutWithBadge
+// when the caller passes nil for the badge slot.
+func TestMegaMenuWithBadge_NilBadgeSkipsSlot(t *testing.T) {
+	var buf bytes.Buffer
+	err := MegaMenuWithBadge("Records", "layout.records.menu", nil, nil, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, `data-mega-menu-trigger="layout.records.menu"`) {
+		t.Errorf("trigger should render even without a badge; got:\n%s", got)
+	}
+	if !strings.Contains(got, "▾") {
+		t.Errorf("chevron should still render when badge is nil; got:\n%s", got)
+	}
+}
