@@ -88,8 +88,20 @@ a known allow-list rather than fresh drift.
     the handler so future probes (and the #369 regex-heuristic
     fix) can add an allow-list entry. Cheaper, preserves
     bookmarks.
-- **Issue tracking**: #380 Phase 3 will pick one path. Either way,
-  the chosen option must update this entry.
+- **Issue tracking**: #380 OQ3 (slice 6) chose **DELETE** on
+  2026-07-11. Handler + dispatcher entry + chi route registration
+  removed. Regression net:
+  `internal/appshell/event_sources_attach_deleted_test.go::TestEventSourcesAttachRouteIsDeleted`
+  asserts POST /events/{id}/sources/attach returns 404 or 405
+  (the dispatcher table no longer matches the route).
+  `internal/appshell/events_handlers_test.go::TestHandleEventSourcesAndScratchpad`
+  was trimmed to the GET-empty-state + scratchpad-open flow only
+  (the attach + detach round-trip section was deleted with the
+  handler). The bookmark-compat rationale never applied: the
+  app does not support bookmarks, so the route had zero
+  callers pre-deletion.
+  -- **Retired 2026-07-11.** See issue #468 + commit
+  (issue #380 slice 6).
 
 (Add additional intentionally-orphan routes here as the audit
 surfaces them. Same shape: route + handler location + decision

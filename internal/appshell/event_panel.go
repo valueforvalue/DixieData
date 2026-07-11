@@ -228,7 +228,11 @@ var eventPanels = []eventPanel{
 		name: "sources",
 		routes: []eventPanelRoute{
 			{method: http.MethodGet, subPath: "", handler: handleEventSourcesGetForDispatch},
-			{method: http.MethodPost, subPath: "attach", handler: handleEventSourceAttachForDispatch},
+			// Issue #380 slice 6: POST /sources/attach deleted.
+			// The handler was a stale PR-195-era remnant kept alive
+			// post-#341 only for bookmark-compat; the app does not
+			// support bookmarks, so the handler had zero remaining
+			// callers. List + detach stay.
 			{method: http.MethodPost, subPath: "{id}/detach", handler: handleEventSourceDetachForDispatch},
 		},
 	},
@@ -281,10 +285,6 @@ var eventPanels = []eventPanel{
 // Sources panel adapters.
 func handleEventSourcesGetForDispatch(a *App, w http.ResponseWriter, r *http.Request, eventID int64, subID int64) {
 	a.handleEventSourcesGet(w, r, eventID)
-}
-
-func handleEventSourceAttachForDispatch(a *App, w http.ResponseWriter, r *http.Request, eventID int64, subID int64) {
-	a.handleEventSourceAttach(w, r, eventID)
 }
 
 func handleEventSourceDetachForDispatch(a *App, w http.ResponseWriter, r *http.Request, eventID int64, subID int64) {

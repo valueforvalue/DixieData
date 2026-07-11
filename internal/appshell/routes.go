@@ -204,9 +204,11 @@ func (a *App) setupRoutes() {
 		r.Post("/*", a.handleEventPanelRoute)
 	})
 	r.Route("/events/{id:[0-9]+}/sources", func(r chi.Router) {
-		// GET /events/{id}/sources        + POST /sources/attach
-		// + POST /sources/{id}/detach all funnel through the
-		// dispatcher; PATCH /sources/{sourceId}/position stays
+		// GET /events/{id}/sources + POST /sources/{id}/detach funnel through
+		// the dispatcher; PATCH /sources/{sourceId}/position stays
+		// registered as a top-level handler. POST /sources/attach was
+		// deleted in issue #380 slice 6 (stale bookmark-compat remnant,
+		// no remaining callers).
 		// on its dedicated handler (handleMoveEventSource is a
 		// separate concern, not a "panel" route).
 		r.Get("/*", a.handleEventPanelRoute)
