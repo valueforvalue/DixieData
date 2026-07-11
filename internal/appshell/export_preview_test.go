@@ -189,6 +189,17 @@ func TestHandleExportPreviewResponseUnderThreshold(t *testing.T) {
 	if testing.Short() {
 		t.Skip("response-time test: run via `go test ./internal/appshell/...` without -short")
 	}
+	if raceEnabled() {
+		// Same -race skip as TestHandleBrowseResponseUnderThreshold:
+		// 5000 inline Create calls × modernc.org/sqlite's runtime.checkptr
+		// cost blows past the goleak VerifyTestMain 10min ceiling
+		// (each WAL checkpoint becomes a FlushFileBuffers syscall under
+		// -race). The data-race side of #466 was fixed by hoisting
+		// per-request layout state to context; only the perf-budget
+		// enforcement is skipped under -race. The non-race regression
+		// net is preserved. See raceflag_race.go + issue #466.
+		t.Skip("response-time test: skipped under -race (see issue #466 for the modernc.org/sqlite runtime.checkptr cost)")
+	}
 	app := newStressApp(t)
 
 	const recordCount = 5000
