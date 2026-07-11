@@ -208,6 +208,13 @@ type eventsFacade interface {
 	DetachTagFromEvent(eventID, tagID int64) error
 	AddImage(eventID int64, fileName, relativePath, caption string) error
 	RemoveImages(eventID int64, imageIDs []int64) error
+	// Issue #343 finding #5: back-reference seam from
+	// SoldierService into the Event-side timeline querier. The
+	// facade re-exports the package method so the production
+	// wiring (app.go::reloadServices) can satisfy the
+	// records.EventTimelineQuerier interface without crossing
+	// package boundaries.
+	LinkedEventsForTimeline(personID int64) ([]records.LinkedEventTimelineMarker, error)
 	// Issue #374: PDF pre-render seam for the per-export
 	// orientation picker on the Event detail page. Mirrors the
 	// ArticleService.RenderPDF shape; returns bytes + a

@@ -1318,6 +1318,10 @@ func TestSoldierService_ServiceTimelineIncludesLinkedEvents(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 	events := NewEventService(svc)
+	// Wire the back-reference (issue #343 finding #5) so the
+	// timeline builder can delegate the linked-events query to
+	// EventService instead of duplicating the JOIN.
+	svc.SetEvents(events)
 
 	soldier, err := svc.Create(models.Soldier{
 		DisplayID: "TLM-0002",
