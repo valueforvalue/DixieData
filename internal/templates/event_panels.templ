@@ -17,6 +17,17 @@
 //
 // Style mirrors event_detail.templ exactly so the swap is
 // visually identical to the initial page render.
+//
+// EventSectionPanel (issue #343 finding #2) extracts the
+// near-identical Sources + Tags scaffolding from
+// event_detail.templ so future panel-shape changes (header
+// polish, CTA reorder) land in one place instead of N copies.
+// Scope is intentionally narrow: Sources + Tags only. The
+// Linked Persons panel has no body wrapper div + the Images
+// panel has no Edit CTA + a tail import form; either pattern
+// would need a wider param set or a follow-up slice, so they
+// stay inline for now per the issue's "apply opportunistically"
+// recommendation.
 package templates
 
 import (
@@ -220,4 +231,59 @@ templ EventLinksListFragment(eventID int64, linked []viewmodel.PersonRecord) {
 			}
 		</ul>
 	}
+}
+
+// EventSectionPanel renders one section on the Event detail
+// page with the standard header (title + count + Edit Event
+// CTA) and a body wrapper div carrying the literal id the JS
+// dispatcher swaps into. Extracted from event_detail.templ to
+// pin the Sources + Tags panel shape in one place (issue #343
+// finding #2).
+//
+// Parameters:
+//   - title:    the uppercase-tracking section label
+//     (e.g. "Source Records", "Tags").
+//   - count:    the integer that follows the section label
+//     (e.g. len(event.EventSources), len(event.Tags)).
+//   - countFmt: the lowercase word after the count
+//     (e.g. "attached"). Rendered as "{count} {countFmt}".
+//   - eventID:  the parent Event id. Used to wire the Edit
+//     Event CTA to /events/{eventID}/edit.
+//   - panelID:  the literal id on the body wrapper div. The
+//     JS dispatcher uses this exact id as the swap target;
+//     do not change it without updating the matching
+//     appshell/events_handlers.go data-results-target.
+//   - body:     the panel body content (typically a list/empty
+//     fragment like EventSourcesListFragment).
+//
+// The header layout and class lists mirror the inline shape
+// from event_detail.templ:114-131 (Sources) + 133-148 (Tags)
+// byte-for-byte, so the existing appshell/events_handlers_test.go
+// substring pins (id="data-event-sources-list", Edit Event
+// data-action) keep passing without modification.
+templ EventSectionPanel(
+	title string,
+	count int,
+	countFmt string,
+	eventID string,
+	panelID string,
+	body templ.Component,
+) {
+	<section class="relative mt-6">
+		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">{ title }</p>
+			<div class="flex items-center gap-3">
+				<span class="text-xs text-slate-500">{ fmt.Sprintf("%d %s", count, countFmt) }</span>
+				<button
+					type="button"
+					data-action={ templ.SafeURL(fmt.Sprintf("/events/%s/edit", eventID)) }
+					data-dixie-submit="true"
+					class="ghost-link"
+				>Edit Event</button>
+			</div>
+		</div>
+		<div id={ panelID }>
+			@body
+		</div>
+	</section>
 }
