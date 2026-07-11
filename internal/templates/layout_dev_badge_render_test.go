@@ -35,9 +35,6 @@ import (
 // Layout, the badge MUST appear. If appshell didn't tag the ctx
 // properly, the badge is missing, and that's the bug.
 func TestLayout_DevBadgeRendersOnlyWhenDebugMode(t *testing.T) {
-	SetCurrentPagePath("/browse")
-	t.Cleanup(ClearCurrentPagePath)
-
 	t.Run("debug-on-context-renders-badge", func(t *testing.T) {
 		ctx := debug.WithDebugMode(context.Background(), true)
 		out := new(strings.Builder)

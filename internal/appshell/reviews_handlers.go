@@ -31,7 +31,7 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	if tab != "resolved" {
 		tab = "open"
 	}
-	// Issue #460 follow-up: SetLayoutHasOpenReview is now set
+	// Issue #460 follow-up: WithLayoutHasOpenReview is now set
 	// in the per-request lifecycle wrapper (lifecycle.go) before
 	// the mux dispatches, so the red menuitem treatment is on
 	// for every page that has pending review items, not just

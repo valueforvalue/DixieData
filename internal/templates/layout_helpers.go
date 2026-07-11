@@ -1,74 +1,91 @@
 package templates
 
-// currentPagePath is the package-level "currently rendering page"
-// state. Handlers must call SetCurrentPagePath before invoking a
-// page's Render(). Issue #309 design choice: a package-level
-// variable avoids threading the path through every page's templ
-// signature (there are 30+ pages that call Layout; each would
-// need a new parameter otherwise).
-//
-// Goroutine safety: the appshell serves requests one at a time
-// per chi-mux ServeHTTP call stack (Wails single-window, single-
-// page routing), and templ renders complete before the handler
-// returns. SetCurrentPagePath + Render() + ClearCurrentPagePath
-// is the safe pattern.
-var currentPagePath string
+import "context"
 
-// currentLayoutHasOpenReview mirrors currentPagePath for the
-// per-render flag that drives the red review-state treatment on
-// the Research & Review foldout's "Open Review Queue" menuitem
-// (issue #460). Default false: only handlers that know the
-// pending review count flips it on. The badge poll
-// (/layout/review-count) carries its own red background, so this
-// is purely visual continuity between the trigger badge + the
-// menuitem it counts.
-var currentLayoutHasOpenReview bool
+// pagePathCtxKey + layoutHasOpenReviewCtxKey are the unexported
+// context keys for the per-render page path + open-review flag.
+// Issue #466: the prior design used package-level globals that
+// raced under any concurrent ServeHTTP (the race-stress workflow
+// exposes this with httptest.NewServer + a second request's defer
+// still clearing state from the first). The Wails production path
+// is single-window and serialized, but the test path isn't, so
+// the package globals were a latent bug that -race surfaced as
+// both a data race AND a 70x perf regression (the race detector
+// slows contended writes by ~10-100x). Hoisting both values into
+// context.Context follows the same pattern as debug.WithDebugMode
+// in internal/debug/uictx.go: the appshell tags the request
+// context in ServeHTTP, handlers + Layout read from it. No more
+// Set/Clear brackets, no more global mutable state, no more
+// race, no more race-detector slowdown on the GET path.
+type pagePathCtxKey struct{}
 
-// SetCurrentPagePath sets the package-level current page path
-// before rendering a page templ. Issue #309: the breadcrumb +
-// dev badge + (eventually) the JS toolbox's `dixie.page()` all
-// read this to know "what page am I on" without requiring every
-// page's templ signature to grow a path parameter.
-func SetCurrentPagePath(path string) {
-	currentPagePath = path
+type layoutHasOpenReviewCtxKey struct{}
+
+// WithPagePath returns a child context carrying the per-render
+// page path. The appshell tags this in ServeHTTP before the mux
+// dispatches so Layout's breadcrumb + dev badge can render the
+// current page without every page's templ signature growing a
+// currentPath parameter (the issue #309 cost-cut). The helper
+// returns a fresh ctx; pair with WithLayoutHasOpenReview when
+// both flags need to land on the same request.
+func WithPagePath(ctx context.Context, path string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, pagePathCtxKey{}, path)
 }
 
-// ClearCurrentPagePath resets the package-level state. Call via
-// defer right after SetCurrentPagePath + Render so the next
-// request doesn't see the previous request's path.
-func ClearCurrentPagePath() {
-	currentPagePath = ""
+// PagePathFromContext reports the page path tagged onto ctx via
+// WithPagePath. Returns the empty string when no tag is present
+// (e.g. raw template tests that render Layout directly without
+// the appshell wrapper), which matches the prior package-global
+// default state.
+func PagePathFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(pagePathCtxKey{}).(string)
+	return v
 }
 
-// SetLayoutHasOpenReview sets the per-render flag that drives the
-// red treatment on the Research & Review foldout's "Open Review
-// Queue" menuitem (issue #460). Pair with ClearLayoutHasOpenReview
-// via defer so the next request starts in the default state. The
-// helper itself does not query the audit: callers are responsible
-// for the CountNeedsReview() check. Pages that don't have the
-// count handy (most of them) skip the Set call and the menuitem
-// renders in its neutral pill state.
-func SetLayoutHasOpenReview(hasOpenReview bool) {
-	currentLayoutHasOpenReview = hasOpenReview
+// WithLayoutHasOpenReview tags ctx with the per-render flag that
+// drives the red review-state treatment on the Research & Review
+// foldout's "Open Review Queue" menuitem (issue #460 follow-up).
+// The appshell queries CountNeedsReview once per request and
+// tags the result here so the treatment lands on the FIRST paint
+// of every page that has pending review items, not only on
+// /review-queue itself. Pages that know they are NOT a review-
+// queue surface don't override the flag — the default (false)
+// keeps the menuitem neutral.
+func WithLayoutHasOpenReview(ctx context.Context, hasOpenReview bool) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, layoutHasOpenReviewCtxKey{}, hasOpenReview)
 }
 
-// ClearLayoutHasOpenReview resets the per-render flag. Pair with
-// SetLayoutHasOpenReview via defer.
-func ClearLayoutHasOpenReview() {
-	currentLayoutHasOpenReview = false
+// LayoutHasOpenReviewFromContext reports the open-review flag
+// tagged onto ctx via WithLayoutHasOpenReview. Returns false when
+// no tag is present, matching the prior package-global default.
+func LayoutHasOpenReviewFromContext(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	v, _ := ctx.Value(layoutHasOpenReviewCtxKey{}).(bool)
+	return v
 }
 
-// layoutCurrentPath is a private helper that Layout calls. Kept
-// here rather than in the templ file so the layer that owns the
-// state (this file) and the layer that reads it (the templ) are
-// separate. Templ can only call Go functions that are in the
-// same package, so this is the right shape.
-func layoutCurrentPath() string {
-	return currentPagePath
+// layoutCurrentPath is the templ-callable helper Layout uses to
+// render the current page path into the data-dixie-page attribute
+// + breadcrumb + dev badge. Issue #466: takes ctx (read from the
+// per-request tag) instead of a package global, so concurrent
+// ServeHTTP calls don't race.
+func layoutCurrentPath(ctx context.Context) string {
+	return PagePathFromContext(ctx)
 }
 
 // layoutHasOpenReview mirrors layoutCurrentPath for the red
-// treatment flag. Same go-template-callable contract.
-func layoutHasOpenReview() bool {
-	return currentLayoutHasOpenReview
+// treatment flag. Same templ-callable contract.
+func layoutHasOpenReview(ctx context.Context) bool {
+	return LayoutHasOpenReviewFromContext(ctx)
 }

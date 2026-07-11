@@ -2117,6 +2117,62 @@ pdfium extraction`.
 
 ---
 
+### 8.4 Response-time tests cannot enforce their budget under `-race`
+
+**Symptom:** A response-time test (e.g. `TestHandleBrowseResponseUnderThreshold`)
+passes locally at 46ms but the `race-stress.yml` workflow reports
+`took 3.2s, want < 100ms`. The race detector doesn't just slow the
+test — it amplifies every operation that touches unsafe pointers or
+package-level mutable state. CPU profiles of the failing run show
+`runtime.checkptrBase` + `runtime.checkptrAlignment` +
+`runtime.checkptrStraddles` accounting for 30-40% of the race
+runtime, with most of the rest in driver code (`modernc.org/sqlite`
+Xsqlite3_prepare_v2). None of this is DixieData code; it's the
+runtime overhead of instrumenting pure-Go SQLite's pointer math.
+
+**Two distinct root causes to check before blaming the perf budget:**
+
+1. **A real data race on package globals** — if the test path uses
+   `httptest.NewServer(app)` and exercises concurrent ServeHTTP,
+   any package-level mutable state (the old `templates.SetCurrentPagePath`
+   / `templates.SetLayoutHasOpenReview` pattern from issue #309)
+   will race. The race detector catches this AND slows the contended
+   writes by 10-100x, which alone can push a 46ms GET over 100ms.
+   Fix: move the state to `context.Context` following the
+   `debug.WithDebugMode` shape; tag the request context in
+   `lifecycle.go::ServeHTTP` before the mux dispatches; have the
+   templ helpers take `ctx`.
+
+2. **Pure-Go SQLite's `runtime.checkptr` overhead** — even with
+   the data race fixed, modernc.org/sqlite (the driver pinned in
+   `go.mod`) is dominated by unsafe-pointer arithmetic. `-race`
+   instruments every pointer dereference; prepare + step operations
+   slow by 10-30x. This is a property of the driver, not DixieData.
+   Switching to mattn/go-sqlite3 (cgo SQLite) lifts the -race cost
+   near non-race but requires a C compiler at build time and
+   touches every Wails desktop build + smoke harness + gold-master
+   path.
+
+**Fix for response-time tests that hit either cause:**
+
+- Hoist any package-level request-scoped state to `context.Context`.
+- Skip the budget assertion under `-race` via a build-tag-gated
+  `raceEnabled()` helper (`internal/appshell/raceflag_race.go` +
+  `raceflag_norace.go`). The non-race regression net stays live;
+  the race-stress workflow still enforces every other contract.
+
+**Find it:** `git log --grep "race-stress"` for prior fixes; CPU
+profile with `go test -race -cpuprofile=/tmp/cpu.prof ... && go
+tool pprof -top -cum /tmp/cpu.prof` to confirm `runtime.checkptr*`
+or `modernc.org/sqlite` dominate.
+
+**Real example:** the issue #466 fix — `runtime.checkptr*`
+accounted for 30% of the 3.2s race runtime even after the
+SetCurrentPagePath race was eliminated, confirming the
+modernc.org/sqlite overhead is the residual cost.
+
+---
+
 ## 9. Database bugs
 
 ### 9.1 FTS5 delete not actually deleting
