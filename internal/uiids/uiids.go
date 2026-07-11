@@ -182,6 +182,19 @@ const (
 	// trigger/panel pair should be wired through the same
 	// data-foldout-* attributes so installFoldout() picks it
 	// up uniformly.
+	// Issue #380: top-nav mega-menu panels (slice 2 + 3). The
+	// Records mega-menu and the Share & Review mega-menu both
+	// replace the prior flat pill + foldout pattern. The UIID
+	// string is the same shape as the foldout UIIDs above
+	// (layout.<surface>.menu + layout.<surface>.menu.trigger)
+	// so the JS dispatcher + audit harness can use a uniform
+	// lookup helper.
+	LayoutRecordsMenu       = "layout.records.menu"
+// LayoutRecordsMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
+	LayoutRecordsMenuTrigger = "layout.records.menu.trigger"
+	LayoutShareReviewMenu       = "layout.share-review.menu"
+// LayoutShareReviewMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
+	LayoutShareReviewMenuTrigger = "layout.share-review.menu.trigger"
 	LayoutShareMenu       = "layout.share.menu"
 // LayoutShareMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	LayoutShareMenuTrigger = "layout.share.menu.trigger"
@@ -306,11 +319,11 @@ const (
 	// z-index collision with the recent overlay fix.
 	PanelShareQueuePill = "panel.share-queue.pill"
 
-	// Issue #342: Tags top-nav link target. The link is a literal
-	// href in layout.templ; the surface ID is registered so the
-	// next pass that adds a Tags foldout (mirror of Share /
-	// Research) has a stable anchor to swap against.
-	LayoutTagsLink = "layout.tags.link"
+	// Issue #380 slice 2: Tags top-nav pill was moved into
+	// the Records mega-menu (People group). LayoutTagsLink is
+	// retired -- the new menuitem lives at
+	// data-marker="records-tags" inside the Records mega-menu,
+	// so no separate top-nav surface ID is needed.
 )
 
 type Surface struct {
@@ -400,6 +413,16 @@ var Registry = []Surface{
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues card on the /share/queue management page (issue #310 PR 3, ported from the Share Build modal in issue #192) listing named presets with Load + Delete per row."},
 	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
 	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
+	// Issue #380: top-nav mega-menus (slice 2 + 3). The Records
+	// mega-menu collapses 5 flat pills (Search/Browse/Events/
+	// Articles/Tags) into one 2D panel. The Share & Review
+	// mega-menu absorbs the Research & Review foldout + the
+	// Share foldout + the standalone Insights pill into one
+	// 2D panel.
+	{ID: LayoutRecordsMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the Records trigger (issue #380 slice 2); 2D grid with two groups (People: Search/Events/Tags; More records: Browse/Articles). Replaces 5 flat pills."},
+	{ID: LayoutRecordsMenuTrigger, Kind: "nav", Description: "Top-nav Records mega-menu trigger button (issue #380 slice 2); clicking opens LayoutRecordsMenu. aria-controls points at the panel's id."},
+	{ID: LayoutShareReviewMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the Share & Review trigger (issue #380 slice 3); 2D grid with two groups (Review & Research: Review Queue with badge + Timeline + Research Log + Collections + Insights; Share: Landing + Export + Import + Share Queue + Sync)."},
+	{ID: LayoutShareReviewMenuTrigger, Kind: "nav", Description: "Top-nav Share & Review mega-menu trigger button (issue #380 slice 3); clicking opens LayoutShareReviewMenu. aria-controls points at the panel's id."},
 	{ID: LayoutResearchMenu, Kind: "nav", Description: "Top-nav foldout panel under the Research & Review trigger; lists Review Queue + Timeline + Research Log + Research Collections + Change Person… (issue #378 slice 2, reshaped in issue #455 slice 1). Soldier-scoped entries route through the picker when no dd_person_ctx cookie is set; the picker is being pivoted to ?person=ID query in slice 2."},
 	{ID: LayoutResearchMenuTrigger, Kind: "nav", Description: "Top-nav Research & Review foldout trigger button (issue #378 slice 2); clicking opens LayoutResearchMenu. Sits between Insights and Share per the slice-2 nav placement decision."},
 	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
@@ -429,7 +452,6 @@ var Registry = []Surface{
 	{ID: PanelFloatingNavPanel, Kind: "panel", Description: "Slide-out nav panel toggled by the Menu button via data-floating-nav-toggle (issue #283). Duplicates top-nav links + renders the layout-mode picker; positioned bottom-right, z-50."},
 	{ID: PanelFloatingScratchpadStatus, Kind: "panel", Description: "Live region in the floating dock (data-floating-scratchpad-status, aria-live=polite) for scratchpad open / save status announcements; mirrors the aria-live contract used by jobs-progress-overlay (issue #283)."},
 	{ID: PanelShareQueuePill, Kind: "panel", Description: "Persistent Share Queue status pill (issue #182); fixed bottom-center, hidden when the queue is empty. Wraps data-share-queue-pill + data-share-queue-pill-label + data-share-queue-pill-count."},
-	{ID: LayoutTagsLink, Kind: "nav", Description: "Top-nav Tags link (/tags); literal href in layout.templ between the Share foldout and Settings. Surface ID is registered so a future Tags foldout (mirroring Share / Research) has a stable anchor to swap against (issue #256, #342)."},
 }
 
 

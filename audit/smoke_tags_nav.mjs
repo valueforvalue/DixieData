@@ -13,6 +13,12 @@
 //
 // Pre-fix: 0/4 (no top-nav link anywhere).
 // Post-fix: 4/4.
+//
+// Issue #380 slice 2: the top-nav Tags link moved
+// into the Records mega-menu (People group). The
+// probe opens the Records mega-menu before asserting.
+// The mobile/responsive nav assertion is preserved
+// (slice 4 will update that side of the probe).
 
 const PORT = 9987;
 const SCRATCH = "C:/Development/DixieData/.scratch/webmode";
@@ -59,17 +65,18 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle" });
   await wait(500);
 
-  // 1. Primary nav has Tags link
+  // 1. Primary nav has Tags link — issue #380 slice 2
+  //    moved the Tags pill into the Records mega-menu.
+  //    Open the mega-menu first, then look inside the panel.
+  await page.locator('[data-mega-menu-trigger="layout.records.menu"]').click();
+  await wait(400);
   const primaryLink = await page.evaluate(() => {
-    // The primary top-nav is the <nav> with .top-nav-link
-    // class on the link children.
-    const navs = Array.from(document.querySelectorAll("nav"));
-    for (const nav of navs) {
-      const link = Array.from(nav.querySelectorAll("a.top-nav-link"))
-        .find((a) => (a.textContent || "").trim() === "Tags");
-      if (link) return { href: link.getAttribute("href") };
-    }
-    return null;
+    const panel = document.querySelector('[data-mega-menu-panel="layout.records.menu"]');
+    if (!panel) return null;
+    const link = Array.from(panel.querySelectorAll('a[role="menuitem"]'))
+      .find((a) => (a.textContent || "").trim() === "Tags");
+    if (!link) return null;
+    return { href: link.getAttribute("href") };
   });
   record("primary-nav-has-tags-link", primaryLink !== null, { primaryLink });
   record("primary-nav-link-points-to-tags", primaryLink && primaryLink.href === "/tags", { href: primaryLink && primaryLink.href });
@@ -88,7 +95,7 @@ try {
 
   // 3. Click the link + assert /tags loads
   console.log("\nStep 2: click Tags link + assert /tags loads");
-  await page.locator("a.top-nav-link", { hasText: "Tags" }).first().click();
+  await page.locator('[data-marker="records-tags"]').first().click();
   await wait(800);
   const finalUrl = page.url();
   record("click-navigates-to-tags", finalUrl.endsWith("/tags"), { finalUrl });

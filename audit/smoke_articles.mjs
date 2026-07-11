@@ -126,28 +126,36 @@ try {
 
   // ──────────────────────────────────────────────────────────
   // Step 1: top-level nav has "Articles" + click navigates.
+  // Issue #380 slice 2: Articles moved from a flat top-nav pill
+  // into the Records mega-menu (More records group). The probe
+  // opens the Records mega-menu, then clicks the Articles menuitem.
   // ──────────────────────────────────────────────────────────
-  console.log('\nStep 1: top-level nav has "Articles" pill');
+  console.log('\nStep 1: Records mega-menu exposes "Articles" menuitem');
   await page.goto(BASE + '/calendar');
   await wait(800);
 
+  // Open the Records mega-menu.
+  const recordsTrigger = page.locator('[data-mega-menu-trigger="layout.records.menu"]');
+  record('records-mega-menu-trigger-present', (await recordsTrigger.count()) === 1);
+  await recordsTrigger.click();
+  await wait(400);
+
   const articlesLink = await page.evaluate(() => {
-    const navs = Array.from(document.querySelectorAll('nav'));
-    for (const nav of navs) {
-      const link = Array.from(nav.querySelectorAll('a.top-nav-link')).find(
-        (a) => (a.textContent || '').trim() === 'Articles',
-      );
-      if (link) return { href: link.getAttribute('href'), hasDataAttr: link.hasAttribute('data-article-nav-link') };
-    }
-    return null;
+    const panel = document.querySelector('[data-mega-menu-panel="layout.records.menu"]');
+    if (!panel) return null;
+    const link = Array.from(panel.querySelectorAll('a[role="menuitem"]')).find(
+      (a) => (a.textContent || '').trim() === 'Articles',
+    );
+    if (!link) return null;
+    return { href: link.getAttribute('href'), hasMarker: link.getAttribute('data-marker') === 'records-articles' };
   });
-  record('top-nav-has-articles-pill', articlesLink !== null, { articlesLink });
-  record('top-nav-pill-points-to-articles', articlesLink && articlesLink.href === '/articles', {
+  record('records-mega-menu-has-articles-item', articlesLink !== null, { articlesLink });
+  record('records-mega-menu-item-points-to-articles', articlesLink && articlesLink.href === '/articles', {
     href: articlesLink && articlesLink.href,
   });
-  record('top-nav-pill-has-data-attr', articlesLink && articlesLink.hasDataAttr === true);
+  record('records-mega-menu-item-has-marker', articlesLink && articlesLink.hasMarker === true);
 
-  await page.locator('a.top-nav-link', { hasText: 'Articles' }).first().click();
+  await page.locator('[data-marker="records-articles"]').first().click();
   await wait(800);
   const step1Url = page.url();
   record('click-navigates-to-articles', step1Url.endsWith('/articles'), { url: step1Url });
