@@ -1,0 +1,86 @@
+package components
+
+// MegaMenu is the 2D-panel top-nav primitive used by the
+// Records + Share & Review mega-menus (issue #380 shape 2 —
+// mega-menu as chosen by the user 2026-07-11). It replaces
+// the flat Foldout for destinations that fold multiple
+// grouped items into one trigger, per the NN/g mega-menus
+// pattern (https://www.nngroup.com/articles/mega-menus-work-well/).
+//
+// Differences from Foldout:
+//   - Panel is a 2D grid (one column per group) instead of a
+//     single-column <ul>. Items render in groups with a group
+//     title acting as an <h3> heading for screen-reader nav.
+//   - Each group owns its own <ul role="none">; the wrapping
+//     role="menu" lives on the panel <div>.
+//   - data-mega-menu-{trigger,panel} attribute pair is the
+//     JS-dispatcher selector (parallel to data-foldout-*).
+//
+// ARIA contract (mirrors Foldout — issue #264 locked decisions):
+//   - Trigger is a <button> with aria-haspopup="menu",
+//     aria-expanded (mirrored by JS), aria-controls pointing
+//     at the panel's id.
+//   - Panel has role="menu". Items inside are <a role=
+//     "menuitem" href="...">. Each item is a real <a> (not a
+//     <div> with click handler) so screen readers + middle-click
+//     + cmd-click + htmx all work without extra wiring.
+//   - Group headings are <h3> elements. Per NN/g mega-menu
+//     guidance, headings help users scan groups without
+//     reading every item.
+//
+// The panel starts hidden; JS removes the hidden class on
+// trigger click. CSS handles the open/close transition (the
+// .mega-menu-panel rule in frontend/tailwind.css). The
+// primitive does NOT animate.
+templ MegaMenu(triggerLabel string, menuID string, triggerAttrs templ.Attributes, groups []MegaGroup) {
+	<div class="mega-menu relative">
+		<button
+			type="button"
+			class="pill-link top-nav-link inline-flex items-center gap-1"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			aria-controls={ menuID }
+			data-mega-menu-trigger={ menuID }
+			{ foldoutAttrsExcludingClass(triggerAttrs)... }
+		>
+			{ triggerLabel }
+			<span aria-hidden="true" class="text-xs">▾</span>
+		</button>
+		<div
+			id={ menuID }
+			role="menu"
+			aria-label={ triggerLabel + " menu" }
+			data-mega-menu-panel={ menuID }
+			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+		>
+			<div class="grid grid-cols-2 gap-6">
+				for _, group := range groups {
+					<section aria-labelledby={ menuID + "-" + group.Title }>
+						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#cfb77a]">{ group.Title }</h3>
+						<ul class="flex flex-col gap-1">
+							for _, item := range group.Items {
+								@item
+							}
+						</ul>
+					</section>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+// MegaGroup is one column in a MegaMenu's 2D panel. Items
+// render as a vertical list inside the group's section; the
+// group's Title becomes the <h3> heading used for both
+// visual label and aria-labelledby on the section wrapper.
+//
+// Items are pre-built templ.Component values (typically inline
+// <li role="none"><a role="menuitem" href="...">...</a></li>
+// fragments) — the component does NOT take href/label pairs.
+// This matches the Foldout primitive's "children..." shape
+// and lets callers build rich items (badges, icons, conditional
+// styling) without growing the primitive's signature.
+type MegaGroup struct {
+	Title string
+	Items []templ.Component
+}
