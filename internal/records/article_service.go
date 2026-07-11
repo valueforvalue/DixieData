@@ -434,6 +434,7 @@ func (a *ArticleService) Delete(id int64) error {
 // inverts the filter so callers that own snapshot-row
 // surface area can find them. Returns ErrArticleNotFound
 // when the row does not exist OR is a live-branch row.
+
 // ListSnapshots returns every snapshot row pointing at the
 // given live article id, sorted by created_at DESC (most-
 // recently-snapshotted first; matches the slice-2 List

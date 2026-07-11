@@ -55,7 +55,7 @@ type Dir struct {
 	mu       sync.Mutex
 }
 
-// Dir creates a new temp directory under t.TempDir's parent
+// New creates a new temp directory under t.TempDir's parent
 // (so nested Dir() calls nest under the test's umbrella, like
 // t.TempDir does). Auto-cleanup is registered via t.Cleanup —
 // call Release() explicitly to control when the heavy I/O
