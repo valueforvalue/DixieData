@@ -272,18 +272,25 @@ func goDocSynopsis(t *testing.T, repoRoot, pkgPath string) string {
 	for len(body) > 0 && strings.TrimSpace(body[0]) == "" {
 		body = body[1:]
 	}
-	if len(body) == 0 {
-		return ""
+	// Issue #465 slice 3: if `go doc` reports the first non-blank
+	// line starts with a Go declaration keyword (meaning the
+	// synopsis was elided because it's too long), fall back to
+	// scanning the package's .go source files for the package
+	// comment directly. `go doc` drops synopses longer than its
+	// internal max, so long multi-paragraph synopses (like
+	// internal/testtemp/testtemp.go) are invisible to the
+	// `go doc` path even when they exist in source.
+	if len(body) > 0 {
+		first := strings.TrimSpace(body[0])
+		switch {
+		case strings.HasPrefix(first, "func "),
+			strings.HasPrefix(first, "type "),
+			strings.HasPrefix(first, "var "),
+			strings.HasPrefix(first, "const "):
+			return synopsisFromSource(t, repoRoot, pkgPath)
+		}
 	}
-	// If the first non-blank line starts with a Go declaration
-	// keyword, there is no synopsis — `go doc` is showing the
-	// symbol list directly. Empty string = no synopsis.
-	first := strings.TrimSpace(body[0])
-	switch {
-	case strings.HasPrefix(first, "func "),
-		strings.HasPrefix(first, "type "),
-		strings.HasPrefix(first, "var "),
-		strings.HasPrefix(first, "const "):
+	if len(body) == 0 {
 		return ""
 	}
 	// Otherwise, the first non-blank lines are the synopsis.
@@ -296,6 +303,98 @@ func goDocSynopsis(t *testing.T, repoRoot, pkgPath string) string {
 		synopsisLines = append(synopsisLines, strings.TrimSpace(line))
 	}
 	return strings.Join(synopsisLines, " ")
+}
+
+// synopsisFromSource scans the package's .go files for a
+// `// Package foo ...` comment block immediately above the
+// `package foo` declaration. Returns the first paragraph
+// (up to the first blank line) of that comment, or empty
+// string if no package comment exists. Used as a fallback
+// when `go doc` elides a long synopsis.
+func synopsisFromSource(t *testing.T, repoRoot, pkgPath string) string {
+	t.Helper()
+	// pkgPath is the Go import path (e.g.
+	// "github.com/valueforvalue/DixieData/internal/testtemp").
+	// Use `go list` to resolve to an absolute directory under
+	// repoRoot. filepath.Rel won't work here because pkgPath is
+	// an import path, not a filesystem path.
+	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", pkgPath)
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	pkgDir := strings.TrimSpace(string(out))
+	if pkgDir == "" {
+		return ""
+	}
+	entries, err := readDir(pkgDir)
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		if strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		fpath := filepath.Join(pkgDir, entry.Name())
+		data, err := os.ReadFile(fpath)
+		if err != nil {
+			continue
+		}
+		// Find the `package foo` line and walk backwards to
+		// collect the comment block immediately above it.
+		lines := strings.Split(string(data), "\n")
+		pkgLine := -1
+		for i, line := range lines {
+			if strings.HasPrefix(strings.TrimSpace(line), "package ") {
+				pkgLine = i
+				break
+			}
+		}
+		if pkgLine < 1 {
+			continue
+		}
+		// Walk backwards from pkgLine-1 collecting comment lines.
+		// Skip blank lines between the comment and the package
+		// declaration (the `// ... \n\npackage foo` pattern).
+		var block []string
+		for j := pkgLine - 1; j >= 0; j-- {
+			trimmed := strings.TrimSpace(lines[j])
+			if trimmed == "" {
+				if len(block) > 0 {
+					break
+				}
+				continue
+			}
+			if !strings.HasPrefix(trimmed, "//") {
+				break
+			}
+			block = append([]string{trimmed}, block...)
+		}
+		// Take the first paragraph (up to first blank line).
+		var para []string
+		for _, line := range block {
+			stripped := strings.TrimLeft(strings.TrimSpace(line), "/")
+			stripped = strings.TrimSpace(stripped)
+			if stripped == "" {
+				break
+			}
+			para = append(para, stripped)
+		}
+		if len(para) > 0 {
+			return strings.Join(para, " ")
+		}
+	}
+	return ""
+}
+
+// readDir is a test helper that lists directory entries.
+// Wraps os.ReadDir so the test can mock it in future if needed.
+func readDir(dir string) ([]os.DirEntry, error) {
+	return os.ReadDir(dir)
 }
 
 // discoverPackages returns every Go package under the repo root
