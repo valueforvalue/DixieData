@@ -35,11 +35,11 @@ const (
 	archiveKindShared = "shared"
 )
 
-// Issue #383 slice 7: typed error for major-bump .ddbak
-// format_version refusals. The same pattern as
-// records.ErrMemorialFormatMismatch — GUI handlers use
-// errors.Is to surface a friendly "refused" message
-// (KindValidation), CLI runners branch to exit code 2.
+// ErrDDBakFormatMismatch is the typed error for major-bump
+// .ddbak format_version refusals (issue #383 slice 7). The
+// same pattern as records.ErrMemorialFormatMismatch — GUI
+// handlers use errors.Is to surface a friendly "refused"
+// message (KindValidation), CLI runners branch to exit code 2.
 var ErrDDBakFormatMismatch = errors.New("ddbak archive format mismatch")
 
 // BackupManifest is the metadata envelope written into every
