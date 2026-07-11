@@ -113,24 +113,40 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 				</div>
 				<nav class="flex flex-wrap items-center gap-2">
 					<a href="/calendar" class="pill-link top-nav-link">Calendar</a>
-					<a href="/soldiers" class="pill-link top-nav-link">Search/Quick View</a>
-					<a href="/browse" class="pill-link top-nav-link">Browse</a>
-					// v60 (issue #320): Event Record nav link.
-					// Sits next to Browse so researchers can
-					// reach the Event list from the same
-					// surface they use for Person Records.
-					<a href="/events" class="pill-link top-nav-link">Events</a>
-					// v62 (issue #321 slice 3): Article Record
-					// nav link. Sits between Events and the R&R
-					// foldout (issue #455 slice 1.5
-					// relocated Review Queue into the
-					// foldout; the top-nav pill that used
-					// to live here is gone, its live-count
-					// wire now drives the foldout
-					// trigger's badge span) so the
-					// long-form content surfaces stay
-					// grouped on the left.
-					<a href={ templ.SafeURL(routebuilder.ArticleList()) } class="pill-link top-nav-link" data-article-nav-link>Articles</a>
+					// Issue #380 slice 2: Records mega-menu (2D panel,
+					// NN/g mega-menus-work-well pattern) collapses the
+					// 5 flat pills that used to live here -
+					// Search/Browse/Events/Articles/Tags - into one
+					// 2D panel with two groups: People (Search,
+					// Events, Tags) and More records (Browse,
+					// Articles). The pre-mega-menu data-* hooks
+					// survive inside the panel (data-marker) so
+					// audit/smoke.mjs + analytics selectors stay
+					// stable. Each item is a real <a role="menuitem"
+					// href> for screen readers + middle-click +
+					// htmx compatibility. The "Search" item uses
+					// the new label (slice 5); URL stays /soldiers.
+					@components.MegaMenu("Records", uiids.LayoutRecordsMenu, nil, []components.MegaGroup{
+						{
+							Title: "People",
+							Items: []templ.Component{
+								templ.Raw(`<li role="none"><a href="/soldiers" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-search">Search</a></li>`),
+								templ.Raw(`<li role="none"><a href="/events" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-events">Events</a></li>`),
+								templ.Raw(`<li role="none"><a href="/tags" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-tags">Tags</a></li>`),
+							},
+						},
+						{
+							Title: "More records",
+							Items: []templ.Component{
+								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Browse</a></li>`),
+								templ.Raw(`<li role="none"><a href="/articles" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-articles">Articles</a></li>`),
+							},
+						},
+					})
+					// Issue #380 slice 3 absorbs Insights into the
+					// Share & Review mega-menu. Until slice 3
+					// lands, Insights stays as a flat top-nav pill
+					// so users don't lose the destination.
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
 					// Issue #455 slice 1.5: R&R foldout gains
 					// a live-count badge inside the trigger
@@ -185,7 +201,6 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							<a href={ templ.SafeURL(routebuilder.ShareSync()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-sync>Sync</a>
 						</li>
 					}
-					<a href="/tags" class="pill-link top-nav-link">Tags</a>
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>

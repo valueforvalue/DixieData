@@ -100,9 +100,15 @@ try {
   await wait(500);
 
   // The Browse link in the top-nav is the deterministic
-  // starting point.
+  // starting point. Issue #380 slice 2: Browse moved into
+  // the Records mega-menu (More records group). Open the
+  // mega-menu first, then read the Browse menuitem href.
+  await page.locator('[data-mega-menu-trigger="layout.records.menu"]').click();
+  await wait(300);
   const browseUrl = await page.evaluate(() => {
-    const a = Array.from(document.querySelectorAll("a.top-nav-link"))
+    const panel = document.querySelector('[data-mega-menu-panel="layout.records.menu"]');
+    if (!panel) return null;
+    const a = Array.from(panel.querySelectorAll('a[role="menuitem"]'))
       .find((x) => (x.textContent || "").trim() === "Browse");
     return a ? a.getAttribute("href") : null;
   });
