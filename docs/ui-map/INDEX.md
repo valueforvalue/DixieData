@@ -37,7 +37,7 @@ below but worth knowing:
 | 00 | Global Layout Shell | `layout.research.menu{,.trigger}`, `layout.share.menu{,.trigger}`, `layout.tags.link`, `data-layout-research-review-count`, `data-floating-scratchpad-status`, `data-floating-nav-panel`, `data-share-queue-pill` | — | `overlay.floating.menu` (toggled from floating-dock Menu btn) | [wireframes/layout.md](wireframes/layout.md) |
 | 01 | Calendar | `panel.calendar.quote`, `panel.calendar.grid`, `panel.calendar.details` | — | `overlay.print-config.modal` (via popout) | [01-calendar.md](wireframes/01-calendar.md) |
 | 02 | Calendar Day | (inline w/ Calendar) | — | — | (in `01-calendar.md`) |
-| 03 | Soldiers List (Search/Quick View) | `panel.soldiers.search.basic`, `panel.soldiers.search.advanced`, `panel.soldiers.results` | `tab.soldiers.search.basic`, `tab.soldiers.search.advanced` | — | [wireframes/03-soldiers-list.md](wireframes/03-soldiers-list.md) |
+| 03 | Soldiers List (Search) | `panel.soldiers.search.basic`, `panel.soldiers.search.advanced`, `panel.soldiers.results` | `tab.soldiers.search.basic`, `tab.soldiers.search.advanced` | — | [wireframes/03-soldiers-list.md](wireframes/03-soldiers-list.md) |
 | 04 | Browse | `panel.browse.results` | — | — | [wireframes/04-browse.md](wireframes/04-browse.md) |
 | 05 | Soldier Detail | `panel.soldier.detail.summary`, `panel.soldier.detail.records`, `panel.soldier.detail.images` | — | `overlay.image.viewer` | [wireframes/05-soldier-detail.md](wireframes/05-soldier-detail.md) |
 | 06 | Soldier New | `panel.soldier.form.scratchpad`, `panel.soldier.form.records`, `panel.soldier.form.images` | — | — | [wireframes/06-soldier-new.md](wireframes/06-soldier-new.md) |

@@ -61,15 +61,15 @@ func BreadcrumbCrumbs(currentPath string) []BreadcrumbCrumb {
 
 	// Search / Quick View + soldier detail
 	case path == "/soldiers":
-		return joinCrumbs("Search/Quick View", "/soldiers", true)
+		return joinCrumbs("Search", "/soldiers", true)
 	case path == "/soldiers/new":
-		return joinCrumbs("Search/Quick View", "/soldiers", false, "Add Person", "/soldiers/new", true)
+		return joinCrumbs("Search", "/soldiers", false, "Add Person", "/soldiers/new", true)
 	case path == "/soldiers/search":
-		return joinCrumbs("Search/Quick View", "/soldiers", false, "Search", "/soldiers/search", true)
+		return joinCrumbs("Search", "/soldiers", false, "Search", "/soldiers/search", true)
 	case strings.HasPrefix(path, "/soldiers/search/"):
-		return joinCrumbs("Search/Quick View", "/soldiers", false, "Advanced Search", path, true)
+		return joinCrumbs("Search", "/soldiers", false, "Advanced Search", path, true)
 	case strings.HasPrefix(path, "/soldiers/display/"):
-		return joinCrumbs("Search/Quick View", "/soldiers", false, shortID(path), path, true)
+		return joinCrumbs("Search", "/soldiers", false, shortID(path), path, true)
 	case strings.HasPrefix(path, "/soldiers/") && path != "/soldiers/new" && !strings.HasPrefix(path, "/soldiers/search"):
 		// /soldiers/{id} or /soldiers/{id}/tags
 		return handleSoldierDetailCrumbs(path)
@@ -226,13 +226,13 @@ func handleSoldierDetailCrumbs(path string) []BreadcrumbCrumb {
 	leaf := "#" + id
 	if len(parts) >= 2 && parts[1] == "tags" {
 		return joinCrumbs(
-			"Search/Quick View", "/soldiers", false,
+			"Search", "/soldiers", false,
 			leaf, "/soldiers/"+id, false,
 			"Tags", "/soldiers/"+id+"/tags", true,
 		)
 	}
 	return joinCrumbs(
-		"Search/Quick View", "/soldiers", false,
+		"Search", "/soldiers", false,
 		leaf, path, true,
 	)
 }

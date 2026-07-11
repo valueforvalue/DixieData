@@ -64,7 +64,7 @@ User flow order, top to bottom:
 │  01 Calendar ── 02 Calendar Day (fragment)                          │
 │       │                                                              │
 │       ▼                                                              │
-│  03 Soldiers List (Search/Quick View) ── 04 Browse (Local Archive)   │
+│  03 Soldiers List (Search) ── 04 Browse (Local Archive)   │
 │       │                                                              │
 │       ▼                                                              │
 │  05 Soldier Detail ── 06 Soldier New ── 07 Soldier Edit              │
