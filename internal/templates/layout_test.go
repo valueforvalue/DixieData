@@ -311,16 +311,16 @@ func TestLayoutReviewCountBadgeTargetsItself(t *testing.T) {
 }
 
 // TestLayoutReviewMenuItemEchoesOpenCountFlag verifies issue
-// #460: when a handler flips the per-render
-// SetLayoutHasOpenReview(true), the "Open Review Queue"
+// #460: when a request context carries
+// WithLayoutHasOpenReview=true, the "Open Review Queue"
 // menuitem inside the Research & Review foldout gains the
 // data-research-review-has-count attribute (CSS hook for the
 // red border + tint). Default state keeps the menuitem in its
 // neutral pill-link shape.
 func TestLayoutReviewMenuItemEchoesOpenCountFlag(t *testing.T) {
 	t.Run("default state carries no flag", func(t *testing.T) {
-		if currentLayoutHasOpenReview {
-			t.Fatalf("currentLayoutHasOpenReview should default to false")
+		if LayoutHasOpenReviewFromContext(context.Background()) {
+			t.Fatalf("LayoutHasOpenReviewFromContext should default to false on an untagged ctx")
 		}
 		var buf bytes.Buffer
 		if err := Layout("Test").Render(context.Background(), &buf); err != nil {
@@ -336,10 +336,9 @@ func TestLayoutReviewMenuItemEchoesOpenCountFlag(t *testing.T) {
 	})
 
 	t.Run("open count sets the flag on the menuitem", func(t *testing.T) {
-		SetLayoutHasOpenReview(true)
-		defer ClearLayoutHasOpenReview()
+		ctx := WithLayoutHasOpenReview(context.Background(), true)
 		var buf bytes.Buffer
-		if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		if err := Layout("Test").Render(ctx, &buf); err != nil {
 			t.Fatalf("Render: %v", err)
 		}
 		content := buf.String()
@@ -351,11 +350,14 @@ func TestLayoutReviewMenuItemEchoesOpenCountFlag(t *testing.T) {
 		}
 	})
 
-	t.Run("clear resets state for the next render", func(t *testing.T) {
-		SetLayoutHasOpenReview(true)
-		ClearLayoutHasOpenReview()
-		if currentLayoutHasOpenReview {
-			t.Fatalf("ClearLayoutHasOpenReview should reset state")
+	t.Run("clear-equivalent is the absence of a tag on the next ctx", func(t *testing.T) {
+		tagged := WithLayoutHasOpenReview(context.Background(), true)
+		cleared := context.Background()
+		if !LayoutHasOpenReviewFromContext(tagged) {
+			t.Fatalf("WithLayoutHasOpenReview(true) should surface true")
+		}
+		if LayoutHasOpenReviewFromContext(cleared) {
+			t.Fatalf("a fresh ctx (no WithLayoutHasOpenReview tag) should read as false")
 		}
 	})
 }

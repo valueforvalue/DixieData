@@ -437,37 +437,37 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Inject debug-mode flag into the request context so templates can
 	// render the Debug Console button without needing the App struct.
 	ctx := debug.WithDebugMode(r.Context(), a.debugMode.Load())
-	// Issue #309: stash the URL path on the templates package's
-	// package-level state so the Layout breadcrumb + dev badge
-	// can render without every page's templ signature growing a
-	// currentPath param. SetCurrentPagePath + ClearCurrentPagePath
-	// bracket the inner mux serve so a panic in render doesn't leak
-	// the previous request's path to the next one.
-	templates.SetCurrentPagePath(r.URL.Path)
-	defer templates.ClearCurrentPagePath()
-	// Issue #460 follow-up: hoist the SetLayoutHasOpenReview flag
-	// into the per-request hook so the red review-state treatment
-	// on the "Open Review Queue" menuitem ships on the very first
-	// paint of any page — landing screen (/calendar), browse, a
-	// deep-linked Person Record, an htmx-driven fragment swap.
-	// Previously only the /review-queue handler set the flag, so
-	// the menuitem rendered neutral everywhere else. The query is
-	// a single COUNT on the needs_review index; failure silently
-	// keeps the neutral render (the trigger's own /layout/review-
-	// count badge stays authoritative for the live number, so a
-	// transient query error here doesn't lose information). Pages
-	// that know they are NOT a review-queue surface don't override
-	// the flag — clear() in defer restores the next render's default.
+	// Issue #309: tag the URL path on the request context so the
+	// Layout breadcrumb + dev badge can render without every page's
+	// templ signature growing a currentPath param. The prior
+	// SetCurrentPagePath + ClearCurrentPagePath package-global pattern
+	// was safe under Wails' single-window ServeHTTP but racy under
+	// httptest.NewServer's concurrent goroutines; issue #466 moved
+	// the storage to context.Context so concurrent requests don't
+	// race and the race detector doesn't slow the /browse GET path.
+	ctx = templates.WithPagePath(ctx, r.URL.Path)
+	// Issue #460 follow-up: hoist the open-review flag into the
+	// per-request hook so the red review-state treatment on the
+	// "Open Review Queue" menuitem ships on the very first paint
+	// of any page — landing screen (/calendar), browse, a deep-
+	// linked Person Record, an htmx-driven fragment swap. Previously
+	// only the /review-queue handler set the flag, so the menuitem
+	// rendered neutral everywhere else. The query is a single COUNT
+	// on the needs_review index; failure silently keeps the neutral
+	// render (the trigger's own /layout/review-count badge stays
+	// authoritative for the live number, so a transient query error
+	// here doesn't lose information). Pages that know they are NOT
+	// a review-queue surface don't override the flag — the default
+	// (false) keeps the menuitem neutral.
 	// Issue #463: nil-guard a.soldiers for the HTTP-only test path
 	// (NewApp() returns a zero-value *App without calling Startup,
 	// so the soldier facade is unset; production always calls
 	// Startup before ServeHTTP).
 	if a.soldiers != nil {
 		if count, err := a.soldiers.CountNeedsReview(); err == nil {
-			templates.SetLayoutHasOpenReview(count > 0)
+			ctx = templates.WithLayoutHasOpenReview(ctx, count > 0)
 		}
 	}
-	defer templates.ClearLayoutHasOpenReview()
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

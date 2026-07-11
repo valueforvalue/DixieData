@@ -22,7 +22,7 @@ import (
 // handleReviewQueue, so users landing on /calendar or any other
 // surface saw a neutral menuitem and didn't realise the red
 // number on the R&R foldout trigger was theirs to act on. The
-// fix hoists SetLayoutHasOpenReview into the per-request
+// fix hoists WithLayoutHasOpenReview into the per-request
 // lifecycle wrapper (lifecycle.go ServeHTTP) so every response
 // that uses Layout inherits the treatment when count > 0.
 func TestLayoutOpenReviewMenuitemFlaggedFromCalendar(t *testing.T) {

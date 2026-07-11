@@ -22,8 +22,16 @@ import (
 // bar in the body and would render the same progress twice if the
 // popup also appeared). Defaults to false everywhere else.
 //
-// currentPath is read implicitly via layoutCurrentPath() (set by
-// SetCurrentPagePath before render). See layout_helpers.go.
+// currentPath is read implicitly via layoutCurrentPath(ctx)
+// (tagged onto the request context by the appshell ServeHTTP
+// wrapper before the mux dispatches). See layout_helpers.go and
+// internal/templates/uictx.go for the per-request tagging flow.
+// Issue #466: prior shape used a package-level global set via
+// SetCurrentPagePath; the race detector found a data race on
+// that global under httptest.NewServer's concurrent ServeHTTP,
+// and the race itself slowed the /browse GET path by ~70x. The
+// ctx-based shape is safe under concurrent requests and costs
+// the race detector nothing.
 templ Layout(title string, omitJobsOverlay ...bool) {
 	<!DOCTYPE html>
 	// lang is hard-coded to "en" for now. DixieData may be used by
@@ -84,7 +92,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		<script defer src="/app.js"></script>
 		<!-- CSS moved to frontend/tailwind.css by PR1. -->
 	</head>
-		<body class="min-h-screen" data-layout-mode="relaxed" data-layout-mode-preference="auto" data-dixie-page={ layoutCurrentPath() }>
+		<body class="min-h-screen" data-layout-mode="relaxed" data-layout-mode-preference="auto" data-dixie-page={ layoutCurrentPath(ctx) }>
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			if len(omitJobsOverlay) == 0 || !omitJobsOverlay[0] {
 				// Floating popup that shows the most-recent active
@@ -144,7 +152,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// the canonical wire shape).
 					@components.FoldoutWithBadge("Research & Review", uiids.LayoutResearchMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`)) {
 						<li role="none">
-							if layoutHasOpenReview() {
+							if layoutHasOpenReview(ctx) {
 								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full border border-review-red/60 text-[#fbe1de] hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a>
 							} else {
 								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a>
@@ -190,7 +198,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			// (initial paint, no flash) and JS-updates on htmx
 			// swap via the same path-resolution helper the toolbox
 			// ports to JS.
-			@components.Breadcrumb(layoutCurrentPath())
+			@components.Breadcrumb(layoutCurrentPath(ctx))
 			<main>
 				{ children... }
 			</main>
@@ -317,7 +325,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			// users never see this; the debug launcher's
 			// DIXIEDATA_DEVTOOLS=1 env var is the gate.
 			if debug.IsDebugMode(ctx) {
-				@components.DevPageBadge(layoutCurrentPath())
+				@components.DevPageBadge(layoutCurrentPath(ctx))
 			}
 		</div>
 	</body>
