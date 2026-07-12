@@ -2214,6 +2214,13 @@
       if (!isDraftableField(field)) {
         return;
       }
+      // `.name` and `.value` live on HTMLInputElement / HTMLTextAreaElement
+      // / HTMLSelectElement, not on Element. Narrowing here protects both
+      // the runtime (misselectors throw undefined.foo) and the type checker
+      // — TypeScript flagged the read-before-narrow as TS2339 in slice 2.
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+        return;
+      }
       const values = Array.isArray(snapshot?.[field.name]) ? snapshot[field.name] : [];
       const index = cursors[field.name] || 0;
       const rawValue = index < values.length ? String(values[index] ?? "") : "";
@@ -3576,15 +3583,6 @@
     if (submitter instanceof HTMLButtonElement && submitter.disabled) {
       return false;
     }
-    // review queue with NeedsReview=true + ReviewReason set.
-    if (formIsNewSoldierWithEmptyNames(button, form)) {
-      if (!window.confirm("Saving a record with no name. It will be marked for review. Continue?")) {
-        return false;
-      }
-      if (fetchOptions.body instanceof FormData) {
-        fetchOptions.body.append("confirm_empty_name", "1");
-      }
-    }
     setBusyState(submitter || form, true);
     setBusyGroupState(submitter || form, true);
     try {
@@ -3630,6 +3628,21 @@
           fetchOptions.body = fd;
         } else {
           fetchOptions.body = new FormData();
+        }
+      }
+      // review queue with NeedsReview=true + ReviewReason set.
+      // Must run AFTER fetchOptions.body is constructed so we can
+      // append confirm_empty_name to it. The original code ordered
+      // the empty-name confirm before the fetchOptions declaration,
+      // leaving fetchOptions in the temporal dead zone on the empty-
+      // name path — TypeScript flagged the read-before-declare here
+      // as TS2304 (slice-2 fix in the typecheck-baseline work).
+      if (formIsNewSoldierWithEmptyNames(button, form)) {
+        if (!window.confirm("Saving a record with no name. It will be marked for review. Continue?")) {
+          return false;
+        }
+        if (fetchOptions.body instanceof FormData) {
+          fetchOptions.body.append("confirm_empty_name", "1");
         }
       }
       const requestUrl = form.action || window.location.pathname;
@@ -3811,7 +3824,7 @@
         if (target instanceof HTMLElement) {
           const html = await response.text();
           target.innerHTML = html;
-          initializeDynamicContent(target);
+          initializeDynamicContent();
         }
       }
       const requestState = {
@@ -5083,7 +5096,7 @@
   async function updateSelectedTemplate() {
     const modal = printConfigModal();
     const form = modal && modal.querySelector("#share-print-config-form");
-    if (!form) return;
+    if (!(form instanceof HTMLFormElement)) return;
     const select = modal.querySelector("[data-export-templates-select]");
     const status = modal.querySelector("[data-export-templates-status]");
     const option = select && select.selectedOptions && select.selectedOptions[0];
@@ -5448,7 +5461,7 @@
       window.htmx.on("htmx:load", (evt) => {
         const target = evt.detail && evt.detail.elt;
         if (target instanceof HTMLElement) {
-          initializeDynamicContent(target);
+          initializeDynamicContent();
         }
       });
       // Issue #309: after a full-page swap (htmx navigates to a new
@@ -5917,7 +5930,7 @@
         clearTimeout(window.__dixieBrowseFilterTimer);
         window.__dixieBrowseFilterTimer = window.setTimeout(() => {
           (async () => {
-            const params = new URLSearchParams(new FormData(form));
+            const params = new URLSearchParams(Array.from(new FormData(form).entries()));
             try {
               const response = await fetch(`${url}?${params.toString()}`, {
                 method: "GET",
@@ -5927,7 +5940,7 @@
               const target = document.querySelector(targetSelector);
               if (target instanceof HTMLElement) {
                 target.innerHTML = html;
-                initializeDynamicContent(target);
+                initializeDynamicContent();
               }
             } catch (error) {
               showToast("Browse refresh failed.", "error");

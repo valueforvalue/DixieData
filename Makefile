@@ -402,6 +402,9 @@ lint-htmx-guard-strict: ## htmx-guard lint as a CI failure
 lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 	node audit/discover_htmx_guard.test.mjs
 
+lint-dispatcher-tdz-test: ## Run the dispatcher_tdz_fix regression test (slice-2 typecheck fix)
+	node audit/dispatcher_tdz_fix.test.mjs
+
 # Swallowed-error lint (issue #438, ADR 0010). Three rules that
 # prevent the #384 + #436 manual sweeps from regressing:
 #   1. Go deferclose  -- no `defer X.Close()` discards
