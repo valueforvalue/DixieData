@@ -431,6 +431,39 @@ test('slice7-01 calendar-day.empty has no opacity or distinct background (issue 
   );
 });
 
+// --- Slice 8: Calendar day-click drilldown (issue #510) ---
+test('slice8-01 death-date drilldown uses dates.Display parser, not MM/DD/YYYY slice (issue #510)', () => {
+  // The bundle carries deathDate as dates.Display() output
+  // ("May 12, 1865"), not "MM/DD/YYYY". The old slice math
+  // (dStr.slice(0,2) + '-' + dStr.slice(3,5)) treated it as
+  // MM/DD/YYYY and produced garbage ("Ma-y "), so the filter
+  // silently returned zero records on every day. Pin:
+  //   - the lookup table ARCHIVE_MONTH_ABBREV_TO_NUM exists;
+  //   - the predicate references it (not the slice math);
+  //   - the old "slice(0, 2)" pattern is gone.
+  assert.ok(
+    html.includes('ARCHIVE_MONTH_ABBREV_TO_NUM'),
+    'static_archive.go must declare ARCHIVE_MONTH_ABBREV_TO_NUM lookup (issue #510)',
+  );
+  assert.ok(
+    /prefill\.date[\s\S]{0,400}ARCHIVE_MONTH_ABBREV_TO_NUM/.test(html),
+    'date= predicate must consult ARCHIVE_MONTH_ABBREV_TO_NUM (issue #510)',
+  );
+  // The legacy slice math (positions 0,2 and 3,5) is the bug.
+  // After the fix the predicate uses indexOf(' ') + indexOf(',')
+  // to find the day position dynamically.
+  const datePredicate = html.match(/prefill\.date[\s\S]{0,800}return false;\s*\}/);
+  assert.ok(datePredicate, 'date= predicate must exist in applyBrowseFilters');
+  assert.ok(
+    !/slice\(0,\s*2\)\s*\+\s*['"]\s*-\s*['"]\s*\+\s*slice\(3,\s*5\)/.test(datePredicate[0]),
+    `date= predicate must not use the old MM/DD/YYYY slice math (issue #510): ${datePredicate[0]}`,
+  );
+  assert.ok(
+    /indexOf\(['"]\s*,\s*['"]\s*,/.test(datePredicate[0]) || /indexOf\(/.test(datePredicate[0]),
+    `date= predicate must use indexOf to locate the day in the display string (issue #510): ${datePredicate[0]}`,
+  );
+});
+
 console.log(`\nResults: ${pass} pass, ${fail} fail`);
 if (fail > 0) {
   process.exit(1);
