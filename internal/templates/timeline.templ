@@ -38,7 +38,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 							}
 						</div>
 						<div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-							<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.8)] px-4 py-3">
+							<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.8)] px-4 py-3">
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Timed Events</p>
 								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(timeline.TimelineEvents)) }</p>
 							</div>

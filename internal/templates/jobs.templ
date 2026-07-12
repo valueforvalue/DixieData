@@ -45,7 +45,7 @@ templ JobStatusView(job jobs.Job) {
 				<button type="button" data-history-back
 					data-fallback-href="/"
 					data-fallback-label="Back to Dashboard"
-					class="inline-flex w-full items-center justify-center rounded-full border border-sepia-500/[0.85] bg-parchment-soft/[0.92] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					class="inline-flex w-full items-center justify-center rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.85)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
 					← Back to Dashboard
 				</button>
 				<p class="text-xs text-slate-500 sm:ml-2">Status updates automatically. Leave this page open to keep watching.</p>
@@ -62,7 +62,7 @@ templ JobStatusView(job jobs.Job) {
 //   - Show report button: links to /jobs/{id}/report (placeholder).
 //   - Artifact action (Open / Save): secondary, only when ResultPath is set.
 templ jobSummaryCard(job jobs.Job) {
-	<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[#22303d] space-y-4">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[#22303d] space-y-4">
 		<p class="font-semibold">{ job.Summary().Headline }</p>
 		if len(job.Summary().DetailLines) > 0 {
 			<ul class="space-y-1 text-slate-600">
@@ -152,7 +152,7 @@ templ jobStatusBody(job jobs.Job) {
 			hx-target="#job-status-body"
 		}>
 		if job.AwaitingConfirmation {
-			<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.78)] p-4 space-y-3">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-4 space-y-3">
 				<div class="flex items-center gap-2 text-sm">
 					<span class="px-2 py-1 rounded-full bg-[#8d7440] text-white text-xs font-semibold uppercase tracking-[0.12em]">Awaiting confirmation</span>
 					<span class="text-slate-600">{ job.DisplayLabel() }</span>
@@ -186,7 +186,7 @@ templ jobStatusBody(job jobs.Job) {
 			@jobSummaryCard(job)
 		}
 		if job.Status == jobs.StatusError {
-			<div class="rounded-2xl border border-review-red/[0.45] bg-review-red/[0.08] p-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4 text-sm text-[#6f2c26]">
 				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, false) }</p>
 				<p class="mt-1 break-words">{ job.Error }</p>
 			</div>

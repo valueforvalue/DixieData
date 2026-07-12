@@ -35,7 +35,7 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 						<span class="gold text-xs font-mono">{ event.DisplayID }</span>
 						<div class="mt-2 flex flex-wrap items-baseline gap-3">
 							if strings.TrimSpace(event.Kind) != "" {
-								<span class="rounded-full border border-sepia-500/[0.4] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ event.Kind }</span>
+								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.4)] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ event.Kind }</span>
 							}
 							<h2 class="text-2xl font-bold text-[#22303d]">{ eventTitle(event) }</h2>
 						</div>
