@@ -509,9 +509,18 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	// the browser follows the 303 + Location natively. The custom
 	// dispatcher is not in the path; we can't rely on
 	// X-DixieData-Redirect being read.
-	a.enqueueExport(dupKey, "static_archive", func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #492: use enqueueExportWithResult so the
+	// StaticArchiveResult returned by the worker is recorded
+	// against the job. /jobs/{id} then renders the per-kind
+	// content panel + the CLI jobs show {id} command prints
+	// the same counts (CLI parity per the locked decisions).
+	a.enqueueExportWithResult(dupKey, "static_archive", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(5, "Gathering images")
-		return a.export.ExportStaticArchive(path, a.dataDir)
+		stats, err := a.export.ExportStaticArchiveWithStats(path, a.dataDir)
+		if err != nil {
+			return jobs.JobResult{}, err
+		}
+		return jobs.JobResult{StaticArchive: stats}, nil
 	}, path, w, enqueueExportOpt{NativeRedirect: true})
 }
 

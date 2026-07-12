@@ -188,7 +188,14 @@ func (s JobSummary) joinDetails() string {
 func TestSummaryRendersExportStatsConditionally(t *testing.T) {
 	type expect struct {
 		recordsLine bool
-		imagesLine  bool
+		// Issue #492: imagesLine is now the literal label
+		// the summary card renders for the images count.
+		// database_pdf / backup_archive / shared_archive use
+		// the legacy "Images: 312" string; static_archive
+		// uses the per-kind "Person record images: 312" label
+		// (so the line is unambiguous in the panel that also
+		// shows Person Records).
+		imagesLine  string
 		sourcesLine bool
 	}
 	cases := []struct {
@@ -202,15 +209,21 @@ func TestSummaryRendersExportStatsConditionally(t *testing.T) {
 		{kind: "icalendar_export", result: JobResult{Records: 247}, expect: expect{recordsLine: true}},
 		// Database PDF adds images (the export prints primary
 		// images for each record).
-		{kind: "database_pdf", result: JobResult{Records: 247, Images: 312}, expect: expect{recordsLine: true, imagesLine: true}},
-		// Static archive has records + images (no sources).
-		{kind: "static_archive", result: JobResult{Records: 247, Images: 312}, expect: expect{recordsLine: true, imagesLine: true}},
+		{kind: "database_pdf", result: JobResult{Records: 247, Images: 312}, expect: expect{recordsLine: true, imagesLine: "Images: 312"}},
+		// Issue #492: static archive now uses the per-kind
+		// StaticArchiveResult struct instead of the legacy
+		// Records/Images/Sources triple. The summary card reads
+		// the new fields (PersonRecords, PersonImages) via
+		// appendStaticArchiveStats. The "Person record images:"
+		// line is the disambiguated label (vs. "Images:" which
+		// would be ambiguous against the Person Records rows).
+		{kind: "static_archive", result: JobResult{StaticArchive: &StaticArchiveResult{PersonRecords: 247, PersonImages: 312}}, expect: expect{recordsLine: true, imagesLine: "Person record images: 312"}},
 		// Backup and shared archive include all three counts.
-		{kind: "backup_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
-		{kind: "shared_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
+		{kind: "backup_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: "Images: 312", sourcesLine: true}},
+		{kind: "shared_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: "Images: 312", sourcesLine: true}},
 		// Subset export from the Share Queue includes the same
 		// counts as a full shared archive; issue #245.
-		{kind: "shared_archive_subset", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
+		{kind: "shared_archive_subset", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: "Images: 312", sourcesLine: true}},
 		// Insights and bug report do not enumerate persons — no stats lines.
 		{kind: "insights_pdf"},
 		{kind: "bug_report"},
@@ -239,13 +252,16 @@ func TestSummaryRendersExportStatsConditionally(t *testing.T) {
 					t.Errorf("kind=%s unexpectedly rendered 'Person records:' line; details=%v", c.kind, s.DetailLines)
 				}
 			}
-			if c.expect.imagesLine {
-				if !strings.Contains(body, "Images: 312") {
-					t.Errorf("kind=%s expected 'Images: 312' line; got details=%v", c.kind, s.DetailLines)
+			if c.expect.imagesLine != "" {
+				if !strings.Contains(body, c.expect.imagesLine) {
+					t.Errorf("kind=%s expected %q line; got details=%v", c.kind, c.expect.imagesLine, s.DetailLines)
 				}
 			} else {
 				if strings.Contains(body, "Images: 312") {
 					t.Errorf("kind=%s unexpectedly rendered 'Images: 312' line; details=%v", c.kind, s.DetailLines)
+				}
+				if strings.Contains(body, "Person record images: 312") {
+					t.Errorf("kind=%s unexpectedly rendered 'Person record images: 312' line; details=%v", c.kind, s.DetailLines)
 				}
 			}
 			if c.expect.sourcesLine {
