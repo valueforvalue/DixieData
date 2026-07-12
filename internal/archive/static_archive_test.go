@@ -482,14 +482,29 @@ func TestStaticArchiveIndex_BrowsePageRendersFiltersAndSearch(t *testing.T) {
 	if !strings.Contains(html, "applyBrowseFilters") {
 		t.Errorf("applyBrowseFilters function missing from JS (issue #498 slice 3)")
 	}
-	// The chip CSS class + data-filter attribute shape (the runtime
-	// template) — pins the contract that the chip elements render
-	// correctly when JS evaluates.
-	if !strings.Contains(html, `class="filter-chip"`) {
-		t.Errorf("filter-chip class missing from JS (issue #498 slice 3)")
+	// The dropdown CSS class + multiple attribute + data-filter-field
+	// attribute shape — pins the issue #499 multi-select dropdown
+	// contract replacing the old filter-chip rows.
+	if !strings.Contains(html, `class="filter-select"`) {
+		t.Errorf("filter-select class missing from JS (issue #499)")
 	}
-	if !strings.Contains(html, `data-filter`) {
-		t.Errorf("data-filter attribute missing from JS (issue #498 slice 3)")
+	if !strings.Contains(html, `multiple`) {
+		t.Errorf("select multiple attribute missing from filter dropdowns (issue #499)")
+	}
+	if !strings.Contains(html, `data-filter-field`) {
+		t.Errorf("data-filter-field attribute missing from JS (issue #499)")
+	}
+	if !strings.Contains(html, `renderFilterDropdown`) {
+		t.Errorf("renderFilterDropdown function missing from JS (issue #499)")
+	}
+	if !strings.Contains(html, `getBrowseFilterValues`) {
+		t.Errorf("getBrowseFilterValues function missing from JS (issue #499)")
+	}
+	if !strings.Contains(html, `class="filter-removable-chip"`) {
+		t.Errorf("filter-removable-chip class missing from JS (issue #499)")
+	}
+	if !strings.Contains(html, `browse-clear-filters`) {
+		t.Errorf("browse-clear-filters button missing (issue #499)")
 	}
 }
 

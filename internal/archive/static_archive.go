@@ -537,53 +537,77 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       font-size: 0.95rem;
       color: var(--ink);
     }
-    .filter-chips {
+    .filter-dropdowns {
       display: grid;
-      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
       margin-bottom: 14px;
     }
-    .filter-chip-group {
-      display: grid;
-      grid-template-columns: 160px 1fr;
-      align-items: start;
-      gap: 12px;
+    .filter-dropdown {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .filter-chip-label {
+    .filter-dropdown-label {
       font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--gold-dark);
-      padding-top: 8px;
     }
-    .filter-chip-row {
+    .filter-select {
+      width: 100%;
+      min-height: 120px;
+      border-radius: 12px;
+      border: 1px solid rgba(141, 116, 64, 0.55);
+      background: rgba(245, 242, 236, 0.96);
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      color: var(--ink);
+    }
+    .browse-active-filters {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 6px;
+      margin-bottom: 10px;
+      min-height: 30px;
     }
-    .filter-chip {
+    .filter-active-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+    .filter-removable-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       border-radius: 999px;
       border: 1px solid rgba(141, 116, 64, 0.55);
-      background: rgba(255, 251, 241, 0.7);
+      background: rgba(197, 171, 104, 0.22);
       color: var(--ink);
-      padding: 5px 12px;
+      padding: 3px 10px;
       font-size: 0.78rem;
       font-weight: 600;
+    }
+    .filter-remove-btn {
+      background: none;
+      border: none;
       cursor: pointer;
-      transition: background 0.12s, border-color 0.12s;
-    }
-    .filter-chip:hover {
-      background: rgba(255, 247, 231, 0.95);
-    }
-    .filter-chip.active {
-      background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
-      color: #1f2b38;
-      border-color: var(--gold-dark);
-    }
-    .filter-chip-count {
-      font-size: 0.72rem;
-      opacity: 0.7;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 0;
+      line-height: 1;
       margin-left: 2px;
+    }
+    .filter-remove-btn:hover {
+      color: var(--accent);
+    }
+    .browse-clear-row {
+      margin-bottom: 8px;
     }
     .browse-prefilter-banner {
       display: flex;
@@ -627,7 +651,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     }
     @media (max-width: 720px) {
       .browse-toolbar { grid-template-columns: 1fr; }
-      .filter-chip-group { grid-template-columns: 1fr; }
+      .filter-dropdowns { grid-template-columns: 1fr; }
     }
 
     /* Issue #498 slice 4: Insights page cards. The grid lays out
@@ -1821,24 +1845,26 @@ function escapeHtml(value) {
             '</select>' +
           '</div>' +
         '</div>' +
-        '<div class="filter-chips" id="browse-filter-chips">' +
-          renderFilterChip('entry_type', 'Entry type', records, function(r) { return r.entryType; }) +
-          renderFilterChip('pension_state', 'Pension state', records, function(r) { return r.pensionState; }) +
-          renderFilterChip('unit', 'Unit', records, function(r) { return r.unit; }) +
-          renderFilterChip('buried_in', 'Buried in', records, function(r) { return r.location; }) +
-          renderFilterChip('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
+        '<div class="filter-dropdowns" id="browse-filter-dropdowns">' +
+          renderFilterDropdown('entry_type', 'Entry type', records, function(r) { return r.entryType; }) +
+          renderFilterDropdown('pension_state', 'Pension state', records, function(r) { return r.pensionState; }) +
+          renderFilterDropdown('unit', 'Unit', records, function(r) { return r.unit; }) +
+          renderFilterDropdown('buried_in', 'Buried in', records, function(r) { return r.location; }) +
+          renderFilterDropdown('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
         '</div>' +
+        '<div class="browse-active-filters" id="browse-active-filters"></div>' +
+        '<div class="browse-clear-row"><button type="button" class="image-button" id="browse-clear-filters">Clear filters</button></div>' +
         '<div id="browse-prefilter-banner" class="browse-prefilter-banner hidden"></div>' +
         '<div class="results" id="browse-results"></div>' +
         '<div class="browse-pagination" id="browse-pagination"></div>' +
         '<div class="empty-state" id="browse-empty" style="display:none;">No Person Records matched the current filters.</div>';
     }
 
-    // renderFilterChip renders one filter-chip group: a label +
-    // a horizontal scroll of pill buttons, one per distinct value
-    // in the records slice. Each pill carries data-filter="<field>"
-    // + data-value="<value>" so the click handler can toggle.
-    function renderFilterChip(field, label, records, getter) {
+    // renderFilterDropdown renders one filter dropdown: a native
+    // <select multiple> with a count label, one option per distinct
+    // value in the records slice. Issue #499: replaces the
+    // filter-chip rows that ran way down the page with dropdowns.
+    function renderFilterDropdown(field, label, records, getter) {
       var values = {};
       for (var i = 0; i < records.length; i++) {
         var v = String(getter(records[i]) || '').trim();
@@ -1846,21 +1872,26 @@ function escapeHtml(value) {
         values[v] = (values[v] || 0) + 1;
       }
       var sorted = Object.keys(values).sort(function(a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
-      var buttons = '<button type="button" class="filter-chip active" data-filter="' + field + '" data-value="">All ' + sorted.length + '</button>';
+      var options = '';
       for (var j = 0; j < sorted.length; j++) {
         var val = sorted[j];
-        buttons += '<button type="button" class="filter-chip" data-filter="' + field + '" data-value="' + escapeHtml(val) + '">' + escapeHtml(val) + ' <span class="filter-chip-count">' + values[val] + '</span></button>';
+        options += '<option value="' + escapeHtml(val) + '">' + escapeHtml(val) + ' (' + values[val] + ')</option>';
       }
-      return '<div class="filter-chip-group" data-filter-group="' + field + '">' +
-        '<span class="filter-chip-label">' + escapeHtml(label) + '</span>' +
-        '<div class="filter-chip-row">' + buttons + '</div>' +
+      return '<div class="filter-dropdown" data-filter-group="' + field + '">' +
+        '<label class="filter-dropdown-label" for="filter-select-' + field + '">' + escapeHtml(label) + '</label>' +
+        '<select multiple id="filter-select-' + field + '" class="filter-select" data-filter-field="' + field + '">' +
+          options +
+        '</select>' +
       '</div>';
     }
 
     // parseBrowseQuery parses the Browse route query string into
-    // an object: {field: value, ...}. The Calendar day-cell drilldown
-    // uses #/browse?date=05-12 (MM-DD); Insights card drilldowns use
-    // #/browse?entry_type=widow or #/browse?unit=1st%20Texas%20Infantry.
+    // an object: {field: value, ...} where value can be a string
+    // OR an array for comma-separated multi-select pre-fill.
+    // Single-value form (?entry_type=widow) stays as a string so
+    // Insights card drilldowns from #498 slice 4 work unchanged.
+    // Multi-value form (?entry_type=widow,wife) produces an array
+    // per issue #499 locked decision 2.
     function parseBrowseQuery(queryString) {
       var out = {};
       var s = String(queryString || '').replace(/^\?/, '');
@@ -1868,29 +1899,45 @@ function escapeHtml(value) {
       var parts = s.split('&');
       for (var i = 0; i < parts.length; i++) {
         var eq = parts[i].indexOf('=');
+        var key, val;
         if (eq < 0) {
-          out[decodeURIComponent(parts[i])] = '';
+          key = decodeURIComponent(parts[i]);
+          val = '';
         } else {
-          var key = decodeURIComponent(parts[i].slice(0, eq));
-          var val = decodeURIComponent(parts[i].slice(eq + 1));
-          out[key] = val;
+          key = decodeURIComponent(parts[i].slice(0, eq));
+          val = decodeURIComponent(parts[i].slice(eq + 1));
+        }
+        // Split comma-separated values into an array; single
+        // value stays as a plain string for back-compat with
+        // single-value drilldowns from earlier ship dates.
+        var parts2 = val.split(',');
+        out[key] = parts2.length > 1 ? parts2 : val;
+      }
+      return out;
+    }
+
+    // getBrowseFilterValues reads the currently-selected values for
+    // the given field from the multi-select dropdown. Returns an
+    // array; empty array = no filter applied ("all values").
+    // Issue #499: replaces the single-value chip read with multi-
+    // select for OR-within-field filtering.
+    function getBrowseFilterValues(field) {
+      var select = document.getElementById('filter-select-' + field);
+      if (!select) return [];
+      var out = [];
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].selected) {
+          out.push(select.options[i].value);
         }
       }
       return out;
     }
 
-    // getBrowseFilterValue reads the currently-selected filter value
-    // for the given field from the chip group. Empty string = "All".
-    function getBrowseFilterValue(field) {
-      var active = document.querySelector('[data-filter-group="' + field + '"] .filter-chip.active');
-      return active ? (active.getAttribute('data-value') || '') : '';
-    }
-
-    // applyBrowseFilters reads the search input + every chip's active
-    // value + the sort + page size + current page, applies them to
-    // bundle.records[], and re-renders the list. Called on every
-    // input change and every chip click. Hash pre-fill is applied
-    // once on initial Browse mount (not on every re-render).
+    // applyBrowseFilters reads the search input + every dropdown's
+    // selected values + the sort + page size + current page, applies
+    // them to bundle.records[], and re-renders the list.
+    // Multi-select within a field = OR, across fields = AND (issue #499).
+    // Also renders the active-filters removable chips above the results.
     function applyBrowseFilters(bundle, prefill) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
       var searchInput = document.getElementById('browse-search');
@@ -1901,19 +1948,35 @@ function escapeHtml(value) {
       var sort = sortSelect.value || 'last_edited';
       var pageSize = Number(pageSizeSelect.value) || 25;
 
+      // Gather active filter values for the removable-chips display.
+      var activeFilters = [];
+
       var filtered = records.filter(function(r) {
         if (query && !matchesSearch(r, query)) return false;
         for (var fi = 0; fi < BROWSE_FILTER_FIELDS.length; fi++) {
           var field = BROWSE_FILTER_FIELDS[fi];
-          var want = prefill && prefill[field] !== undefined ? prefill[field] : getBrowseFilterValue(field);
-          if (!want) continue;
+          var wants;
+          if (prefill && prefill[field] !== undefined) {
+            wants = prefill[field];
+            if (typeof wants === 'string') wants = [wants];
+            if (!Array.isArray(wants)) wants = [];
+          } else {
+            wants = getBrowseFilterValues(field);
+          }
+          if (wants.length === 0) continue; // no filter for this field
           var got = '';
           if (field === 'entry_type') got = r.entryType;
           else if (field === 'pension_state') got = r.pensionState;
           else if (field === 'unit') got = r.unit;
           else if (field === 'buried_in') got = r.location;
           else if (field === 'confederate_home_status') got = r.homeStatus;
-          if (String(got || '').trim() !== want) return false;
+          var gotStr = String(got || '').trim();
+          // OR within field: match if any selected value matches.
+          var match = false;
+          for (var w = 0; w < wants.length; w++) {
+            if (gotStr === wants[w]) { match = true; break; }
+          }
+          if (!match) return false;
         }
         if (prefill && prefill.date) {
           var date = prefill.date;
@@ -1943,6 +2006,45 @@ function escapeHtml(value) {
       if (browseState.page > totalPages) browseState.page = totalPages;
       var startIdx = (browseState.page - 1) * pageSize;
       var pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+      // Render removable active-filter chips above the results.
+      var activeEl = document.getElementById('browse-active-filters');
+      if (activeEl) {
+        if (prefill) {
+          // Collect from prefill object for chips display.
+          for (var pfk in prefill) {
+            if (Object.prototype.hasOwnProperty.call(prefill, pfk) && pfk !== 'date') {
+              var pv = prefill[pfk];
+              if (Array.isArray(pv)) {
+                for (var pi = 0; pi < pv.length; pi++) {
+                  activeFilters.push({field: pfk, value: pv[pi]});
+                }
+              } else if (pv) {
+                activeFilters.push({field: pfk, value: pv});
+              }
+            }
+          }
+        } else {
+          for (var fi2 = 0; fi2 < BROWSE_FILTER_FIELDS.length; fi2++) {
+            var f2 = BROWSE_FILTER_FIELDS[fi2];
+            var vals = getBrowseFilterValues(f2);
+            for (var vi = 0; vi < vals.length; vi++) {
+              activeFilters.push({field: f2, value: vals[vi]});
+            }
+          }
+        }
+        if (activeFilters.length) {
+          var chipHtml = '';
+          for (var ai = 0; ai < activeFilters.length; ai++) {
+            var af = activeFilters[ai];
+            var fLabel = af.field.replace(/_/g, ' ');
+            chipHtml += '<span class="filter-removable-chip" data-remove-filter="' + af.field + '" data-remove-value="' + escapeHtml(af.value) + '">' + escapeHtml(af.value) + ' <button type="button" class="filter-remove-btn" aria-label="Remove ' + escapeHtml(af.value) + ' filter">✕</button></span>';
+          }
+          activeEl.innerHTML = '<span class="filter-active-label">Active filters:</span> ' + chipHtml;
+        } else {
+          activeEl.innerHTML = '';
+        }
+      }
 
       var results = document.getElementById('browse-results');
       if (results) {
@@ -2293,7 +2395,7 @@ function escapeHtml(value) {
             // (Insights drilldown target), wire chip + search +
             // sort + page-size + pagination listeners, then render.
             var prefill = parseBrowseQuery(route.query);
-            applyBrowsePrefillChips(prefill);
+            applyBrowsePrefillSelects(prefill);
             renderBrowsePrefillBanner(prefill);
             browseState.page = 1;
             applyBrowseFilters(bundle, prefill);
@@ -2310,24 +2412,23 @@ function escapeHtml(value) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      // applyBrowsePrefillChips activates the chip(s) whose value
-      // matches the prefill object from the route query. The 'All'
-      // chip in each group is deactivated when a specific value
-      // matches; the matched chip is activated.
-      function applyBrowsePrefillChips(prefill) {
+      // applyBrowsePrefillSelects selects the dropdown options whose
+      // values match the prefill object from the route query.
+      // Handles both single-value (string) and multi-value (array)
+      // per issue #499 locked decision 2.
+      function applyBrowsePrefillSelects(prefill) {
         if (!prefill) return;
         for (var key in prefill) {
           if (Object.prototype.hasOwnProperty.call(prefill, key)) {
-            var val = prefill[key];
-            // date= handled separately (banner, not chip)
+            // date= handled separately (banner, not dropdown)
             if (key === 'date') continue;
-            var chip = document.querySelector('[data-filter-group="' + key + '"] [data-value="' + cssEscape(val) + '"]');
-            if (chip) {
-              var group = chip.closest('[data-filter-group]');
-              if (group) {
-                group.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
-              }
-              chip.classList.add('active');
+            var vals = prefill[key];
+            if (typeof vals === 'string') vals = [vals];
+            if (!Array.isArray(vals)) continue;
+            var select = document.getElementById('filter-select-' + key);
+            if (!select) continue;
+            for (var vi = 0; vi < select.options.length; vi++) {
+              select.options[vi].selected = vals.indexOf(select.options[vi].value) >= 0;
             }
           }
         }
@@ -2364,22 +2465,41 @@ function escapeHtml(value) {
         banner.classList.remove('hidden');
       }
 
-      // wireBrowseListeners attaches the chip / search / sort /
-      // page-size / pagination click + change handlers. Called
-      // once per Browse mount; the handlers re-read inputs and
-      // call applyBrowseFilters(bundle, null) — no prefill, the
-      // user has taken control from this point.
+      // wireBrowseListeners attaches dropdown change / search /
+      // sort / page-size / pagination / clear-filters / removable-
+      // chip click handlers. Called once per Browse mount per
+      // issue #499.
       function wireBrowseListeners(bundle) {
-        document.querySelectorAll('[data-filter-group] .filter-chip').forEach(function(chip) {
-          chip.addEventListener('click', function() {
-            var group = chip.closest('[data-filter-group]');
-            if (!group) return;
-            group.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
-            chip.classList.add('active');
+        // Wire up multi-select dropdown change handlers.
+        for (var fi = 0; fi < BROWSE_FILTER_FIELDS.length; fi++) {
+          var sel = document.getElementById('filter-select-' + BROWSE_FILTER_FIELDS[fi]);
+          if (sel) {
+            sel.addEventListener('change', function() {
+              browseState.page = 1;
+              applyBrowseFilters(bundle, null);
+            });
+          }
+        }
+        // Removable chip click — deselected the matching option.
+        var activeEl = document.getElementById('browse-active-filters');
+        if (activeEl) {
+          activeEl.addEventListener('click', function(e) {
+            var chip = e.target.closest('[data-remove-filter]');
+            if (!chip) return;
+            var field = chip.getAttribute('data-remove-filter');
+            var value = chip.getAttribute('data-remove-value');
+            var select = document.getElementById('filter-select-' + field);
+            if (!select) return;
+            for (var oi = 0; oi < select.options.length; oi++) {
+              if (select.options[oi].value === value) {
+                select.options[oi].selected = false;
+                break;
+              }
+            }
             browseState.page = 1;
             applyBrowseFilters(bundle, null);
           });
-        });
+        }
         var searchInput = document.getElementById('browse-search');
         if (searchInput) {
           searchInput.addEventListener('input', function() {
@@ -2421,6 +2541,23 @@ function escapeHtml(value) {
         if (clearBtn) {
           clearBtn.addEventListener('click', function() {
             window.location.hash = '#/browse';
+          });
+        }
+        var clearFiltersBtn = document.getElementById('browse-clear-filters');
+        if (clearFiltersBtn) {
+          clearFiltersBtn.addEventListener('click', function() {
+            for (var fi2 = 0; fi2 < BROWSE_FILTER_FIELDS.length; fi2++) {
+              var sel = document.getElementById('filter-select-' + BROWSE_FILTER_FIELDS[fi2]);
+              if (sel) {
+                for (var oi = 0; oi < sel.options.length; oi++) {
+                  sel.options[oi].selected = false;
+                }
+              }
+            }
+            var search = document.getElementById('browse-search');
+            if (search) search.value = '';
+            browseState.page = 1;
+            applyBrowseFilters(bundle, null);
           });
         }
       }
