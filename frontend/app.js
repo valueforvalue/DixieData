@@ -403,7 +403,10 @@
     saveJSONStorage(`${pdfPreferencesStoragePrefix}${scope}`, values);
   }
 
-  /** @param {HTMLInputElement | HTMLSelectElement} input */
+  /**
+   * @param {HTMLInputElement | HTMLSelectElement} input
+   * @returns {string | boolean}
+   */
   function pdfPreferenceValue(input) {
     if (input instanceof HTMLInputElement && input.type === "checkbox") {
       return input.checked;
@@ -440,6 +443,7 @@
       return;
     }
     const scope = form.getAttribute("data-pdf-pref-scope");
+    /** @type {Record<string, string | number | boolean>} */
     const next = {};
     form.querySelectorAll("[data-pdf-pref-key]").forEach((input) => {
       if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
@@ -1905,10 +1909,15 @@
   }
 
   /** @param {HTMLFormElement} form */
-  function serializeDraftFields(form) {
+  /** @param {HTMLFormElement} form @returns {Record<string, string[]>} */
+function serializeDraftFields(form) {
+    /** @type {Record<string, string[]>} */
     const payload = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
       if (!isDraftableField(field)) {
+        return;
+      }
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
         return;
       }
       if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
@@ -1921,6 +1930,7 @@
 
   /** @param {Record<string, unknown> | null | undefined} snapshot */
   function cloneDraftSnapshot(snapshot) {
+    /** @type {Record<string, string[]>} */
     const clone = {};
     Object.entries(snapshot || {}).forEach(([name, values]) => {
       clone[name] = Array.isArray(values) ? values.map((value) => String(value ?? "")) : [];
@@ -1981,6 +1991,7 @@
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       return {};
     }
+    /** @type {Record<string, string[]>} */
     const normalized = {};
     Object.entries(raw).forEach(([name, values]) => {
       if (!Array.isArray(values)) {
@@ -2007,6 +2018,7 @@
     const currentFields = serializeDraftFields(form);
     if (kind === "edit") {
       const baseline = baselineStateForForm(form);
+      /** @type {Record<string, string[]>} */
       const delta = {};
       let changed = false;
       const names = new Set([...Object.keys(baseline.fields || {}), ...Object.keys(currentFields || {})]);
@@ -2129,6 +2141,7 @@
    * @param {Record<string, string[]> | null | undefined} draftSnapshot
    */
   function buildDraftDiffEntries(form, baselineFields, draftSnapshot) {
+    /** @type {Array<{ label: string, currentValue: string, localValue: string }>} */
     const entries = [];
     const names = Array.from(new Set([...Object.keys(baselineFields || {}), ...Object.keys(draftSnapshot || {})])).sort();
     names.forEach((name) => {
@@ -2407,6 +2420,7 @@
       return;
     }
     setRecordRowCount(form, rowCount || calculateDraftRowCount(snapshot));
+    /** @type {Record<string, number>} */
     const cursors = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
       if (!isDraftableField(field)) {
@@ -2682,8 +2696,10 @@
           // closed by the outside-click handler. See commit
           // d8f73b7 for the original race fix.
           if (trigger === target || trigger.contains(target)) continue;
+          /** @type {string | null} */
           const id = trigger.getAttribute("data-foldout-trigger");
           if (!id) continue;
+          /** @type {Element | null} */
           const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
           if (!(panel instanceof HTMLElement)) continue;
           if (panel.classList.contains("hidden")) continue;
@@ -2854,8 +2870,10 @@
         for (const trigger of document.querySelectorAll("[data-mega-menu-trigger]")) {
           if (!(trigger instanceof HTMLElement)) continue;
           if (trigger === target || trigger.contains(target)) continue;
+          /** @type {string | null} */
           const id = trigger.getAttribute("data-mega-menu-trigger");
           if (!id) continue;
+          /** @type {Element | null} */
           const panel = document.querySelector('[data-mega-menu-panel="' + id + '"]');
           if (!(panel instanceof HTMLElement)) continue;
           if (panel.classList.contains("hidden")) continue;
@@ -2943,8 +2961,9 @@
         ? (idx + 1) % items.length
         : (idx - 1 + items.length) % items.length;
     }
-    if (items[next] instanceof HTMLElement) {
-      items[next].focus();
+    const nextTarget = items[next];
+    if (nextTarget instanceof HTMLElement) {
+      nextTarget.focus();
     }
   }
 
@@ -3812,7 +3831,7 @@ async function dispatchDixieDataForm(button) {
     let form;
     if (button instanceof HTMLFormElement) {
       form = button;
-    } else {
+    } else if (button instanceof HTMLElement) {
       const dataAction = (button.getAttribute && button.getAttribute("data-action")) || "";
       if (dataAction) {
         const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
@@ -3872,6 +3891,7 @@ async function dispatchDixieDataForm(button) {
       // GET against a route that only accepts PATCH — see
       // issue #428 for the smoke repro on Source Records and
       // event sources.
+      /** @type {RequestInit} */
       const fetchOptions = { method: explicitMethod ? explicitMethod.toUpperCase() : "POST" };
       // Only attach a body for non-GET / non-HEAD requests. Bare-button
       // synthetic forms have no FormData to attach anyway.
@@ -3897,7 +3917,7 @@ async function dispatchDixieDataForm(button) {
         const isSubmitButton = button instanceof HTMLButtonElement
           && button.type === "submit"
           && button.form === form;
-        if (button.closest("form")) {
+        if (button instanceof HTMLElement && button.closest("form")) {
           const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
           if (isSubmitButton && button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
             fd.append(button.name, button.value);
@@ -4031,8 +4051,9 @@ async function dispatchDixieDataForm(button) {
       if (refreshCalendarMonth) {
         refreshCalendarGrid(refreshCalendarMonth);
       }
-      if (button.closest("form") instanceof HTMLFormElement && response.ok) {
-        clearDraftForForm(button.closest("form"));
+      const draftClearForm = button instanceof HTMLElement ? button.closest("form") : null;
+      if (draftClearForm instanceof HTMLFormElement && response.ok) {
+        clearDraftForForm(draftClearForm);
       }
       if (toastMessage && !closeFeedback) {
         savePendingToast({ message: toastMessage, kind: toastKind });
