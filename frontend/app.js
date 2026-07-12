@@ -1,5 +1,26 @@
 (() => {
   const timers = new WeakMap();
+  // eventTargetElement narrows the loose `EventTarget` returned
+  // by Document / Window event handlers to the actual Element the
+  // click landed on (or null). The cost: one typeof check inline
+  // at each handler's first `event.target` read. The benefit:
+  // TypeScript stops flagging the 60+ `eventTargetElement(event).closest(...)`
+  // sites in the DOMContentLoaded install block as TS2339, and the
+  // runtime fails safe on synthetic events whose target is not
+  // an Element (Text node / Window — DOM does not raise those
+  // from a click, but the guard makes the slice-3 narrowing
+  // explicit instead of relying on every site to add its own
+  // `instanceof Element` check).
+  const eventTargetElement = (event) => {
+    if (
+      event
+      && event.target
+      && event.target instanceof Element
+    ) {
+      return event.target;
+    }
+    return null;
+  };
   const redirectStateStorageKey = "dixiedata.redirectState";
   const toastStateStorageKey = "dixiedata.toastState";
   const deletedDraftStateStorageKey = "dixiedata.deletedDraftState";
@@ -3454,7 +3475,10 @@
     }
     const first = form.querySelector("#ef-first_name");
     const last = form.querySelector("#ef-last_name");
-    if (!first || !last) {
+    if (
+      !(first instanceof HTMLInputElement)
+      || !(last instanceof HTMLInputElement)
+    ) {
       return false;
     }
     const firstEmpty = String(first.value || "").trim() === "";
@@ -3923,7 +3947,9 @@
     modal.classList.add("flex");
     const focusable = modal.querySelectorAll(OVERLAY_MODAL_FOCUSABLE);
     if (focusable.length > 0) {
-      focusable[0].focus();
+      if (focusable[0] instanceof HTMLElement) {
+        focusable[0].focus();
+      }
     } else {
       modal.setAttribute("tabindex", "-1");
       modal.focus();
@@ -3955,7 +3981,7 @@
       return;
     }
     const focusable = Array.from(openModal.querySelectorAll(OVERLAY_MODAL_FOCUSABLE)).filter(
-      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+      (el) => el instanceof HTMLElement && !el.hasAttribute("disabled") && el.offsetParent !== null,
     );
     if (focusable.length === 0) {
       event.preventDefault();
@@ -3966,10 +3992,17 @@
     const active = document.activeElement;
     if (event.shiftKey && active === first) {
       event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && active === last) {
+      if (last instanceof HTMLElement) {
+        last.focus();
+      }
+      return;
+    }
+    if (!event.shiftKey && active === last) {
       event.preventDefault();
-      first.focus();
+      if (first instanceof HTMLElement) {
+        first.focus();
+      }
+      return;
     }
   }
 
@@ -4285,6 +4318,9 @@
     const inputs = document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]:checked");
     const ids = [];
     inputs.forEach((el) => {
+      if (!(el instanceof HTMLInputElement)) {
+        return;
+      }
       const v = el.value ? parseInt(el.value, 10) : 0;
       if (v > 0) ids.push(v);
     });
@@ -5099,7 +5135,7 @@
     if (!(form instanceof HTMLFormElement)) return;
     const select = modal.querySelector("[data-export-templates-select]");
     const status = modal.querySelector("[data-export-templates-status]");
-    const option = select && select.selectedOptions && select.selectedOptions[0];
+    const option = select instanceof HTMLSelectElement ? select.selectedOptions[0] : undefined;
     const templateID = option && option.dataset && option.dataset.templateId;
     if (!templateID) {
       if (status instanceof HTMLElement) {
@@ -5220,7 +5256,8 @@
     if (!(titleTarget instanceof HTMLElement) || !(timeTarget instanceof HTMLElement)) {
       return;
     }
-    const titlePreset = document.querySelector('input[name="title_preset"]:checked')?.value || "memorial_full_name";
+    const titlePresetNode = document.querySelector('input[name="title_preset"]:checked');
+    const titlePreset = titlePresetNode instanceof HTMLInputElement ? titlePresetNode.value : "";
     const sampleName = "Capt. John Smith";
     const sampleDisplayID = "STC38-00001";
     if (titlePreset === "full_name_memorial") {
@@ -5319,7 +5356,8 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
+    const scopeNode = form.querySelector('input[name="scope"]:checked');
+    const scope = (scopeNode instanceof HTMLInputElement ? scopeNode.value : "all").trim();
     const picker = form.querySelector("[data-print-record-picker]");
     const recordFilter = form.querySelector("[data-print-record-filter]");
     const recordCheckboxes = form.querySelectorAll("[data-print-record-checkbox]");
@@ -5351,8 +5389,10 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
-    const query = (form.querySelector("[data-print-record-filter]")?.value || "").trim().toLowerCase();
+    const scopeNode = form.querySelector('input[name="scope"]:checked');
+    const queryNode = form.querySelector("[data-print-record-filter]");
+    const scope = (scopeNode instanceof HTMLInputElement ? scopeNode.value : "all").trim();
+    const query = (queryNode instanceof HTMLInputElement ? queryNode.value : "").trim().toLowerCase();
     form.querySelectorAll("[data-print-record-option]").forEach((option) => {
       if (!(option instanceof HTMLElement)) {
         return;
@@ -5368,8 +5408,10 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
-    const query = (form.querySelector("[data-print-buried-filter]")?.value || "").trim().toLowerCase();
+    const scopeNode = form.querySelector('input[name="scope"]:checked');
+    const queryNode = form.querySelector("[data-print-buried-filter]");
+    const scope = (scopeNode instanceof HTMLInputElement ? scopeNode.value : "all").trim();
+    const query = (queryNode instanceof HTMLInputElement ? queryNode.value : "").trim().toLowerCase();
     form.querySelectorAll("[data-print-buried-option]").forEach((option) => {
       if (!(option instanceof HTMLElement)) {
         return;
@@ -5519,16 +5561,16 @@
   });
 
   document.addEventListener("click", (event) => {
-    if (event.target && typeof event.target.closest === "function" && event.target.closest("summary")) {
+    if (eventTargetElement(event)?.closest("summary")) {
       window.requestAnimationFrame(() => clampPopoutPanels(document));
     }
-    const textMenuAction = event.target.closest("[data-text-menu-action]");
+    const textMenuAction = eventTargetElement(event).closest("[data-text-menu-action]");
     if (textMenuAction instanceof HTMLButtonElement) {
       event.preventDefault();
       performTextContextMenuAction(textMenuAction.getAttribute("data-text-menu-action"));
       return;
     }
-    const recordLink = event.target.closest("a[href]");
+    const recordLink = eventTargetElement(event).closest("a[href]");
     if (recordLink instanceof HTMLAnchorElement && !event.defaultPrevented) {
       try {
         const target = new URL(recordLink.href, window.location.origin);
@@ -5539,35 +5581,35 @@
         // Ignore malformed URLs and continue with normal navigation.
       }
     }
-    if (!event.target.closest("#text-context-menu")) {
+    if (!eventTargetElement(event).closest("#text-context-menu")) {
       closeTextContextMenu();
     }
-    const externalLink = event.target.closest("a[data-open-external]");
+    const externalLink = eventTargetElement(event).closest("a[data-open-external]");
     if (externalLink instanceof HTMLAnchorElement) {
       event.preventDefault();
       openExternalLinkInChrome(externalLink.href);
       return;
     }
-    const openPrintConfig = event.target.closest("[data-print-config-open]");
+    const openPrintConfig = eventTargetElement(event).closest("[data-print-config-open]");
     if (openPrintConfig) {
       event.preventDefault();
       openPrintConfigModal();
       return;
     }
-    const openGoogleCalendarPreferences = event.target.closest("[data-google-calendar-preferences-open]");
+    const openGoogleCalendarPreferences = eventTargetElement(event).closest("[data-google-calendar-preferences-open]");
     if (openGoogleCalendarPreferences) {
       event.preventDefault();
       openGoogleCalendarPreferencesModal();
       return;
     }
-    const clearBrowseSelection = event.target.closest("[data-browse-clear-selection]");
+    const clearBrowseSelection = eventTargetElement(event).closest("[data-browse-clear-selection]");
     if (clearBrowseSelection instanceof HTMLButtonElement) {
       event.preventDefault();
       saveBrowseSelection([]);
       applyBrowseSelection(document);
       return;
     }
-    const resetBrowse = event.target.closest("[data-browse-reset]");
+    const resetBrowse = eventTargetElement(event).closest("[data-browse-reset]");
     if (resetBrowse instanceof HTMLButtonElement) {
       event.preventDefault();
       saveBrowseState(null);
@@ -5575,33 +5617,33 @@
       window.location.assign(resetPath);
       return;
     }
-    const anniversaryDensityToggle = event.target.closest("[data-calendar-anniversary-density-toggle]");
+    const anniversaryDensityToggle = eventTargetElement(event).closest("[data-calendar-anniversary-density-toggle]");
     if (anniversaryDensityToggle instanceof HTMLButtonElement) {
       event.preventDefault();
       saveCalendarAnniversaryDensity(anniversaryDensityToggle.getAttribute("data-calendar-anniversary-density-toggle") || "expanded");
       applyCalendarAnniversaryDensity(document);
       return;
     }
-    const layoutModeToggle = event.target.closest("[data-layout-mode-option]");
+    const layoutModeToggle = eventTargetElement(event).closest("[data-layout-mode-option]");
     if (layoutModeToggle instanceof HTMLButtonElement) {
       event.preventDefault();
       saveLayoutModePreference(layoutModeToggle.getAttribute("data-layout-mode-option") || "auto");
       applyResponsiveLayout(document);
       return;
     }
-    const openFeedback = event.target.closest("[data-feedback-open]");
+    const openFeedback = eventTargetElement(event).closest("[data-feedback-open]");
     if (openFeedback) {
       event.preventDefault();
       openFeedbackModal();
       return;
     }
-    const closePrintConfig = event.target.closest("[data-print-config-close]");
+    const closePrintConfig = eventTargetElement(event).closest("[data-print-config-close]");
     if (closePrintConfig) {
       event.preventDefault();
       closePrintConfigModal();
       return;
     }
-    const closeGoogleCalendarPreferences = event.target.closest("[data-google-calendar-preferences-close]");
+    const closeGoogleCalendarPreferences = eventTargetElement(event).closest("[data-google-calendar-preferences-close]");
     if (closeGoogleCalendarPreferences) {
       event.preventDefault();
       closeGoogleCalendarPreferencesModal();
@@ -5617,13 +5659,13 @@
       syncGoogleCalendarPreview();
       return;
     }
-    const closeFeedback = event.target.closest("[data-feedback-close]");
+    const closeFeedback = eventTargetElement(event).closest("[data-feedback-close]");
     if (closeFeedback) {
       event.preventDefault();
       closeFeedbackModal();
       return;
     }
-    const imageTrigger = event.target.closest("[data-image-preview]");
+    const imageTrigger = eventTargetElement(event).closest("[data-image-preview]");
     if (imageTrigger) {
       event.preventDefault();
       openImageViewer(
@@ -5634,8 +5676,8 @@
       );
       return;
     }
-    const browseRow = event.target.closest("[data-browse-row-href]");
-    if (browseRow instanceof HTMLElement && !event.target.closest("a, button, input, label, select, textarea")) {
+    const browseRow = eventTargetElement(event).closest("[data-browse-row-href]");
+    if (browseRow instanceof HTMLElement && !eventTargetElement(event).closest("a, button, input, label, select, textarea")) {
       const href = browseRow.getAttribute("data-browse-row-href");
       if (href) {
         event.preventDefault();
@@ -5644,54 +5686,54 @@
         return;
       }
     }
-    const previewTrigger = event.target.closest("[data-preview-open]");
+    const previewTrigger = eventTargetElement(event).closest("[data-preview-open]");
     if (previewTrigger instanceof HTMLElement) {
       event.preventDefault();
       openPreviewDrawer(previewTrigger.getAttribute("data-preview-target"));
       return;
     }
-    if (event.target.closest("[data-preview-close],[data-preview-backdrop]")) {
+    if (eventTargetElement(event).closest("[data-preview-close],[data-preview-backdrop]")) {
       event.preventDefault();
       closePreviewDrawer();
       return;
     }
-    const scratchpadOpen = event.target.closest("[data-scratchpad-open]");
+    const scratchpadOpen = eventTargetElement(event).closest("[data-scratchpad-open]");
     if (scratchpadOpen) {
       event.preventDefault();
       openScratchpad(scratchpadOpen);
       return;
     }
-    if (event.target.closest("[data-image-rotate-ccw]")) {
+    if (eventTargetElement(event).closest("[data-image-rotate-ccw]")) {
       event.preventDefault();
       rotateImageViewer("ccw");
       return;
     }
-    if (event.target.closest("[data-image-rotate-cw]")) {
+    if (eventTargetElement(event).closest("[data-image-rotate-cw]")) {
       event.preventDefault();
       rotateImageViewer("cw");
       return;
     }
-    if (event.target.closest("[data-image-zoom-in]")) {
+    if (eventTargetElement(event).closest("[data-image-zoom-in]")) {
       event.preventDefault();
       setImageViewerZoom(imageViewerState.zoom * 1.2);
       return;
     }
-    if (event.target.closest("[data-image-zoom-out]")) {
+    if (eventTargetElement(event).closest("[data-image-zoom-out]")) {
       event.preventDefault();
       setImageViewerZoom(imageViewerState.zoom / 1.2);
       return;
     }
-    if (event.target.closest("[data-image-reset]")) {
+    if (eventTargetElement(event).closest("[data-image-reset]")) {
       event.preventDefault();
       resetImageViewerTransform();
       return;
     }
-    if (event.target.closest("[data-image-screenshot]")) {
+    if (eventTargetElement(event).closest("[data-image-screenshot]")) {
       event.preventDefault();
       saveImageViewerScreenshot();
       return;
     }
-    const recordAdd = event.target.closest("[data-record-add]");
+    const recordAdd = eventTargetElement(event).closest("[data-record-add]");
     if (recordAdd) {
       event.preventDefault();
       addRecordRow(recordAdd);
@@ -5702,7 +5744,7 @@
       }
       return;
     }
-    const recordRemove = event.target.closest("[data-record-remove]");
+    const recordRemove = eventTargetElement(event).closest("[data-record-remove]");
     if (recordRemove) {
       event.preventDefault();
       removeRecordRow(recordRemove);
@@ -5713,49 +5755,49 @@
       }
       return;
     }
-    const clearDraftTrigger = event.target.closest("[data-clear-draft-trigger]");
+    const clearDraftTrigger = eventTargetElement(event).closest("[data-clear-draft-trigger]");
     if (clearDraftTrigger instanceof HTMLElement) {
       event.preventDefault();
       showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger"));
       return;
     }
-    const confirmClearDraft = event.target.closest("[data-confirm-clear-draft]");
+    const confirmClearDraft = eventTargetElement(event).closest("[data-confirm-clear-draft]");
     if (confirmClearDraft instanceof HTMLElement) {
       event.preventDefault();
       confirmDeleteDraftFromControl(confirmClearDraft);
       return;
     }
-    const cancelClearDraft = event.target.closest("[data-cancel-clear-draft]");
+    const cancelClearDraft = eventTargetElement(event).closest("[data-cancel-clear-draft]");
     if (cancelClearDraft instanceof HTMLElement) {
       event.preventDefault();
       hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft"));
       return;
     }
-    const undoClearedDraft = event.target.closest("[data-undo-cleared-draft]");
+    const undoClearedDraft = eventTargetElement(event).closest("[data-undo-cleared-draft]");
     if (undoClearedDraft instanceof HTMLElement) {
       event.preventDefault();
       undoDeletedDraftFromControl(undoClearedDraft);
       return;
     }
-    const reapplyStaleDraft = event.target.closest("[data-reapply-stale-draft]");
+    const reapplyStaleDraft = eventTargetElement(event).closest("[data-reapply-stale-draft]");
     if (reapplyStaleDraft instanceof HTMLElement) {
       event.preventDefault();
       reapplyStaleDraftFromControl(reapplyStaleDraft);
       return;
     }
-    const imageClose = event.target.closest("[data-image-close]");
-    if (imageClose || event.target.id === "image-viewer") {
+    const imageClose = eventTargetElement(event)?.closest("[data-image-close]");
+    if (imageClose || eventTargetElement(event)?.id === "image-viewer") {
       event.preventDefault();
       closeImageViewer();
       return;
     }
-    const tab = event.target.closest("[data-tab-group][data-tab-target]");
+    const tab = eventTargetElement(event).closest("[data-tab-group][data-tab-target]");
     if (tab) {
       event.preventDefault();
       activateTab(tab);
       return;
     }
-    const historyBack = event.target.closest("[data-history-back]");
+    const historyBack = eventTargetElement(event).closest("[data-history-back]");
     if (historyBack instanceof HTMLElement) {
       event.preventDefault();
       if (restoreBackSnapshot()) {
@@ -5771,7 +5813,7 @@
       }
       return;
     }
-    const compareSelected = event.target.closest("[data-compare-selected]");
+    const compareSelected = eventTargetElement(event).closest("[data-compare-selected]");
     if (compareSelected instanceof HTMLButtonElement) {
       event.preventDefault();
       const group = compareSelected.getAttribute("data-compare-group") || "search-compare";
@@ -5792,7 +5834,7 @@
     // Option C: intercept clicks on data-dixie-submit + data-merge-review-action.
 // hx-post / hx-delete / data-hx-* selectors dropped after the templ
 // retag (every template uses data-dixie-submit now).
-    const submitTrigger = event.target.closest("[data-dixie-submit], [data-merge-review-action]");
+    const submitTrigger = eventTargetElement(event).closest("[data-dixie-submit], [data-merge-review-action]");
     if (submitTrigger instanceof HTMLElement && !(submitTrigger instanceof HTMLFormElement)) {
       event.preventDefault();
       dispatchDixieDataForm(submitTrigger);
@@ -5838,7 +5880,7 @@
     });
   });
   document.addEventListener("input", (event) => {
-    const form = event.target.closest("form[data-draft-key]");
+    const form = eventTargetElement(event).closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       const result = persistDraftForForm(form);
       setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
@@ -5856,14 +5898,14 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const form = event.target.closest("form[data-draft-key]");
+    const form = eventTargetElement(event).closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       const result = persistDraftForForm(form);
       setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
     }
   });
   document.addEventListener("change", (event) => {
-    const pdfInput = event.target.closest("[data-pdf-pref-key]");
+    const pdfInput = eventTargetElement(event).closest("[data-pdf-pref-key]");
     if (pdfInput instanceof HTMLElement) {
       const form = pdfInput.closest("form[data-pdf-pref-scope]");
       if (form instanceof HTMLFormElement) {
@@ -5872,7 +5914,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const entryTypeSelect = event.target.closest("[data-entry-type-select]");
+    const entryTypeSelect = eventTargetElement(event).closest("[data-entry-type-select]");
     if (entryTypeSelect) {
       const form = entryTypeSelect.closest("form");
       if (form instanceof HTMLFormElement) {
@@ -5881,7 +5923,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const homeStatusSelect = event.target.closest("[data-confederate-home-status]");
+    const homeStatusSelect = eventTargetElement(event).closest("[data-confederate-home-status]");
     if (homeStatusSelect) {
       const form = homeStatusSelect.closest("form");
       if (form instanceof HTMLFormElement) {
@@ -5901,14 +5943,14 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const selectAll = event.target.closest("[data-select-all]");
+    const selectAll = eventTargetElement(event).closest("[data-select-all]");
     if (!(selectAll instanceof HTMLInputElement)) {
       return;
     }
     toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
   });
   document.addEventListener("change", (event) => {
-    const browseFilter = event.target.closest("[data-browse-filter-input]");
+    const browseFilter = eventTargetElement(event).closest("[data-browse-filter-input]");
     if (browseFilter instanceof HTMLElement) {
       const form = browseFilter.closest("form");
       const pageField = form?.querySelector("[data-browse-page-input]");
@@ -5930,7 +5972,7 @@
         clearTimeout(window.__dixieBrowseFilterTimer);
         window.__dixieBrowseFilterTimer = window.setTimeout(() => {
           (async () => {
-            const params = new URLSearchParams(Array.from(new FormData(form).entries()));
+            const params = new URLSearchParams(Array.from(new FormData(form).entries(), ([k, v]) => [k, typeof v === "string" ? v : ""]));
             try {
               const response = await fetch(`${url}?${params.toString()}`, {
                 method: "GET",
@@ -5950,16 +5992,19 @@
       }
       return;
     }
-    const browseColumnToggle = event.target.closest("[data-browse-column-toggle]");
+    const browseColumnToggle = eventTargetElement(event).closest("[data-browse-column-toggle]");
     if (browseColumnToggle instanceof HTMLInputElement) {
-      const enabled = Array.from(document.querySelectorAll("[data-browse-column-toggle]"))
-        .filter((input) => input instanceof HTMLInputElement && input.checked)
-        .map((input) => input.value);
+      const enabled = [];
+      for (const input of document.querySelectorAll("[data-browse-column-toggle]")) {
+        if (input instanceof HTMLInputElement && input.checked) {
+          enabled.push(input.value);
+        }
+      }
       saveBrowseColumns(enabled);
       applyBrowseColumns(document);
       return;
     }
-    const browseSelect = event.target.closest("[data-browse-select]");
+    const browseSelect = eventTargetElement(event).closest("[data-browse-select]");
     if (browseSelect instanceof HTMLInputElement) {
       const id = Number.parseInt(browseSelect.value || "", 10);
       const selected = new Set(loadBrowseSelection());
@@ -5975,7 +6020,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const compareSelect = event.target.closest("[data-compare-select]");
+    const compareSelect = eventTargetElement(event).closest("[data-compare-select]");
     if (!(compareSelect instanceof HTMLInputElement)) {
       return;
     }
@@ -5997,7 +6042,7 @@
     }
   });
   document.addEventListener("contextmenu", (event) => {
-    const editableTarget = event.target.closest("input, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
+    const editableTarget = eventTargetElement(event).closest("input, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
     const hasTextSelection = (window.getSelection()?.toString() || "").trim() !== "";
     if (!(editableTarget instanceof HTMLElement) && !hasTextSelection) {
       closeTextContextMenu();
@@ -6028,7 +6073,7 @@
       closeGoogleCalendarPreferencesModal();
       return;
     }
-    const stage = event.target.closest("[data-image-stage]");
+    const stage = eventTargetElement(event).closest("[data-image-stage]");
     if (!(stage instanceof HTMLElement) || imageViewerState.zoom <= 1) {
       return;
     }
@@ -6067,7 +6112,7 @@
   document.addEventListener(
     "toggle",
     (event) => {
-      if (event.target && event.target.tagName === "DETAILS") {
+      if (eventTargetElement(event)?.tagName === "DETAILS") {
         window.requestAnimationFrame(() => clampPopoutPanels(document));
       }
     },
@@ -6076,7 +6121,7 @@
   document.addEventListener(
     "wheel",
     (event) => {
-      const stage = event.target.closest("[data-image-stage]");
+      const stage = eventTargetElement(event).closest("[data-image-stage]");
       if (!(stage instanceof HTMLElement)) {
         return;
       }

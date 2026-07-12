@@ -19,7 +19,8 @@
     "types": []
   },
   "include": [
-    "frontend/**/*.js"
+    "frontend/**/*.js",
+    "frontend/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

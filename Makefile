@@ -405,6 +405,9 @@ lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 lint-dispatcher-tdz-test: ## Run the dispatcher_tdz_fix regression test (slice-2 typecheck fix)
 	node audit/dispatcher_tdz_fix.test.mjs
 
+lint-typecheck-augmentations-test: ## Run the typecheck_augmentations regression test (slice-3 Window / element / htmx augmentations)
+	node audit/typecheck_augmentations.test.mjs
+
 # Swallowed-error lint (issue #438, ADR 0010). Three rules that
 # prevent the #384 + #436 manual sweeps from regressing:
 #   1. Go deferclose  -- no `defer X.Close()` discards
