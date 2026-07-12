@@ -121,25 +121,31 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// Browse into the People column (it's the primary
 					// Person Record navigation surface) and Events
 					// into the More records column (alongside
-					// Articles). The pre-mega-menu data-* hooks
-					// survive inside the panel (data-marker) so
-					// audit/smoke.mjs + analytics selectors stay
-					// stable. Each item is a real <a role="menuitem"
-					// href> for screen readers + middle-click +
-					// htmx compatibility. The "Search" item uses
-					// the new label (slice 5); URL stays /soldiers.
+					// Articles). Tags followed in the same pass —
+					// moved out of the People column into the More
+					// records column so the People group stays the
+					// surface-navigation pair (Search + Browse) and
+					// More records collects the secondary listing
+					// surfaces (Tags, Articles, Events). The
+					// pre-mega-menu data-* hooks survive inside the
+					// panel (data-marker) so audit/smoke.mjs +
+					// analytics selectors stay stable. Each item is
+					// a real <a role="menuitem" href> for screen
+					// readers + middle-click + htmx compatibility.
+					// The "Search" item uses the new label (slice
+					// 5); URL stays /soldiers.
 					@components.MegaMenu("Records", uiids.LayoutRecordsMenu, nil, []components.MegaGroup{
 						{
 							Title: "People",
 							Items: []templ.Component{
 								templ.Raw(`<li role="none"><a href="/soldiers" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-search">Search</a></li>`),
 								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Browse</a></li>`),
-								templ.Raw(`<li role="none"><a href="/tags" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-tags">Tags</a></li>`),
 							},
 						},
 						{
 							Title: "More records",
 							Items: []templ.Component{
+								templ.Raw(`<li role="none"><a href="/tags" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-tags">Tags</a></li>`),
 								templ.Raw(`<li role="none"><a href="/articles" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-articles">Articles</a></li>`),
 								templ.Raw(`<li role="none"><a href="/events" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-events">Events</a></li>`),
 							},
