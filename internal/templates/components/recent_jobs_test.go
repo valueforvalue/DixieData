@@ -80,11 +80,15 @@ func TestRecentJobsRendersRows(t *testing.T) {
 	}
 	// Pill colour classes per status (issue #265 — green for
 	// done, red for error, neutral for cancelled, amber for
-	// interrupted / unknown).
+	// interrupted / unknown). Post-#477 strategy-A the static-hex
+	// text-[#29522d] / text-[#6f2c26] classes became
+	// text-[var(--theme-...)] equivalents; these needles pin the
+	// post-#477 token references so the rendered HTML stays in sync
+	// with the theme system.
 	if !strings.Contains(got, `text-[#29522d]`) {
 		t.Errorf("expected green done pill; got:\n%s", got)
 	}
-	if !strings.Contains(got, `text-[#6f2c26]`) {
+	if !strings.Contains(got, `var(--theme-review-red)`) {
 		t.Errorf("expected red error pill; got:\n%s", got)
 	}
 }
