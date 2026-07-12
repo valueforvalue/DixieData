@@ -273,6 +273,79 @@ func TestSummaryRendersExportStatsConditionally(t *testing.T) {
 	}
 }
 
+// TestAppendStaticArchiveStats_CalendarDaysWithData (issue #498
+// slice 5) asserts the summary card surfaces a "Calendar days with
+// data: N" line on the static_archive job when CalendarDaysWithData
+// is populated. The line is omitted when the count is 0 (per the
+// existing conditional-render rule in appendStaticArchiveStats).
+func TestAppendStaticArchiveStats_CalendarDaysWithData(t *testing.T) {
+	dir := t.TempDir()
+	resultPath := filepath.Join(dir, "blob.bin")
+	if err := os.WriteFile(resultPath, []byte("test bytes"), 0o644); err != nil {
+		t.Fatalf("seed artifact: %v", err)
+	}
+
+	// Case 1: populated count renders the line.
+	j1 := NewJob("static-1", "static_archive")
+	j1.Status = StatusDone
+	j1.StartedAt = time.Now().Add(-2 * time.Second)
+	j1.FinishedAt = time.Now()
+	j1.ResultPath = resultPath
+	j1.Result = JobResult{StaticArchive: &StaticArchiveResult{PersonRecords: 10, CalendarDaysWithData: 42}}
+	s1 := j1.Summary()
+	if !strings.Contains(s1.joinDetails(), "Calendar days with data: 42") {
+		t.Errorf("expected 'Calendar days with data: 42' line; got details=%v", s1.DetailLines)
+	}
+
+	// Case 2: zero count omits the line (no noise on empty archives).
+	j2 := NewJob("static-2", "static_archive")
+	j2.Status = StatusDone
+	j2.StartedAt = time.Now().Add(-2 * time.Second)
+	j2.FinishedAt = time.Now()
+	j2.ResultPath = resultPath
+	j2.Result = JobResult{StaticArchive: &StaticArchiveResult{PersonRecords: 10}}
+	s2 := j2.Summary()
+	if strings.Contains(s2.joinDetails(), "Calendar days with data") {
+		t.Errorf("zero count unexpectedly rendered 'Calendar days with data' line; details=%v", s2.DetailLines)
+	}
+}
+
+// TestAppendStaticArchiveStats_InsightsSections (issue #498 slice 5)
+// asserts the summary card surfaces an "Insights sections: N" line
+// on the static_archive job when InsightsSections is populated. The
+// line is omitted when the count is 0 (defensive — an empty archive
+// currently has InsightsSections=1 from record_types alone, but the
+// conditional-render rule still applies).
+func TestAppendStaticArchiveStats_InsightsSections(t *testing.T) {
+	dir := t.TempDir()
+	resultPath := filepath.Join(dir, "blob.bin")
+	if err := os.WriteFile(resultPath, []byte("test bytes"), 0o644); err != nil {
+		t.Fatalf("seed artifact: %v", err)
+	}
+
+	j1 := NewJob("static-3", "static_archive")
+	j1.Status = StatusDone
+	j1.StartedAt = time.Now().Add(-2 * time.Second)
+	j1.FinishedAt = time.Now()
+	j1.ResultPath = resultPath
+	j1.Result = JobResult{StaticArchive: &StaticArchiveResult{PersonRecords: 10, InsightsSections: 7}}
+	s1 := j1.Summary()
+	if !strings.Contains(s1.joinDetails(), "Insights sections: 7") {
+		t.Errorf("expected 'Insights sections: 7' line; got details=%v", s1.DetailLines)
+	}
+
+	j2 := NewJob("static-4", "static_archive")
+	j2.Status = StatusDone
+	j2.StartedAt = time.Now().Add(-2 * time.Second)
+	j2.FinishedAt = time.Now()
+	j2.ResultPath = resultPath
+	j2.Result = JobResult{StaticArchive: &StaticArchiveResult{PersonRecords: 10}}
+	s2 := j2.Summary()
+	if strings.Contains(s2.joinDetails(), "Insights sections") {
+		t.Errorf("zero count unexpectedly rendered 'Insights sections' line; details=%v", s2.DetailLines)
+	}
+}
+
 // TestSummaryRendersSharedImportStats pins down the merge-review
 // headline (Added/Merged/Skipped) plus the conflicts reminder.
 // When Conflicts > 0 the user is told to open Merge Review; when

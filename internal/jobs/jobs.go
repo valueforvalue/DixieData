@@ -182,6 +182,11 @@ type StaticArchiveResult struct {
 	PersonImages    int // Person Record image files copied into images/
 	SourceRecords   int // Source Records (claims + findings) attached to Person Records
 	DistinctTags    int // Distinct tag names referenced by any exported Person Record
+	// Issue #498 slice 5: extra per-page counts surfaced on the
+	// /jobs/{id} summary card so the user sees the Calendar + Insights
+	// page contents alongside the per-record counts.
+	CalendarDaysWithData int // Days with at least one anniversary/event/holiday marker (Calendar landing)
+	InsightsSections     int // Insights dimensions with non-empty counts (max 7: cemetery_density, confederate_home_status, pension_distribution, unit_representation, birth_decade_distribution, death_decade_distribution, record_types — always counted)
 }
 
 // Progress is passed to a worker so it can update its job without holding
@@ -1091,6 +1096,20 @@ func appendStaticArchiveStats(lines []string, sa StaticArchiveResult) []string {
 	}
 	if sa.DistinctTags > 0 {
 		lines = append(lines, fmt.Sprintf("Distinct tags: %d", sa.DistinctTags))
+	}
+	// Issue #498 slice 5: Calendar landing + Insights page counts.
+	// CalendarDaysWithData is the count of days (across all 12
+	// months) that carry at least one anniversary / event /
+	// holiday marker — drives the Calendar landing page content.
+	// InsightsSections is the count of Insights dimensions with
+	// non-empty data — always 7 (record_types + 6 dimensions)
+	// even on an empty archive because the record_types dimension
+	// is always populated with the headline counts.
+	if sa.CalendarDaysWithData > 0 {
+		lines = append(lines, fmt.Sprintf("Calendar days with data: %d", sa.CalendarDaysWithData))
+	}
+	if sa.InsightsSections > 0 {
+		lines = append(lines, fmt.Sprintf("Insights sections: %d", sa.InsightsSections))
 	}
 	return lines
 }

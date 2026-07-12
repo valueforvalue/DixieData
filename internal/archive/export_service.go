@@ -1802,6 +1802,19 @@ func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string)
 	if err != nil {
 		return nil, err
 	}
+	// Issue #498 slice 5: snapshot the Calendar + Insights helpers
+	// so the per-page counts surface on the /jobs/{id} summary
+	// card. Mirrors the pattern above — same helpers the body
+	// uses (staticArchiveCalendar, staticArchiveInsights) so the
+	// counts match the rows that ship in archive_data.js.
+	calendarMonths, err := e.staticArchiveCalendar()
+	if err != nil {
+		return nil, err
+	}
+	insightsSnapshot, err := e.staticArchiveInsights()
+	if err != nil {
+		return nil, err
+	}
 
 	result.Events = len(eventEntries)
 	result.Articles = len(articleEntries)
@@ -1830,6 +1843,44 @@ func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string)
 		_ = tagSet
 	}
 	result.DistinctTags = 0
+
+	// Issue #498 slice 5: Calendar landing page — count the days
+	// with at least one anniversary / event / holiday marker across
+	// the 12 months. Drives the Calendar landing page content +
+	// the "Calendar days with data" summary-card line.
+	for _, m := range calendarMonths {
+		for _, d := range m.Days {
+			if d.AnniversaryCount > 0 || d.EventCount > 0 || d.HolidayCount > 0 {
+				result.CalendarDaysWithData++
+			}
+		}
+	}
+	// Insights page — count the dimensions with non-empty data.
+	// record_types is always populated (ArchiveCounts returns the
+	// headline numbers even on an empty DB), so InsightsSections
+	// is always 1+ from that dimension alone. Add the 6 count
+	// dimensions (cemetery_density, confederate_home_status,
+	// pension_distribution, unit_representation, birth_decade,
+	// death_decade) when each carries at least one row.
+	result.InsightsSections++ // record_types always counted
+	if len(insightsSnapshot.CemeteryDensity) > 0 {
+		result.InsightsSections++
+	}
+	if len(insightsSnapshot.ConfederateHomeStatus) > 0 {
+		result.InsightsSections++
+	}
+	if len(insightsSnapshot.PensionDistribution) > 0 {
+		result.InsightsSections++
+	}
+	if len(insightsSnapshot.UnitRepresentation) > 0 {
+		result.InsightsSections++
+	}
+	if len(insightsSnapshot.BirthDecadeDistribution) > 0 {
+		result.InsightsSections++
+	}
+	if len(insightsSnapshot.DeathDecadeDistribution) > 0 {
+		result.InsightsSections++
+	}
 
 	// Now do the actual export. If the zip write fails, the
 	// stats we computed are still valid (the user can re-run
