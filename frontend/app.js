@@ -366,6 +366,89 @@
     });
   }
 
+  // Issue #476: a single shared popover placement helper used by
+  // every top-nav popout (foldout, megamenu, dock panel, calendar
+  // day popout). The pre-#476 behavior was that the foldout +
+  // megamenu open() handlers in installFoldouts / installMegaMenus
+  // showed the panel but never called clampPopoutPanels, and the
+  // clamp helper's selector only targeted [data-popout-panel] —
+  // so on a narrow window a panel anchored to a trigger near the
+  // right edge would extend leftward off-screen, clipping the
+  // first menuitem(s) past the viewport's left edge. The fix:
+  // (1) placePopoutPanel measures the trigger + the panel and
+  // computes a horizontal shift so the panel stays inside the
+  // viewport; (2) every open() handler invokes placePopoutPanel
+  // after panel.classList.remove("hidden"); (3) the dock panel's
+  // templ inline onclick handler also calls it. clampPopoutPanels
+  // stays as a defense-in-depth post-paint sweep for the
+  // [data-popout-panel] family that opens via <details>/<summary>.
+  /**
+   * Place a popout panel inside the viewport relative to its trigger.
+   * The panel is positioned via translateX (and translateY if it would
+   * overflow the bottom edge) so the trigger's anchor point is
+   * preserved — we shift the panel itself, not the trigger. Safe to
+   * call repeatedly: any prior transform is cleared before the new
+   * measurement runs.
+   *
+   * @param {HTMLElement | null} trigger
+   * @param {HTMLElement | null} panel
+   */
+  function placePopoutPanel(trigger, panel) {
+    const viewportPadding = 12;
+    if (!(trigger instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
+      return;
+    }
+    // Reset any prior transform so the new measurement is against
+    // the panel's natural anchored position.
+    panel.style.removeProperty("transform");
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let shiftX = 0;
+    let shiftY = 0;
+    // Smart horizontal placement. The panel is anchored right of the
+    // trigger (the .foldout-panel + .mega-menu-panel rules use
+    // `right-0 top-full` so the panel extends leftward from the
+    // trigger's right edge). If the trigger sits near the right
+    // edge of a narrow window, the panel can overflow the left edge
+    // of the viewport — we shift it right until its left edge is at
+    // least viewportPadding from the viewport's left edge. We never
+    // shift the panel so far right that it would overflow the right
+    // edge; the panel keeps the trigger-anchored position when
+    // there's enough horizontal room.
+    if (panelRect.right > viewportWidth - viewportPadding) {
+      shiftX -= panelRect.right - (viewportWidth - viewportPadding);
+    }
+    if (panelRect.left + shiftX < viewportPadding) {
+      shiftX += viewportPadding - (panelRect.left + shiftX);
+    }
+    // Vertical placement: if the panel would overflow the bottom
+    // edge of the viewport (e.g. on a short window where the trigger
+    // sits near the bottom), flip it above the trigger.
+    if (panelRect.bottom > viewportHeight - viewportPadding) {
+      const overflow = panelRect.bottom - (viewportHeight - viewportPadding);
+      // First try shifting up by the overflow amount (keeps the
+      // panel anchored above the trigger's bottom).
+      shiftY -= overflow;
+      // If that would push the panel above the viewport's top edge,
+      // clamp so the top stays at viewportPadding.
+      if (panelRect.top + shiftY < viewportPadding) {
+        shiftY += viewportPadding - (panelRect.top + shiftY);
+      }
+    }
+    if (Math.abs(shiftX) > 0.5 || Math.abs(shiftY) > 0.5) {
+      const tx = Math.round(shiftX);
+      const ty = Math.round(shiftY);
+      // translate3d keeps the transform compositing on its own
+      // layer so the panel doesn't repaint its background every
+      // frame during the open transition.
+      panel.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+      return;
+    }
+    panel.style.removeProperty("transform");
+  }
+
   function ensureResponsiveLayoutWatcher() {
     if (layoutModeMediaQuery || typeof window.matchMedia !== "function") {
       return;
@@ -2768,6 +2851,11 @@ function serializeDraftFields(form) {
         }
         panel.classList.remove("hidden");
         trigger.setAttribute("aria-expanded", "true");
+        // Issue #476: measure the trigger + panel and shift the panel
+        // so it stays fully inside the viewport. Without this the
+        // panel can extend leftward past the viewport on narrow
+        // windows where the trigger sits near the right edge.
+        placePopoutPanel(trigger, panel);
         // Move focus to the first menuitem so keyboard users land
         // inside the panel after Enter/Space on the trigger.
         const firstItem = panel.querySelector('[role="menuitem"]');
@@ -2779,6 +2867,10 @@ function serializeDraftFields(form) {
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
+        // Issue #476: clear the placement transform when closing so
+        // the next open() measures from the panel's natural anchored
+        // position, not from a stale transform.
+        panel.style.removeProperty("transform");
         if (returnFocus && document.activeElement === panel) {
           trigger.focus();
         } else if (returnFocus) {
@@ -2918,6 +3010,9 @@ function serializeDraftFields(form) {
         }
         panel.classList.remove("hidden");
         trigger.setAttribute("aria-expanded", "true");
+        // Issue #476: measure + shift the panel so it stays inside
+        // the viewport on narrow windows. Same helper as foldouts.
+        placePopoutPanel(trigger, panel);
         const firstItem = panel.querySelector('[role="menuitem"]');
         if (firstItem instanceof HTMLElement) firstItem.focus();
       };
@@ -2925,6 +3020,8 @@ function serializeDraftFields(form) {
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
+        // Issue #476: clear the placement transform when closing.
+        panel.style.removeProperty("transform");
         if (returnFocus) trigger.focus();
       };
       const toggle = () => { isOpen() ? close(false) : open(); };
@@ -2934,6 +3031,64 @@ function serializeDraftFields(form) {
       });
       trigger.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
+          event.preventDefault();
+          close(true);
+        }
+      });
+      panel.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(true);
+        }
+      });
+    }
+  }
+
+  // Issue #476: installFloatingNavPanel binds the
+  // [data-floating-nav-toggle] Menu button in the floating dock to
+  // the [data-floating-nav-panel] Quick Navigation popout. Pre-#476
+  // the toggle used a templ inline onclick that toggled the hidden
+  // class but never invoked any placement helper, so on a narrow
+  // window the panel (anchored to right-4 sm:right-6) could clip
+  // the left edge if the panel was wider than the available space.
+  // placePopoutPanel measures the trigger + panel and applies a
+  // translate3d so the panel stays inside the viewport.
+  function installFloatingNavPanel() {
+    if (!window.__floatingNavInstallN) window.__floatingNavInstallN = 0;
+    window.__floatingNavInstallN++;
+    const triggers = document.querySelectorAll("[data-floating-nav-toggle]");
+    if (!window.__floatingNavBoundTriggers) {
+      window.__floatingNavBoundTriggers = new WeakSet();
+    }
+    for (const trigger of triggers) {
+      if (!(trigger instanceof HTMLElement)) continue;
+      if (window.__floatingNavBoundTriggers.has(trigger)) continue;
+      const panel = document.querySelector("[data-floating-nav-panel]");
+      if (!(panel instanceof HTMLElement)) continue;
+      window.__floatingNavBoundTriggers.add(trigger);
+      const isOpen = () => !panel.classList.contains("hidden");
+      const open = () => {
+        panel.classList.remove("hidden");
+        // Issue #476: smart-placement so the panel doesn't overflow
+        // the left edge on narrow windows.
+        placePopoutPanel(trigger, panel);
+        const firstItem = panel.querySelector('[role="menuitem"], a[href]');
+        if (firstItem instanceof HTMLElement) firstItem.focus();
+      };
+      /** @param {boolean} returnFocus */
+      const close = (returnFocus) => {
+        panel.classList.add("hidden");
+        // Issue #476: clear the placement transform when closing.
+        panel.style.removeProperty("transform");
+        if (returnFocus) trigger.focus();
+      };
+      const toggle = () => { isOpen() ? close(false) : open(); };
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggle();
+      });
+      trigger.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && isOpen()) {
           event.preventDefault();
           close(true);
         }
@@ -3461,6 +3616,7 @@ function serializeDraftFields(form) {
     // .rdivide/handoff-foldout-click-race.md.
     installFoldouts();
     installMegaMenus();
+    installFloatingNavPanel();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
 
@@ -5787,6 +5943,7 @@ async function refreshShareQueuePresetsPage(panel) {
     initializeFloatingNav();
     installFoldouts();
     installMegaMenus();
+    installFloatingNavPanel();
     initializeBrowseFilterDrawer();
     applyCalendarAnniversaryDensity();
     syncPrintScopeState();
