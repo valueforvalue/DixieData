@@ -1779,6 +1779,15 @@ function escapeHtml(value) {
     // matches the live /calendar behavior).
     var ARCHIVE_CALENDAR_DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
+    // Month-abbreviation → number lookup for the death-date drilldown
+    // (issue #510). The bundle's deathDate is dates.Display() output
+    // ("May 12, 1865"), not a numeric "MM/DD/YYYY" — so the Browse
+    // ?date=MM-DD pre-fill has to parse the display string to compare.
+    var ARCHIVE_MONTH_ABBREV_TO_NUM = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    };
+
     // routeFromHash parses the current window.location.hash and
     // returns one of: {kind:'page', name:'calendar'|'browse'|
     // 'insights'|'persons'|'events'|'articles', query:''},
@@ -2197,14 +2206,31 @@ function escapeHtml(value) {
           if (!match) return false;
         }
         if (prefill && prefill.date) {
+          // Issue #510: r.deathDate is dates.Display() output
+          // (e.g. "May 12, 1865"), not "MM/DD/YYYY". Parse the
+          // leading month abbreviation + day from the display
+          // string, build a "MM-DD" token, and compare to the
+          // URL's prefill (also "MM-DD"). Partial dates
+          // (year-only "1865", or "May 1865" with no day) cannot
+          // match a "MM-DD" token and so correctly return false.
           var date = prefill.date;
           var dStr = String(r.deathDate || '').trim();
-          if (dStr.length >= 5) {
-            var mmdd = dStr.slice(0, 2) + '-' + dStr.slice(3, 5);
-            if (mmdd !== date) return false;
-          } else {
-            return false;
+          var matchMmdd = '';
+          if (dStr.length >= 4) {
+            var mAbbr = String(dStr.slice(0, 3)).toLowerCase();
+            var mNum = ARCHIVE_MONTH_ABBREV_TO_NUM[mAbbr];
+            if (mNum) {
+              var dayStart = dStr.indexOf(' ') + 1;
+              var dayEnd = dStr.indexOf(',', dayStart);
+              if (dayEnd < 0) dayEnd = dStr.length;
+              var dNum = parseInt(dStr.slice(dayStart, dayEnd), 10);
+              if (dNum >= 1 && dNum <= 31) {
+                matchMmdd = (mNum < 10 ? '0' : '') + mNum + '-' +
+                            (dNum < 10 ? '0' : '') + dNum;
+              }
+            }
           }
+          if (matchMmdd !== date) return false;
         }
         return true;
       });
