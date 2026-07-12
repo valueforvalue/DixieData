@@ -972,12 +972,24 @@ html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:focus-
    transform-origin also drops to top-center for a centered
    scale. */
 @media (max-width: 640px) {
-  .foldout-panel {
+  .foldout-panel,
+  .mega-menu-panel {
     right: 0;
     left: 0;
     min-width: 0;
     width: calc(100vw - 2rem);
     transform-origin: top center;
+  }
+  /* Issue #476: very narrow viewports (<640px) get the same
+     full-width treatment for the floating Quick Nav dock panel
+     so the panel doesn't squish against the right edge when the
+     window is narrower than the panel's natural 24rem width. */
+  .floating-nav-panel {
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    min-width: 0;
+    max-width: calc(100vw - 1rem);
   }
 }
 /* When the trigger is the active page, mirror the
