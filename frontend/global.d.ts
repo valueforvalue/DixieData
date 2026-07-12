@@ -28,6 +28,12 @@ interface DixieDataWindow {
   __megaMenuInstallN?: number;
   __megaMenuDocHandlerBound?: boolean;
   __megaMenuBoundTriggers?: WeakSet<HTMLElement>;
+  // Issue #476 floating-nav panel (the Menu button's floating panel).
+  // Same install-once marker pattern as the foldout + megamenu above.
+  // Declared so tsc's checkJs stops emitting TS2339/TS2551 at the
+  // installFloatingNavPanel read/write sites in app.js.
+  __floatingNavInstallN?: number;
+  __floatingNavBoundTriggers?: WeakSet<HTMLElement>;
   __dixieBrowseFilterTimer?: ReturnType<typeof setTimeout>;
   __dixieDebug?: unknown;
   __dixieDebugDisabled?: boolean;
