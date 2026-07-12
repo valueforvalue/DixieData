@@ -41,7 +41,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
 						<span class="flex items-center gap-2">
 							<span class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Filters</span>
-							<span data-browse-filters-count class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.85)] px-2 py-0.5 text-xs font-semibold text-[#5a3b1f]">0 active</span>
+							<span data-browse-filters-count class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.85)] px-2 py-0.5 text-xs font-semibold text-[var(--theme-text-mid)]">0 active</span>
 						</span>
 						<span class="text-xs text-slate-500 group-open:hidden">Show</span>
 						<span class="hidden text-xs text-slate-500 group-open:inline">Hide</span>
@@ -253,7 +253,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 						if len(record.Tags) > 0 {
 							<div class="mt-2 flex flex-wrap gap-1">
 								for _, t := range record.Tags {
-									<span class="inline-block rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+									<span class="inline-block rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.65)] px-2 py-0.5 text-xs font-medium text-[var(--theme-text-mid)]">{ t.Name }</span>
 								}
 							</div>
 						}
@@ -305,7 +305,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 										if len(record.Tags) > 0 {
 											<div class="flex flex-wrap gap-1">
 												for _, t := range record.Tags {
-													<span class="inline-block rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+													<span class="inline-block rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.65)] px-2 py-0.5 text-xs font-medium text-[var(--theme-text-mid)]">{ t.Name }</span>
 												}
 											</div>
 										} else {

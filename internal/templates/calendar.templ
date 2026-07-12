@@ -17,25 +17,25 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 			<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="gold text-5xl leading-none">Calendar</h2>
-					<p class="mt-2 max-w-2xl text-base leading-relaxed text-[#445260]">Track soldier anniversaries alongside custom holidays and events for each day.</p>
-					<div class="mt-3 flex flex-wrap gap-3 text-[#445260]">
+					<p class="mt-2 max-w-2xl text-base leading-relaxed text-[var(--theme-text-mid)]">Track soldier anniversaries alongside custom holidays and events for each day.</p>
+					<div class="mt-3 flex flex-wrap gap-3 text-[var(--theme-text-mid)]">
 						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SoldierCount) }</div>
-							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Soldiers</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Soldiers</div>
 						</div>
 						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SpouseRecordCount) }</div>
-							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Spouse Records</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Spouse Records</div>
 						</div>
 						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.PersonRecordCount) }</div>
-							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Person Records</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Person Records</div>
 						</div>
 					</div>
 				</div>
-				<div class="mt-1 flex w-full flex-wrap items-start gap-3 text-base text-[#445260] xl:w-auto xl:justify-end">
+				<div class="mt-1 flex w-full flex-wrap items-start gap-3 text-base text-[var(--theme-text-mid)] xl:w-auto xl:justify-end">
 					<div class="flex w-full flex-wrap items-center gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgb(var(--theme-white-rgb)/0.76)] px-4 py-3 sm:w-auto">
-						<label for="month-select" class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]">Month</label>
+						<label for="month-select" class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Month</label>
 						<select id="month-select" class="field-input w-40" onchange="window.location.href='/calendar/' + this.value">
 							for _, m := range monthNumbers() {
 								<option value={ fmt.Sprintf("%d", m) } if m == month { selected }>{ monthName(m) }</option>
@@ -90,7 +90,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 				} else {
 					<div id="details-pane" class="relative card min-h-[300px] rounded-2xl p-6">
 						<h3 class="gold text-4xl leading-none">Select a day</h3>
-						<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day to add holidays or events and review matching anniversaries.</p>
+						<p class="mt-6 max-w-sm text-xl leading-relaxed text-[var(--theme-text-mid)]">Click any day to add holidays or events and review matching anniversaries.</p>
 					</div>
 				}
 			</div>
@@ -103,17 +103,17 @@ templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
 		<div class="flex items-center justify-between border-b border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.08)] px-5 py-4">
 			<div>
 				<h3 class="gold text-4xl leading-none">{ monthName(month) }</h3>
-				<div class="mt-3 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em] text-[#51606e]">
+				<div class="mt-3 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">
 					@CalendarLegendItem("Anniversaries", "bg-[var(--theme-accent-light)]")
 					@CalendarLegendItem("Events", "bg-[#7cb3e2]")
 					@CalendarLegendItem("Holidays", "bg-[#d98989]")
 				</div>
 			</div>
-			<span class="text-xs uppercase tracking-[0.28em] text-[#51606e]">{ fmt.Sprintf("%d-Day Grid", calendarDaysInMonth(month)) }</span>
+			<span class="text-xs uppercase tracking-[0.28em] text-[var(--theme-text-muted)]">{ fmt.Sprintf("%d-Day Grid", calendarDaysInMonth(month)) }</span>
 		</div>
 		<div class="grid grid-cols-7 border-b border-[rgb(var(--theme-sepia-rgb)/0.55)] bg-[rgb(var(--theme-ink-deep-rgb)/0.08)]">
 			for _, weekday := range weekdayNames() {
-				<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#51606e]">{ weekday }</div>
+				<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-text-muted)]">{ weekday }</div>
 			}
 		</div>
 		<div class="grid grid-cols-7">

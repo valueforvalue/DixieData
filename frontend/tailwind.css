@@ -44,8 +44,19 @@ html { scrollbar-gutter: stable; }
   --theme-bg-input: rgba(245, 242, 236, 0.96);
   --theme-text-primary: #22303d;
   --theme-text-deep: #1f2b38;
-  --theme-text-mid: #324253;
-  --theme-text-muted: rgba(34, 45, 57, 0.7);
+  /* Issue #482 A4 follow-up to #477: --theme-text-mid now matches
+     the slate-blue gray the calendar + browse pages were hardcoding
+     as #445260 for body description text (cal descriptions +
+     calendar_day notes + browse tag pill text). --theme-text-muted
+     now resolves to a saturated slate that matches the prior
+     #5a6a78 / #51606e / #6a7a88 hex literals for form labels +
+     stat count labels + empty-state hint text. Both per-theme
+     overrides below keep the muted body text legible in High
+     Contrast (near-black) and Soft (warm brown) — without these
+     overrides the pre-fix slate-blue body text bled through into
+     the Soft theme as unreadable blue text on parchment bg. */
+  --theme-text-mid: #445260;
+  --theme-text-muted: #5a6a78;
   --theme-text-faint: rgba(34, 45, 57, 0.025);
   --theme-ink-deep-rgb: 31 43 56;
   --theme-review-red-deep: #54211d;

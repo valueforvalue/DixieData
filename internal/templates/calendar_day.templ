@@ -19,7 +19,7 @@ templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
 	<div class="space-y-6">
 		<div>
 			<h3 class="gold text-4xl leading-none">{ calendarDayHeading(day.Month, day.Day) }</h3>
-			<p class="mt-2 text-sm leading-relaxed text-[#445260]">Review anniversaries first, then manage recurring events and holidays for this date.</p>
+			<p class="mt-2 text-sm leading-relaxed text-[var(--theme-text-mid)]">Review anniversaries first, then manage recurring events and holidays for this date.</p>
 		</div>
 		if strings.TrimSpace(day.StatusMessage) != "" {
 			<div class={ calendarDayStatusClass(day.StatusKind) }>{ day.StatusMessage }</div>
@@ -38,7 +38,7 @@ templ CalendarDayActions(day viewmodel.CalendarDayDetail) {
 	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-4">
 		<div>
 			<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Calendar Actions</p>
-			<p class="mt-1 text-sm text-[#5a6a78]">Add or edit yearly events and holidays without crowding the day view.</p>
+			<p class="mt-1 text-sm text-[var(--theme-text-muted)]">Add or edit yearly events and holidays without crowding the day view.</p>
 		</div>
 		if day.Form.EditingID > 0 || strings.TrimSpace(day.Form.ErrorMessage) != "" {
 			<details class="relative" open>
@@ -65,15 +65,15 @@ templ CalendarDayAnniversaries(day viewmodel.CalendarDayDetail) {
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">Anniversaries</h4>
-				<p class="mt-1 text-sm text-[#5a6a78]">Expanded is the default. Switch to compact rows when you want a tighter scan.</p>
+				<p class="mt-1 text-sm text-[var(--theme-text-muted)]">Expanded is the default. Switch to compact rows when you want a tighter scan.</p>
 			</div>
 			<div class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/70 px-2 py-2">
 				<button type="button" data-calendar-anniversary-density-toggle="expanded" class="rounded-full border border-[var(--theme-text-primary)] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-accent-glow)] transition">Expanded</button>
-				<button type="button" data-calendar-anniversary-density-toggle="compact" class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#51606e] transition">Compact</button>
+				<button type="button" data-calendar-anniversary-density-toggle="compact" class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-text-muted)] transition">Compact</button>
 			</div>
 		</div>
 		if len(day.Anniversaries) == 0 {
-			<p class="rounded-2xl border border-dashed border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.62)] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
+			<p class="rounded-2xl border border-dashed border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.62)] px-4 py-4 text-sm text-[var(--theme-text-muted)]">No person records for this date.</p>
 		} else {
 			<div data-calendar-anniversary-density="expanded" class="space-y-3">
 				for _, soldier := range day.Anniversaries {
@@ -91,10 +91,10 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 	<div class="space-y-3">
 		<div>
 			<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">Events &amp; Holidays</h4>
-			<p class="mt-1 text-sm text-[#5a6a78]">Recurring custom items appear every year on this date.</p>
+			<p class="mt-1 text-sm text-[var(--theme-text-muted)]">Recurring custom items appear every year on this date.</p>
 		</div>
 		if len(day.Items) == 0 {
-			<p class="rounded-2xl border border-dashed border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.62)] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
+			<p class="rounded-2xl border border-dashed border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.62)] px-4 py-4 text-sm text-[var(--theme-text-muted)]">No custom calendar items yet for this date.</p>
 		} else {
 			<div class="space-y-2">
 				for _, item := range day.Items {
@@ -103,11 +103,11 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
 									<span class={ calendarItemDotClass(item.ItemType) }></span>
-									<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#51606e]">{ calendarItemTypeLabel(item.ItemType) }</span>
+									<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">{ calendarItemTypeLabel(item.ItemType) }</span>
 									<h5 class="text-base font-semibold text-[var(--theme-text-primary)]">{ item.Title }</h5>
 								</div>
 								if strings.TrimSpace(item.Notes) != "" {
-									<p class="mt-2 text-sm leading-6 text-[#445260]">{ item.Notes }</p>
+									<p class="mt-2 text-sm leading-6 text-[var(--theme-text-mid)]">{ item.Notes }</p>
 								}
 							</div>
 							<div class="flex flex-wrap gap-2">
@@ -166,7 +166,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 		<div class="flex flex-wrap items-start justify-between gap-3">
 			<div>
 				<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">{ calendarDayFormSummary(day.Form) }</h4>
-				<p class="mt-1 text-sm text-[#5a6a78]">Titles are required. Notes are optional. Duplicate titles are allowed.</p>
+				<p class="mt-1 text-sm text-[var(--theme-text-muted)]">Titles are required. Notes are optional. Duplicate titles are allowed.</p>
 			</div>
 			if day.Form.EditingID > 0 {
 				<button
@@ -190,7 +190,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 			>
 				@CalendarItemFormFields(day.Form)
 				<div class="flex flex-wrap items-center justify-between gap-3">
-					<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Editing in place</span>
+					<span class="text-xs uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Editing in place</span>
 					@components.Button("Save Changes", components.ButtonPrimary, "px-5 py-2", nil)
 				</div>
 			</form>
@@ -202,7 +202,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 			>
 				@CalendarItemFormFields(day.Form)
 				<div class="flex flex-wrap items-center justify-between gap-3">
-					<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Appears on this date every year</span>
+					<span class="text-xs uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Appears on this date every year</span>
 					@components.Button("Add Item", components.ButtonPrimary, "px-5 py-2", nil)
 				</div>
 			</form>
@@ -212,14 +212,14 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 
 templ CalendarItemFormFields(form viewmodel.CalendarItemForm) {
 	<div class="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)]">
-		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-type">Type</label>
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)]" for="calendar-item-type">Type</label>
 		<select id="calendar-item-type" name="item_type" class="field-input max-w-xs">
 			<option value="event" if form.ItemType == "event" { selected }>Event</option>
 			<option value="holiday" if form.ItemType == "holiday" { selected }>Holiday</option>
 		</select>
-		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-title">Title</label>
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)]" for="calendar-item-title">Title</label>
 		<input id="calendar-item-title" name="title" value={ form.Title } class="field-input" maxlength="120" placeholder="Memorial service"/>
-		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-notes">Notes</label>
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)]" for="calendar-item-notes">Notes</label>
 		<textarea id="calendar-item-notes" name="notes" rows="3" class="field-input resize-y" placeholder="Optional context or reminder">{ form.Notes }</textarea>
 	</div>
 }
