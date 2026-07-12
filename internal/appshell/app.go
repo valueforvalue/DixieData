@@ -409,28 +409,13 @@ func renderStartupPlaceholder(a *App, w http.ResponseWriter, r *http.Request) {
 	// users saw a flash of the Default loading card on every cold
 	// launch until the 700ms JS redirect hit the warmed mux. The
 	// fix: when the atomic is nil (the cold-start race window),
-	// backfill from local_settings.json via LoadLocalSettings.
-	// Disk read happens only during this window; once Startup()
-	// stores the atomic, every later request (including the
-	// placeholder's own refresh) hits the in-memory path. nil
-	// dataDir (a truly fresh NewApp() with no settings file) and
-	// load errors fall through to ThemeDefault.
-	var theme string
-	if a != nil {
-		if v := a.theme.Load(); v != nil {
-			if s, ok := v.(string); ok {
-				theme = s
-			}
-		}
-	}
-	if theme == "" && a != nil && a.dataDir != "" {
-		if settings, err := records.LoadLocalSettings(a.dataDir); err == nil {
-			theme = settings.ResolvedTheme()
-		}
-	}
-	if theme == "" {
-		theme = records.ThemeDefault
-	}
+	// backfill from local_settings.json via resolvedBootTheme
+	// (shared with /boot-theme.js). Disk read happens only during
+	// this window; once Startup() stores the atomic, every later
+	// request (including the placeholder's own refresh) hits the
+	// in-memory path. nil dataDir (a truly fresh NewApp() with no
+	// settings file) and load errors fall through to ThemeDefault.
+	theme := resolvedBootTheme(a)
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")

@@ -2,6 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <!-- Issue #483 follow-up: the Wails asset server serves this static
+       index.html for "/" WITHOUT going through the Go ServeHTTP stack,
+       so the server-rendered Layout (which sets <html data-theme> from
+       the persisted theme) never runs for the first paint. The shell's
+       <html> had no data-theme, and the <body hx-get="/calendar"
+       hx-trigger="load"> htmx swap discarded the response's
+       <html data-theme> (innerHTML swap into <body> doesn't touch the
+       <html> element) — so High Contrast / Soft users saw the Default
+       theme on the home screen until a full-page navigation. This
+       blocking (non-deferred) script fetches the persisted theme from
+       the Go /boot-theme.js endpoint and sets <html data-theme> BEFORE
+       the body paints, eliminating the FOUC. It must stay blocking and
+       stay ahead of the body, so place it at the top of <head>. -->
+  <script src="/boot-theme.js"></script>
   <title>DixieData</title>
   <link rel="stylesheet" href="/app.css"/>
   <script defer src="/htmx.min.js"></script>
@@ -21,9 +35,9 @@
       background:
         radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 26%),
         radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 18%),
-        repeating-linear-gradient(135deg, rgba(34,45,57,0.025) 0, rgba(34,45,57,0.025) 6px, transparent 6px, transparent 18px),
-        linear-gradient(180deg, #d7d2c9 0%, #c9c2b5 42%, #b9b1a3 100%);
-      color: #22303d;
+        repeating-linear-gradient(135deg, rgb(var(--theme-ink-deep-rgb)/0.025) 0, rgb(var(--theme-ink-deep-rgb)/0.025) 6px, transparent 6px, transparent 18px),
+        linear-gradient(180deg, var(--theme-bg-page-top) 0%, var(--theme-bg-page-mid) 42%, var(--theme-bg-page-bottom) 100%);
+      color: var(--theme-text-primary);
       font-family: "Helvetica Neue", Arial, sans-serif;
     }
   </style>

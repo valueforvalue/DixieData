@@ -22,6 +22,67 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
+// resolvedBootTheme returns the theme name that should be stamped
+// on the very first paint of the Wails WebView2 — before App.Startup()
+// has necessarily stored a.theme. It mirrors the nil-safe + disk-backfill
+// pattern used by renderStartupPlaceholder (app.go) so the static
+// frontend/index.html shell (served by the Wails asset server, which
+// bypasses ServeHTTP for the first paint of "/") can request the
+// persisted theme via the /boot-theme.js script and apply it to
+// <html data-theme> before the body paints.
+//
+// Issue #483 follow-up: the #474/#481 fixes only themed the
+// server-rendered Layout pages + the pre-mux placeholder. But the
+// Wails asset server serves frontend/index.html as a STATIC asset
+// for "/" — Go never sees that request, so Layout (which sets
+// <html data-theme> server-side) never runs for the first paint.
+// The shell's <html> has no data-theme, and the shell's
+// <body hx-get="/calendar" hx-trigger="load"> htmx swap discards the
+// response's <html data-theme> (innerHTML swap into <body> doesn't
+// touch the <html> element). So High Contrast / Soft users saw the
+// Default theme on the home screen until a full-page navigation
+// re-rendered the whole document through Layout. The fix: a blocking
+// <script src="/boot-theme.js"> in index.html <head> runs before the
+// body paints and sets the attribute from the same source Layout
+// would use. This helper resolves that source: a.theme atomic first
+// (steady state), then local_settings.json on disk (cold-start race
+// before Startup stores the atomic), then records.ThemeDefault.
+func resolvedBootTheme(a *App) string {
+	var theme string
+	if a != nil {
+		if v := a.theme.Load(); v != nil {
+			if s, ok := v.(string); ok {
+				theme = s
+			}
+		}
+	}
+	if theme == "" && a != nil && a.dataDir != "" {
+		if settings, err := records.LoadLocalSettings(a.dataDir); err == nil {
+			theme = settings.ResolvedTheme()
+		}
+	}
+	if theme == "" {
+		theme = records.ThemeDefault
+	}
+	return theme
+}
+
+// handleBootThemeScript serves a tiny JS snippet that stamps the
+// persisted theme on document.documentElement before the static
+// index.html shell paints. See resolvedBootTheme for the full
+// rationale. The response is no-store so a theme change in /settings
+// is reflected on the next shell load (the shell only loads on a
+// full navigation to "/", so the cost is one tiny fetch per landing).
+func (a *App) handleBootThemeScript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	fmt.Fprintf(w, "document.documentElement.setAttribute('data-theme',%q);", resolvedBootTheme(a))
+}
+
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
