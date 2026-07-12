@@ -117,7 +117,7 @@ func TestStaticArchiveIndex_RendersEventsAndArticlesTabs(t *testing.T) {
 
 	// Nav menu labels — the small fixed nav the revamp uses (issue
 	// #498 slice 2 replaces the legacy three-tab segmented control).
-	for _, label := range []string{"Person Records", "Events", "Articles"} {
+	for _, label := range []string{"View All", "Events", "Articles"} {
 		if !strings.Contains(html, label) {
 			t.Errorf("rendered index.html missing nav label %q (issue #490 / #498 slice 2)", label)
 		}
@@ -329,13 +329,13 @@ func TestStaticArchive_CalendarHelper_PopulatesDayCounts(t *testing.T) {
 // TestStaticArchiveIndex_HashRouterRendersCalendarLanding (issue #498
 // slice 2) asserts the viewer ships the new hash-routed nav: the
 // rendered index.html carries the nav-menu surface (Calendar /
-// Browse / Insights / Person Records / Events / Articles) and a
+// Filter / Insights / View All / Events / Articles) and a
 // Calendar landing screen with a per-month grid renderer.
 func TestStaticArchiveIndex_HashRouterRendersCalendarLanding(t *testing.T) {
 	html := renderIndexForTest(t)
 
 	// Nav menu — every entry per the spec.
-	for _, label := range []string{"Calendar", "Browse", "Insights", "Person Records", "Events", "Articles"} {
+	for _, label := range []string{"Calendar", "Filter", "Insights", "View All", "Events", "Articles"} {
 		if !strings.Contains(html, label) {
 			t.Errorf("nav menu missing %q (issue #498 slice 2)", label)
 		}

@@ -326,8 +326,8 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       display: none;
     }
 
-    /* Issue #498 slice 2: small fixed nav menu (Calendar / Browse /
-       Insights / Person Records / Events / Articles). Replaces the
+    /* Issue #498 slice 2: small fixed nav menu (Calendar / Filter /
+       Insights / View All / Events / Articles). Replaces the
        legacy three-tab segmented control. Each link is a hash-route;
        the JS toggles .active based on the current hash. Empty-entity
        links (Events, Articles) are hidden by the JS when the bundle
@@ -1232,20 +1232,20 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     <header class="hero">
       <div class="hero-shell">
         <h1>{{ .ArchiveTitle }}</h1>
-        <p>Browse this standalone DixieData archive as a read-only mirror of the DixieData app. The Calendar landing shows every anniversary and event day in the archive; use the nav to jump to Browse (filterable Person Record list), Insights (analytics snapshot), or the Event / Article tabs.</p>
+        <p>Browse this standalone DixieData archive as a read-only mirror of the DixieData app. The Calendar landing shows every anniversary and event day in the archive; use the nav to jump to Filter (filterable Person Record list), Insights (analytics snapshot), or the Event / Article tabs.</p>
         <div class="archive-meta">
           <span>Generated {{ .GeneratedAt }}</span>
         </div>
-        <!-- Issue #498 slice 2: small fixed nav menu (Calendar / Browse /
-             Insights / Person Records / Events / Articles). Each link is
+        <!-- Issue #498 slice 2: small fixed nav menu (Calendar / Filter /
+             Insights / View All / Events / Articles). Each link is
              a hash-route to its page renderer; the JS marks the active
              link based on the current hash. Empty-entity links are hidden
              (e.g. no Events tab if bundle.events is empty). -->
         <nav class="nav-menu" id="archive-nav-menu">
           <a href="#/calendar"  class="nav-link" data-route="calendar">Calendar</a>
-          <a href="#/browse"    class="nav-link" data-route="browse">Browse</a>
+          <a href="#/browse"    class="nav-link" data-route="browse">Filter</a>
           <a href="#/insights"  class="nav-link" data-route="insights">Insights</a>
-          <a href="#/persons"   class="nav-link" data-route="persons">Person Records</a>
+          <a href="#/persons"   class="nav-link" data-route="persons">View All</a>
           <a href="#/events"    class="nav-link nav-link-events hidden" data-route="events">Events</a>
           <a href="#/articles"  class="nav-link nav-link-articles hidden" data-route="articles">Articles</a>
         </nav>
@@ -1871,7 +1871,7 @@ function escapeHtml(value) {
 
       return '' +
         '<div class="panel-head"><h2>Calendar</h2></div>' +
-        '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to browse Person Records for that date.</p>' +
+        '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to filter Person Records for that date.</p>' +
         selectorHtml +
         (totalDaysWithData === 0
           ? '<div class="placeholder-card">No anniversaries, events, or holidays recorded in this archive.</div>'
@@ -1908,7 +1908,7 @@ function escapeHtml(value) {
     function renderBrowsePage(bundle, query) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
       return '' +
-        '<div class="panel-head"><h2>Browse</h2>' +
+        '<div class="panel-head"><h2>Filter</h2>' +
         '<span class="browse-count" id="browse-count">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + '</span>' +
         '</div>' +
         '<p class="panel-subtext">Search and filter the Person Records. Click any row for the full detail view. Click an Insights card on the Insights page to pre-filter this list.</p>' +
@@ -1921,8 +1921,8 @@ function escapeHtml(value) {
             '<label>Sort by</label>' +
             '<select id="browse-sort">' +
               '<option value="display_id">Display ID</option>' +
-              '<option value="name">Name</option>' +
-              '<option value="last_edited" selected>Last Edited</option>' +
+              '<option value="name" selected>Last name</option>' +
+              '<option value="last_edited">Last Edited</option>' +
             '</select>' +
           '</div>' +
           '<div class="browse-page-size-row">' +
@@ -2034,7 +2034,7 @@ function escapeHtml(value) {
       var pageSizeSelect = document.getElementById('browse-page-size');
       if (!searchInput || !sortSelect || !pageSizeSelect) return;
       var query = String(searchInput.value || '').trim().toLowerCase();
-      var sort = sortSelect.value || 'last_edited';
+      var sort = sortSelect.value || 'name';
       var pageSize = Number(pageSizeSelect.value) || 25;
 
       // Gather active filter values for the removable-chips display.
@@ -2177,7 +2177,7 @@ function escapeHtml(value) {
       var insights = (bundle && bundle.insights) ? bundle.insights : null;
       var html = '' +
         '<div class="panel-head"><h2>Insights</h2></div>' +
-        '<p class="panel-subtext">A pre-computed snapshot of the archive\'s analytics — Person Record Types, top cemeteries, Confederate Home status, pension distribution, top units, and birth/death decades. Click any entry to browse Person Records with that filter pre-filled.</p>' +
+        '<p class="panel-subtext">A pre-computed snapshot of the archive\'s analytics — Person Record Types, top cemeteries, Confederate Home status, pension distribution, top units, and birth/death decades. Click any entry to filter Person Records with that filter pre-filled.</p>' +
         '<div class="insights-grid">';
       if (!insights) {
         html += '<div class="placeholder-card">No insights snapshot available in this archive.</div>';
@@ -2268,7 +2268,7 @@ function escapeHtml(value) {
     function renderPersonsPage(bundle) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
       var html =
-        '<div class="panel-head"><h2>Person Records</h2></div>' +
+        '<div class="panel-head"><h2>View All</h2></div>' +
         '<p class="panel-subtext">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + ' in this archive. Click any row for the full detail view.</p>' +
         '<div class="results">';
       for (var i = 0; i < records.length; i++) {

@@ -121,7 +121,7 @@ test('slice2-02 nav menu has data-route markers for all 6 routes', () => {
 });
 
 test('slice2-03 nav menu label text matches the issue spec', () => {
-  for (const label of ['Calendar', 'Filter', 'Insights', 'Person Records', 'Events', 'Articles']) {
+  for (const label of ['Calendar', 'Filter', 'Insights', 'View All', 'Events', 'Articles']) {
     assert.ok(
       html.includes(label),
       `nav menu must render the label "${label}"`,
@@ -241,6 +241,16 @@ test('slice3-03 Browse pre-fill reads #/browse?{field}={value} from route hash',
   assert.ok(
     html.includes('browse-clear-filters'),
     'Browse must render clear-filters button (issue #499)',
+  );
+  // Issue #504: default sort = Last name (alphabetical).
+  assert.ok(
+    html.includes('value="name" selected'),
+    'Browse sort must default to Last name (issue #504)',
+  );
+  // Issue #504: Browse page heading renamed to Filter.
+  assert.ok(
+    html.includes('<h2>Filter</h2>'),
+    'Browse page heading must be Filter (issue #504)',
   );
 });
 
