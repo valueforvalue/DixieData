@@ -413,6 +413,24 @@ test('slice6-01 Export Report button renders on Person Record detail toolbar', (
   );
 });
 
+// --- Slice 7: Calendar cell contrast (issue #508) ---
+test('slice7-01 calendar-day.empty has no opacity or distinct background (issue #508)', () => {
+  // Pin: empty cells share the base .calendar-day tint. Only difference
+  // is `cursor: default` so the cell is visually non-clickable. No
+  // `opacity:` and no explicit `background:` on `.calendar-day.empty`.
+  const emptyRule = html.match(/\.calendar-day\.empty\s*\{[^}]*\}/);
+  assert.ok(emptyRule, 'static_archive.go must define a .calendar-day.empty rule');
+  const ruleBody = emptyRule[0];
+  assert.ok(
+    !/opacity\s*:/.test(ruleBody),
+    `.calendar-day.empty must not set opacity (issue #508): ${ruleBody}`,
+  );
+  assert.ok(
+    !/background\s*:/.test(ruleBody),
+    `.calendar-day.empty must not override background (issue #508): ${ruleBody}`,
+  );
+});
+
 console.log(`\nResults: ${pass} pass, ${fail} fail`);
 if (fail > 0) {
   process.exit(1);
