@@ -180,6 +180,13 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 								// trigger button is the JS wire; this menuitem
 								// flag is the server-rendered echo.
 								templ.Raw(reviewQueueMenuItem(layoutHasOpenReview(ctx))),
+								// Issue #491: Archive Inventory menuitem. Lives
+								// in the Review & Research group because it
+								// answers the same "what's in my archive"
+								// question the picker answers for Person
+								// Records, just at a basic level than the
+								// per-attribute Insights analytics.
+								templ.Raw(`<li role="none"><a href="` + routebuilder.Inventory() + `" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-inventory>Archive Inventory</a></li>`),
 								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=timeline" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a></li>`),
 								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=research-log" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-log>Open Research Log</a></li>`),
 								templ.Raw(`<li role="none"><a href="/research-collections" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-collections>Research Collections</a></li>`),

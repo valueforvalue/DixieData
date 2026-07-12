@@ -1,0 +1,136 @@
+// inventory.templ — the Local Archive Inventory page (issue #491).
+//
+// Surfaces the full DB shape at a basic level: Person Record
+// subtypes (Soldiers / Spouse Records / Linked Persons) +
+// Event Records + Articles + Tags + a per-kind rollup for the
+// three non-Person categories. Each card drills into the matching
+// listing page. Per-attribute analytics live on /insights; this
+// page is intentionally basic — it's the "what's in my archive"
+// answer, not the analytics surface.
+//
+// Accessible from the Share & Review mega-menu's Review & Research
+// group (data-research-menu-inventory hook). No picker-guard: it's
+// a static rollup, not a workflow launcher. Public after the
+// normal setup gate.
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ InventoryView(view viewmodel.InventoryView) {
+	@Layout("Archive Inventory") {
+		<div id={ uiids.PageInventory } class="relative mx-auto max-w-5xl space-y-6">
+			<header class="space-y-2">
+				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Archive Inventory</p>
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">What's in your Local Archive</h1>
+				<p class="max-w-3xl text-sm text-slate-600">
+					A basic rollup of the five entity kinds the Local Archive stores: Person Records (soldiers + spouses + linked persons), Event Records, and Articles. Tags are a labeling primitive, not a primary entity. For per-attribute analytics, see <a href={ templ.SafeURL("/insights") } class="text-[var(--theme-text-primary)] underline">Insights</a>.
+				</p>
+			</header>
+			// Headline numbers — same six cards the Calendar header
+			// surface will eventually mirror (the Calendar header
+			// currently shows the 3 Person Record subtype cards only;
+			// the 3 non-Person cards live here, issue #491).
+			<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
+				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Headline Numbers</p>
+				<h2 class="text-xl font-bold gold">{ fmt.Sprintf("%d", view.Counts.TotalEntities()) } archive entries</h2>
+				<p class="text-sm text-slate-600">Across { fmt.Sprintf("%d", view.Counts.TagCount) } tags.</p>
+				<div class="mt-5 grid gap-4 sm:grid-cols-3">
+					@inventoryCard("Soldiers", view.Counts.SoldierCount, "/browse?entry_type=soldier", "Browse soldiers")
+					@inventoryCard("Spouse Records", view.Counts.SpouseRecordCount, "/browse?entry_type=spouse", "Browse spouses")
+					@inventoryCard("Linked Persons", view.Counts.PersonRecordCount, "/browse?entry_type=linked_person", "Browse linked persons")
+					@inventoryCard("Event Records", view.Counts.EventRecordCount, "/events", "Browse events")
+					@inventoryCard("Articles", view.Counts.ArticleRecordCount, "/articles", "Browse articles")
+					@inventoryCard("Tags", view.Counts.TagCount, "/tags", "Browse tags")
+				</div>
+			</section>
+			// Per-kind rollups for the three non-Person categories.
+			// Each section is independently empty-state-aware so a
+			// user with no events / no articles / no tags doesn't
+			// see an empty panel header.
+			if view.Counts.EventRecordCount > 0 {
+				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Event Records by Kind</p>
+					<h2 class="text-xl font-bold gold">Per-kind rollup</h2>
+					<p class="text-sm text-slate-600">Kinds are free-text (Battle, Campaign, Death, Marriage, Hospital stay, etc. — no enum per issue #320).</p>
+					if len(view.EventKinds) == 0 {
+						<p class="text-sm text-slate-500">Event Records are present but the per-kind rollup failed to load. See the audit log for the underlying query error.</p>
+					} else {
+						<ul class="mt-3 space-y-2" data-inventory-event-kinds>
+							for _, kind := range view.EventKinds {
+								<li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-2 text-sm">
+									<span class="text-[var(--theme-text-primary)]">{ kind.Label }</span>
+									<span class="font-mono text-xs font-semibold text-[var(--theme-review-red)]">{ fmt.Sprintf("%d", kind.Count) }</span>
+								</li>
+							}
+						</ul>
+					}
+				</section>
+			}
+			if view.Counts.ArticleRecordCount > 0 {
+				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Articles</p>
+					<h2 class="text-xl font-bold gold">Live articles (snapshots excluded)</h2>
+					if len(view.ArticleRefs) == 0 {
+						<p class="text-sm text-slate-500">Articles are present but the title list failed to load. See the audit log for the underlying query error.</p>
+					} else {
+						<ul class="mt-3 space-y-2" data-inventory-articles>
+							for _, article := range view.ArticleRefs {
+								<li class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-2 text-sm text-[var(--theme-text-primary)]">{ article.Label }</li>
+							}
+						</ul>
+					}
+				</section>
+			}
+			if view.Counts.TagCount > 0 {
+				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Tags</p>
+					<h2 class="text-xl font-bold gold">Tag names</h2>
+					if len(view.TagKinds) == 0 {
+						<p class="text-sm text-slate-500">Tags are present but the name list failed to load. See the audit log for the underlying query error.</p>
+					} else {
+						<div class="mt-3 flex flex-wrap gap-2" data-inventory-tags>
+							for _, tag := range view.TagKinds {
+								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-3 py-1 text-sm text-[var(--theme-text-primary)]">{ tag.Label }</span>
+							}
+						</div>
+					}
+				</section>
+			}
+			// Empty-state branch: zero entities of any kind.
+			if view.Counts.TotalEntities() == 0 && view.Counts.TagCount == 0 {
+				<section class="card rounded-3xl p-5 sm:p-8 text-center text-sm text-slate-500">
+					Your Local Archive is empty. Add a Person Record to get started.
+				</section>
+			}
+			// Footer crosslink to insights (per-attribute analytics).
+			<footer class="text-sm text-slate-500">
+				Need per-attribute analytics (cemetery density, pension geography, unit concentration, decade chronology)? See <a href={ templ.SafeURL("/insights") } class="text-[var(--theme-text-primary)] underline">Insights</a>.
+			</footer>
+		</div>
+	}
+}
+
+// inventoryCard is the per-headline-number card the inventory
+// page renders. The card is a clickable anchor that drills into
+// the matching listing page (per-entry_type browse, /events,
+// /articles, /tags). Issue #491.
+templ inventoryCard(label string, count int, href, drillLabel string) {
+	<a href={ templ.SafeURL(href) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.6)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]" data-inventory-card={ strings.ToLower(strings.ReplaceAll(label, " ", "-")) }>
+		<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", count) }</div>
+		<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{ label }</div>
+		<div class="mt-2 text-xs text-slate-400">{ drillLabel } &rarr;</div>
+	</a>
+}
+
+// routebuilder import is referenced via the routebuilder.Inventory()
+// URL helper for the top-nav pill + the crosslink to the listing
+// pages. The current implementation keeps the page URL surface
+// in one place.
+var _ = routebuilder.Inventory

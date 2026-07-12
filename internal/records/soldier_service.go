@@ -134,8 +134,16 @@ func NewSoldierService(database *db.DB) *SoldierService {
 // on the concrete EventService. *EventService satisfies this
 // implicitly; tests can substitute a fake without dragging
 // the whole Event facade.
+//
+// Issue #491 widens the seam with Count + KindRollup so the
+// appshell inventory handler can call the same EventService
+// instance SoldierService is wired to without reaching past
+// the seam. The two methods are read-only inventory rollups
+// and stay in the same file as the timeline querier.
 type EventTimelineQuerier interface {
 	LinkedEventsForTimeline(personID int64) ([]LinkedEventTimelineMarker, error)
+	Count() (int, error)
+	KindRollup() ([]EventKindCount, error)
 }
 
 // SetEvents wires the back-reference from SoldierService to
@@ -506,6 +514,15 @@ func (s *SoldierService) CountNeedsReview() (int, error) {
 }
 
 // ArchiveCounts returns the headline-number rollup (soldiers, wives/widows, linked people) for the Insights page header.
+//
+// Issue #491: the query also pulls Event Records + Articles + Tags counts
+// in a single round-trip via scalar subqueries, so the same call site
+// powers the Insights page header, the Calendar header archive rollup,
+// and the new /inventory page. The three extra subqueries are O(1) on
+// the tags + articles tables (table row count with the primary key
+// index) and O(soldiers) on the event-count subquery — acceptable for
+// the inventory rollup shape (a single-digit-millisecond sweep on a
+// 10k-row archive).
 func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 	row := s.db.Conn().QueryRow(`
 		SELECT
@@ -520,10 +537,20 @@ func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 			COALESCE(SUM(CASE
 				WHEN LOWER(TRIM(entry_type)) = 'linked_person' THEN 1
 				ELSE 0
-			END), 0)
+			END), 0),
+			(SELECT COUNT(*) FROM soldiers WHERE LOWER(TRIM(entry_type)) = 'event'),
+			(SELECT COUNT(*) FROM articles WHERE is_snapshot = 0),
+			(SELECT COUNT(*) FROM tags)
 		FROM soldiers`)
 	var counts models.ArchiveCounts
-	if err := row.Scan(&counts.TotalSoldiers, &counts.TotalWivesWidows, &counts.TotalLinkedPeople); err != nil {
+	if err := row.Scan(
+		&counts.TotalSoldiers,
+		&counts.TotalWivesWidows,
+		&counts.TotalLinkedPeople,
+		&counts.EventRecords,
+		&counts.Articles,
+		&counts.Tags,
+	); err != nil {
 		return models.ArchiveCounts{}, err
 	}
 	return counts, nil

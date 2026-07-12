@@ -55,7 +55,13 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 						</a>
 						<a href={ insightDrilldownHref("entry_type", models.EntryTypeLinkedPerson) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
 							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount) }</div>
-							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Person Records</div>
+							// Issue #491: relabeled from "Person Records"
+							// to "Linked Persons" so the number reads as
+							// the linked-person bucket only. Per the
+							// glossary, "Person Record" is the umbrella
+							// for soldiers + spouses + linked_persons;
+							// the old label was misleading.
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Linked Persons</div>
 						</a>
 					</div>
 				</section>

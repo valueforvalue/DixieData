@@ -19,18 +19,29 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 					<h2 class="gold text-5xl leading-none">Calendar</h2>
 					<p class="mt-2 max-w-2xl text-base leading-relaxed text-[var(--theme-text-mid)]">Track soldier anniversaries alongside custom holidays and events for each day.</p>
 					<div class="mt-3 flex flex-wrap gap-3 text-[var(--theme-text-mid)]">
-						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
+						// Issue #491: the third card was relabeled from
+						// "Person Records" to "Linked Persons" so the
+						// number reads as the linked-person bucket only
+						// (per the glossary, "Person Record" is the
+						// umbrella term for soldiers + spouses +
+						// linked_persons — the old label was
+						// misleading). Each card is now a clickable
+						// drilldown into /browse pre-filtered by the
+						// matching entry_type. Event Records +
+						// Articles + Tags counts live on the new
+						// /inventory page.
+						<a href={ templ.SafeURL("/browse?entry_type=soldier") } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.6)] hover:bg-[rgb(var(--theme-white-rgb)/0.92)]" data-calendar-drilldown="soldier">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SoldierCount) }</div>
 							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Soldiers</div>
-						</div>
-						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
+						</a>
+						<a href={ templ.SafeURL("/browse?entry_type=spouse") } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.6)] hover:bg-[rgb(var(--theme-white-rgb)/0.92)]" data-calendar-drilldown="spouse">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SpouseRecordCount) }</div>
 							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Spouse Records</div>
-						</div>
-						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3">
+						</a>
+						<a href={ templ.SafeURL("/browse?entry_type=linked_person") } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-3 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.6)] hover:bg-[rgb(var(--theme-white-rgb)/0.92)]" data-calendar-drilldown="linked-person">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.PersonRecordCount) }</div>
-							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Person Records</div>
-						</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">Linked Persons</div>
+						</a>
 					</div>
 				</div>
 				<div class="mt-1 flex w-full flex-wrap items-start gap-3 text-base text-[var(--theme-text-mid)] xl:w-auto xl:justify-end">

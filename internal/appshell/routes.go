@@ -288,6 +288,11 @@ func (a *App) setupRoutes() {
 	r.Get("/insights/drilldown", a.handleInsightsDrilldown)
 	r.Post("/insights/audit/duplicates", a.handleRunDuplicateAudit)
 
+	// Issue #491: archive inventory page — full Local Archive rollup
+	// (Person Record subtypes + Event Records + Articles + Tags) at
+	// a basic level than the /insights per-attribute analytics.
+	r.Get("/inventory", a.handleInventory)
+
 	r.Get("/export", a.handleLegacyExportRedirect)
 	r.Get("/settings", a.handleSettings)
 	r.Post("/settings/theme", a.handleSettingsTheme)

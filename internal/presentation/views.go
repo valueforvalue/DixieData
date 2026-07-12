@@ -347,9 +347,12 @@ func PersonEventsTab(personID int64, linked []models.Soldier) templ.Component {
 // viewmodel type directly and this is the only place that needs both.
 func viewmodelCountsFromModels(counts models.ArchiveCounts) viewmodel.ArchiveCounts {
 	return viewmodel.ArchiveCounts{
-		SoldierCount:      counts.TotalSoldiers,
-		SpouseRecordCount: counts.TotalWivesWidows,
-		PersonRecordCount: counts.TotalLinkedPeople,
+		SoldierCount:       counts.TotalSoldiers,
+		SpouseRecordCount:  counts.TotalWivesWidows,
+		PersonRecordCount:  counts.TotalLinkedPeople,
+		EventRecordCount:   counts.EventRecords,
+		ArticleRecordCount: counts.Articles,
+		TagCount:           counts.Tags,
 	}
 }
 
@@ -448,6 +451,16 @@ func ResearchPickerView(view viewmodel.ResearchPickerView) templ.Component {
 // shortcut, Recent list) is unaffected.
 func ResearchPickerSearchResults(view viewmodel.ResearchPickerView) templ.Component {
 	return templates.ResearchPickerSearchResults(view)
+}
+
+// InventoryView wraps the archive-inventory page (issue #491).
+// Carries the full Local Archive rollup (Person Record subtypes +
+// Event Records + Articles + Tags) at a basic level than the
+// per-attribute analytics on the Insights page. Each card on
+// the page drilldowns into the matching listing page (browse /
+// events / articles / tags).
+func InventoryView(view viewmodel.InventoryView) templ.Component {
+	return templates.InventoryView(view)
 }
 
 // ResearchPickerRecent wraps the recents-only fragment returned by
