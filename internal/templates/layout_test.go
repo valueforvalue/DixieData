@@ -345,8 +345,14 @@ func TestLayoutReviewMenuItemEchoesOpenCountFlag(t *testing.T) {
 		if !strings.Contains(content, "data-research-review-has-count") {
 			t.Fatalf("expected data-research-review-has-count on the menuitem:\n%s", content)
 		}
-		if !strings.Contains(content, "border-review-red/60") {
-			t.Fatalf("expected red border classes on the menuitem:\n%s", content)
+		// Issue #472 follow-up: red border is now border-2 + 0.32
+		// alpha bg so the cue reads at a glance instead of
+		// pink-on-pink. (Was border-review-red/60 + bg-[0.18].)
+		if !strings.Contains(content, "border-2 border-review-red") {
+			t.Fatalf("expected border-2 border-review-red classes on the menuitem:\n%s", content)
+		}
+		if !strings.Contains(content, "bg-review-red/[0.32]") {
+			t.Fatalf("expected bg-review-red/[0.32] class on the menuitem:\n%s", content)
 		}
 	})
 

@@ -307,6 +307,31 @@ html[data-theme="soft"] .foldout-panel {
   border: 1.5px solid #b08f45 !important;
 }
 
+/* Issue #472 follow-up: the Review Queue count-state pill
+   needs the same red urgency in High Contrast (dark text on
+   light bg) and Soft (brown text on cream bg). Override after
+   the generic theme rules so it wins specificity. */
+html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count] {
+  background: #fde0dc;
+  border: 2px solid #6f2c26;
+  color: #6f2c26;
+}
+html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count]:hover,
+html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count]:focus-visible {
+  background: #f9c8c0;
+  color: #4a1d18;
+}
+html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count] {
+  background: #f4d7d2;
+  border: 2px solid #6f2c26;
+  color: #4a1d18;
+}
+html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:hover,
+html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:focus-visible {
+  background: #ecc0b8;
+  color: #4a1d18;
+}
+
 /* PR1 — pure file move from internal/templates/layout.templ (inline <style>).
    Drop .gold-border (zero matches in repo, dead code per design D1).
    Computed styles identical to pre-PR1; layout_test.go byte-stability
@@ -927,14 +952,19 @@ html[data-theme="soft"] .foldout-panel {
    pill-link state. The hover state is ratcheted brighter so
    the cue is still readable on the dark panel surface. */
 .foldout-menuitem[data-research-review-has-count] {
-  border-color: rgba(111, 44, 38, 0.6);
-  background: rgba(111, 44, 38, 0.18);
-  color: #fbe1de;
+  /* Issue #472 follow-up: solid (not translucent) 2px red border
+     so the "needs attention" cue reads at a glance, matching the
+     trigger pill's badge. Background bumped to 0.32 alpha and text
+     brightened to pure cream so the label is legible — the prior
+     0.18 alpha + #fbe1de text was the pink-on-pink regression. */
+  border: 2px solid #6f2c26;
+  background: rgba(111, 44, 38, 0.32);
+  color: #fff5f1;
 }
 .foldout-menuitem[data-research-review-has-count]:hover,
 .foldout-menuitem[data-research-review-has-count]:focus-visible {
-  background: rgba(111, 44, 38, 0.32);
-  color: #fff1ee;
+  background: rgba(111, 44, 38, 0.48);
+  color: #ffffff;
 }
 /* On narrow viewports the absolute-positioned panel can clip
    past the right edge. Drop the transform + position the

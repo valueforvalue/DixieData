@@ -26,16 +26,17 @@ package templates
 // conventions.
 func reviewQueueMenuItem(openReview bool) string {
 	if openReview {
-		// Issue #472: the previous version set text color to
-		// text-[#fbe1de] (a near-pink cream) which blended
-		// into the review-red pill background. The fix is to
-		// remove the explicit text color and let the
-		// .mega-menu-item rule (set in tailwind.css, themed
-		// per data-theme) own the color. The high-contrast
-		// and soft overrides in tailwind.css set the right
-		// text color per theme so this menuitem stays
-		// readable across all three themes.
-		return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full border border-review-red/60 hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a></li>`
+		// Issue #472 follow-up: the previous `border border-review-red/60`
+		// + `bg-review-red/[0.18]` combo read as pink-on-pink because
+		// the alpha was too low and the default-theme text color was
+		// #fbe1de (a near-pink cream). The fix is a thicker 2px solid
+		// red border + 0.32 alpha background + a brighter cream text
+		// (#fff5f1) so the cue reads as "this needs attention" at a
+		// glance. Per-theme overrides in tailwind.css
+		// (.foldout-menuitem[data-research-review-has-count] under
+		// [data-theme="high-contrast"|"soft"]) keep the contrast
+		// correct in every theme.
+		return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full border-2 border-review-red bg-review-red/[0.32] hover:bg-review-red/[0.48]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a></li>`
 	}
 	return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a></li>`
 }

@@ -196,8 +196,14 @@ func TestLayoutShareReviewMegaMenuResearchMenuItemHasFlag(t *testing.T) {
 		if !strings.Contains(content, "data-research-review-has-count") {
 			t.Fatalf("expected data-research-review-has-count on the menuitem:\n%s", content)
 		}
-		if !strings.Contains(content, "border-review-red/60") {
-			t.Errorf("has-count menuitem should carry border-review-red/60 class for the red border treatment")
+		// Issue #472 follow-up: red border is now border-2 (thicker)
+		// and the bg is 0.32 alpha so the cue reads as "this needs
+		// attention" at a glance instead of pink-on-pink.
+		if !strings.Contains(content, "border-2 border-review-red") {
+			t.Errorf("has-count menuitem should carry border-2 border-review-red for the prominent red border treatment")
+		}
+		if !strings.Contains(content, "bg-review-red/[0.32]") {
+			t.Errorf("has-count menuitem should carry bg-review-red/[0.32] for the bumped background alpha")
 		}
 		// Issue #472: the has-count menuitem must NOT set a
 		// static text-[#fbe1de] color (it blended into the
