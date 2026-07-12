@@ -23,25 +23,25 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 				// The Resolved tab listing now lives in
 				// ResolvedReviewQueueView (issue #461); this
 				// header keeps only the tab strip + intro.
-				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-sepia-500/[0.35] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
+				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
 					if activeTab == "open" {
-						<a href="/review-queue" role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="open">Open</a>
+						<a href="/review-queue" role="tab" aria-selected="true" class="bg-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-2 text-[#22303d]" data-review-queue-tab="open">Open</a>
 					} else {
-						<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="open">Open</a>
+						<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)]" data-review-queue-tab="open">Open</a>
 					}
 					if activeTab == "resolved" {
-						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
+						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
 					} else {
-						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="resolved">Resolved</a>
+						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)]" data-review-queue-tab="resolved">Resolved</a>
 					}
 				</div>
 			</div>
 			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				if len(entries) == 0 {
-					<p class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
+					<p class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
 				} else {
 					<form action={ templ.SafeURL(routebuilder.ReviewQueueBulk()) } data-dixie-submit="true" class="space-y-4">
-						<div class="flex flex-col gap-3 rounded-2xl border border-sepia-500/[0.25] bg-parchment-soft/[0.72] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+						<div class="flex flex-col gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.25)] bg-[rgb(var(--theme-parchment-rgb)/0.72)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 							<label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
 								<input type="checkbox" data-select-all="review-queue" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 								<span>Select all on this page</span>
@@ -62,14 +62,14 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 							</div>
 						</div>
 						for _, entry := range entries {
-							<div id={ fmt.Sprintf("review-queue-item-%d", entry.PersonRecord.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+							<div id={ fmt.Sprintf("review-queue-item-%d", entry.PersonRecord.ID) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
 								<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 									<div class="flex min-w-0 gap-3">
 										<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", entry.PersonRecord.ID) } data-checkbox-group="review-queue" class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 										<div class="min-w-0">
 											<div class="flex flex-wrap items-center gap-2">
 												<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ entry.PersonRecord.DisplayID }</span>
-												<span class="rounded-full border border-review-red/[0.45] bg-review-red/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+												<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
 											</div>
 											<p class="mt-1 font-semibold text-slate-900">{ detailHeading(entry.PersonRecord) }</p>
 											<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(entry.PersonRecord.ReviewReason) }</p>
@@ -126,8 +126,8 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 					<h2 class="text-2xl gold font-bold">{ comparisonTitle(comparison) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ comparison.Reason }</p>
 					<div class="mt-3 flex flex-wrap gap-2 text-xs">
-						<span class="rounded-full border border-sepia-500/[0.45] bg-parchment-soft/[0.92] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ fmt.Sprintf("%d differing field(s)", comparisonDifferenceCount(comparison)) }</span>
-						<span class="rounded-full border border-sepia-500/[0.28] bg-white/80 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-slate-600">{ fmt.Sprintf("%d matching field(s)", comparisonMatchingCount(comparison)) }</span>
+						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ fmt.Sprintf("%d differing field(s)", comparisonDifferenceCount(comparison)) }</span>
+						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/80 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-slate-600">{ fmt.Sprintf("%d matching field(s)", comparisonMatchingCount(comparison)) }</span>
 					</div>
 				</div>
 				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -148,7 +148,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 			</div>
 			<section class="relative card rounded-3xl p-5 sm:p-8">
 				<div class="grid gap-6 xl:grid-cols-2">
-					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+					<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.LeftPersonRecord.DisplayID }</div>
 						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.LeftPersonRecord) }</div>
 						if detailSubheadingIsMaidenName(comparison.LeftPersonRecord) {
@@ -157,20 +157,20 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 							<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.LeftPersonRecord) }</div>
 						}
 						<div class="mt-4 flex flex-wrap gap-2 text-xs">
-							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.LeftPersonRecord.SourceRecords)) }</span>
-							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.LeftPersonRecord.Images)) }</span>
+							<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.LeftPersonRecord.SourceRecords)) }</span>
+							<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.LeftPersonRecord.Images)) }</span>
 							if comparison.LeftPersonRecord.NeedsReview {
-								<span class="rounded-full border border-review-red/[0.35] bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+								<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
 						<div class="mt-4 flex flex-wrap items-center gap-2">
 							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.LeftPersonRecord.ID)) } class="pill-link">Open Left Person Record</a>
-							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.LeftPersonRecord.ID) } class="rounded-full border border-sepia-500/[0.45] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.LeftPersonRecord.DisplayID + " to the Share Queue" }>
+							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.LeftPersonRecord.ID) } class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.LeftPersonRecord.DisplayID + " to the Share Queue" }>
 								+ Queue
 							</button>
 						</div>
 					</div>
-					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+					<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.RightPersonRecord.DisplayID }</div>
 						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.RightPersonRecord) }</div>
 						if detailSubheadingIsMaidenName(comparison.RightPersonRecord) {
@@ -179,47 +179,47 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 							<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.RightPersonRecord) }</div>
 						}
 						<div class="mt-4 flex flex-wrap gap-2 text-xs">
-							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.RightPersonRecord.SourceRecords)) }</span>
-							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.RightPersonRecord.Images)) }</span>
+							<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.RightPersonRecord.SourceRecords)) }</span>
+							<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.RightPersonRecord.Images)) }</span>
 							if comparison.RightPersonRecord.NeedsReview {
-								<span class="rounded-full border border-review-red/[0.35] bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+								<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
 						<div class="mt-4 flex flex-wrap items-center gap-2">
 							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.RightPersonRecord.ID)) } class="pill-link">Open Right Person Record</a>
-							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.RightPersonRecord.ID) } class="rounded-full border border-sepia-500/[0.45] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.RightPersonRecord.DisplayID + " to the Share Queue" }>
+							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.RightPersonRecord.ID) } class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.RightPersonRecord.DisplayID + " to the Share Queue" }>
 								+ Queue
 							</button>
 						</div>
 					</div>
 				</div>
 				if len(comparisonDifferenceFields(comparison)) > 0 {
-					<div class="mt-6 rounded-3xl border border-sepia-500/[0.35] bg-parchment-soft/[0.7] p-4">
+					<div class="mt-6 rounded-3xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.7)] p-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Differences to Review First</p>
 						<div class="mt-3 flex flex-wrap gap-2">
 							for _, field := range comparisonDifferenceFields(comparison) {
-								<span class="rounded-full border border-sepia-500/[0.35] bg-white/80 px-3 py-1 text-sm text-[#22303d]">{ field.Label }</span>
+								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-3 py-1 text-sm text-[#22303d]">{ field.Label }</span>
 							}
 						</div>
 					</div>
 				}
-				<div class="mt-6 overflow-hidden rounded-3xl border border-sepia-500/[0.35] bg-white/72">
+				<div class="mt-6 overflow-hidden rounded-3xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/72">
 					<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Field comparison table, scrollable horizontally to view both records">
 						<div class="min-w-[38rem]">
-							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-sepia-500/[0.2] bg-parchment-soft/[0.88] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-[rgb(var(--theme-parchment-rgb)/0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 								<div>Field</div>
 								<div>{ comparison.LeftPersonRecord.DisplayID }</div>
 								<div>{ comparison.RightPersonRecord.DisplayID }</div>
 							</div>
 							for _, field := range comparison.Fields {
 								if field.Highlighted {
-									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-sepia-500/[0.16] bg-sepia-500/[0.12] px-4 py-3 text-sm text-[#22303d]">
+									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgb(var(--theme-sepia-rgb)/0.16)] bg-[rgb(var(--theme-sepia-rgb)/0.12)] px-4 py-3 text-sm text-[#22303d]">
 										<div class="font-semibold">{ field.Label }</div>
 										<div>{ field.LeftValue }</div>
 										<div>{ field.RightValue }</div>
 									</div>
 								} else {
-									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-sepia-500/[0.16] px-4 py-3 text-sm text-[#22303d]">
+									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgb(var(--theme-sepia-rgb)/0.16)] px-4 py-3 text-sm text-[#22303d]">
 										<div class="font-semibold">{ field.Label }</div>
 										<div>{ field.LeftValue }</div>
 										<div>{ field.RightValue }</div>
@@ -232,7 +232,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 						<div class="space-y-3 p-4">
 							for _, field := range comparison.Fields {
 								if field.Highlighted {
-									<div class="rounded-2xl border border-sepia-500/[0.45] bg-sepia-500/[0.12] p-3">
+									<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-sepia-rgb)/0.12)] p-3">
 										<div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ field.Label }</div>
 										<div class="mt-2 flex items-start gap-3">
 											<div class="min-w-0 flex-1">
@@ -246,7 +246,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 										</div>
 									</div>
 								} else {
-									<div class="rounded-2xl border border-sepia-500/[0.24] bg-white/72 p-3">
+									<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/72 p-3">
 										<div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ field.Label }</div>
 										<div class="mt-2 flex items-start gap-3">
 											<div class="min-w-0 flex-1">
@@ -347,26 +347,26 @@ templ ResolvedReviewQueueView(findings []viewmodel.ResolvedFindingEntry, conflic
 			<div>
 				<h2 class="text-2xl gold font-bold">Review Queue <span class="text-slate-400">/</span> Resolved</h2>
 				<p class="mt-2 text-sm text-slate-600">Resolution history: every duplicate-audit match and shared-import merge conflict you have settled, newest first.</p>
-				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-sepia-500/[0.35] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
-					<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="open">Open</a>
-					<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
+				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
+					<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)]" data-review-queue-tab="open">Open</a>
+					<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
 				</div>
 			</div>
 			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
 				if len(findings) == 0 && len(conflicts) == 0 {
-					<p class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">No resolved entries yet. The audit runs + shared-import merges you finish will surface here.</p>
+					<p class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No resolved entries yet. The audit runs + shared-import merges you finish will surface here.</p>
 				}
 				if len(findings) > 0 {
 					<div>
 						<h3 class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Duplicate-audit findings</h3>
 						<div class="mt-3 space-y-3">
 							for _, finding := range findings {
-								<div id={ fmt.Sprintf("review-queue-resolved-finding-%d", finding.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+								<div id={ fmt.Sprintf("review-queue-resolved-finding-%d", finding.ID) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
 									<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
 										<div class="min-w-0">
 											<div class="flex flex-wrap items-center gap-2">
-												<span class="rounded-full border border-sepia-500/[0.45] bg-parchment-soft/[0.92] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(finding.FindingType) }</span>
-												<span class="rounded-full border border-emerald-700/[0.45] bg-emerald-700/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">Resolved</span>
+												<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(finding.FindingType) }</span>
+												<span class="rounded-full border border-[rgb(var(--theme-emerald-700-rgb)/0.45)] bg-[rgb(var(--theme-emerald-700-rgb)/0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">Resolved</span>
 											</div>
 											<p class="mt-2 text-sm text-slate-700">{ emptyDetail(finding.Reason) }</p>
 											<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -400,12 +400,12 @@ templ ResolvedReviewQueueView(findings []viewmodel.ResolvedFindingEntry, conflic
 						<h3 class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Merge-review conflicts</h3>
 						<div class="mt-3 space-y-3">
 							for _, conflict := range conflicts {
-								<div id={ fmt.Sprintf("review-queue-resolved-conflict-%d", conflict.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+								<div id={ fmt.Sprintf("review-queue-resolved-conflict-%d", conflict.ID) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
 									<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
 										<div class="min-w-0">
 											<div class="flex flex-wrap items-center gap-2">
-												<span class="rounded-full border border-sepia-500/[0.45] bg-parchment-soft/[0.92] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(conflict.ConflictType) }</span>
-												<span class="rounded-full border border-emerald-700/[0.45] bg-emerald-700/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">{ resolvedConflictResolutionLabel(conflict.Resolution) }</span>
+												<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(conflict.ConflictType) }</span>
+												<span class="rounded-full border border-[rgb(var(--theme-emerald-700-rgb)/0.45)] bg-[rgb(var(--theme-emerald-700-rgb)/0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">{ resolvedConflictResolutionLabel(conflict.Resolution) }</span>
 											</div>
 											<p class="mt-2 text-sm text-slate-700">{ emptyDetail(conflict.Reason) }</p>
 											<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">

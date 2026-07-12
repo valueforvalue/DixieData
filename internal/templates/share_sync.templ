@@ -64,7 +64,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 							"data-dixie-submit": "true",
 						})
 					</div>
-					<div class="col-span-2 rounded-2xl border border-sepia-500/[0.28] bg-white/70 p-4 space-y-3">
+					<div class="col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 p-4 space-y-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
 						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Calendar", components.ButtonSecondary, "", templ.Attributes{
@@ -92,7 +92,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						</div>
 						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
 					</div>
-					<div class="col-span-2 rounded-2xl border border-sepia-500/[0.28] bg-white/70 p-4 space-y-2">
+					<div class="col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 p-4 space-y-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
 						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Test", components.ButtonSecondary, "", templ.Attributes{
@@ -116,7 +116,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						</div>
 					</div>
 				</div>
-				<div class="rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.06] px-4 py-3 text-sm text-slate-600">
+				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.06)] px-4 py-3 text-sm text-slate-600">
 					Status:
 					if status.Connected {
 						<strong class="ml-1 text-[#22303d]">Connected</strong>
@@ -129,7 +129,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">shared OAuth app available</span>
 					}
 				</div>
-				<div class="rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04] px-4 py-3 text-sm text-slate-600">
+				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-3 text-sm text-slate-600">
 					<div><strong>DixieData Calendar ID:</strong> { status.ManagedCalendarID }</div>
 					<div class="mt-1"><strong>DixieData Test Calendar ID:</strong> { status.TestCalendarID }</div>
 					if strings.TrimSpace(status.LastSyncedAt) != "" {
@@ -144,7 +144,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						<span class="ml-2 text-xs text-slate-500">Added { fmt.Sprintf("%d", status.DriftAdded) } • Updated { fmt.Sprintf("%d", status.DriftUpdated) } • Removed { fmt.Sprintf("%d", status.DriftRemoved) }</span>
 					</div>
 				</div>
-				<div class="rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04] px-4 py-3 text-xs leading-6 text-slate-500">
+				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
 					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>

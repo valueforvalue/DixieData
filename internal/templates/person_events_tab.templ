@@ -49,7 +49,7 @@ templ PersonEventsTab(personID int64, linked []viewmodel.EventRecord) {
 								{ strings.TrimSpace(event.DisplayID) }
 							</a>
 							if strings.TrimSpace(event.Kind) != "" {
-								<span class="rounded-full border border-sepia-500/[0.4] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.4)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
 									{ event.Kind }
 								</span>
 							}

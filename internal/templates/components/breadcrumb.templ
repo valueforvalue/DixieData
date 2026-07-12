@@ -54,7 +54,7 @@ templ Breadcrumb(currentPath string) {
 						<a
 							href={ templ.SafeURL(crumb.Href) }
 							itemprop="item"
-							class="rounded px-1 py-0.5 hover:bg-sepia-500/[0.08] hover:text-[#22303d]"
+							class="rounded px-1 py-0.5 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)] hover:text-[#22303d]"
 						>
 							<span itemprop="name">{ crumb.Label }</span>
 						</a>

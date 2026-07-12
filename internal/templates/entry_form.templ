@@ -47,7 +47,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	<div id="entry-form-shell" data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
-			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
+			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
 				<span class="ml-1">{ errorMessage }</span>
 			</div>
@@ -86,7 +86,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						>
 							Delete saved local draft
 						</button>
-						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-3 text-sm text-[#6f2c26]">
+						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[#6f2c26]">
 							<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 							<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 								@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -119,7 +119,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							"data-clear-draft-trigger": "stale",
 						})
 					</div>
-					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-3 text-sm text-[#6f2c26]">
+					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[#6f2c26]">
 						<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 						<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 							@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -134,7 +134,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			</div>
 			</div>
 			<div class="space-y-5">
-				<section class="rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Identity & Relationship</p>
 						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the person record should behave in the local archive.</p>
@@ -186,7 +186,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 								list="suffix-suggestions"
 								class="field-input" placeholder="Jr." id="ef-suffix"/>
 						</div>
-						<div class="responsive-span-2 col-span-2 rounded-2xl border border-sepia-500/[0.24] bg-ink-deep/[0.04] p-4" data-entry-type-special>
+						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] p-4" data-entry-type-special>
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Person Record Link</p>
 								<p class="mt-1 text-sm text-slate-600">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
@@ -216,7 +216,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</section>
-				<section class="rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Service, Pension & Archive Details</p>
 						<p class="mt-2 text-sm text-slate-600">Keep the military story, pension trail, and Confederate Home data together so related research stays in one place.</p>
@@ -274,7 +274,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</section>
-				<section class="rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Life Details & Burial</p>
 						<p class="mt-2 text-sm text-slate-600">These fields answer when the person lived and where they ended their story.</p>
@@ -306,7 +306,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</section>
-				<section id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
@@ -329,7 +329,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<p class="mt-2 text-xs text-slate-500">Source records shown here are saved with the person record and appear in the detail view and PDF exports.</p>
 					</details>
 				</section>
-				<section class="rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<details>
 						<summary class="mb-4 cursor-pointer list-none">
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Biography & Internal Notes</p>
@@ -347,15 +347,15 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									<p data-live-count-display="biography" class="font-medium text-slate-600">0 chars</p>
 								</div>
 							</div>
-							<details class="overflow-hidden rounded-2xl border border-sepia-500/[0.24] bg-ink-deep/[0.04]">
+							<details class="overflow-hidden rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)]">
 								<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 									<div>
 										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
 										<p class="mt-1 text-sm text-slate-600">Optional. Override default export excerpt when biography needs tighter PDF copy.</p>
 									</div>
-									<span class="rounded-full border border-sepia-500/[0.35] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
+									<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
 								</summary>
-								<div class="border-t border-sepia-500/[0.18] px-4 py-4">
+								<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-4">
 									<label class="block text-sm text-slate-500 mb-1" for="ef-pdf_excerpt_override">PDF Excerpt Override</label>
 									<textarea
 										name="pdf_excerpt_override"
@@ -380,7 +380,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</details>
 				</section>
-				<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
 						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
@@ -472,11 +472,11 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Responsive Layout Mode</h3>
 					<p class="mt-2 text-sm text-slate-600">Switch between the relaxed and split-screen layouts, or leave the app on Auto so it changes around <span data-layout-mode-breakpoint>1000px</span> as the window narrows.</p>
 				</div>
-				<div class="rounded-2xl border border-sepia-500/[0.28] bg-white/70 px-4 py-3 text-sm text-slate-600">
+				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 					<div class="layout-mode-summary">
 						<span>Current mode:</span>
 						<strong data-layout-mode-status>Relaxed</strong>
-						<span class="rounded-full border border-sepia-500/[0.24] bg-ink-deep/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" data-layout-mode-preference-label>Auto</span>
+						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" data-layout-mode-preference-label>Auto</span>
 					</div>
 					<p class="mt-2 text-xs text-slate-500">The same preference also appears in the global Menu so you can change it from anywhere.</p>
 				</div>
@@ -658,7 +658,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			<h3 class="text-xl gold font-bold">Software Updates</h3>
 			<p class="text-sm text-slate-600">Check the latest DixieData release, save a custom update feed URL, and apply packaged updates in place for installed builds.</p>
 		</div>
-		<div class="rounded-2xl border border-sepia-500/[0.28] bg-white/70 px-4 py-3 text-sm text-slate-600">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 			<div><strong>Current Version:</strong> { state.CurrentVersion }</div>
 			if strings.TrimSpace(state.BuildIdentity) != "" {
 				<div class="mt-1 text-xs text-slate-500">{ state.BuildIdentity }</div>
@@ -694,7 +694,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			<input type="hidden" name="source_url" value=""/>
 			@components.Button("Use Default GitHub Feed", components.ButtonGhost, "w-full px-4 py-2 text-left sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
-		<div class="rounded-2xl border border-sepia-500/[0.22] bg-parchment-soft/[0.72] px-4 py-3 text-sm text-slate-600">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-[rgb(var(--theme-parchment-rgb)/0.72)] px-4 py-3 text-sm text-slate-600">
 			if state.UsingDefaultSource {
 				<div><strong>Source:</strong> Default GitHub latest release feed</div>
 			} else {
@@ -726,7 +726,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 
 templ SettingsUpdateStatus(result viewmodel.UpdateCheckResult) {
 	if result.UpdateAvailable {
-		<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/80 px-4 py-3 text-sm text-slate-700">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
 			<div class="font-semibold text-slate-800">DixieData v{ result.AvailableVersion } is available.</div>
 			<div class="mt-1">Current version: { result.CurrentVersion }</div>
 			if strings.TrimSpace(result.SourceLabel) != "" {
@@ -736,7 +736,7 @@ templ SettingsUpdateStatus(result viewmodel.UpdateCheckResult) {
 				<div class="mt-1 text-xs text-slate-500">Published: { result.PublishedAt }</div>
 			}
 			if strings.TrimSpace(result.ReleaseNotes) != "" {
-				<div class="mt-2 whitespace-pre-wrap rounded-xl bg-parchment-soft/[0.72] px-3 py-2 text-xs text-slate-600">{ result.ReleaseNotes }</div>
+				<div class="mt-2 whitespace-pre-wrap rounded-xl bg-[rgb(var(--theme-parchment-rgb)/0.72)] px-3 py-2 text-xs text-slate-600">{ result.ReleaseNotes }</div>
 			}
 			if strings.TrimSpace(result.NotesURL) != "" {
 				<a href={ result.NotesURL } data-open-external class="mt-3 inline-flex text-sm font-semibold text-[#8d7440] underline">Open release notes</a>
@@ -746,7 +746,7 @@ templ SettingsUpdateStatus(result viewmodel.UpdateCheckResult) {
 			}
 		</div>
 	} else {
-		<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/80 px-4 py-3 text-sm text-slate-700">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
 			DixieData is already up to date at v{ result.CurrentVersion }.
 		</div>
 	}
@@ -757,23 +757,23 @@ templ SettingsUpdateStatusMessage(kind string, message string) {
 }
 
 templ SettingsUpdateApplyStarted(version string) {
-	<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/80 px-4 py-3 text-sm text-slate-700">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
 		Downloading and applying DixieData v{ version }. The app will close and restart when the installer finishes.
 	</div>
 }
 
 templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 	if len(orphans) == 0 {
-		<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
 	} else {
 		<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansCleanup()) } data-dixie-submit="true" class="space-y-3">
-			<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 				Found <strong>{ fmt.Sprintf("%d", len(orphans)) }</strong> orphaned image file(s). Cleanup moves them into temp trash instead of deleting them immediately.
 			</div>
-			<div class="max-h-72 space-y-2 overflow-auto rounded-2xl border border-sepia-500/[0.25] bg-parchment-soft/[0.72] p-3">
+			<div class="max-h-72 space-y-2 overflow-auto rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.25)] bg-[rgb(var(--theme-parchment-rgb)/0.72)] p-3">
 				for _, orphan := range orphans {
 					<input type="hidden" name="orphan_path" value={ orphan.RelativePath }/>
-					<div class="rounded-xl border border-sepia-500/[0.2] bg-white/80 px-3 py-2 text-sm text-slate-700">
+					<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 						<div class="font-medium">{ orphan.RelativePath }</div>
 						<div class="mt-1 text-xs text-slate-500">{ orphan.ModifiedAt } · { fmt.Sprintf("%d bytes", orphan.Size) }</div>
 					</div>
@@ -788,7 +788,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 }
 
 templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
-	<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 		if moved == 0 {
 			No orphaned images were moved.
 		} else {
@@ -798,19 +798,19 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 }
 
 templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
-	<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-700">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-700">
 		Scanned <strong>{ fmt.Sprintf("%d", result.ScannedRecords) }</strong> person record(s) in <strong>{ result.Mode }</strong> mode and found <strong>{ fmt.Sprintf("%d", result.IssueCount) }</strong> issue(s).
 	</div>
 	if len(result.Groups) == 0 {
-		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-success-green-bg/[0.95] px-4 py-3 text-sm text-success-green">No obvious issues were found in this run.</div>
+		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgb(var(--theme-success-green-bg-rgb)/0.95)] px-4 py-3 text-sm text-success-green">No obvious issues were found in this run.</div>
 	} else {
 		<form action={ templ.SafeURL(routebuilder.SettingsQualityApply()) } data-dixie-submit="true" class="space-y-3">
 			for _, group := range result.Groups {
-				<details class="rounded-2xl border border-sepia-500/[0.28] bg-parchment-soft/[0.72]">
+				<details class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgb(var(--theme-parchment-rgb)/0.72)]">
 					<summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">{ group.Group } ({ fmt.Sprintf("%d", group.Count) })</summary>
 					<div class="max-h-72 space-y-2 overflow-auto px-3 pb-3">
 						for _, issue := range group.Issues {
-							<label class="block rounded-xl border border-sepia-500/[0.2] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<label class="block rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 								<div class="flex items-start gap-3">
 									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 									<div class="min-w-0 flex-1">
@@ -857,7 +857,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 }
 
 templ SettingsQualityScanApplyResult(result viewmodel.DataQualityApplyResult) {
-	<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-700">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-3 text-sm text-slate-700">
 		Selected <strong>{ fmt.Sprintf("%d", result.Selected) }</strong> finding(s). Moved <strong>{ fmt.Sprintf("%d", result.Flagged) }</strong> record(s) to Review Queue; <strong>{ fmt.Sprintf("%d", result.AlreadyInQueue) }</strong> were already queued.
 		if result.NotFound > 0 {
 			<span> { fmt.Sprintf("%d", result.NotFound) } selected record(s) were not found.</span>
@@ -868,11 +868,11 @@ templ SettingsQualityScanApplyResult(result viewmodel.DataQualityApplyResult) {
 func updateStatusCardClasses(kind string) string {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
 	case "success":
-		return "border-[rgba(91,143,101,0.25)] bg-success-green-bg/[0.95] text-success-green"
+		return "border-[rgba(91,143,101,0.25)] bg-[rgb(var(--theme-success-green-bg-rgb)/0.95)] text-success-green"
 	case "failed", "error":
-		return "border-[rgba(176,70,70,0.25)] bg-error-red-bg/[0.95] text-error-red"
+		return "border-[rgba(176,70,70,0.25)] bg-[rgb(var(--theme-error-red-bg-rgb)/0.95)] text-error-red"
 	default:
-		return "border-sepia-500/[0.35] bg-white/80 text-slate-700"
+		return "border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 text-slate-700"
 	}
 }
 
@@ -916,7 +916,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 			</div>
 		}
 		if len(soldiers) > 0 {
-			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.3] bg-parchment-soft/[0.78] px-4 py-3">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-parchment-rgb)/0.78)] px-4 py-3">
 				<div>
 					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
 					<p id="search-compare-selection-help" data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
@@ -983,7 +983,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 
 templ SearchPreviewContent(s viewmodel.PersonRecord) {
 	<div class="space-y-5">
-		<div class="rounded-2xl border border-sepia-500/[0.3] bg-white/[0.7] px-4 py-4">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-white-rgb)/0.7)] px-4 py-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div>
 					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">{ entryBadgeLabel(s) }</p>
@@ -999,22 +999,22 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 				<span class="gold text-sm font-mono">{ s.DisplayID }</span>
 			</div>
 			<div class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
-				<div class="rounded-xl border border-sepia-500/[0.22] bg-white/70 px-3 py-3">
+				<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Birth</div>
 					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.BirthDate) }</div>
 				</div>
-				<div class="rounded-xl border border-sepia-500/[0.22] bg-white/70 px-3 py-3">
+				<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Death</div>
 					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.DeathDate) }</div>
 				</div>
 				if strings.TrimSpace(s.Unit) != "" {
-					<div class="rounded-xl border border-sepia-500/[0.22] bg-white/70 px-3 py-3">
+					<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Unit</div>
 						<div class="mt-1 text-[#22303d]">{ s.Unit }</div>
 					</div>
 				}
 				if strings.TrimSpace(s.BuriedIn) != "" {
-					<div class="rounded-xl border border-sepia-500/[0.22] bg-white/70 px-3 py-3">
+					<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Burial</div>
 						<div class="mt-1 text-[#22303d]">{ s.BuriedIn }</div>
 					</div>
@@ -1022,7 +1022,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			</div>
 		</div>
 		<div class="grid gap-3 lg:grid-cols-3">
-			<div class="rounded-2xl border border-sepia-500/[0.3] bg-white/75 px-4 py-4 text-sm text-slate-600">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Local Archive Signals</p>
 				<dl class="mt-3 space-y-2">
 					<dt class="text-slate-500">Person Record Type</dt>
@@ -1035,7 +1035,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 					<dd class="text-[#22303d]">{ reviewStatusLabel(s) }</dd>
 				</dl>
 			</div>
-			<div class="rounded-2xl border border-sepia-500/[0.3] bg-white/75 px-4 py-4 text-sm text-slate-600">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Research Context</p>
 				<dl class="mt-3 space-y-2">
 					if strings.TrimSpace(s.SearchMatchSnippet) != "" {
@@ -1060,7 +1060,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 					}
 				</dl>
 			</div>
-			<div class="rounded-2xl border border-sepia-500/[0.3] bg-white/75 px-4 py-4 text-sm text-slate-600">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Family &amp; Links</p>
 				<dl class="mt-3 space-y-2">
 					if strings.TrimSpace(s.SpouseDisplayID) != "" {
@@ -1087,13 +1087,13 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			</div>
 		</div>
 		if strings.TrimSpace(s.Notes) != "" {
-			<div class="rounded-2xl border border-sepia-500/[0.3] bg-ink-deep/[0.04] px-4 py-4">
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-4">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Notes Preview</p>
 				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, 260) }</p>
 			</div>
 		}
 		if s.NeedsReview {
-			<div class="rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] px-4 py-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-4 text-sm text-[#6f2c26]">
 				<p class="font-semibold">Needs Review</p>
 				<p class="mt-1">{ emptyDetail(s.ReviewReason) }</p>
 			</div>
@@ -1168,7 +1168,7 @@ func previewText(value string, limit int) string {
 // add first Person Record, load a .ddbak backup, or initialise the app.
 // Tracking: issue #98 from the 2026-06-24 audit.
 templ emptyArchiveSetupCard(search viewmodel.PersonRecordSearch) {
-	<section data-empty-archive-setup aria-labelledby="empty-archive-setup-heading" class="rounded-3xl border border-sepia-500/[0.35] bg-parchment-soft/[0.85] p-6 shadow-sm">
+	<section data-empty-archive-setup aria-labelledby="empty-archive-setup-heading" class="rounded-3xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.85)] p-6 shadow-sm">
 		<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Welcome to DixieData</p>
 		<h2 id="empty-archive-setup-heading" class="mt-2 text-2xl font-bold text-[#22303d]">Start your Local Archive</h2>
 		<p class="mt-2 text-sm leading-6 text-slate-600">

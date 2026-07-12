@@ -54,7 +54,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 	<div class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ eventFormTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
-			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
+			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
 				<span class="ml-1">{ errorMessage }</span>
 			</div>
@@ -109,7 +109,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 				<label class="block text-sm text-slate-500 mb-1" for="event-notes">Internal Notes</label>
 				<textarea name="notes" rows="3" class="field-input min-h-24" id="event-notes">{ s.Notes }</textarea>
 			</div>
-			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
@@ -159,7 +159,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 			// data-action=...> elements, not nested forms, so
 			// they're safe inside the outer form if rendered
 			// here.
-			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5 mt-5">
+			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5 mt-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
@@ -195,7 +195,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 			// JS swaps in place — preserves the user's
 			// unsaved form state (kind, description, etc.)
 			// across attach/detach.
-			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5 mt-5">
+			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5 mt-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>

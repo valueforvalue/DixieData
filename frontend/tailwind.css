@@ -45,11 +45,66 @@ html { scrollbar-gutter: stable; }
   --theme-text-primary: #22303d;
   --theme-text-muted: rgba(34, 45, 57, 0.7);
   --theme-text-faint: rgba(34, 45, 57, 0.025);
+  --theme-ink-deep-rgb: 31 43 56;
   --theme-accent: #a88a46;
   --theme-accent-strong: #8d7440;
   --theme-border: rgba(141, 116, 64, 0.85);
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;
+  /* Issue #477 strategy A — theme system comprehensive coverage.
+     The rgb tuples below are space-separated R G B values that
+     the templ files use in the arbitrary-value form
+     `border-[rgb(var(--theme-sepia-rgb)/0.85)]` to compose
+     alpha values at browser-parse time. The static tailwind
+     config colors (text-sepia-500, bg-parchment-soft, etc.)
+     are unchanged — they remain static-hex because the alpha
+     modifier syntax doesn't work with var() colors in
+     tailwind 3.4. The rgb tuples below let the templs
+     theme-switch every alpha-modified border + bg by
+     swapping a single CSS variable per color. */
+  --theme-sepia-rgb: 141 116 64;
+  --theme-parchment-rgb: 246 241 228;
+  --theme-white-rgb: 255 255 255;
+  --theme-amber-700-rgb: 180 83 9;
+  --theme-emerald-700-rgb: 4 120 87;
+  --theme-review-red-rgb: 111 44 38;
+  --theme-error-red-bg-rgb: 255 245 245;
+  --theme-success-green-bg-rgb: 242 252 244;
+  --theme-amber-100-rgb: 254 243 199;
+  --theme-amber-200-rgb: 253 230 138;
+  --theme-emerald-700-rgb-2: 4 120 87;
+  --theme-warning-rgb: 217 119 6;
+  --theme-info-rgb: 37 99 235;
+  --theme-success-green-rgb: 41 82 45;
+  --theme-gold-rgb: 168 138 70;
+  --theme-amber-50-rgb: 255 251 235;
+  --theme-amber-500-rgb: 245 158 11;
+  --theme-amber-600-rgb: 217 119 6;
+  --theme-emerald-50-rgb: 236 253 245;
+  --theme-rose-50-rgb: 255 241 242;
+  --theme-rose-200-rgb: 254 205 211;
+  --text-rose-700-rgb: 190 18 60;
+  --text-rose-900-rgb: 136 19 55;
+  --text-emerald-700-rgb: 4 120 87;
+  --text-emerald-900-rgb: 6 78 59;
+  --text-amber-700-rgb: 180 83 9;
+  --text-amber-800-rgb: 146 64 14;
+  --text-amber-900-rgb: 120 53 15;
+  --text-amber-950-rgb: 69 26 3;
+  --text-red-700-rgb: 185 28 28;
+  --text-red-800-rgb: 153 27 27;
+  --text-red-500-rgb: 239 68 68;
+  --bg-red-50-rgb: 254 242 242;
+  --bg-red-100-rgb: 254 226 226;
+  --border-red-300-rgb: 252 165 165;
+  --border-amber-200-rgb: 253 230 138;
+  --border-rose-200-rgb: 254 205 211;
+  --bg-slate-50-rgb: 248 250 252;
+  --bg-slate-100-rgb: 241 245 249;
+  --bg-slate-200-rgb: 226 232 240;
+  --border-slate-200-rgb: 226 232 240;
+  --text-slate-500-rgb: 100 116 139;
+  --text-slate-600-rgb: 71 85 105;
 }
 
 /* High Contrast — WCAG AA across every surface, no decorative
@@ -72,6 +127,28 @@ html[data-theme="high-contrast"] {
   --theme-border: #222222;
   --theme-border-strong: #000000;
   --theme-review-red: #7a2d2d;
+  /* rgb tuples for the templ arbitrary-value classes */
+  --theme-sepia-rgb: 0 0 0;
+  --theme-parchment-rgb: 255 255 255;
+  --theme-white-rgb: 255 255 255;
+  --theme-amber-700-rgb: 180 83 9;
+  --theme-emerald-700-rgb: 4 120 87;
+  --theme-review-red-rgb: 122 45 45;
+  --theme-error-red-bg-rgb: 255 245 245;
+  --theme-success-green-bg-rgb: 240 253 244;
+  --theme-amber-100-rgb: 254 243 199;
+  --theme-amber-200-rgb: 253 230 138;
+  --theme-emerald-700-rgb-2: 4 120 87;
+  --theme-warning-rgb: 180 83 9;
+  --theme-info-rgb: 29 78 216;
+  --theme-success-green-rgb: 22 101 52;
+  --theme-gold-rgb: 29 78 216;
+  --theme-amber-50-rgb: 255 251 235;
+  --theme-amber-500-rgb: 245 158 11;
+  --theme-amber-600-rgb: 217 119 6;
+  --theme-emerald-50-rgb: 236 253 245;
+  --theme-rose-50-rgb: 255 241 242;
+  --theme-rose-200-rgb: 254 205 211;
 }
 
 /* Soft — warmer sepia-leaning palette for long reading
@@ -93,6 +170,28 @@ html[data-theme="soft"] {
   --theme-border: #b08f45;
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;
+  /* rgb tuples for the templ arbitrary-value classes */
+  --theme-sepia-rgb: 141 116 64;
+  --theme-parchment-rgb: 244 236 216;
+  --theme-white-rgb: 255 255 255;
+  --theme-amber-700-rgb: 168 90 4;
+  --theme-emerald-700-rgb: 30 70 32;
+  --theme-review-red-rgb: 111 44 38;
+  --theme-error-red-bg-rgb: 247 230 224;
+  --theme-success-green-bg-rgb: 240 245 232;
+  --theme-amber-100-rgb: 253 243 199;
+  --theme-amber-200-rgb: 253 230 138;
+  --theme-emerald-700-rgb-2: 30 70 32;
+  --theme-warning-rgb: 168 90 4;
+  --theme-info-rgb: 30 64 175;
+  --theme-success-green-rgb: 30 70 32;
+  --theme-gold-rgb: 141 116 64;
+  --theme-amber-50-rgb: 244 236 216;
+  --theme-amber-500-rgb: 168 90 4;
+  --theme-amber-600-rgb: 168 90 4;
+  --theme-emerald-50-rgb: 240 245 232;
+  --theme-rose-50-rgb: 247 230 224;
+  --theme-rose-200-rgb: 247 210 195;
 }
 
 /* Settings → Appearance panel theme-option radio cards. The
@@ -237,8 +336,8 @@ html[data-theme="soft"] .foldout-panel {
      custom properties. */
   .empty-state {
     border-radius: 1.2rem;
-    @apply border-sepia-500/[0.45];
-    @apply bg-parchment-soft;
+    border: 1px solid rgb(var(--theme-sepia-rgb) / 0.45);
+    background: var(--theme-bg-card-soft);
     padding: 1rem 1.25rem;
   }
   /* Issue #384 / Slice 1: error variant of the empty-state surface.

@@ -29,13 +29,13 @@ templ DevPageBadge(contentPath string) {
 	<div
 		data-dixie-page-badge
 		data-current-path={ contentPath }
-		class="fixed bottom-3 left-3 z-30 hidden items-center gap-2 rounded-full border border-amber-700/[0.45] bg-amber-100/[0.96] px-3 py-1 text-xs font-mono font-semibold text-amber-950 shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+		class="fixed bottom-3 left-3 z-30 hidden items-center gap-2 rounded-full border border-[rgb(var(--theme-amber-700-rgb)/0.45)] bg-[rgb(var(--theme-amber-100-rgb)/0.96)] px-3 py-1 text-xs font-mono font-semibold text-amber-950 shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
 	>
 		<span data-dixie-page-badge-icon aria-hidden="true">🐞</span>
 		<span data-dixie-page-badge-path>{ contentPath }</span>
 		<span
 			data-dixie-page-badge-attrs
-			class="ml-2 max-w-[18rem] truncate rounded bg-amber-200/[0.7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-900"
+			class="ml-2 max-w-[18rem] truncate rounded bg-[rgb(var(--theme-amber-200-rgb)/0.7)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-900"
 			title="data-dixie-page attribute for cross-checking"
 		>
 			<span data-dixie-page-badge-label>{ labelFromPath(contentPath) }</span>
