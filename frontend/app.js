@@ -10,6 +10,10 @@
   // from a click, but the guard makes the slice-3 narrowing
   // explicit instead of relying on every site to add its own
   // `instanceof Element` check).
+  /**
+   * @param {Event | null | undefined} event
+   * @returns {*}
+   */
   const eventTargetElement = (event) => {
     if (
       event
@@ -77,6 +81,7 @@
     }
   }
 
+  /** @param {unknown[]} stack */
   function saveBackStack(stack) {
     try {
       if (!Array.isArray(stack) || stack.length === 0) {
@@ -99,6 +104,7 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveRecentRecords(ids) {
     try {
       const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, 10);
@@ -112,6 +118,10 @@
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {unknown} fallback
+   */
   function loadJSONStorage(key, fallback) {
     try {
       const raw = window.localStorage.getItem(key);
@@ -125,6 +135,10 @@
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {unknown} value
+   */
   function saveJSONStorage(key, value) {
     try {
       if (value == null) {
@@ -142,6 +156,7 @@
     return value && typeof value === "object" ? value : {};
   }
 
+  /** @param {unknown} state */
   function saveBrowseState(state) {
     saveJSONStorage(browseStateStorageKey, state);
   }
@@ -151,6 +166,7 @@
     return Array.isArray(value) && value.length > 0 ? value : defaultBrowseColumns.slice();
   }
 
+  /** @param {unknown} columns */
   function saveBrowseColumns(columns) {
     const normalized = Array.from(new Set((Array.isArray(columns) ? columns : []).filter((value) => typeof value === "string" && value !== "")));
     saveJSONStorage(browseColumnsStorageKey, normalized.length > 0 ? normalized : defaultBrowseColumns);
@@ -166,6 +182,7 @@
     return value === "compact" ? "compact" : "expanded";
   }
 
+  /** @param {string} mode */
   function saveCalendarAnniversaryDensity(mode) {
     saveJSONStorage(calendarAnniversaryDensityStorageKey, mode === "compact" ? "compact" : "expanded");
   }
@@ -175,12 +192,14 @@
     return value === "relaxed" || value === "split-screen" ? value : "auto";
   }
 
+  /** @param {string} mode */
   function saveLayoutModePreference(mode) {
     const normalized = mode === "relaxed" || mode === "split-screen" ? mode : "auto";
     saveJSONStorage(layoutModeStorageKey, normalized);
     return normalized;
   }
 
+  /** @param {string} preference */
   function resolveResponsiveLayoutMode(preference) {
     if (preference === "relaxed" || preference === "split-screen") {
       return preference;
@@ -191,10 +210,12 @@
     return window.innerWidth <= splitScreenBreakpointPx ? "split-screen" : "relaxed";
   }
 
+  /** @param {string} mode */
   function layoutModeLabel(mode) {
     return mode === "split-screen" ? "Split-screen" : "Relaxed";
   }
 
+  /** @param {string} preference */
   function layoutPreferenceLabel(preference) {
     switch (preference) {
       case "relaxed":
@@ -206,6 +227,11 @@
     }
   }
 
+  /**
+   * @param {Document} root
+   * @param {string} preference
+   * @param {string} mode
+   */
   function refreshResponsiveLayoutControls(root, preference, mode) {
     const scope = root && root.nodeType === 9 ? root : document;
     scope.querySelectorAll("[data-layout-mode-option]").forEach((button) => {
@@ -228,6 +254,7 @@
     });
   }
 
+  /** @param {Document} [root] */
   function applyResponsiveLayout(root = document) {
     const doc = root && root.nodeType === 9 ? root : document;
     const body = doc.body;
@@ -257,6 +284,10 @@
   // Per docs/COMMON_BUGS.md §4.14 the previous approach (hand-coded
   // padding-bottom + manual dock repositioning) regressed 5 times;
   // measuring the dock at runtime is the prescribed fix.
+  /**
+   * @param {Document} doc
+   * @param {HTMLElement} html
+   */
   function measureFloatingDockHeight(doc, html) {
     const dock = doc.querySelector(".floating-dock");
     if (!(dock instanceof HTMLElement)) {
@@ -293,6 +324,7 @@
     appShell.style.paddingBottom = `${heightPx}px`;
   }
 
+  /** @param {Document} [root] */
   function clampPopoutPanels(root = document) {
     const scope = root && root.nodeType === 9 ? root : document;
     const viewportPadding = 12;
@@ -345,11 +377,13 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveBrowseSelection(ids) {
     const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
     saveJSONStorage(browseSelectionStorageKey, normalized);
   }
 
+  /** @param {string | null} scope */
   function loadPDFPreferences(scope) {
     if (!scope) {
       return {};
@@ -358,6 +392,10 @@
     return value && typeof value === "object" ? value : {};
   }
 
+  /**
+   * @param {string | null} scope
+   * @param {unknown} values
+   */
   function savePDFPreferences(scope, values) {
     if (!scope) {
       return;
@@ -365,6 +403,7 @@
     saveJSONStorage(`${pdfPreferencesStoragePrefix}${scope}`, values);
   }
 
+  /** @param {HTMLInputElement | HTMLSelectElement} input */
   function pdfPreferenceValue(input) {
     if (input instanceof HTMLInputElement && input.type === "checkbox") {
       return input.checked;
@@ -372,6 +411,7 @@
     return input.value;
   }
 
+  /** @param {Element | null} form */
   function applyPDFPreferences(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -394,6 +434,7 @@
     });
   }
 
+  /** @param {Element | null} form */
   function persistPDFPreferences(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -445,6 +486,7 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveResearchRecents(ids) {
     try {
       const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, researchRecentsStorageCap);
@@ -589,6 +631,7 @@
     }
   }
 
+  /** @param {HTMLElement} root */
   function syncClonedFormState(root) {
     root.querySelectorAll("textarea").forEach((textarea) => {
       if (textarea instanceof HTMLTextAreaElement) {
@@ -657,6 +700,7 @@
     saveBackStack(stack);
   }
 
+  /** @param {string} path */
   function smartBackLabel(path) {
     const normalized = String(path || "").toLowerCase();
     if (normalized.startsWith("/calendar")) {
@@ -752,6 +796,7 @@
       // Primary cleanup: when the CSS transition ends.
       // Fallback: 2s timeout in case the transitionend event
       // never fires (e.g. the user navigates away mid-flash).
+      /** @param {AnimationEvent | TransitionEvent} ev */
       const onEnd = (ev) => {
         if (ev && ev.target !== row) {
           return;
@@ -791,6 +836,7 @@
     return true;
   }
 
+  /** @param {string} href */
   function shouldCaptureBackSnapshot(href) {
     const normalized = String(href || "");
     if (/^\/research-collections(?:\/\d+)?(?:\?.*)?$/.test(normalized)) {
@@ -826,6 +872,7 @@
     return false;
   }
 
+  /** @param {Element} el */
   function closestParentForm(el) {
     if (el instanceof HTMLFormElement) {
       return null;
@@ -833,6 +880,7 @@
     return el.closest("form");
   }
 
+  /** @param {Element} el */
   function ownerForm(el) {
     if (el instanceof HTMLFormElement) {
       return el;
@@ -841,6 +889,7 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
+  /** @param {string} group */
   function selectedCompareEntries(group) {
     /** @type {{ id: string; label: string }[]} */
     const out = [];
@@ -859,10 +908,12 @@
     return out;
   }
 
+  /** @param {string} group */
   function selectedCompareIDs(group) {
     return selectedCompareEntries(group).map((entry) => entry.id);
   }
 
+  /** @param {string} group */
   function syncCompareSelectionUI(group) {
     const selected = selectedCompareEntries(group);
     const button = document.querySelector(`[data-compare-selected][data-compare-group="${group}"]`);
@@ -885,6 +936,7 @@
     }
   }
 
+  /** @param {Element} trigger */
   function activateTab(trigger) {
     const group = trigger.getAttribute("data-tab-group");
     const targetId = trigger.getAttribute("data-tab-target");
@@ -918,10 +970,16 @@
     defaults.forEach((button) => activateTab(button));
   }
 
+  /**
+   * @param {number} value
+   * @param {number} min
+   * @param {number} max
+   */
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
   }
 
+  /** @param {EventTarget | null} target */
   function isTextInputTarget(target) {
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
       return false;
@@ -933,10 +991,12 @@
     return ["text", "search", "url", "tel", "email", "password", "number"].includes(type);
   }
 
+  /** @param {EventTarget | null} target */
   function isEditableTextTarget(target) {
     return isTextInputTarget(target) || target instanceof HTMLElement && target.isContentEditable;
   }
 
+  /** @param {EventTarget} target */
   function textSelectionLength(target) {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
       const start = typeof target.selectionStart === "number" ? target.selectionStart : 0;
@@ -1013,6 +1073,11 @@
     });
   }
 
+  /**
+   * @param {EventTarget | null} target
+   * @param {number} clientX
+   * @param {number} clientY
+   */
   function openTextContextMenu(target, clientX, clientY) {
     const menu = ensureTextContextMenu();
     textContextMenuState.target = target;
@@ -1028,6 +1093,10 @@
     menu.style.top = `${Math.max(8, top)}px`;
   }
 
+  /**
+   * @param {EventTarget} target
+   * @param {string} replacement
+   */
   function replaceTextSelection(target, replacement) {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
       const start = typeof target.selectionStart === "number" ? target.selectionStart : target.value.length;
@@ -1044,6 +1113,7 @@
     }
   }
 
+  /** @param {string | null} action */
   async function performTextContextMenuAction(action) {
     const target = textContextMenuState.target;
     if (!target) {
@@ -1165,6 +1235,7 @@
     document.body.classList.remove("overflow-hidden");
   }
 
+  /** @param {string | null} targetId */
   function openPreviewDrawer(targetId) {
     if (!targetId) {
       return;
@@ -1198,6 +1269,7 @@
     };
   }
 
+  /** @param {string} message */
   function setImageViewerStatus(message) {
     const { status } = imageViewerElements();
     if (status) {
@@ -1263,6 +1335,11 @@
     });
   }
 
+  /**
+   * @param {number} nextZoom
+   * @param {number} [pointerX]
+   * @param {number} [pointerY]
+   */
   function setImageViewerZoom(nextZoom, pointerX = 0, pointerY = 0) {
     const { image } = imageViewerElements();
     if (!(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) {
@@ -1332,6 +1409,7 @@
     }
   }
 
+  /** @param {string} url */
   function cacheBustedImageURL(url) {
     if (!url) {
       return url;
@@ -1340,6 +1418,10 @@
     return `${url}${separator}v=${Date.now()}`;
   }
 
+  /**
+   * @param {string} imageId
+   * @param {string} baseUrl
+   */
   function refreshImageReferences(imageId, baseUrl) {
     if (!imageId || !baseUrl) {
       return;
@@ -1359,6 +1441,7 @@
     return refreshedUrl;
   }
 
+  /** @param {string} direction */
   async function rotateImageViewer(direction) {
     if (!imageViewerState.imageId) {
       setImageViewerStatus("Image rotate failed.");
@@ -1400,6 +1483,12 @@
     }
   }
 
+  /**
+   * @param {string | null} url
+   * @param {string | null} caption
+   * @param {string | null} fileName
+   * @param {string | null} imageId
+   */
   function openImageViewer(url, caption, fileName, imageId) {
     const { viewer, image, caption: text, file } = imageViewerElements();
     if (!(image instanceof HTMLImageElement) || !text || !file) {
@@ -1416,7 +1505,7 @@
     image.onerror = () => {
       setImageViewerStatus("Image preview failed. The stored file may be empty or invalid.");
     };
-    image.setAttribute("src", url);
+    image.setAttribute("src", /** @type {string} */ (url));
     const altText = sanitiseImageAltText(caption, fileName);
     image.setAttribute("alt", altText);
     text.textContent = altText;
@@ -1436,6 +1525,10 @@
   // screen readers may interpret it inconsistently. Mirrors the
   // imageAltText helper used in the templ SoldierCard so both
   // surfaces behave the same way. Audit issue #118.
+  /**
+   * @param {string | null} caption
+   * @param {string | null} fileName
+   */
   function sanitiseImageAltText(caption, fileName) {
     const stripped = sanitiseImageAltText.stripHtml(String(caption || ""));
     const cleaned = stripped.replace(/\s+/g, " ").trim();
@@ -1448,6 +1541,7 @@
     }
     return "Archive image";
   }
+  /** @param {string} value */
   sanitiseImageAltText.stripHtml = function stripHtml(value) {
     if (!value || value.indexOf("<") === -1) {
       return value;
@@ -1468,6 +1562,7 @@
     viewer.classList.remove("flex");
   }
 
+  /** @param {HTMLFormElement | null} form */
   function scratchpadDisplayId(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1499,6 +1594,7 @@
     return "";
   }
 
+  /** @param {Element | null} el */
   function scratchpadFormFromElement(el) {
     if (el instanceof HTMLFormElement) {
       return el;
@@ -1512,15 +1608,18 @@
     return null;
   }
 
+  /** @param {string} displayId */
   function normalizeScratchpadDisplayId(displayId) {
     const value = (displayId || "").trim();
     return value || "unfiled";
   }
 
+  /** @param {string} displayId */
   function scratchpadContentKey(displayId) {
     return `dixiedata:scratchpad:${normalizeScratchpadDisplayId(displayId)}`;
   }
 
+  /** @param {string} displayId */
   function loadLegacyScratchpadText(displayId) {
     try {
       return window.localStorage.getItem(scratchpadContentKey(displayId)) || "";
@@ -1529,6 +1628,7 @@
     }
   }
 
+  /** @param {Element | null} trigger */
   function scratchpadStatusTarget(trigger) {
     if (!(trigger instanceof HTMLElement)) {
       const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
@@ -1545,6 +1645,11 @@
     return globalTarget instanceof HTMLElement ? globalTarget : null;
   }
 
+  /**
+   * @param {Element | null} trigger
+   * @param {string} message
+   * @param {boolean} [isError]
+   */
   function setScratchpadStatus(trigger, message, isError = false) {
     const target = scratchpadStatusTarget(trigger);
     if (!(target instanceof HTMLElement)) {
@@ -1555,6 +1660,7 @@
     target.classList.toggle("text-slate-500", !isError);
   }
 
+  /** @param {Element} trigger */
   async function openScratchpad(trigger) {
     const form = scratchpadFormFromElement(trigger);
     const displayId = scratchpadDisplayId(form) || pageScratchpadDisplayId();
@@ -1592,6 +1698,10 @@
     }
   }
 
+  /**
+   * @param {string} group
+   * @param {boolean} checked
+   */
   function toggleCheckboxGroup(group, checked) {
     document.querySelectorAll(`[data-checkbox-group="${group}"]`).forEach((checkbox) => {
       if (checkbox instanceof HTMLInputElement) {
@@ -1600,6 +1710,7 @@
     });
   }
 
+  /** @param {Element} button */
   function addRecordRow(button) {
     const container = button.closest("form");
     if (!(container instanceof HTMLFormElement)) {
@@ -1613,6 +1724,7 @@
     recordList.appendChild(template.content.cloneNode(true));
   }
 
+  /** @param {Element} button */
   function removeRecordRow(button) {
     const row = button.closest("[data-record-row]");
     if (!(row instanceof HTMLElement)) {
@@ -1634,6 +1746,7 @@
     row.remove();
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftKeyForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1641,11 +1754,13 @@
     return form.getAttribute("data-draft-key") || "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftStorageKeyForForm(form) {
     const key = draftKeyForForm(form);
     return key ? `dixiedata:${key}` : "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftKindForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "new";
@@ -1653,6 +1768,7 @@
     return form.getAttribute("data-record-persistence-kind") || "new";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftRecordVersionForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1660,6 +1776,7 @@
     return form.getAttribute("data-draft-record-version") || "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftResetPathForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1667,6 +1784,7 @@
     return form.getAttribute("data-draft-reset-path") || "";
   }
 
+  /** @param {Element} field */
   function isDraftableField(field) {
     if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
       return false;
@@ -1680,6 +1798,7 @@
     return true;
   }
 
+  /** @param {HTMLFormElement | null} form */
   function recordPersistenceTarget(form) {
     if (!(form instanceof HTMLFormElement)) {
       return null;
@@ -1701,6 +1820,7 @@
     }
   }
 
+  /** @param {{ draftKey?: string, payload?: string } | null} state */
   function saveDeletedDraftState(state) {
     try {
       if (!state) {
@@ -1719,6 +1839,7 @@
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function deletedDraftStateForForm(form) {
     const state = loadDeletedDraftState();
     if (!state || state.draftKey !== draftKeyForForm(form)) {
@@ -1727,12 +1848,14 @@
     return state;
   }
 
+  /** @param {HTMLFormElement | null} form */
   function clearDeletedDraftStateForForm(form) {
     if (deletedDraftStateForForm(form)) {
       clearDeletedDraftState();
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function formRecordRowCount(form) {
     if (!(form instanceof HTMLFormElement)) {
       return 1;
@@ -1741,6 +1864,10 @@
     return count > 0 ? count : 1;
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {number} targetCount
+   */
   function setRecordRowCount(form, targetCount) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -1764,6 +1891,7 @@
     }
   }
 
+  /** @param {Element & { value?: unknown }} field */
   function draftFieldValue(field) {
     if (field instanceof HTMLInputElement) {
       if (field.type === "checkbox") {
@@ -1776,6 +1904,7 @@
     return String(field.value ?? "");
   }
 
+  /** @param {HTMLFormElement} form */
   function serializeDraftFields(form) {
     const payload = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
@@ -1790,6 +1919,7 @@
     return payload;
   }
 
+  /** @param {Record<string, unknown> | null | undefined} snapshot */
   function cloneDraftSnapshot(snapshot) {
     const clone = {};
     Object.entries(snapshot || {}).forEach(([name, values]) => {
@@ -1798,6 +1928,10 @@
     return clone;
   }
 
+  /**
+   * @param {Record<string, unknown> | null | undefined} left
+   * @param {Record<string, unknown> | null | undefined} right
+   */
   function snapshotsEqual(left, right) {
     const names = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
     for (const name of names) {
@@ -1815,6 +1949,10 @@
     return true;
   }
 
+  /**
+   * @param {Record<string, unknown> | null | undefined} base
+   * @param {Record<string, unknown> | null | undefined} overrides
+   */
   function mergeDraftSnapshot(base, overrides) {
     const merged = cloneDraftSnapshot(base || {});
     Object.entries(overrides || {}).forEach(([name, values]) => {
@@ -1823,6 +1961,7 @@
     return merged;
   }
 
+  /** @param {HTMLFormElement} form */
   function baselineStateForForm(form) {
     let state = draftBaselines.get(form);
     if (state) {
@@ -1837,6 +1976,7 @@
     return state;
   }
 
+  /** @param {unknown} raw */
   function normalizeDraftSnapshot(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       return {};
@@ -1851,6 +1991,7 @@
     return normalized;
   }
 
+  /** @param {Record<string, unknown> | null | undefined} snapshot */
   function calculateDraftRowCount(snapshot) {
     return Math.max(
       1,
@@ -1860,6 +2001,7 @@
     );
   }
 
+  /** @param {HTMLFormElement} form */
   function buildDraftPayload(form) {
     const kind = draftKindForForm(form);
     const currentFields = serializeDraftFields(form);
@@ -1895,6 +2037,7 @@
     };
   }
 
+  /** @param {HTMLFormElement} form */
   function persistDraftForForm(form) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -1915,6 +2058,10 @@
     }
   }
 
+  /**
+   * @param {Element | null} field
+   * @param {unknown} rawValue
+   */
   function previewValueDisplay(field, rawValue) {
     const normalized = String(rawValue ?? "");
     if (field instanceof HTMLInputElement && field.type === "checkbox") {
@@ -1929,6 +2076,10 @@
     return normalized.trim() === "" ? "(blank)" : normalized;
   }
 
+  /**
+   * @param {string} name
+   * @param {number} occurrence
+   */
   function draftFieldLabel(name, occurrence) {
     const labels = {
       display_id: "Display ID",
@@ -1972,6 +2123,11 @@
     return base;
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, string[]> | null | undefined} baselineFields
+   * @param {Record<string, string[]> | null | undefined} draftSnapshot
+   */
   function buildDraftDiffEntries(form, baselineFields, draftSnapshot) {
     const entries = [];
     const names = Array.from(new Set([...Object.keys(baselineFields || {}), ...Object.keys(draftSnapshot || {})])).sort();
@@ -1996,6 +2152,11 @@
     return entries;
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Array<{ label: string, currentValue: string, localValue: string }>} entries
+   * @param {boolean} showReapply
+   */
   function renderRecordPersistencePreview(form, entries, showReapply) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
@@ -2043,6 +2204,11 @@
     reapply.classList.toggle("hidden", !showReapply);
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} scope
+   * @param {{ restoreTrigger?: boolean }} [options]
+   */
   function hideDraftDeleteConfirmation(form, scope, options = {}) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2061,6 +2227,10 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} scope
+   */
   function showDraftDeleteConfirmation(form, scope) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2080,11 +2250,16 @@
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function resetDraftDeleteConfirmations(form) {
     hideDraftDeleteConfirmation(form, "base", { restoreTrigger: false });
     hideDraftDeleteConfirmation(form, "stale", { restoreTrigger: false });
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} state
+   */
   function syncDraftDeleteControls(form, state) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2118,6 +2293,10 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {boolean} visible
+   */
   function syncDeletedDraftUndo(form, visible) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2129,6 +2308,11 @@
     panel.classList.toggle("hidden", !visible);
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {string} state
+   * @param {{ entries?: Array<{ label: string, currentValue: string, localValue: string }>, showUndo?: boolean }} [options]
+   */
   function setRecordPersistenceState(form, state, options = {}) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
@@ -2171,6 +2355,10 @@
     syncDeletedDraftUndo(form, Boolean(options.showUndo));
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {{ rememberDeleted?: boolean, preserveDeletedState?: boolean }} [options]
+   */
   function clearDraftForForm(form, options = {}) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -2196,6 +2384,7 @@
     setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty", { showUndo: Boolean(options.rememberDeleted && savedDraft) });
   }
 
+  /** @param {Element} control */
   function confirmDeleteDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2208,6 +2397,11 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, string[]> | null | undefined} snapshot
+   * @param {number} rowCount
+   */
   function applyDraftSnapshot(form, snapshot, rowCount) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2246,6 +2440,7 @@
     });
   }
 
+  /** @param {HTMLFormElement} form */
   function readStoredDraft(form) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -2286,6 +2481,7 @@
     };
   }
 
+  /** @param {HTMLFormElement} form */
   function restoreDraftForForm(form) {
     const baseline = baselineStateForForm(form);
     const stored = readStoredDraft(form);
@@ -2313,6 +2509,7 @@
     setRecordPersistenceState(form, "restored");
   }
 
+  /** @param {Element} control */
   function reapplyStaleDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2328,6 +2525,7 @@
     setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
   }
 
+  /** @param {Element} control */
   function undoDeletedDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2552,6 +2750,7 @@
           firstItem.focus();
         }
       };
+      /** @param {boolean} returnFocus */
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
@@ -2695,6 +2894,7 @@
         const firstItem = panel.querySelector('[role="menuitem"]');
         if (firstItem instanceof HTMLElement) firstItem.focus();
       };
+      /** @param {boolean} returnFocus */
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
@@ -2724,13 +2924,17 @@
   // panel relative to the currently-focused element. Wraps around
   // so the user can keep pressing ArrowDown to cycle through the
   // list. The WAI-ARIA menu pattern spec wraps; we follow it.
+  /**
+   * @param {HTMLElement} panel
+   * @param {"next" | "prev"} direction
+   */
   function focusSibling(panel, direction) {
     const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
     if (items.length === 0) {
       return;
     }
     const current = document.activeElement;
-    const idx = items.indexOf(current);
+    const idx = items.indexOf(/** @type {Element} */ (current));
     let next;
     if (idx === -1) {
       next = direction === "next" ? 0 : items.length - 1;
@@ -2750,6 +2954,7 @@
   // Future triggers add their own mapping. Keeping this in one
   // place makes it easy to audit which nav items are "active"
   // on which routes.
+  /** @param {string} menuID */
   function stemForTrigger(menuID) {
     if (menuID === "layout.share.menu") return "/share";
     return null;
@@ -2827,6 +3032,10 @@
     });
   }
 
+  /**
+   * @param {Element} section
+   * @param {boolean} enabled
+   */
   function setSectionEnabled(section, enabled) {
     if (!(section instanceof HTMLElement)) {
       return;
@@ -2839,6 +3048,7 @@
     });
   }
 
+  /** @param {HTMLFormElement | Element} form */
   function syncEntryTypeFields(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2882,6 +3092,7 @@
     }
   }
 
+  /** @param {string} value */
   function isSoldierEntryType(value) {
     // True for the default Soldier subtype and the linked-person
     // subtypes (wife / widow / linked_person) — anything that
@@ -2897,6 +3108,7 @@
     });
   }
 
+  /** @param {HTMLInputElement | HTMLTextAreaElement} input */
   function updateLiveCount(input) {
     if (!(input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement)) {
       return;
