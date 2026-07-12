@@ -108,33 +108,36 @@ func renderIndexForTest(t *testing.T) string {
 	return html
 }
 
-// TestStaticArchiveIndex_RendersEventsAndArticlesTabs (issue #490)
-// asserts the rendered index.html carries tab labels for all three
-// entity kinds (Persons, Events, Articles) and the container elements
-// the JS uses to render each list.
+// TestStaticArchiveIndex_RendersEventsAndArticlesTabs (issue #490,
+// re-pinned in #498 slice 2) asserts the rendered index.html carries
+// nav-menu labels for all three entity kinds (Person Records, Events,
+// Articles) and the route markers the JS uses to render each list.
 func TestStaticArchiveIndex_RendersEventsAndArticlesTabs(t *testing.T) {
 	html := renderIndexForTest(t)
 
-	// Tab labels — the segmented control in the hero section.
-	for _, label := range []string{"Persons", "Events", "Articles"} {
+	// Nav menu labels — the small fixed nav the revamp uses (issue
+	// #498 slice 2 replaces the legacy three-tab segmented control).
+	for _, label := range []string{"Person Records", "Events", "Articles"} {
 		if !strings.Contains(html, label) {
-			t.Errorf("rendered index.html missing tab label %q (issue #490)", label)
+			t.Errorf("rendered index.html missing nav label %q (issue #490 / #498 slice 2)", label)
 		}
 	}
 
-	// Tab container elements the JS swaps between. The JS reads
-	// bundle.events + bundle.articles and renders into these.
-	if !strings.Contains(html, "data-tab=\"events\"") {
-		t.Errorf("missing data-tab=\"events\" element for Events tab (issue #490)")
+	// Nav-link route markers — the JS uses these to hide empty
+	// entities (no Events tab when bundle.events is empty, no
+	// Articles tab when bundle.articles is empty).
+	if !strings.Contains(html, "data-route=\"events\"") {
+		t.Errorf("missing data-route=\"events\" nav link (issue #490 / #498 slice 2)")
 	}
-	if !strings.Contains(html, "data-tab=\"articles\"") {
-		t.Errorf("missing data-tab=\"articles\" element for Articles tab (issue #490)")
+	if !strings.Contains(html, "data-route=\"articles\"") {
+		t.Errorf("missing data-route=\"articles\" nav link (issue #490 / #498 slice 2)")
 	}
 }
 
-// TestStaticArchiveIndex_RendersEventDetailMarkup (issue #490)
-// asserts the JS carries a renderEventDetail function that produces
-// the Event detail screen (kind, date range, linked persons).
+// TestStaticArchiveIndex_RendersEventDetailMarkup (issue #490,
+// re-pinned in #498 slice 2) asserts the JS carries a
+// renderEventDetail function that produces the Event detail screen
+// (kind, date range, linked persons).
 func TestStaticArchiveIndex_RendersEventDetailMarkup(t *testing.T) {
 	html := renderIndexForTest(t)
 
@@ -142,9 +145,10 @@ func TestStaticArchiveIndex_RendersEventDetailMarkup(t *testing.T) {
 	if !strings.Contains(html, "function renderEventDetail") {
 		t.Errorf("missing renderEventDetail function in index.html JS (issue #490)")
 	}
-	// The hash router must handle #event= hashes.
-	if !strings.Contains(html, "#event=") {
-		t.Errorf("hash router missing #event= pattern (issue #490)")
+	// The new routeFromHash must handle #/event/ hashes (legacy
+	// #event= alias still resolves per _LegacyHashAliasesStillResolve).
+	if !strings.Contains(html, "/event/") {
+		t.Errorf("hash router missing /event/ route pattern (issue #490 / #498 slice 2)")
 	}
 	// Event list rendering function.
 	if !strings.Contains(html, "function renderEventRow") {
@@ -152,17 +156,18 @@ func TestStaticArchiveIndex_RendersEventDetailMarkup(t *testing.T) {
 	}
 }
 
-// TestStaticArchiveIndex_RendersArticleDetailMarkup (issue #490)
-// asserts the JS carries a renderArticleDetail function that produces
-// the Article detail screen (title, subtitle, body HTML, resolved refs).
+// TestStaticArchiveIndex_RendersArticleDetailMarkup (issue #490,
+// re-pinned in #498 slice 2) asserts the JS carries a
+// renderArticleDetail function that produces the Article detail
+// screen (title, subtitle, body HTML, resolved refs).
 func TestStaticArchiveIndex_RendersArticleDetailMarkup(t *testing.T) {
 	html := renderIndexForTest(t)
 
 	if !strings.Contains(html, "function renderArticleDetail") {
 		t.Errorf("missing renderArticleDetail function in index.html JS (issue #490)")
 	}
-	if !strings.Contains(html, "#article=") {
-		t.Errorf("hash router missing #article= pattern (issue #490)")
+	if !strings.Contains(html, "/article/") {
+		t.Errorf("hash router missing /article/ route pattern (issue #490 / #498 slice 2)")
 	}
 	if !strings.Contains(html, "function renderArticleRow") {
 		t.Errorf("missing renderArticleRow function in index.html JS (issue #490)")
@@ -318,5 +323,113 @@ func TestStaticArchive_CalendarHelper_PopulatesDayCounts(t *testing.T) {
 	}
 	if day20, ok := may.Days[20]; !ok || day20.EventCount != 1 || day20.HolidayCount != 0 {
 		t.Errorf("May 20 = %+v, want EventCount=1 (issue #498 slice 1)", may.Days[20])
+	}
+}
+
+// TestStaticArchiveIndex_HashRouterRendersCalendarLanding (issue #498
+// slice 2) asserts the viewer ships the new hash-routed nav: the
+// rendered index.html carries the nav-menu surface (Calendar /
+// Browse / Insights / Person Records / Events / Articles) and a
+// Calendar landing screen with a per-month grid renderer.
+func TestStaticArchiveIndex_HashRouterRendersCalendarLanding(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// Nav menu — every entry per the spec.
+	for _, label := range []string{"Calendar", "Browse", "Insights", "Person Records", "Events", "Articles"} {
+		if !strings.Contains(html, label) {
+			t.Errorf("nav menu missing %q (issue #498 slice 2)", label)
+		}
+	}
+
+	// Hash router — the new #/calendar, #/browse, #/insights, #/person/{id},
+	// #/event/{id}, #/article/{id} routes. The router parses each
+	// route and dispatches to the per-page render function.
+	for _, needle := range []string{
+		"function routeFromHash",
+		"function renderCalendarPage",
+		"function renderBrowsePage",
+		"function renderInsightsPage",
+		"#/calendar",
+		"#/browse",
+		"#/insights",
+		"#/person/",
+		"#/event/",
+		"#/article/",
+	} {
+		if !strings.Contains(html, needle) {
+			t.Errorf("rendered index.html missing %q (issue #498 slice 2)", needle)
+		}
+	}
+}
+
+// TestStaticArchiveIndex_CalendarGridRendersAllTwelveMonths (issue #498
+// slice 2) asserts the Calendar landing page renders a 12-month grid
+// from bundle.calendar[]. The grid's per-day cell must read
+// bundle.calendar[month-1].days[day] and surface the AnniversaryCount /
+// EventCount / HolidayCount markers.
+func TestStaticArchiveIndex_CalendarGridRendersAllTwelveMonths(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The renderCalendarPage function must walk bundle.calendar and
+	// emit a 12-month grid (per locked decision 1).
+	if !strings.Contains(html, "renderCalendarPage") {
+		t.Errorf("missing renderCalendarPage function (issue #498 slice 2)")
+	}
+	// Must read bundle.calendar in JS.
+	if !strings.Contains(html, "bundle.calendar") {
+		t.Errorf("renderCalendarPage must read bundle.calendar (issue #498 slice 2)")
+	}
+	// Must surface the per-day marker counts in JS (Anniversary / Event /
+	// Holiday — abbreviated a/e/h in the bundle, so the JS must
+	// reference those keys).
+	for _, key := range []string{".a", ".e", ".h"} {
+		if !strings.Contains(html, key) {
+			t.Errorf("renderCalendarPage must read .a/.e/.h day-marker keys (issue #498 slice 2)")
+		}
+	}
+}
+
+// TestStaticArchiveIndex_NavMenuHighlightsActiveRoute (issue #498 slice 2)
+// asserts the nav menu marks the active page based on the current
+// hash, so the user has visual confirmation of where they are.
+func TestStaticArchiveIndex_NavMenuHighlightsActiveRoute(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The nav-menu structure must exist as a renderable element
+	// (the test of 'highlighting' is the JS, but the markup shell
+	// must carry the container + the per-page data-route attributes).
+	if !strings.Contains(html, `data-route="calendar"`) {
+		t.Errorf("nav menu missing data-route=\"calendar\" (issue #498 slice 2)")
+	}
+	if !strings.Contains(html, `data-route="browse"`) {
+		t.Errorf("nav menu missing data-route=\"browse\" (issue #498 slice 2)")
+	}
+	if !strings.Contains(html, `data-route="insights"`) {
+		t.Errorf("nav menu missing data-route=\"insights\" (issue #498 slice 2)")
+	}
+}
+
+// TestStaticArchiveIndex_LegacyHashAliasesStillResolve (issue #498
+// slice 2) asserts the rewrite preserves the legacy hash forms from
+// issue #320/#490 (#record=, #event=, #article=) so existing
+// exported archives (pre-revamp) still navigate correctly. Note:
+// html/template's JS-context URL escape strips a leading '#' from
+// URL-like substrings in script contexts, so we assert the literal
+// regex patterns the JS uses to parse the legacy hashes instead.
+func TestStaticArchiveIndex_LegacyHashAliasesStillResolve(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The routeFromHash() function must carry the legacy
+	// regex matchers for #record=, #event=, #article= (rendered
+	// in JS as bare record= / event= / article= after html/template
+	// strips the leading '#' for safety).
+	for _, needle := range []string{"^record=(.+)$", "^event=(.+)$", "^article=(.+)$"} {
+		if !strings.Contains(html, needle) {
+			t.Errorf("rendered index.html missing legacy hash regex %q (issue #498 slice 2)", needle)
+		}
+	}
+	// And the function name itself, for greppability.
+	if !strings.Contains(html, "legacyRecord") {
+		t.Errorf("rendered index.html missing legacyRecord handler (issue #498 slice 2)")
 	}
 }
