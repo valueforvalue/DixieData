@@ -26,7 +26,16 @@ package templates
 // conventions.
 func reviewQueueMenuItem(openReview bool) string {
 	if openReview {
-		return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full border border-review-red/60 text-[#fbe1de] hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a></li>`
+		// Issue #472: the previous version set text color to
+		// text-[#fbe1de] (a near-pink cream) which blended
+		// into the review-red pill background. The fix is to
+		// remove the explicit text color and let the
+		// .mega-menu-item rule (set in tailwind.css, themed
+		// per data-theme) own the color. The high-contrast
+		// and soft overrides in tailwind.css set the right
+		// text color per theme so this menuitem stays
+		// readable across all three themes.
+		return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full border border-review-red/60 hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a></li>`
 	}
 	return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a></li>`
 }
