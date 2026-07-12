@@ -128,7 +128,17 @@ html[data-theme="soft"] .theme-option { background: #ede2c5; border-color: #b08f
 html[data-theme="soft"] .theme-option-label { color: #3b2a1a; }
 html[data-theme="soft"] .theme-option-hint { color: #5a4220; }
 
-/* Issue #472 / #473: popout (foldout + mega-menu) items render
+/* Issue #474 follow-up (QA): the high-contrast theme body bg
+   gradient (white → light-gray → slightly-darker-gray) was
+   "way too obtrusive" — a flat single color is calmer and
+   more WCAG-aligned. The soft theme keeps the layered sepia
+   gradient because the warm-toned layers match the reading
+   intent. The default theme keeps its sepia gradient (the
+   visual identity of the app). Only the high-contrast body
+   is flattened. */
+html[data-theme="high-contrast"] body {
+  background: #ffffff;
+}
    cream on dark navy in the default theme (the post-#283 fix).
    In high-contrast the panel is light, so cream-on-light is
    unreadable; in soft the panel is parchment, so cream-on-
@@ -247,7 +257,7 @@ html[data-theme="soft"] .foldout-panel {
   .field-input {
     width: 100%;
     background: var(--theme-bg-input);
-    @apply border-sepia-500/[0.82];
+    border: 1.5px solid var(--theme-border-strong);
     border-radius: 0.8rem;
     padding: 0.65rem 0.9rem;
     font-size: 0.95rem;
@@ -286,9 +296,9 @@ html[data-theme="soft"] .foldout-panel {
   .primary-button:hover { background: linear-gradient(180deg, #d1b676 0%, #b08f45 100%); }
   .secondary-button,
   .pill-link {
-    background: rgba(246, 241, 228, 0.92);
-    @apply text-ink;
-    border: 1px solid rgba(141, 116, 64, 0.85);
+    background: rgba(246, 241, 228, 0.96);
+    color: #0a0a0a;
+    border: 1.5px solid #8d7440;
   }
   .secondary-button:hover,
   .pill-link:hover { background: rgba(255, 247, 231, 0.98); }

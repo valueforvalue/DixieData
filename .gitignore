@@ -47,6 +47,7 @@ Thumbs.db
 # User data directory
 .dixiedata/
 .dixiedata-logs/
+.dixiedata-state/
 dixiedata-backup-*.ddbak
 
 # Go test cache
