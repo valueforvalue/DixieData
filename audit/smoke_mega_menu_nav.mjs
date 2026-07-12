@@ -86,11 +86,12 @@ try { Playwright = await import("playwright"); }
 catch (e) { console.error("playwright import failed:", e.message); process.exit(2); }
 
 let server;
+let browser;
 try {
   await ready();
   await wait(2000);
 
-  const browser = await Playwright.chromium.launch({ headless: true });
+  browser = await Playwright.chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
   const page = await ctx.newPage();
 
@@ -328,13 +329,14 @@ try {
   record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
 
   console.log(`\n  mega_menu_nav probe: ${pass} passed, ${fail} failed`);
-  if (fail > 0) {
-    process.exitCode = 1;
-  }
 } catch (e) {
   console.error("test harness error:", e.message);
-  process.exit(2);
+  process.exitCode = 2;
 } finally {
+  if (browser) {
+    await browser.close().catch(() => {});
+  }
   if (server && typeof server.kill === "function") server.kill();
   await wait(500);
+  process.exit(process.exitCode || (fail > 0 ? 1 : 0));
 }
