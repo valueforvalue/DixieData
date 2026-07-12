@@ -71,6 +71,15 @@ The TS2339 cluster splits further into two patterns:
 The TS2554 and TS2304 sites look like refactor leftovers (dead variables,
 unused argument captures). They are the highest-signal slice-2 fix candidates.
 
+## Slice progression
+
+| Slice | What changed                                                                                  | Error count | Test budget added         |
+| ----- | --------------------------------------------------------------------------------------------- | ----------: | ------------------------- |
+| 1     | `jsconfig.json` + `npm run typecheck` + `make lint-typecheck` + baseline doc                  |         168 | (observability only)      |
+| 2     | Reorder `dispatchDixieDataForm` (TDZ) + 4 narrowing fixes                                    |         157 | `dispatcher_tdz_fix` × 4  |
+| 3     | `frontend/global.d.ts` augmentation + `eventTargetElement` helper + per-site narrowing        |           0 | `typecheck_augmentations` × 6 |
+| 4     | CI gate: `make lint-typecheck` + the two JS regression nets land on every PR via `test.yml` |           0 | (gates the prior slices) |
+
 ## What is **not** in slice 1
 
 - No `.ts` files. JS-only via `checkJs`.
@@ -82,11 +91,69 @@ unused argument captures). They are the highest-signal slice-2 fix candidates.
 - No ESLint integration with `@typescript-eslint/parser`. The existing
   `npm run lint:js` keeps its current shape.
 
+## Slice 4 — CI gate
+
+`.github/workflows/test.yml` runs three new steps after the existing
+`htmx-guard lint` step:
+
+```yaml
+- name: Frontend type-check + JS regression nets (typecheck-baseline)
+  shell: bash
+  run: |
+    make lint-typecheck
+    make lint-dispatcher-tdz-test
+    make lint-typecheck-augmentations-test
+  timeout-minutes: 10
+```
+
+The three targets:
+
+1. **`make lint-typecheck`** → `tsc -p jsconfig.json --noEmit` against
+   `frontend/**/*.js`. Catches any TypeScript error introduced by a future
+   commit. Replaces the slice-3 baseline (0 errors); the commit that breaks
+   the baseline fails the step.
+2. **`make lint-dispatcher-tdz-test`** →
+   `audit/dispatcher_tdz_fix.test.mjs`. Pins the slice-2
+   `dispatchDixieDataForm` temporal-dead-zone fix (the empty-name save flow).
+3. **`make lint-typecheck-augmentations-test`** →
+   `audit/typecheck_augmentations.test.mjs`. Pins the slice-3
+   `frontend/global.d.ts` augmentation shape (16 install-once window markers,
+   per-element markers, the htmx CustomEvent detail shape with
+   `xhr.getResponseHeader`, the `eventTargetElement` helper).
+
+Sequencing matters: `lint-typecheck-augmentations-test` exercises the file
+shape that powers the clean tsc baseline. If a future PR deletes the
+augmentation file, **both** `lint-typecheck` (errors back up) AND
+`lint-typecheck-augmentations-test` (interface blocks gone) fail at the
+same step — belt and suspenders.
+
+The lint gate is required in CI: any PR that fails any of the three targets
+fails the workflow and is blocked from merge. `dev` and `stable` are both
+covered (the workflow triggers on both branches).
+
+## What is **not** in slice 4
+
+- **No `@typescript-eslint/parser` integration with ESLint.** The TypeScript
+  parser can surface JSDoc types to ESLint and enable type-aware rules
+  (`@typescript-eslint/no-floating-promises`, etc.). Holding back because:
+  (a) tsc already catches every bug class those rules catch; (b) adds a
+  significant devDep; (c) ESLint's flat config already works for the
+  existing rules. If a future slice wants typescript-eslint rules, that is
+  its own decision in its own slice.
+- **No strict-mode flag flips.** The slice-3 baseline is zero with all
+  `strict*` flags explicitly false. Tightening (`strict: true`,
+  `noImplicitAny: true`, `strictNullChecks: true`) requires writing JSDoc
+  for every parameter in app.js; that's a multi-PR refactor and not in
+  scope for this slice.
+
 ## Validation
 
-- `npm run typecheck` exits with code 2 against the unmodified tree, printing
-  the 168 errors to stdout.
-- `make lint-typecheck` exits with code 2 as well (Makefile wires the same
-  command).
-- No Go, no templ, no CSS changed. Run `make test` (or just `go test ./...
-  -short`) and `make audit` independently of this slice.
+- `npm run typecheck` exits with code 0 against the slice-3 tree (the
+  slice-1 baseline was 168 errors; slice 3 cleared them all).
+- `make lint-typecheck`, `make lint-dispatcher-tdz-test`, and
+  `make lint-typecheck-augmentations-test` all exit 0 on the slice-4 tree.
+- Go backstop: `go test -short -count=1 ./internal/appshell/...` exits 0;
+  Go + templ untouched.
+- CI: the new `Frontend type-check + JS regression nets` step in
+  `.github/workflows/test.yml` runs on every push to `dev` / `stable` and
+  on every PR targeting either.
