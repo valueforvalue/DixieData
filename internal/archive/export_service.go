@@ -1695,6 +1695,11 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
+	// Issue #502: bundle calendar_items for the Calendar items page.
+	calendarItems, err := e.staticArchiveCalendarItems()
+	if err != nil {
+		return err
+	}
 	// Issue #498 slice 4: bundle the AnalyticsService snapshot so
 	// the Insights page can render the cards client-side. Mirrors
 	// the staticArchiveCalendar inline-service pattern.
@@ -1724,17 +1729,19 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	// adds `insights` so the Insights page can render the analytics
 	// cards client-side.
 	bundle := struct {
-		Records  []StaticArchiveRecord        `json:"records"`
-		Events   []StaticArchiveRecord        `json:"events"`
-		Articles []StaticArchiveRecord        `json:"articles"`
-		Calendar StaticArchiveCalendar        `json:"calendar"`
-		Insights AnalyticsSnapshot     `json:"insights"`
+		Records       []StaticArchiveRecord        `json:"records"`
+		Events        []StaticArchiveRecord        `json:"events"`
+		Articles      []StaticArchiveRecord        `json:"articles"`
+		Calendar      StaticArchiveCalendar        `json:"calendar"`
+		CalendarItems []StaticArchiveCalendarItem  `json:"calendar_items"`
+		Insights      AnalyticsSnapshot     `json:"insights"`
 	}{
-		Records:  records,
-		Events:   events,
-		Articles: articles,
-		Calendar: calendarMonths,
-		Insights: insightsSnapshot,
+		Records:       records,
+		Events:        events,
+		Articles:      articles,
+		Calendar:      calendarMonths,
+		CalendarItems: calendarItems,
+		Insights:      insightsSnapshot,
 	}
 	dataPayload, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
