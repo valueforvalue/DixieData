@@ -321,6 +321,20 @@ func (s *TagService) List(ctx context.Context) ([]Tag, error) {
 	return out, rows.Err()
 }
 
+// Count returns the total number of Tags in the Local Archive.
+// Distinct from per-Tag member counts (the MemberCount field
+// on the Tag struct, populated by List). Powers the /inventory
+// page + the Calendar header archive rollup (issue #491).
+func (s *TagService) Count(ctx context.Context) (int, error) {
+	var n int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM tags`,
+	).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // Autocomplete returns up to `limit` tags whose normalized name
 // contains query (substring, case-insensitive). Empty query
 // returns the most recent 20. Used by the picker HTMX endpoint at

@@ -326,6 +326,13 @@ func InsightsReportPDF() string {
 	return "/insights/report/pdf"
 }
 
+// Inventory returns the URL for the Archive Inventory page
+// (issue #491). Used by the Share & Review mega-menu's Review
+// & Research group as the "Archive Inventory" menuitem.
+func Inventory() string {
+	return "/inventory"
+}
+
 // ExportBackup returns the URL for the Backup Archive export button.
 // Registered as POST /export/backup in routes.go.
 func ExportBackup() string {

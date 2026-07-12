@@ -97,6 +97,21 @@ func NewArticleService(soldierService *SoldierService, markdownRenderer ...*Mark
 	return svc
 }
 
+// Count returns the total number of LIVE Article rows in the
+// Local Archive. Snapshots (is_snapshot = 1) are excluded —
+// they're per-Article Revisions and don't count as distinct
+// archive entries (locked decision #11). Powers the /inventory
+// page + the Calendar header archive rollup (issue #491).
+func (a *ArticleService) Count() (int, error) {
+	var n int
+	if err := a.soldiers.db.Conn().QueryRow(
+		`SELECT COUNT(*) FROM articles WHERE is_snapshot = 0`,
+	).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // Create inserts a new Article row (live branch — SnapshotOfID
 // is nil, IsSnapshot is false) and returns the persisted model.
 // Returns ErrArticleTitleRequired when title is blank after

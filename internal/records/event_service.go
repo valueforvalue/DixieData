@@ -551,9 +551,63 @@ func (e *EventService) ListForEvent(eventID int64) ([]models.Soldier, error) {
 	return scanSoldiers(rows)
 }
 
-// LinkCount returns the number of links for a given Event.
-// Used by the Quality Scan event-zero-links check (an Event
-// Record with zero links is a review-queue candidate).
+// Count returns the total number of Event Records in the Local
+// Archive. Distinct from LinkCount (per-event link count) and
+// from the per-month summary EventCount (per-calendar-day
+// count). Powers the /inventory page + the Calendar header
+// archive rollup (issue #491).
+func (e *EventService) Count() (int, error) {
+	var n int
+	if err := e.soldiers.db.Conn().QueryRow(
+		`SELECT COUNT(*) FROM soldiers WHERE entry_type = 'event'`,
+	).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+// EventKindCount is one bucket in the per-Event-kind rollup
+// returned by KindRollup. Kind is the free-text event kind
+// (Battle, Campaign, Death, Marriage, Hospital stay, etc. —
+// no enum per issue #320). Count is the number of Event Records
+// of that kind. Kinds with Count == 0 are not returned.
+type EventKindCount struct {
+	Kind  string
+	Count int
+}
+
+// KindRollup returns the per-kind Event Record count for the
+// /inventory page (issue #491). Empty/blank kinds are bucketed
+// under "(unspecified)" so the rollup doesn't lose rows to a
+// free-text typo or an import that didn't normalize. Ordered by
+// count descending so the most common kind surfaces first.
+func (e *EventService) KindRollup() ([]EventKindCount, error) {
+	rows, err := e.soldiers.db.Conn().Query(`
+		SELECT
+			COALESCE(NULLIF(TRIM(kind), ''), '(unspecified)') AS kind,
+			COUNT(*) AS n
+		FROM soldiers
+		WHERE LOWER(TRIM(entry_type)) = 'event'
+		GROUP BY kind
+		ORDER BY n DESC, kind ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []EventKindCount
+	for rows.Next() {
+		var item EventKindCount
+		if err := rows.Scan(&item.Kind, &item.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// LinkCount returns the number of person links for a given
+// Event. Used by the Quality Scan event-zero-links check
+// (an Event Record with zero links is a review-queue candidate).
 func (e *EventService) LinkCount(eventID int64) (int, error) {
 	var n int
 	if err := e.soldiers.db.Conn().QueryRow(

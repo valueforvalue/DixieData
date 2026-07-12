@@ -70,6 +70,8 @@ const (
 	PageShareLanding            = "page.share.landing"
 // PageInsights is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInsights                = "page.insights"
+// PageInventory is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
+	PageInventory               = "page.inventory"
 // PanelInsightsOverview is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsOverview       = "panel.insights.overview"
 // PanelInsightsCemeteries is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
@@ -358,6 +360,7 @@ var Registry = []Surface{
 	{ID: PageShareImports, Kind: "page", Description: "Share Imports subpage (Import & Restore surface)."},
 	{ID: PageShareSync, Kind: "page", Description: "Share Sync subpage (Google Integration surface + Calendar Preferences modal)."},
 	{ID: PageInsights, Kind: "page", Description: "Archive insights dashboard page."},
+	{ID: PageInventory, Kind: "page", Description: "Archive inventory page (issue #491): full DB rollup — Person Record subtypes + Event Records + Articles + Tags at a basic level than Insights."},
 	{ID: PanelInsightsOverview, Kind: "panel", Description: "Overview card on the insights page."},
 	{ID: PanelInsightsCemeteries, Kind: "panel", Description: "Top cemeteries analytics card."},
 	{ID: PanelInsightsHomes, Kind: "panel", Description: "Confederate home analytics card."},

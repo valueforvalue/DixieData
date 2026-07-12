@@ -15,6 +15,7 @@ func TestCalendarShowsSplitArchiveCounts(t *testing.T) {
 	err := Calendar(5, map[int]viewmodel.CalendarDaySummary{}, viewmodel.ArchiveCounts{
 		SoldierCount:      12,
 		SpouseRecordCount: 5,
+		PersonRecordCount: 2,
 	}, viewmodel.Quote{
 		Author: "Test Author",
 		Text:   "Test quote",
@@ -27,11 +28,63 @@ func TestCalendarShowsSplitArchiveCounts(t *testing.T) {
 	for _, needle := range []string{
 		">12<",
 		">5<",
+		">2<",
 		"Soldiers",
 		"Spouse Records",
+		// Issue #491: the third card was relabeled from "Person
+		// Records" to "Linked Persons" so the number reads as the
+		// linked-person bucket only (per the glossary, "Person
+		// Record" is the umbrella for soldiers + spouses +
+		// linked_persons — the old label was misleading). The old
+		// label is asserted absent below.
+		"Linked Persons",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("calendar header missing %s", needle)
+		}
+	}
+	// Issue #491 regression: the old "Person Records" label MUST
+	// not appear as a card label anymore. (The string "Person
+	// Records" can still appear in other places on the page —
+	// e.g. the /insights crosslink copy — so we pin the absence
+	// to the card-marker scope.)
+	if strings.Contains(content, `class="...">Person Records<`) {
+		t.Errorf("calendar header still renders the old 'Person Records' card label; should be 'Linked Persons' (issue #491)")
+	}
+}
+
+// TestCalendarHeaderCardsAreClickableDrilldowns pins the
+// clickable drilldown behavior the Calendar header cards
+// gained in issue #491. Each of the three Person Record
+// subtype cards is an <a> with an href into /browse
+// pre-filtered by the matching entry_type. Clicking a card
+// should land the reader on the matching listing page; the
+// card no longer renders as a plain <div> with no action.
+func TestCalendarHeaderCardsAreClickableDrilldowns(t *testing.T) {
+	var buf bytes.Buffer
+	err := Calendar(5, map[int]viewmodel.CalendarDaySummary{}, viewmodel.ArchiveCounts{
+		SoldierCount:      1,
+		SpouseRecordCount: 1,
+		PersonRecordCount: 1,
+	}, viewmodel.Quote{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	drilldowns := []struct {
+		marker string
+		href   string
+	}{
+		{"soldier", "/browse?entry_type=soldier"},
+		{"spouse", "/browse?entry_type=spouse"},
+		{"linked-person", "/browse?entry_type=linked_person"},
+	}
+	for _, d := range drilldowns {
+		if !strings.Contains(content, `data-calendar-drilldown="`+d.marker+`"`) {
+			t.Errorf("calendar header missing data-calendar-drilldown marker for %q (issue #491)", d.marker)
+		}
+		if !strings.Contains(content, d.href) {
+			t.Errorf("calendar header missing drilldown href %q for %q (issue #491)", d.href, d.marker)
 		}
 	}
 }

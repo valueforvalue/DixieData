@@ -984,9 +984,11 @@ func TestSoldierService_ArchiveCounts(t *testing.T) {
 	for _, spouse := range []models.Soldier{
 		{EntryType: "wife", SpouseSoldierID: soldier.ID, FirstName: "Martha", LastName: "Taylor"},
 		{EntryType: "widow", SpouseSoldierID: soldier.ID, FirstName: "Sarah", LastName: "Hill"},
+		{EntryType: "linked_person", SpouseSoldierID: soldier.ID, FirstName: "Witness", LastName: "Jones", RelationshipLabel: "Witness"},
+		{EntryType: "event", Kind: "Battle", DisplayID: "EVT-00001", BeginDate: "07/01/1863", EndDate: "07/03/1863"},
 	} {
 		if _, err := svc.Create(spouse); err != nil {
-			t.Fatalf("Create spouse: %v", err)
+			t.Fatalf("Create spouse/event: %v", err)
 		}
 	}
 
@@ -994,8 +996,24 @@ func TestSoldierService_ArchiveCounts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ArchiveCounts: %v", err)
 	}
-	if counts.TotalSoldiers != 1 || counts.TotalWivesWidows != 2 {
-		t.Fatalf("unexpected archive counts: %#v", counts)
+	if counts.TotalSoldiers != 1 {
+		t.Errorf("TotalSoldiers: got %d want 1", counts.TotalSoldiers)
+	}
+	if counts.TotalWivesWidows != 2 {
+		t.Errorf("TotalWivesWidows: got %d want 2", counts.TotalWivesWidows)
+	}
+	if counts.TotalLinkedPeople != 1 {
+		t.Errorf("TotalLinkedPeople: got %d want 1", counts.TotalLinkedPeople)
+	}
+	if counts.EventRecords != 1 {
+		t.Errorf("EventRecords: got %d want 1", counts.EventRecords)
+	}
+	// Articles + Tags default to 0 (no rows created in this test).
+	if counts.Articles != 0 {
+		t.Errorf("Articles: got %d want 0", counts.Articles)
+	}
+	if counts.Tags != 0 {
+		t.Errorf("Tags: got %d want 0", counts.Tags)
 	}
 }
 

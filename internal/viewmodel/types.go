@@ -145,10 +145,25 @@ type Image struct {
 // page header. Same shape as models.ArchiveCounts; distinct type
 // so the templ handlers can render without importing the models
 // package directly.
+//
+// Issue #491: the three PersonRecordCount fields are the SAME
+// three Person Record subtypes (soldier / spouse / linked_person)
+// from models.ArchiveCounts. The three non-Person fields
+// (EventRecordCount, ArticleRecordCount, TagCount) are added for
+// the new /inventory page + the Calendar header archive rollup
+// (issue #491). PersonRecordCount is the linked-person count
+// (NOT the Person Record total) — the third Calendar card's label
+// was changed from "Person Records" to "Linked Persons" so the
+// number reads as the linked-person bucket only. The total
+// Person Record count is TotalRecords() = SoldierCount +
+// SpouseRecordCount + PersonRecordCount.
 type ArchiveCounts struct {
-	SoldierCount      int
-	SpouseRecordCount int
-	PersonRecordCount int
+	SoldierCount        int
+	SpouseRecordCount   int
+	PersonRecordCount   int
+	EventRecordCount    int
+	ArticleRecordCount  int
+	TagCount            int
 }
 
 // TotalRecords returns the sum of all Person Record subtypes. Mirrors
@@ -156,6 +171,41 @@ type ArchiveCounts struct {
 // decide whether the Local Archive is truly empty (issue #98).
 func (c ArchiveCounts) TotalRecords() int {
 	return c.SoldierCount + c.SpouseRecordCount + c.PersonRecordCount
+}
+
+// TotalEntities returns the sum of all five entity kinds the
+// /inventory page surfaces (Soldiers + Spouse Records + Linked
+// Persons + Event Records + Articles). Tags are excluded
+// because they're a labeling primitive, not an archive entry.
+// Issue #491.
+func (c ArchiveCounts) TotalEntities() int {
+	return c.SoldierCount + c.SpouseRecordCount + c.PersonRecordCount + c.EventRecordCount + c.ArticleRecordCount
+}
+
+// InventoryKindCount is one bucket in the per-kind rollup the
+// /inventory page renders alongside the headline numbers. Used
+// for the per-Event-Record kind breakdown, the per-Article title
+// list, and the per-Tag name list. Count is always 1 for the
+// per-Article / per-Tag lists (one row per entity); the
+// per-Event-kind rollup uses Count to surface the most-common
+// kind first. Issue #491.
+type InventoryKindCount struct {
+	Label string
+	Count int
+}
+
+// InventoryView is the data shape the /inventory page (issue
+// #491) renders. Counts carries the same fields as
+// ArchiveCounts (the new EventRecordCount / ArticleRecordCount /
+// TagCount fields surface on the headline strip). EventKinds /
+// ArticleRefs / TagKinds are the per-kind drilldown rows that
+// surface below the headline strip. The page is intentionally
+// basic — the per-attribute analytics live on /insights.
+type InventoryView struct {
+	Counts      ArchiveCounts
+	EventKinds  []InventoryKindCount
+	ArticleRefs []InventoryKindCount
+	TagKinds    []InventoryKindCount
 }
 
 // Quote is the UI-shaped projection of a per-soldier quote — a

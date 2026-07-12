@@ -142,14 +142,21 @@ type Soldier struct {
 
 // ArchiveCounts is the headline-number rollup surfaced on the
 // Insights page and the calendar header: how many soldiers, wives
-// / widows, and linked-people are in the Local Archive. Computed
-// by the analytics service and rendered by the calendar + insights
-// pages. TotalRecords is the sum of all three and what the UI
-// typically shows as the headline number.
+// / widows, linked-people, event records, articles, and tags are
+// in the Local Archive. Computed by the analytics service and
+// rendered by the calendar + insights + inventory pages.
+// TotalRecords is the sum of the three Person Record subtypes
+// and what the UI typically shows as the Person Record headline
+// number. The three non-Person Record fields (EventRecords,
+// Articles, Tags) are added for the /inventory page + the
+// Calendar header archive rollup (issue #491).
 type ArchiveCounts struct {
 	TotalSoldiers     int `json:"total_soldiers"`
 	TotalWivesWidows  int `json:"total_wives_widows"`
 	TotalLinkedPeople int `json:"total_linked_people"`
+	EventRecords      int `json:"event_records"`
+	Articles          int `json:"articles"`
+	Tags              int `json:"tags"`
 }
 
 func (c ArchiveCounts) TotalRecords() int {
