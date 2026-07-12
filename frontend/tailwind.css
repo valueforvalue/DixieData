@@ -139,6 +139,8 @@ html[data-theme="soft"] .theme-option-hint { color: #5a4220; }
 html[data-theme="high-contrast"] body {
   background: #ffffff;
 }
+
+/* Issue #472 / #473: popout (foldout + mega-menu) items render
    cream on dark navy in the default theme (the post-#283 fix).
    In high-contrast the panel is light, so cream-on-light is
    unreadable; in soft the panel is parchment, so cream-on-
