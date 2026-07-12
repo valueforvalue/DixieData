@@ -79,6 +79,47 @@ unused argument captures). They are the highest-signal slice-2 fix candidates.
 | 2     | Reorder `dispatchDixieDataForm` (TDZ) + 4 narrowing fixes                                    |         157 | `dispatcher_tdz_fix` × 4  |
 | 3     | `frontend/global.d.ts` augmentation + `eventTargetElement` helper + per-site narrowing        |           0 | `typecheck_augmentations` × 6 |
 | 4     | CI gate: `make lint-typecheck` + the two JS regression nets land on every PR via `test.yml` |           0 | (gates the prior slices) |
+| 5a    | Hygiene flags (`useUnknownInCatchVariables`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`) + 11 sites of dead-code removal | 0 | (slice-specific) |
+| 5b    | `strictNullChecks: true` + nullable-annotation sweep (JSDoc `T \| null` on every `let X = null` site)                                       | 0 | — |
+| 5c-A  | `noImplicitAny: true` enabled; JSDoc @param sweep in `debug.js` + `debug-toolbox.js` (PR #478 `feature/strict-mode-sweep`)                 |   0 (in scope) → 258 remaining in app.js | — |
+| 5c-B  | JSDoc sweep in app.js lines 1-3000 (`feature/strict-mode-sweep`)                                                                          | 0 (in scope) | — |
+| 5c-C  | JSDoc sweep in app.js lines 3000-5300 (`feature/strict-mode-sweep`)                                                                       | 0 (in scope) | — |
+| 5c-D  | Narrowing guards + `@type` annotations + `RequestInit` cast + last 5-error cleanup (`feature/strict-mode-sweep`)                            |           0 | — |
+| 5d    | `strict: true` umbrella flag flipped on (`feature/strict-mode-sweep` PR)                                                                  |           0 | — |
+
+The full strict-mode sweep (5a through 5d) lands on `dev` via PR #478
+(`feature/strict-mode-sweep` → `dev`). Once merged, the typechecker is
+the strictest available (strict: true + all auxiliary hygiene flags on)
+and the runtime path is unchanged (`app.js` continues to be served raw
+from disk by `internal/appshell/lifecycle.go`).
+
+## Final state
+
+```jsonc
+// jsconfig.json — post-5d
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve"
+  }
+}
+```
+
+`npm run typecheck` exits 0 against `frontend/app.js` + `frontend/debug-toolbox.js` + `frontend/debug.js` + `frontend/global.d.ts`. The frontend ships unchanged: no bundler, no tsc emit, no build step.
 
 ## What is **not** in slice 1
 
