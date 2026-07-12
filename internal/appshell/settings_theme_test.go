@@ -48,7 +48,7 @@ func TestHandleSettingsTheme_PersistsAndUpdatesInMemoryStore(t *testing.T) {
 	app.setupRoutes()
 	// Seed the in-memory store the way startup does so the GET
 	// before this POST would have a known starting value.
-	app.theme.Store(records.ThemeDefault)
+	app.theme.Store(records.ThemeClassic)
 
 	body := "theme=high-contrast"
 	req := httptest.NewRequest(http.MethodPost, "/settings/theme", strings.NewReader(body))

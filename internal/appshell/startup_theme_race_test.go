@@ -98,7 +98,7 @@ func TestStartupPlaceholderReadsPersistedThemeFromDiskOnColdStart(t *testing.T) 
 
 	// Corrupt or missing settings file must fall back to default,
 	// never panic or render an empty data-theme attribute.
-	t.Run("missing settings file falls back to default", func(t *testing.T) {
+	t.Run("missing settings file falls back to soft", func(t *testing.T) {
 		parent := t.TempDir()
 		dataDir := filepath.Join(parent, "data")
 		if err := os.MkdirAll(dataDir, 0o755); err != nil {
@@ -112,8 +112,11 @@ func TestStartupPlaceholderReadsPersistedThemeFromDiskOnColdStart(t *testing.T) 
 		rec := httptest.NewRecorder()
 		app.ServeHTTP(rec, req)
 
-		if !strings.Contains(rec.Body.String(), `data-theme="default"`) {
-			t.Fatalf("placeholder must fall back to default when no settings file exists; got body:\n%s", rec.Body.String())
+		// Issue #494: Soft is the new default for fresh installs.
+		// The pre-mux placeholder fallback resolves to ThemeSoft
+		// when no settings file exists.
+		if !strings.Contains(rec.Body.String(), `data-theme="soft"`) {
+			t.Fatalf("placeholder must fall back to soft when no settings file exists; got body:\n%s", rec.Body.String())
 		}
 	})
 }

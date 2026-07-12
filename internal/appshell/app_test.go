@@ -277,7 +277,7 @@ func TestAppServeHTTPStartupPlaceholderEchoesPersistedTheme(t *testing.T) {
 		}
 	})
 
-	t.Run("uninitialized app falls back to default theme", func(t *testing.T) {
+	t.Run("uninitialized app falls back to soft theme", func(t *testing.T) {
 		app := NewApp()
 		// a.theme left as zero-value atomic.Value (Load() returns nil)
 
@@ -289,8 +289,10 @@ func TestAppServeHTTPStartupPlaceholderEchoesPersistedTheme(t *testing.T) {
 			t.Fatalf("status=%d want %d", rec.Code, http.StatusAccepted)
 		}
 		body := rec.Body.String()
-		if !strings.Contains(body, `data-theme="default"`) {
-			t.Fatalf("placeholder must carry data-theme=\"default\" when a.theme is uninitialized; got body:\n%s", body)
+		// Issue #494: Soft is the new default for fresh installs.
+		// The pre-mux placeholder fallback now resolves to ThemeSoft.
+		if !strings.Contains(body, `data-theme="soft"`) {
+			t.Fatalf("placeholder must carry data-theme=\"soft\" when a.theme is uninitialized; got body:\n%s", body)
 		}
 	})
 }
