@@ -464,6 +464,30 @@ test('slice8-01 death-date drilldown uses dates.Display parser, not MM/DD/YYYY s
   );
 });
 
+// --- Slice 9: Calendar items link copy (issue #507) ---
+test('slice9-01 calendar landing link copy reads bundle.calendar_items.length (issue #507)', () => {
+  // User reported "View all 294 calendar items doesn't do anything"
+  // because the link text used totalDaysWithData (day-cell count,
+  // e.g. 294) while the destination #/calendar-items page renders
+  // bundle.calendar_items.length (total items: holidays +
+  // anniversaries + events). The two are different numbers. Pin:
+  // the link copy uses bundle.calendar_items.length, not the
+  // totalDaysWithData accumulator.
+  const linkLine = html.match(/View all [^&]*calendar items/);
+  assert.ok(linkLine, 'Calendar landing must render the "View all N calendar items" link copy');
+  assert.ok(
+    /View all [^&]*totalItems[^&]*calendar items/.test(linkLine[0]) ||
+    /View all [^&]*bundle\.calendar_items\.length[^&]*calendar items/.test(linkLine[0]) ||
+    /View all ' \+ totalItems \+ ' calendar items/.test(linkLine[0]) ||
+    /View all '\s*\+\s*totalItems\s*\+\s*'/.test(html),
+    'link copy must reference totalItems / bundle.calendar_items.length (issue #507)',
+  );
+  assert.ok(
+    !/View all ' \+ totalDaysWithData \+ ' calendar items/.test(html),
+    'link copy must NOT use totalDaysWithData (issue #507) -- that was the old count-source bug',
+  );
+});
+
 console.log(`\nResults: ${pass} pass, ${fail} fail`);
 if (fail > 0) {
   process.exit(1);
