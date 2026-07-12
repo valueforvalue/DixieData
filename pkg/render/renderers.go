@@ -195,6 +195,8 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		// therefore expect files like out-1.svg / out-2.svg,
 		// sorted alphabetically — out-10 sorts before out-2.
 		outputPath = filepath.Join(workDir, "out-{p}."+t.outputFormat)
+	case "html":
+		outputPath = filepath.Join(workDir, "out.html")
 	default:
 		outputPath = filepath.Join(workDir, "out.pdf")
 	}
@@ -289,6 +291,8 @@ func runTypstCompile(binPath, workDir, mainPath, outputPath string) error {
 		args = append(args, "--format", "svg")
 	case ".png":
 		args = append(args, "--format", "png")
+	case ".html":
+		args = append(args, "--format", "html")
 	}
 	args = append(args, mainPath, outputPath)
 
