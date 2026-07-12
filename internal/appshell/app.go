@@ -483,6 +483,19 @@ func setupRequestAllowed(path string) bool {
 		return true
 	case path == "/jobs/active":
 		return true
+	case path == "/layout/review-count":
+		// /layout/review-count is the Review Queue badge fragment
+		// polled by the layout every 30s (layout.templ). When setup
+		// is required, the badge's poll would 204 + X-DixieData-Redirect
+		// to /setup, and the global htmx:afterRequest listener
+		// (app.js) would window.location.assign("/setup") — the user
+		// is already on /setup, so this reloads the page on every
+		// 30s poll and Chromium's IPC flood protection eventually
+		// throttles navigation. Allowing the path through here
+		// keeps the badge poll quiet (handler returns empty 200)
+		// while the user completes setup. See issue: /setup mouse
+		// jitter caused by layout badge reload loop.
+		return true
 	case strings.HasPrefix(path, "/jobs/") && strings.HasSuffix(path, "/status"):
 		// /jobs/{id}/status is the polling fragment. When setup is
 		// required, no jobs exist, but the layout progress slot
