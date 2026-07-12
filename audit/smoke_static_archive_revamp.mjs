@@ -397,6 +397,22 @@ test('cross-03 nav-menu + Calendar + Browse + Insights are accessible on every p
   );
 });
 
+// --- Slice 6: Export Report button (issue #505) ---
+test('slice6-01 Export Report button renders on Person Record detail toolbar', () => {
+  assert.ok(
+    html.includes('id="detail-export-report"'),
+    'detail toolbar must carry the Export Report button (issue #505)',
+  );
+  assert.ok(
+    html.includes('target="_blank"'),
+    'Export Report button must open in new tab (issue #505)',
+  );
+  assert.ok(
+    html.includes('report-'),
+    'JS must reference report-{displayId}.html pattern (issue #505)',
+  );
+});
+
 console.log(`\nResults: ${pass} pass, ${fail} fail`);
 if (fail > 0) {
   process.exit(1);

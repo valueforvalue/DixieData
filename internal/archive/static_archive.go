@@ -1033,6 +1033,31 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       background: rgba(255, 247, 231, 0.98);
     }
 
+    .export-report-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 2px solid var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      background: var(--accent);
+      color: #fff;
+      transition: background 0.12s;
+    }
+    .export-report-button:hover {
+      background: #7a6635;
+      border-color: #7a6635;
+    }
+    .export-report-tip {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
     .detail-card {
       border: 1px solid rgba(141, 116, 64, 0.4);
       border-radius: 28px;
@@ -1323,6 +1348,8 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       <section id="archive-detail-screen" class="screen detail-screen hidden">
         <div class="detail-toolbar">
           <button type="button" id="detail-back" class="back-button">← Back to Archive List</button>
+          <a id="detail-export-report" class="export-report-button" target="_blank" rel="noopener noreferrer" title="Open the printable report in a new tab. Use your browser's Print → PDF (Cmd+P on Mac, Ctrl+P on Windows/Linux) to save it as a PDF." style="display:none;">Export Report</a>
+          <span class="export-report-tip">💡 Open the printable report in a new tab, then use your browser's Print → PDF to save it.</span>
           <span id="detail-position" class="pill">Record View</span>
         </div>
         <div id="detail-content" class="detail-card">Select a record to view its details.</div>
@@ -2534,6 +2561,11 @@ function escapeHtml(value) {
             if (idx >= 0) {
               content.innerHTML = renderDetail(records[idx], records, events);
               pos.textContent = 'Person Record';
+              var reportBtn = document.getElementById('detail-export-report');
+              if (reportBtn) {
+                reportBtn.href = 'report-' + encodeURIComponent(records[idx].displayId) + '.html';
+                reportBtn.style.display = '';
+              }
             } else {
               content.innerHTML = '<p>Person Record "' + escapeHtml(route.id) + '" not found in this archive.</p>';
               pos.textContent = 'Not Found';
@@ -2543,6 +2575,8 @@ function escapeHtml(value) {
             if (evIdx >= 0) {
               content.innerHTML = renderEventDetail(events[evIdx], records);
               pos.textContent = 'Event';
+              var reportBtn = document.getElementById('detail-export-report');
+              if (reportBtn) reportBtn.style.display = 'none';
             } else {
               content.innerHTML = '<p>Event "' + escapeHtml(route.id) + '" not found in this archive.</p>';
               pos.textContent = 'Not Found';
