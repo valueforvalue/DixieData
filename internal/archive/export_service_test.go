@@ -2198,6 +2198,61 @@ func TestExportService_ExportICalendarWithStatsCountsRecords(t *testing.T) {
 	}
 }
 
+// TestExportStaticArchiveWithStats_PopulatesCalendarAndInsights (issue
+// #498 slice 5) end-to-end check: a seeded archive export carries
+// non-zero CalendarDaysWithData + InsightsSections on its result.
+// Pins the contract that ExportStaticArchiveWithStats aggregates
+// from the same helpers ExportStaticArchive uses (staticArchiveCalendar
+// + staticArchiveInsights) so the per-page counts match what the
+// bundle actually contains.
+func TestExportStaticArchiveWithStats_PopulatesCalendarAndInsights(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	exportSvc := NewExportService(d, soldierSvc)
+	calendarSvc := records.NewCalendarService(d)
+
+	// Seed an event on May 20 + a holiday on May 5 so CalendarDaysWithData
+	// lands at >=2.
+	if _, err := calendarSvc.CreateCalendarItem(5, 20, records.CalendarItemInput{
+		ItemType: models.CalendarItemTypeEvent,
+		Title:    "Battle of Palmito Ranch",
+	}); err != nil {
+		t.Fatalf("CreateCalendarItem event: %v", err)
+	}
+	if _, err := calendarSvc.CreateCalendarItem(5, 5, records.CalendarItemInput{
+		ItemType: models.CalendarItemTypeHoliday,
+		Title:    "Confederate Memorial Day",
+	}); err != nil {
+		t.Fatalf("CreateCalendarItem holiday: %v", err)
+	}
+	// Seed a soldier with cemetery + unit so the Insights dimensions
+	// (cemetery_density, unit_representation) populate.
+	if _, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Robert", LastName: "Lee",
+		BirthDate: "01/19/1807", DeathDate: "10/12/1870",
+		BuriedIn:  "Hollywood Cemetery", Unit: "Army of Northern Virginia",
+	}); err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "static.zip")
+	result, err := exportSvc.ExportStaticArchiveWithStats(out, t.TempDir())
+	if err != nil {
+		t.Fatalf("ExportStaticArchiveWithStats: %v", err)
+	}
+	if result.CalendarDaysWithData < 2 {
+		t.Errorf("CalendarDaysWithData = %d, want >= 2 (issue #498 slice 5)", result.CalendarDaysWithData)
+	}
+	// record_types always counts as 1; cemetery + unit add 2 more
+	// (the soldier has both populated).
+	if result.InsightsSections < 3 {
+		t.Errorf("InsightsSections = %d, want >= 3 (record_types + cemetery + unit) (issue #498 slice 5)", result.InsightsSections)
+	}
+}
+
 // TestExportService_ExportFullDatabasePDFWithStatsCountsRecords
 // pins down the PDF variant. The records count must match the
 // scope-filtered soldiers list (not the full archive) so the
