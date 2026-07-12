@@ -1,5 +1,4 @@
 (() => {
-  const timers = new WeakMap();
   // eventTargetElement narrows the loose `EventTarget` returned
   // by Document / Window event handlers to the actual Element the
   // click landed on (or null). The cost: one typeof check inline
@@ -491,14 +490,6 @@
     return document.querySelector("[data-research-recent-empty]");
   }
 
-  function researchRecentsList() {
-    return document.querySelector("[data-research-recent-list]");
-  }
-
-  function invalidateResearchRecentsHydration() {
-    researchRecentsHydrationState.token += 1;
-  }
-
   async function hydrateResearchPickerRecents() {
     const emptyState = researchRecentsEmptyState();
     const target = researchRecentsTarget();
@@ -845,23 +836,6 @@
     }
     const form = closestParentForm(el);
     return form instanceof HTMLFormElement ? form : null;
-  }
-
-  function syncPrimaryImageSelection(primaryImageId) {
-    document.querySelectorAll("[data-image-card]").forEach((card) => {
-      if (!(card instanceof HTMLElement)) {
-        return;
-      }
-      const isPrimary = card.getAttribute("data-image-id") === String(primaryImageId);
-      const badge = card.querySelector("[data-image-primary-badge]");
-      const action = card.querySelector("[data-image-primary-action]");
-      if (badge instanceof HTMLElement) {
-        badge.classList.toggle("hidden", !isPrimary);
-      }
-      if (action instanceof HTMLElement) {
-        action.classList.toggle("hidden", isPrimary);
-      }
-    });
   }
 
   function selectedCompareEntries(group) {
@@ -3455,7 +3429,7 @@
   // after trim. The check is intentionally narrow so the create
   // gate doesn't fire on edit forms (which carry the same input
   // ids via the entry_form.templ partial) or on synthetic forms.
-  function formIsNewSoldierWithEmptyNames(button, form) {
+  function formIsNewSoldierWithEmptyNames(form) {
     if (!(form instanceof HTMLFormElement)) {
       return false;
     }
@@ -3661,7 +3635,7 @@
       // leaving fetchOptions in the temporal dead zone on the empty-
       // name path — TypeScript flagged the read-before-declare here
       // as TS2304 (slice-2 fix in the typecheck-baseline work).
-      if (formIsNewSoldierWithEmptyNames(button, form)) {
+      if (formIsNewSoldierWithEmptyNames(form)) {
         if (!window.confirm("Saving a record with no name. It will be marked for review. Continue?")) {
           return false;
         }
@@ -4224,7 +4198,6 @@
   // and submits the modal's selected_ids to
   // /export/shared-archive?subset=1.
   const SHARE_QUEUE_STORAGE_KEY = "dixiedata.share-queue";
-  const SHARE_QUEUE_BROWSE_SELECTION_KEY = "dixiedata.browse.selection";
   function readShareQueue() {
     try {
       const raw = window.localStorage && window.localStorage.getItem(SHARE_QUEUE_STORAGE_KEY);
@@ -5303,33 +5276,6 @@
     }
   }
 
-  function readPrintSettings(form) {
-    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
-    const selectedIDs = scope !== "selected"
-      ? []
-      : Array.from(form.querySelectorAll('[data-print-record-checkbox]:checked'))
-          .map((input) => Number.parseInt(input.value || "", 10))
-          .filter((value) => Number.isInteger(value) && value > 0);
-    const selectedFilterValues = (family) => Array.from(form.querySelectorAll(`[data-print-filter-checkbox][data-print-filter-family="${family}"]:checked`))
-      .map((input) => (input instanceof HTMLInputElement ? input.value.trim() : ""))
-      .filter((value) => value !== "");
-    return {
-      scope,
-      sortBy: (form.querySelector('input[name="sort_by"]:checked')?.value || "last_name").trim(),
-      groupByUnit: form.querySelector('input[name="group_by_unit"]')?.checked === true,
-      groupByPensionState: form.querySelector('input[name="group_by_pension_state"]')?.checked === true,
-      groupByConfederateHomeStatus: form.querySelector('input[name="group_by_confederate_home_status"]')?.checked === true,
-      groupByBuriedIn: form.querySelector('input[name="group_by_buried_in"]')?.checked === true,
-      filterBuriedIn: selectedFilterValues("buried-in"),
-      filterEntryTypes: selectedFilterValues("entry-type"),
-      filterUnits: selectedFilterValues("unit"),
-      filterPensionStates: selectedFilterValues("pension-state"),
-      filterConfederateHomeStatuses: selectedFilterValues("confederate-home-status"),
-      exportAll: scope === "all",
-      selectedIds: selectedIDs,
-    };
-  }
-
   function seedPrintRecordSelectionFromBrowse() {
     const form = printConfigForm();
     if (!(form instanceof HTMLFormElement)) {
@@ -5422,10 +5368,6 @@
     });
   }
 
-  async function submitPrintConfig(form, trigger) {
-    return; // deprecated — modal form is now plain htmx; kept stub for back-compat
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
     // Issue #309: install the debug toolbox onto window.dixie
     // (the toolbox is loaded as a separate script tag so it's
@@ -5512,7 +5454,7 @@
       // the new page won't be re-rendered -- it's an in-place
       // swap). Body data-dixie-page updates so dixie.page() agrees
       // with the rendered URL.
-      window.htmx.on("htmx:afterSwap", (evt) => {
+      window.htmx.on("htmx:afterSwap", (_evt) => {
         const path = window.location.pathname || "/";
         const body = document.body;
         if (body instanceof HTMLElement) {
