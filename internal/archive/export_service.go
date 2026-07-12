@@ -18,6 +18,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
 	"github.com/valueforvalue/DixieData/pkg/render"
@@ -1742,28 +1743,79 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 // ExportStaticArchiveWithStats is the stats-aware variant used by
 // the Wails /jobs/{id} summary card. Static archive packs the
 // full archive into a .zip with HTML/JS/image assets; we count
-// records + images via the same staticArchiveRecords() helper
-// the body uses so the count matches what actually shipped.
+// every category via the same staticArchiveRecords / Events /
+// Articles helpers the body uses so the count matches what
+// actually shipped. Issue #492 expands the legacy 3-tuple
+// (records, images, sources) to a per-kind StaticArchiveResult
+// so the GUI /jobs/{id} page + the CLI `jobs show {id}` and
+// `jobs list` commands can show the user a category breakdown
+// of what was exported without unpacking the .zip.
 //
 // The static archive worker is registered in jobs.SilentKinds
 // because the .zip artifact does not preview well in a new tab
 // (issue #129 follow-up; the popup card was suppressed in
 // commit c77ab9b). The stats summary still renders on the
-// /jobs/{id} landing page so the user sees the size + record
-// + image counts without unpacking the .zip.
-func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string) (records, images, sources int, err error) {
-	entries, err := e.staticArchiveRecords()
+// /jobs/{id} landing page so the user sees the size + per-kind
+// counts without unpacking the .zip.
+func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string) (*jobs.StaticArchiveResult, error) {
+	result := &jobs.StaticArchiveResult{}
+
+	// Snapshot each category up front. We call the same
+	// helpers the body uses (staticArchiveRecords, Events,
+	// Articles) so the counts match the rows that ship in
+	// archive_data.js. Per-record aggregation (images, source
+	// records, distinct tags) walks the records slice and sums
+	// the per-row payload.
+	personEntries, err := e.staticArchiveRecords()
 	if err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
-	records = len(entries)
-	for _, entry := range entries {
-		images += len(entry.Images)
+	eventEntries, err := e.staticArchiveEvents()
+	if err != nil {
+		return nil, err
 	}
+	articleEntries, err := e.staticArchiveArticles()
+	if err != nil {
+		return nil, err
+	}
+
+	result.Events = len(eventEntries)
+	result.Articles = len(articleEntries)
+	result.PersonRecords = len(personEntries)
+
+	tagSet := make(map[string]struct{})
+	for _, entry := range personEntries {
+		// Subtype split: wife/widow vs. linked_person. The
+		// entry.EntryType field is the source-of-truth; the
+		// header "Person records" count above is the total
+		// across all three subtypes.
+		switch entry.EntryType {
+		case "wife", "widow":
+			result.SpouseRecords++
+		case "linked_person":
+			result.LinkedPeople++
+		}
+		result.PersonImages += len(entry.Images)
+		result.SourceRecords += len(entry.Records)
+		// Distinct tags: the static archive bundle does not
+		// currently carry a per-record tag list (issue #489
+		// deferred the tag-categorisation work), so the
+		// distinct-tags count is best-effort. Set to 0
+		// until the bundle gains a tags field; the GUI
+		// panel + CLI jobs show the line only when > 0.
+		_ = tagSet
+	}
+	result.DistinctTags = 0
+
+	// Now do the actual export. If the zip write fails, the
+	// stats we computed are still valid (the user can re-run
+	// with the same seed and the counts will be identical),
+	// but the caller treats any non-nil error as the export
+	// having failed end-to-end and discards the stats.
 	if err := e.ExportStaticArchive(outputPath, dataDir); err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
-	return records, images, 0, nil
+	return result, nil
 }
 
 // ExportImages is the archive-layer method matching its name.

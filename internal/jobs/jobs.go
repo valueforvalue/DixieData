@@ -101,7 +101,8 @@ type Job struct {
 // by Registry.SetResult before the worker returns nil so /jobs/{id}
 // can render per-kind stats on the terminal summary card:
 //
-//   - Exports fill Records / Images / Sources.
+//   - Exports fill Records / Images / Sources (and StaticArchive
+//     for HTML archive exports, issue #492).
 //   - Shared imports fill Added / Merged / Skipped / Conflicts /
 //     SourcesImported / ImagesImported.
 //   - Memorial JSON imports fill Added / Skipped / Failed (the
@@ -126,6 +127,15 @@ type JobResult struct {
 	Images  int // Image files copied into the artifact
 	Sources int // Source Records (claims + findings) included
 
+	// Issue #492: HTML archive export contents (static_archive
+	// job kind). Captured at export time by the worker so the
+	// /jobs/{id} status page can show the user what was
+	// exported without unzipping the artifact. The kind-specific
+	// fields below give the GUI status page + the CLI jobs
+	// show {id} command a category breakdown that mirrors the
+	// GUI's "Archive contents" panel.
+	StaticArchive *StaticArchiveResult
+
 	// Shared-import counts.
 	Added           int // Person Records inserted (new from incoming)
 	Merged          int // Person Records updated (matched + changed)
@@ -149,6 +159,29 @@ type JobResult struct {
 	// secondary action. Distinct from Path so the primary
 	// artifact keeps a single download link.
 	LogPath string
+}
+
+// StaticArchiveResult is the per-kind export snapshot for the
+// static_archive job (issue #492). All counts are computed at
+// export time by walking the data the worker actually wrote
+// into the .zip, not by re-querying the DB at view time (which
+// would drift if the user edits records between export and
+// status-page view).
+//
+// Pointer-typed on JobResult so the zero-value
+// `JobResult{}` stays nil-safe — Summary() and the CLI jobs
+// commands nil-check before rendering. JSONL round-trips
+// cleanly because encoding/json handles nil pointers as
+// `null` and rehydrates the absence on read.
+type StaticArchiveResult struct {
+	PersonRecords   int // Total Person Records exported (soldier + wife/widow + linked_person)
+	SpouseRecords   int // Of the Person Records, the spouse (wife/widow) subset
+	LinkedPeople    int // Of the Person Records, the linked_person subset
+	Events          int // Event Records included in archive_data.js
+	Articles        int // Articles included in archive_data.js
+	PersonImages    int // Person Record image files copied into images/
+	SourceRecords   int // Source Records (claims + findings) attached to Person Records
+	DistinctTags    int // Distinct tag names referenced by any exported Person Record
 }
 
 // Progress is passed to a worker so it can update its job without holding
@@ -948,7 +981,15 @@ func (j Job) Summary() JobSummary {
 			fmt.Sprintf("Duration: %s", s.Duration),
 			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
 		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+		// Issue #492: per-kind content counts (Person Records, Events,
+		// Articles, etc.) when the worker populated them. Old jobs
+		// persisted in the JSONL log before this slice show the
+		// static fallback line (D6 decision).
+		if j.Result.StaticArchive != nil {
+			s.DetailLines = appendStaticArchiveStats(s.DetailLines, *j.Result.StaticArchive)
+		} else {
+			s.DetailLines = append(s.DetailLines, "Contents unavailable for this archive — exported before counts were tracked.")
+		}
 	case "insights_pdf", "bug_report":
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
@@ -1011,6 +1052,45 @@ func appendExportStats(lines []string, r JobResult) []string {
 	}
 	if r.Sources > 0 {
 		lines = append(lines, fmt.Sprintf("Source records: %d", r.Sources))
+	}
+	return lines
+}
+
+// appendStaticArchiveStats renders the per-kind content panel
+// for the static_archive job (issue #492). Mirrors the GUI
+// "Archive contents" panel: a category breakdown of what the
+// .zip actually contains, captured at export time.
+//
+// Ordering: Person Records (with subtype split) first because
+// that's the user's primary mental model; events + articles
+// follow because they're the other entity types in the
+// archive; images + source records + tags round out the
+// archive's contents. The Size and Duration lines are
+// already on the card before this helper runs.
+func appendStaticArchiveStats(lines []string, sa StaticArchiveResult) []string {
+	if sa.PersonRecords > 0 {
+		lines = append(lines, fmt.Sprintf("Person records: %d", sa.PersonRecords))
+	}
+	if sa.SpouseRecords > 0 {
+		lines = append(lines, fmt.Sprintf("  Spouse records: %d", sa.SpouseRecords))
+	}
+	if sa.LinkedPeople > 0 {
+		lines = append(lines, fmt.Sprintf("  Linked people: %d", sa.LinkedPeople))
+	}
+	if sa.Events > 0 {
+		lines = append(lines, fmt.Sprintf("Events: %d", sa.Events))
+	}
+	if sa.Articles > 0 {
+		lines = append(lines, fmt.Sprintf("Articles: %d", sa.Articles))
+	}
+	if sa.PersonImages > 0 {
+		lines = append(lines, fmt.Sprintf("Person record images: %d", sa.PersonImages))
+	}
+	if sa.SourceRecords > 0 {
+		lines = append(lines, fmt.Sprintf("Source records: %d", sa.SourceRecords))
+	}
+	if sa.DistinctTags > 0 {
+		lines = append(lines, fmt.Sprintf("Distinct tags: %d", sa.DistinctTags))
 	}
 	return lines
 }
