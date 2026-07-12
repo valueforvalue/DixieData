@@ -42,33 +42,33 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 
 			<div class="responsive-two-col grid gap-6">
 				<section class="relative card rounded-3xl p-5 sm:p-8">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Overview</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Overview</p>
 					<h3 class="mt-2 text-xl gold font-bold">Person Record Type Snapshot</h3>
 					<div class="mt-5 grid gap-4 sm:grid-cols-3">
 						<a href={ insightDrilldownHref("entry_type", models.EntryTypeSoldier) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount) }</div>
+							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Soldiers</div>
 						</a>
 						<a href={ insightDrilldownHref("entry_type", "spouse") } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount) }</div>
+							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouse Records</div>
 						</a>
 						<a href={ insightDrilldownHref("entry_type", models.EntryTypeLinkedPerson) } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount) }</div>
+							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Person Records</div>
 						</a>
 					</div>
 				</section>
 
 				<section class="relative card rounded-3xl p-5 sm:p-8">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Burial Analytics</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Burial Analytics</p>
 					<h3 class="mt-2 text-xl gold font-bold">Top Cemeteries</h3>
 					@InsightsCountList(snapshot.CemeteryDensity, "buried_in", "No burial locations are recorded yet.")
 				</section>
 
 				<section class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Confederate Home Census</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Confederate Home Census</p>
 						<h3 class="mt-2 text-xl gold font-bold">Status Breakdown</h3>
 						@InsightsCountList(snapshot.ConfederateHomeStatus, "confederate_home_status", "No Confederate Home statuses are recorded yet.")
 					</div>
@@ -79,28 +79,28 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 				</section>
 
 				<section class="relative card rounded-3xl p-5 sm:p-8">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Geography</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Geography</p>
 					<h3 class="mt-2 text-xl gold font-bold">Pension Distribution</h3>
 					@InsightsCountList(snapshot.PensionDistribution, "pension_state", "No pension states are recorded yet.")
 				</section>
 
 				<section class="relative card rounded-3xl p-5 sm:p-8">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Military Representation</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Military Representation</p>
 					<h3 class="mt-2 text-xl gold font-bold">Top Units</h3>
 					@InsightsCountList(snapshot.UnitRepresentation, "unit", "No units are recorded yet.")
 				</section>
 
 				<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Review Queue Audit</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Review Queue Audit</p>
 					<h3 class="mt-2 text-xl gold font-bold">Advanced Duplicate Discovery</h3>
 					<p class="text-sm text-slate-600">Runs an exact + fuzzy duplicate scan using the current Levenshtein threshold of { fmt.Sprintf("%d", snapshot.DuplicateAudit.SimilarityThreshold) }.</p>
 					<div class="grid gap-3 sm:grid-cols-2">
 						<a href={ insightDrilldownHref("review_status", "review") } class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.OpenFindings) }</div>
+							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.OpenFindings) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Open Duplicate Pairs</div>
 						</a>
 						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-4 py-4">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.ResolvedFindings) }</div>
+							<div class="text-3xl font-semibold text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.ResolvedFindings) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Resolved Pairs</div>
 						</div>
 					</div>
@@ -120,7 +120,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 				</section>
 
 				<section class="relative responsive-span-2 card rounded-3xl p-5 sm:p-8">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Chronological Overview</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Chronological Overview</p>
 					<h3 class="mt-2 text-xl gold font-bold">Birth and Death Decades</h3>
 					<div class="mt-5 grid gap-6 lg:grid-cols-2">
 						<div>
@@ -145,8 +145,8 @@ templ InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage st
 		<div class="mt-4 space-y-3">
 			for _, item := range items {
 				<a href={ insightDrilldownHref(scope, item.Label) } class="flex items-start justify-between gap-4 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/72 px-4 py-3 transition hover:border-[rgb(var(--theme-sepia-rgb)/0.55)] hover:bg-[rgb(var(--theme-parchment-rgb)/0.9)]">
-					<div class="text-sm text-[#22303d]">{ item.Label }</div>
-					<div class="text-sm font-semibold text-[#6f2c26]">{ fmt.Sprintf("%d", item.Count) }</div>
+					<div class="text-sm text-[var(--theme-text-primary)]">{ item.Label }</div>
+					<div class="text-sm font-semibold text-[var(--theme-review-red)]">{ fmt.Sprintf("%d", item.Count) }</div>
 				</a>
 			}
 		</div>
@@ -175,7 +175,7 @@ templ InsightsDrilldownView(title, description string, personRecords []viewmodel
 			} else {
 				<div class="flex flex-col gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-parchment-rgb)/0.78)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Manual Comparison</p>
 						<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side from this insight drilldown.</p>
 					</div>
 					@components.Button("Compare Selected", components.ButtonSecondary, "w-full cursor-not-allowed opacity-60 sm:w-auto", templ.Attributes{
@@ -189,7 +189,7 @@ templ InsightsDrilldownView(title, description string, personRecords []viewmodel
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start">
 							<div class="flex flex-row flex-wrap gap-2 lg:mt-4 lg:w-auto lg:shrink-0 lg:flex-col">
 								<label class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-									<input type="checkbox" value={ fmt.Sprintf("%d", personRecord.ID) } data-checkbox-group="insight-compare" data-compare-select data-compare-label={ personRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									<input type="checkbox" value={ fmt.Sprintf("%d", personRecord.ID) } data-checkbox-group="insight-compare" data-compare-select data-compare-label={ personRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
 									Compare
 								</label>
 								@components.Button("Quick View", components.ButtonSecondary, "w-full px-3 py-2 text-xs sm:w-auto", templ.Attributes{

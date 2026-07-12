@@ -54,6 +54,7 @@ html { scrollbar-gutter: stable; }
   --theme-accent-deep: #a5853f;
   --theme-accent-glow: #eddca6;
   --theme-accent-strong: #8d7440;
+  --theme-sepia-300: #cfb77a;
   --theme-border: rgba(141, 116, 64, 0.85);
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;
@@ -135,6 +136,7 @@ html[data-theme="high-contrast"] {
   --theme-accent-deep: #1e40af;
   --theme-accent-glow: #93c5fd;
   --theme-accent-strong: #1e3a8a;
+  --theme-sepia-300: #444444;
   --theme-border: #222222;
   --theme-border-strong: #000000;
   --theme-review-red: #7a2d2d;
@@ -183,6 +185,7 @@ html[data-theme="soft"] {
   --theme-accent-deep: #5a4220;
   --theme-accent-glow: #c5ab68;
   --theme-accent-strong: #5a4220;
+  --theme-sepia-300: #b08f45;
   --theme-border: #b08f45;
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;

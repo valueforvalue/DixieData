@@ -34,8 +34,8 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 	<div data-print-config-body>
 		<div data-print-filter-panel class="space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
 			<div>
-				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Burial Location</p>
-				<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Burial Location</p>
+				<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)] mt-3">
 					Search burial locations
 					<input type="search" placeholder="Type a cemetery or location" data-print-buried-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
 				</label>
@@ -54,7 +54,7 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 			</div>
 			<div class="grid gap-4 sm:grid-cols-2">
 				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Entry Type</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Entry Type</p>
 					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 						<input type="checkbox" name="filter_entry_type" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="entry-type" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
 						<span>Entry Type Unknown</span>
@@ -67,7 +67,7 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 					}
 				</div>
 				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Unit</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Unit</p>
 					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 						<input type="checkbox" name="filter_unit" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="unit" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
 						<span>Unit Unknown</span>
@@ -80,7 +80,7 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 					}
 				</div>
 				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Pension State</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Pension State</p>
 					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 						<input type="checkbox" name="filter_pension_state" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="pension-state" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
 						<span>N/A</span>
@@ -93,7 +93,7 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 					}
 				</div>
 				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Confederate Home Status</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Confederate Home Status</p>
 					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 						<input type="checkbox" name="filter_confederate_home_status" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="confederate-home-status" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
 						<span>N/A</span>
@@ -108,7 +108,7 @@ templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
 			</div>
 		</div>
 		<div data-print-record-picker class="space-y-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
-			<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+			<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">
 				Find records
 				<input type="search" placeholder="Type a display ID or name" data-print-record-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
 			</label>

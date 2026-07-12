@@ -107,7 +107,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 				}.Attrs()... }></div>
 			}
 			<div class="app-shell">
-				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
+				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
 				<div class="flex items-center gap-3">
 					<p class="top-brand-title gold leading-none">DixieData — { buildinfo.Codename() }</p>
 				</div>
@@ -230,13 +230,13 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			     z-index collision with the recent overlay fix).
 			     Hidden when the queue is empty so the layout stays
 			     quiet for users who never touched the queue. -->
-			<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } data-share-queue-pill class="fixed bottom-[6.5rem] left-1/2 z-30 hidden -translate-x-1/2 rounded-full border border-[#8d7440] bg-[rgb(var(--theme-ink-deep-rgb)/0.96)] px-5 py-2 text-sm font-semibold text-[#f2ede1] shadow-[0_18px_32px_rgba(23,33,43,0.28)] hover:bg-[rgb(var(--theme-ink-deep-rgb)/1)]">
+			<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } data-share-queue-pill class="fixed bottom-[6.5rem] left-1/2 z-30 hidden -translate-x-1/2 rounded-full border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.96)] px-5 py-2 text-sm font-semibold text-[var(--theme-accent-glow)] shadow-[0_18px_32px_rgba(23,33,43,0.28)] hover:bg-[rgb(var(--theme-ink-deep-rgb)/1)]">
 				<span data-share-queue-pill-label>Share queue:</span>
-				<span data-share-queue-pill-count class="ml-2 rounded-full bg-[#8d7440] px-2 py-0.5 text-xs font-mono">0</span>
-				<span class="ml-3 text-xs uppercase tracking-[0.18em] text-[#cfb77a]">Review &amp; export</span>
+				<span data-share-queue-pill-count class="ml-2 rounded-full bg-[var(--theme-accent-strong)] px-2 py-0.5 text-xs font-mono">0</span>
+				<span class="ml-3 text-xs uppercase tracking-[0.18em] text-[var(--theme-sepia-300)]">Review &amp; export</span>
 			</a>
-			<div data-floating-nav-panel class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgb(var(--theme-ink-deep-rgb)/0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
-					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Quick Navigation</p>
+			<div data-floating-nav-panel class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
+					<p class="text-xs uppercase tracking-[0.28em] text-[var(--theme-sepia-300)]">Quick Navigation</p>
 					<nav class="mt-3 flex flex-col gap-2">
 						// Issue #380 OQ4 lock (slice 4): the floating-dock
 						// Quick Nav panel mirrors the top-nav's flat pills
@@ -253,7 +253,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						<a href="/soldiers/new" class="primary-button justify-start">Add Person Record</a>
 					</nav>
 					<div class="mt-4 rounded-[1.2rem] border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgba(255,248,230,0.08)] p-3">
-						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#cfb77a]">Layout Mode</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-sepia-300)]">Layout Mode</p>
 						<p class="layout-mode-summary mt-2 text-sm text-slate-200">
 							Current: <strong data-layout-mode-status>Relaxed</strong>
 							<span class="text-xs uppercase tracking-[0.18em] text-slate-400" data-layout-mode-preference-label>Auto</span>
@@ -282,7 +282,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						<input type="hidden" name="page_path" value="" data-feedback-page-path/>
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
-								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Feedback</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Feedback</p>
 								<h3 id="feedback-modal-heading" class="mt-2 text-xl gold font-bold">Send app feedback</h3>
 								<p class="mt-2 text-sm text-slate-600">Save bugs, workflow pain points, or feature ideas to the local feedback log without leaving your current screen.</p>
 							</div>

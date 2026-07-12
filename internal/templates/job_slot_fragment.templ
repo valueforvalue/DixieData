@@ -48,11 +48,11 @@ templ JobStatusSlotFragment(job jobs.Job) {
 			hx-target="[data-jobs-progress-region]"
 		}>
 		<div class="flex items-center justify-between gap-3 text-sm">
-			<span class="text-slate-600">Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
-			<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ job.DisplayLabel() }</span>
+			<span class="text-slate-600">Status: <strong class="text-[var(--theme-text-primary)]">{ job.Status }</strong></span>
+			<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">{ job.DisplayLabel() }</span>
 		</div>
 		<div class="h-2 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label={ fmt.Sprintf("%s progress", job.DisplayLabel()) }>
-			<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+			<div class="h-full rounded-full bg-[var(--theme-accent-strong)] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
 		</div>
 		if job.Message != "" {
 			<p class="text-xs text-slate-600">{ job.Message }</p>
@@ -66,7 +66,7 @@ templ JobStatusSlotFragment(job jobs.Job) {
 			// prominently + has Copy path). Closes #166.
 		}
 		if job.Status == jobs.StatusError {
-			<p class="break-words text-xs text-[#6f2c26]">{ job.Error }</p>
+			<p class="break-words text-xs text-[var(--theme-review-red)]">{ job.Error }</p>
 		}
 	</div>
 }

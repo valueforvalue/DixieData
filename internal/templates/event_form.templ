@@ -54,7 +54,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 	<div class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ eventFormTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
-			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+			<div class="mb-5 rounded-2xl border border-[var(--theme-review-red)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[var(--theme-review-red)]">
 				<strong class="font-semibold">Save failed.</strong>
 				<span class="ml-1">{ errorMessage }</span>
 			</div>
@@ -98,7 +98,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 				<p class="mt-2 text-xs text-slate-500">Long-form narrative for the event. Mirrors the Person Record biography field.</p>
 			</div>
 			<details>
-				<summary class="cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Advanced: PDF Excerpt Override</summary>
+				<summary class="cursor-pointer list-none text-sm font-semibold text-[var(--theme-accent-strong)]">Advanced: PDF Excerpt Override</summary>
 				<div class="mt-3">
 					<label class="block text-sm text-slate-500 mb-1" for="event-pdf_excerpt_override">PDF Excerpt Override</label>
 					<textarea name="pdf_excerpt_override" rows="4" class="field-input min-h-32" id="event-pdf_excerpt_override">{ s.PDFExcerptOverride }</textarea>
@@ -112,7 +112,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Source Records</p>
 						<p class="mt-2 text-sm text-slate-600">Attach pension notes, roster lines, and source transcripts that should travel with this event record. Saved inline with the event on submit.</p>
 					</div>
 					@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
@@ -120,7 +120,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 					})
 				</div>
 				<details open>
-					<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Show / hide source records</summary>
+					<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[var(--theme-accent-strong)]">Show / hide source records</summary>
 					<div data-record-list class="space-y-3">
 						if isEdit {
 							for _, record := range s.EventSources {
@@ -162,13 +162,13 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5 mt-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Linked Person Records</p>
 						<p class="mt-2 text-sm text-slate-600">Attach this event to one or more Person Records. Type a Display ID like <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">DXD-00001</code> below to add a new link; use Unlink on a row to remove.</p>
 					</div>
 				</div>
 				@EventLinksListFragment(s.ID, s.LinkedPersons)
 				<details open class="mt-4">
-					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Add a linked Person Record</summary>
+					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[var(--theme-accent-strong)]">Add a linked Person Record</summary>
 					<form
 						action={ templ.SafeURL(routebuilder.EventLinksAttach(s.ID)) }
 						method="post"
@@ -198,7 +198,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 			<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5 mt-5">
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Tags</p>
 						<p class="mt-2 text-sm text-slate-600">Free-text labels grouping this Event with related Person Records. Type a name below to add; use the × on a chip to remove.</p>
 					</div>
 				</div>
@@ -206,7 +206,7 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 					@EventTagsListFragment(s.ID, s.Tags)
 				</div>
 				<details open class="mt-4">
-					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Add a tag</summary>
+					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[var(--theme-accent-strong)]">Add a tag</summary>
 					<form
 						action={ templ.SafeURL(fmt.Sprintf("/events/%d/tags", s.ID)) }
 						method="post"

@@ -27,31 +27,31 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 	@Layout("Share Queue Management") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			<div class="card rounded-3xl p-5 sm:p-8">
-				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Share Queue</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Share Queue</p>
 				<h1 class="mt-2 text-2xl gold font-bold">Manage your staged subset</h1>
 				<p class="mt-2 text-sm text-slate-600">Re-order, remove, or bulk-export the Person Records you have staged for sharing. This page mirrors the Share Build modal queue so changes sync back to localStorage on every action.</p>
 				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form data-clear-share-queue-on-success="true" class="mt-4 flex flex-wrap items-center gap-3">
-					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#6f2c26] hover:bg-white" disabled>
+					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--theme-review-red)] hover:bg-white" disabled>
 						Remove Selected
 					</button>
-					<button type="submit" data-share-queue-page-bulk-export class="inline-flex items-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]" disabled>
+					<button type="submit" data-share-queue-page-bulk-export class="inline-flex items-center rounded-2xl border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]" disabled>
 						Export Selected as .ddshare
 					</button>
 					<span data-share-queue-page-status class="ml-auto text-xs text-slate-500" aria-live="polite"></span>
 				</form>
 			</div>
 			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueuePresets }>
-				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Saved Queues</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Saved Queues</p>
 				<p class="mt-2 text-sm text-slate-600">Reuse a previously-named queue without re-staging every row from Browse. Saves live in the share_queue_presets table (issue #192).</p>
 				<form data-share-queue-preset-save class="mt-4 flex flex-wrap items-center gap-2">
 					<input type="text" name="name" placeholder="Name this queue (e.g. Shiloh Cemetery)" aria-label="Preset name" class="min-w-0 flex-1 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/85 px-3 py-1.5 text-sm" required/>
-					<button type="submit" class="inline-flex items-center rounded-full border border-[#8d7440] bg-[#8d7440] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-[#7a6635]">Save current queue</button>
+					<button type="submit" class="inline-flex items-center rounded-full border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-[#7a6635]">Save current queue</button>
 				</form>
 				<ul data-share-queue-preset-list class="mt-4 space-y-1 max-h-40 overflow-y-auto text-sm"></ul>
 				<div data-share-queue-preset-empty class="mt-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/70 p-3 text-xs text-slate-500">
 					No saved queues yet. Stage some rows above and save under a name.
 				</div>
-				<p data-share-queue-preset-status class="mt-3 hidden text-xs text-[#6f2c26]" role="status" aria-live="polite"></p>
+				<p data-share-queue-preset-status class="mt-3 hidden text-xs text-[var(--theme-review-red)]" role="status" aria-live="polite"></p>
 			</section>
 			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueueList }>
 				if len(rows) == 0 {
@@ -64,7 +64,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 					<div class="overflow-x-auto">
 						<table class="w-full border-collapse text-sm">
 							<thead>
-								<tr class="border-b border-[rgb(var(--theme-sepia-rgb)/0.4)] text-left text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
+								<tr class="border-b border-[rgb(var(--theme-sepia-rgb)/0.4)] text-left text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-accent-strong)]">
 									<th class="px-2 py-2 w-10">
 										<input type="checkbox" data-share-queue-page-select-all aria-label="Select all"/>
 									</th>
@@ -81,18 +81,18 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 								for i, row := range rows {
 									<tr data-share-queue-page-row-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="border-b border-[rgb(var(--theme-sepia-rgb)/0.18)]">
 										<td class="px-2 py-3 align-top">
-											<input type="checkbox" value={ fmt.Sprintf("%d", row.PersonRecord.ID) } data-share-queue-page-select data-share-queue-page-label={ row.PersonRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" aria-label={ "Select " + row.PersonRecord.DisplayID }/>
+											<input type="checkbox" value={ fmt.Sprintf("%d", row.PersonRecord.ID) } data-share-queue-page-select data-share-queue-page-label={ row.PersonRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]" aria-label={ "Select " + row.PersonRecord.DisplayID }/>
 										</td>
 										<td class="px-2 py-3 align-top font-mono text-xs text-slate-500" data-share-queue-page-order>{ i + 1 }</td>
-										<td class="px-2 py-3 align-top font-mono text-[#6f2c26]">
+										<td class="px-2 py-3 align-top font-mono text-[var(--theme-review-red)]">
 											<a href={ templ.SafeURL(routebuilder.SoldierDetail(row.PersonRecord.ID)) } class="hover:underline">{ row.PersonRecord.DisplayID }</a>
 										</td>
-										<td class="px-2 py-3 align-top font-semibold text-[#22303d]">{ detailHeading(row.PersonRecord) }</td>
+										<td class="px-2 py-3 align-top font-semibold text-[var(--theme-text-primary)]">{ detailHeading(row.PersonRecord) }</td>
 										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.Unit }</td>
 										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.SourceRecordCount }</td>
 										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.ImageCount }</td>
 										<td class="px-2 py-3 align-top">
-											<button type="button" data-share-queue-page-remove-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="rounded border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white">Remove</button>
+											<button type="button" data-share-queue-page-remove-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="rounded border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--theme-review-red)] hover:bg-white">Remove</button>
 										</td>
 									</tr>
 								}

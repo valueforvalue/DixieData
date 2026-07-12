@@ -93,7 +93,7 @@ templ EventSourcesListFragment(eventID int64, sources []viewmodel.SourceRecord) 
 									value={ fmt.Sprintf("%d", i+1) }
 									min="1"
 									max={ fmt.Sprintf("%d", len(sources)) }
-									class="w-14 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-xs text-[color:var(--ink)]"
+									class="w-14 rounded-2xl border border-[var(--theme-accent-strong)] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-xs text-[color:var(--ink)]"
 									data-event-source-position
 									data-event-source-id={ fmt.Sprintf("%d", src.ID) }
 								/>
@@ -271,7 +271,7 @@ templ EventSectionPanel(
 ) {
 	<section class="relative mt-6">
 		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">{ title }</p>
+			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">{ title }</p>
 			<div class="flex items-center gap-3">
 				<span class="text-xs text-slate-500">{ fmt.Sprintf("%d %s", count, countFmt) }</span>
 				<button

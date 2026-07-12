@@ -37,14 +37,14 @@ templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
 templ CalendarDayActions(day viewmodel.CalendarDayDetail) {
 	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-white-rgb)/0.72)] px-4 py-4">
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Calendar Actions</p>
+			<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Calendar Actions</p>
 			<p class="mt-1 text-sm text-[#5a6a78]">Add or edit yearly events and holidays without crowding the day view.</p>
 		</div>
 		if day.Form.EditingID > 0 || strings.TrimSpace(day.Form.ErrorMessage) != "" {
 			<details class="relative" open>
 				<summary class="secondary-button list-none cursor-pointer gap-2">
 					<span>{ calendarDayFormSummary(day.Form) }</span>
-					<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">Event / Holiday</span>
+					<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[var(--theme-accent-strong)]">Event / Holiday</span>
 				</summary>
 				@CalendarDayActionMenu(day)
 			</details>
@@ -52,7 +52,7 @@ templ CalendarDayActions(day viewmodel.CalendarDayDetail) {
 			<details class="relative">
 				<summary class="secondary-button list-none cursor-pointer gap-2">
 					<span>{ calendarDayFormSummary(day.Form) }</span>
-					<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">Event / Holiday</span>
+					<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[var(--theme-accent-strong)]">Event / Holiday</span>
 				</summary>
 				@CalendarDayActionMenu(day)
 			</details>
@@ -64,11 +64,11 @@ templ CalendarDayAnniversaries(day viewmodel.CalendarDayDetail) {
 	<div class="space-y-3">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
-				<h4 class="text-lg font-semibold text-[#22303d]">Anniversaries</h4>
+				<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">Anniversaries</h4>
 				<p class="mt-1 text-sm text-[#5a6a78]">Expanded is the default. Switch to compact rows when you want a tighter scan.</p>
 			</div>
 			<div class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/70 px-2 py-2">
-				<button type="button" data-calendar-anniversary-density-toggle="expanded" class="rounded-full border border-[#22303d] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#f2ede1] transition">Expanded</button>
+				<button type="button" data-calendar-anniversary-density-toggle="expanded" class="rounded-full border border-[var(--theme-text-primary)] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-accent-glow)] transition">Expanded</button>
 				<button type="button" data-calendar-anniversary-density-toggle="compact" class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#51606e] transition">Compact</button>
 			</div>
 		</div>
@@ -90,7 +90,7 @@ templ CalendarDayAnniversaries(day viewmodel.CalendarDayDetail) {
 templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 	<div class="space-y-3">
 		<div>
-			<h4 class="text-lg font-semibold text-[#22303d]">Events &amp; Holidays</h4>
+			<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">Events &amp; Holidays</h4>
 			<p class="mt-1 text-sm text-[#5a6a78]">Recurring custom items appear every year on this date.</p>
 		</div>
 		if len(day.Items) == 0 {
@@ -104,7 +104,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 								<div class="flex flex-wrap items-center gap-2">
 									<span class={ calendarItemDotClass(item.ItemType) }></span>
 									<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#51606e]">{ calendarItemTypeLabel(item.ItemType) }</span>
-									<h5 class="text-base font-semibold text-[#22303d]">{ item.Title }</h5>
+									<h5 class="text-base font-semibold text-[var(--theme-text-primary)]">{ item.Title }</h5>
 								</div>
 								if strings.TrimSpace(item.Notes) != "" {
 									<p class="mt-2 text-sm leading-6 text-[#445260]">{ item.Notes }</p>
@@ -141,10 +141,10 @@ templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
 	<div data-calendar-anniversary-compact class="hidden rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-white-rgb)/0.8)] px-4 py-3">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
-				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(soldier) }</a>
+				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="font-semibold text-[var(--theme-text-primary)] hover:text-[var(--theme-review-red)]">{ detailHeading(soldier) }</a>
 				<div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
 					if strings.TrimSpace(soldier.DisplayID) != "" {
-						<span class="font-mono text-[#6f2c26]">{ soldier.DisplayID }</span>
+						<span class="font-mono text-[var(--theme-review-red)]">{ soldier.DisplayID }</span>
 					}
 					if strings.TrimSpace(detailSubheading(soldier)) != "" {
 						<span>{ detailSubheading(soldier) }</span>
@@ -152,7 +152,7 @@ templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<button type="button" data-share-queue-add={ fmt.Sprintf("%d", soldier.ID) } class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + soldier.DisplayID + " to the Share Queue" }>
+				<button type="button" data-share-queue-add={ fmt.Sprintf("%d", soldier.ID) } class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--theme-accent-strong)] hover:bg-white" title={ "Add " + soldier.DisplayID + " to the Share Queue" }>
 					+ Queue
 				</button>
 				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="ghost-link px-3 py-2">Open Record</a>
@@ -165,7 +165,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 	<div data-popout-panel class="absolute right-0 z-20 mt-3 w-[min(28rem,calc(100vw-5rem))] rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
 		<div class="flex flex-wrap items-start justify-between gap-3">
 			<div>
-				<h4 class="text-lg font-semibold text-[#22303d]">{ calendarDayFormSummary(day.Form) }</h4>
+				<h4 class="text-lg font-semibold text-[var(--theme-text-primary)]">{ calendarDayFormSummary(day.Form) }</h4>
 				<p class="mt-1 text-sm text-[#5a6a78]">Titles are required. Notes are optional. Duplicate titles are allowed.</p>
 			</div>
 			if day.Form.EditingID > 0 {
@@ -180,7 +180,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 			}
 		</div>
 		if strings.TrimSpace(day.Form.ErrorMessage) != "" {
-			<p class="mt-4 rounded-xl border border-[rgb(var(--theme-review-red-rgb)/0.28)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[#6f2c26]">{ day.Form.ErrorMessage }</p>
+			<p class="mt-4 rounded-xl border border-[rgb(var(--theme-review-red-rgb)/0.28)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[var(--theme-review-red)]">{ day.Form.ErrorMessage }</p>
 		}
 		if day.Form.EditingID > 0 {
 			<form
@@ -261,5 +261,5 @@ func calendarDayStatusClass(kind string) string {
 	if kind == "success" {
 		return base + " border-[rgba(38,101,66,0.28)] bg-[rgba(38,101,66,0.09)] text-[#1f5b3b]"
 	}
-	return base + " border-[rgb(var(--theme-review-red-rgb)/0.28)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] text-[#6f2c26]"
+	return base + " border-[rgb(var(--theme-review-red-rgb)/0.28)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] text-[var(--theme-review-red)]"
 }

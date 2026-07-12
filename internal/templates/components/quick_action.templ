@@ -28,12 +28,12 @@ templ QuickAction(label string, description string, href string, extraClass stri
 		{ quickActionAttrsExcludingClass(attrs)... }
 	>
 		<span class="flex flex-col">
-			<span class="text-lg font-bold text-[#22303d]">{ label }</span>
+			<span class="text-lg font-bold text-[var(--theme-text-primary)]">{ label }</span>
 			if description != "" {
 				<span class="mt-1 text-sm text-slate-600">{ description }</span>
 			}
 		</span>
-		<span aria-hidden="true" class="text-2xl text-[#8d7440]">→</span>
+		<span aria-hidden="true" class="text-2xl text-[var(--theme-accent-strong)]">→</span>
 	</a>
 }
 

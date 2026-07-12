@@ -39,7 +39,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 						</div>
 						<div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
 							<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.8)] px-4 py-3">
-								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Timed Events</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Timed Events</p>
 								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(timeline.TimelineEvents)) }</p>
 							</div>
 							<div class="rounded-2xl border border-research-border bg-research-bg/80 px-4 py-3">
@@ -145,11 +145,11 @@ func serviceTimelineCategoryLabel(category string) string {
 func serviceTimelineCategoryClass(category string) string {
 	switch strings.TrimSpace(category) {
 	case "life":
-		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]"
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]"
 	case "service":
 		return "text-xs font-semibold uppercase tracking-[0.2em] text-research-accent"
 	case "pension":
-		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]"
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-review-red)]"
 	case "burial":
 		return "text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
 	case "death":

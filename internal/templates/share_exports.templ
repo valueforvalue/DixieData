@@ -23,7 +23,7 @@ templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareInclud
 	@Layout("Share Exports") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			<nav aria-label="Breadcrumb" class="text-sm text-slate-500">
-				<a href="/share" class="text-[#324253] underline-offset-2 hover:underline">← Back to /share</a>
+				<a href="/share" class="text-[var(--theme-text-mid)] underline-offset-2 hover:underline">← Back to /share</a>
 			</nav>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Exports</h2>
@@ -31,7 +31,7 @@ templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareInclud
 			</div>
 			<section id={ uiids.PanelShareExports } class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Export & Backup</p>
 					<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
 					<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
 				</div>
@@ -94,10 +94,10 @@ templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareInclud
 								if shareIncludeTagsEnabled {
 									checked
 								}
-								class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"
+								class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"
 							/>
 							<span>
-								<strong class="text-[#22303d]">Include tags</strong> in this .ddshare
+								<strong class="text-[var(--theme-text-primary)]">Include tags</strong> in this .ddshare
 								(virtual cemeteries, research notes). Default off; recipient
 								sees your grouping on import.
 							</span>

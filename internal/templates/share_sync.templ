@@ -25,7 +25,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 	@Layout("Share Sync") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			<nav aria-label="Breadcrumb" class="text-sm text-slate-500">
-				<a href="/share" class="text-[#324253] underline-offset-2 hover:underline">← Back to /share</a>
+				<a href="/share" class="text-[var(--theme-text-mid)] underline-offset-2 hover:underline">← Back to /share</a>
 			</nav>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Sync</h2>
@@ -65,7 +65,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						})
 					</div>
 					<div class="col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 p-4 space-y-3">
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">DixieData Calendar</p>
 						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Calendar", components.ButtonSecondary, "", templ.Attributes{
 								"data-action":          "/integrations/google/calendar/use-managed",
@@ -93,7 +93,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
 					</div>
 					<div class="col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 p-4 space-y-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">DixieData Test Calendar</p>
 						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Test", components.ButtonSecondary, "", templ.Attributes{
 								"data-action":          "/integrations/google/calendar/use-test",
@@ -119,14 +119,14 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.06)] px-4 py-3 text-sm text-slate-600">
 					Status:
 					if status.Connected {
-						<strong class="ml-1 text-[#22303d]">Connected</strong>
+						<strong class="ml-1 text-[var(--theme-text-primary)]">Connected</strong>
 					} else {
-						<strong class="ml-1 text-[#6f2c26]">Not connected</strong>
+						<strong class="ml-1 text-[var(--theme-review-red)]">Not connected</strong>
 					}
 					if status.UsingSharedClient {
-						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">using shared OAuth app</span>
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">using shared OAuth app</span>
 					} else if status.SharedClientAvailable {
-						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">shared OAuth app available</span>
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">shared OAuth app available</span>
 					}
 				</div>
 				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-3 text-sm text-slate-600">
@@ -137,7 +137,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 					}
 					<div class="mt-2">
 						if status.OutOfSync {
-							<strong class="text-[#6f2c26]">Out of sync</strong>
+							<strong class="text-[var(--theme-review-red)]">Out of sync</strong>
 						} else {
 							<strong class="text-[#29522d]">In sync</strong>
 						}

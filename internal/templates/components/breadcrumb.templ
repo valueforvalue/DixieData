@@ -46,7 +46,7 @@ templ Breadcrumb(currentPath string) {
 							itemprop="name"
 							aria-current="page"
 							data-dixie-page-label={ crumb.Label }
-							class="font-semibold text-[#22303d]"
+							class="font-semibold text-[var(--theme-text-primary)]"
 						>
 							{ crumb.Label }
 						</span>
@@ -54,7 +54,7 @@ templ Breadcrumb(currentPath string) {
 						<a
 							href={ templ.SafeURL(crumb.Href) }
 							itemprop="item"
-							class="rounded px-1 py-0.5 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)] hover:text-[#22303d]"
+							class="rounded px-1 py-0.5 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)] hover:text-[var(--theme-text-primary)]"
 						>
 							<span itemprop="name">{ crumb.Label }</span>
 						</a>

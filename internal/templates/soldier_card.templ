@@ -32,15 +32,15 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 				}
 				if s.NeedsReview {
 					<div class="mt-2 flex flex-wrap gap-2 text-xs">
-						<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.12)] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+						<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.12)] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--theme-review-red)]">Needs Review</span>
 						if strings.TrimSpace(s.ReviewReason) != "" {
-							<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.2)] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[#6f2c26]">{ s.ReviewReason }</span>
+							<span class="rounded-full border border-[rgb(var(--theme-review-red-rgb)/0.2)] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[var(--theme-review-red)]">{ s.ReviewReason }</span>
 						}
 
 					</div>
 				}
 				if strings.TrimSpace(s.SearchMatchSnippet) != "" {
-					<p class="mt-2 text-xs font-medium text-[#6f2c26]">Matched on { s.SearchMatchField }: <span class="text-[#22303d]">{ s.SearchMatchSnippet }</span></p>
+					<p class="mt-2 text-xs font-medium text-[var(--theme-review-red)]">Matched on { s.SearchMatchField }: <span class="text-[var(--theme-text-primary)]">{ s.SearchMatchSnippet }</span></p>
 				}
 				if strings.TrimSpace(s.DeathDate) != "" {
 					<p class="text-xs text-slate-400 mt-1">d. { deathDate(s) }</p>
@@ -82,12 +82,12 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				</div>
 				<div class="mb-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
 					<button type="button" data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
-						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
+						class="flex w-full items-center justify-between rounded-xl border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-2 text-sm font-medium text-[var(--theme-text-primary)] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Quick Search
 						
 					</button>
 					<button type="button" data-tab-group="soldier-search" data-tab-target="advanced"
-						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
+						class="flex w-full items-center justify-between rounded-xl border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-3 py-2 text-sm font-medium text-[var(--theme-text-primary)] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Advanced Search
 						
 					</button>
@@ -117,8 +117,8 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					hx-get={ templ.SafeURL(routebuilder.SoldierSearchAdvanced()) } hx-target="#soldier-list">
 					
 					<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.06)] px-4 py-3">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
-						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Advanced Search Active</p>
+						<p class="mt-2 text-sm text-[var(--theme-text-primary)]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-display_id">Display ID</label>
@@ -270,28 +270,28 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						</div>
 					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 						<span class="gold self-start rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
-						<button type="button" data-share-queue-add={ fmt.Sprintf("%d", s.ID) } class="self-start rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + s.DisplayID + " to the Share Queue" }>
+						<button type="button" data-share-queue-add={ fmt.Sprintf("%d", s.ID) } class="self-start rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--theme-accent-strong)] hover:bg-white" title={ "Add " + s.DisplayID + " to the Share Queue" }>
 							+ Queue
 						</button>
 						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Person Record</a>
 						<details class="relative w-full sm:w-auto">
 							<summary class="secondary-button w-full list-none cursor-pointer justify-center gap-2 sm:w-auto">
 								<span>Export Record</span>
-								<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / JPG</span>
+								<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[var(--theme-accent-strong)]">PDF / JPG</span>
 							</summary>
 							<form action={ templ.SafeURL(routebuilder.SoldierPDF(s.ID)) } data-dixie-submit="true" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 								<div class="flex items-start justify-between gap-3">
-									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Single Record Export</p>
-									<button type="button" popovertarget="single-record-export-help" class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</button>
+									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Single Record Export</p>
+									<button type="button" popovertarget="single-record-export-help" class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/85 text-sm font-bold text-[var(--theme-accent-strong)]">?</button>
 								</div>
 								<div id="single-record-export-help" data-popout-panel popover class="w-72 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
-									<p class="font-semibold text-[#22303d]">Which single-record report should I use?</p>
+									<p class="font-semibold text-[var(--theme-text-primary)]">Which single-record report should I use?</p>
 									<p class="mt-2"><strong>Portrait PDF/JPG</strong> keeps the image with the biography excerpt/override and uses a more compact single-record layout when it fits.</p>
 									<p class="mt-2"><strong>Landscape PDF/JPG</strong> keeps page 1 concise and always renders the full biography on page 2 when a biography exists.</p>
 									<p class="mt-2"><strong>JPG export</strong> mirrors the generated PDF pages.</p>
 								</div>
 								<div class="mt-3 grid gap-3 sm:grid-cols-2">
-									<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
+									<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-accent-strong)]">
 										Format
 										<select name="orientation" data-pdf-pref-key="orientation" class="mt-2 w-full rounded-lg border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white px-3 py-2 text-sm text-slate-700">
 											<option value="L" selected>Landscape</option>
@@ -330,7 +330,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				if !isSoldierEntry(s) || s.LinkedSoldierID != 0 {
 					<div class="mb-5 grid gap-4 lg:grid-cols-2">
 						<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.72)] p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Family &amp; Relationships</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Family &amp; Relationships</p>
 							<p class="mt-2 text-sm text-slate-600">Relationship details live here so they do not repeat in the summary area.</p>
 							if !isSoldierEntry(s) {
 								<dl class="mt-4 grid gap-2 text-sm text-slate-700">
@@ -388,7 +388,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				</dl>
 				if s.Biography != "" {
 					<div class="mt-5 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgba(255,248,230,0.48)] p-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Biography</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Biography</p>
 						@LinkedText(s.Biography, "mt-3 text-sm text-slate-700 leading-6")
 					</div>
 				}
@@ -396,7 +396,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Advanced Research &amp; Review</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Advanced Research &amp; Review</p>
 							// Issue #455 slice 1: intro copy
 							// trimmed to match the slim
 							// 3-sub-page set (Timeline /
@@ -407,7 +407,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							// 3 + 4.
 							<p class="mt-1 text-sm text-slate-500">Timelines, research logs, and named collections stay tucked away until you need them.</p>
 						</div>
-						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Expand</span>
+						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-primary)]">Expand</span>
 					</summary>
 					<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.28)] px-4 py-4">
 						<div class="grid gap-4 lg:grid-cols-2">
@@ -439,7 +439,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							}
 							if soldierHasTimeline(s) {
 								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
-									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Service Timeline</p>
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Service Timeline</p>
 									<p class="mt-2 text-sm text-slate-700">Build a chronology from profile dates plus dated source record details like muster, parole, pension, and memorial notes.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/timeline", s.ID)) } class="secondary-button">Open Timeline</a>
@@ -478,14 +478,14 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							// surface, not the historical
 							// ledger).
 							<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4 lg:col-span-2">
-								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-review-red)]">Review Queue</p>
 								if s.NeedsReview {
-									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
+									<p class="mt-2 text-sm text-[var(--theme-review-red)]">{ emptyDetail(s.ReviewReason) }</p>
 								} else {
-									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>
+									<p class="mt-2 text-sm text-[var(--theme-review-red)]">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>
 								}
 								<form action={ templ.SafeURL(routebuilder.SoldierReviewFlag(s.ID)) } data-dixie-submit="true" class="mt-4 space-y-3">
-									<label class="block text-sm font-medium text-[#6f2c26]">
+									<label class="block text-sm font-medium text-[var(--theme-review-red)]">
 										Review Note
 										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow person record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
 									</label>
@@ -511,10 +511,10 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Record Metadata &amp; History</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Record Metadata &amp; History</p>
 							<p class="mt-1 text-sm text-slate-500">Created/updated provenance and the latest tracked field changes.</p>
 						</div>
-						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Expand</span>
+						<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-primary)]">Expand</span>
 					</summary>
 					<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.28)] px-4 py-4">
 						<dl class="responsive-two-col grid gap-2 text-sm">
@@ -525,7 +525,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							<dt class="text-slate-500">Last Update Time</dt><dd>{ emptyDetail(formatAuditTimestamp(s.LastEditedAt)) }</dd>
 						</dl>
 						<div class="mt-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Recent Field Changes</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Recent Field Changes</p>
 							if len(auditHistoryLines(s.LastEditedFields)) == 0 {
 								<p class="mt-2 text-sm text-slate-500">No tracked field changes are available for this person record.</p>
 							} else {
@@ -551,8 +551,8 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Return actions stay here.</p>
 				</div>
 				<div class="mt-5 rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.42)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4">
-					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
-					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-review-red)]">Danger Zone</p>
+					<p class="mt-2 text-sm text-[var(--theme-review-red)]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
 						@components.Button("Delete Person Record", components.ButtonDanger, "", templ.Attributes{
 							"data-action": fmt.Sprintf("/soldiers/%d", s.ID),
@@ -622,7 +622,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				</section>
 				<div class="mt-6 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgba(255,248,230,0.62)] p-4">
 					<div class="flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Tags</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Tags</p>
 						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d applied", len(tags)) }</span>
 					</div>
 					if len(tags) == 0 {
@@ -633,17 +633,17 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 								<li class="inline-flex items-center gap-1 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-white px-3 py-1 text-xs font-semibold text-slate-800">
 									<span>{ t.Name }</span>
 									<form action={ templ.SafeURL(routebuilder.SoldierTagDetach(s.ID, t.ID)) } method="post" data-dixie-submit="true" data-reload-on-success="true" class="inline">
-										<button type="submit" class="ml-1 text-[#6f2c26]" aria-label={ fmt.Sprintf("Remove tag %s", t.Name) } title="Remove">×</button>
+										<button type="submit" class="ml-1 text-[var(--theme-review-red)]" aria-label={ fmt.Sprintf("Remove tag %s", t.Name) } title="Remove">×</button>
 									</form>
 								</li>
 							}
 						</ul>
 					}
 					<details class="mt-3 group">
-						<summary class="cursor-pointer text-sm font-semibold text-[#8d7440]">+ Add tag</summary>
+						<summary class="cursor-pointer text-sm font-semibold text-[var(--theme-accent-strong)]">+ Add tag</summary>
 						<form action={ templ.SafeURL(routebuilder.SoldierTagAttach(s.ID)) } method="post" data-dixie-submit="true" data-reload-on-success="true" class="mt-3 flex flex-wrap items-center gap-2">
 							<input type="text" name="tag_name" placeholder="Tag name (e.g. vc-shiloh)" class="w-72 rounded border border-slate-300 px-3 py-2 text-sm" required autocomplete="off"/>
-							<button type="submit" class="inline-flex items-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">Apply</button>
+							<button type="submit" class="inline-flex items-center rounded-2xl border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">Apply</button>
 						</form>
 					</details>
 				</div>
@@ -710,7 +710,7 @@ templ SoldierRecordsListFragment(soldierID int64, records []viewmodel.SourceReco
 								value={ fmt.Sprintf("%d", i+1) }
 								min="1"
 								max={ fmt.Sprintf("%d", len(records)) }
-								class="w-14 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-sm text-[color:var(--ink)]"
+								class="w-14 rounded-2xl border border-[var(--theme-accent-strong)] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-sm text-[color:var(--ink)]"
 								data-source-record-position
 								data-source-record-id={ fmt.Sprintf("%d", r.ID) }
 							/>
@@ -1209,7 +1209,7 @@ func stripImageTags(value string) string {
 }
 
 func primaryImageBadgeClass(isPrimary bool) string {
-	className := "rounded-full bg-[rgb(var(--theme-sepia-rgb)/0.14)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]"
+	className := "rounded-full bg-[rgb(var(--theme-sepia-rgb)/0.14)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]"
 	if !isPrimary {
 		className += " hidden"
 	}
