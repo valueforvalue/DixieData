@@ -688,7 +688,7 @@
   }
 
   function quickSearchInput() {
-    const input = document.querySelector('input[name="q"][hx-get="/soldiers/search"]');
+    const input = document.querySelector('input[data-quick-search]');
     return input instanceof HTMLInputElement ? input : null;
   }
 
