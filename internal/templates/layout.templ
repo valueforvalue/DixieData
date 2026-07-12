@@ -117,8 +117,10 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// NN/g mega-menus-work-well pattern) collapses the
 					// 5 flat pills that used to live here -
 					// Search/Browse/Events/Articles/Tags - into one
-					// 2D panel with two groups: People (Search,
-					// Events, Tags) and More records (Browse,
+					// 2D panel with two groups. Issue #471 moved
+					// Browse into the People column (it's the primary
+					// Person Record navigation surface) and Events
+					// into the More records column (alongside
 					// Articles). The pre-mega-menu data-* hooks
 					// survive inside the panel (data-marker) so
 					// audit/smoke.mjs + analytics selectors stay
@@ -131,15 +133,15 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							Title: "People",
 							Items: []templ.Component{
 								templ.Raw(`<li role="none"><a href="/soldiers" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-search">Search</a></li>`),
-								templ.Raw(`<li role="none"><a href="/events" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-events">Events</a></li>`),
+								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Browse</a></li>`),
 								templ.Raw(`<li role="none"><a href="/tags" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-tags">Tags</a></li>`),
 							},
 						},
 						{
 							Title: "More records",
 							Items: []templ.Component{
-								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Browse</a></li>`),
 								templ.Raw(`<li role="none"><a href="/articles" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-articles">Articles</a></li>`),
+								templ.Raw(`<li role="none"><a href="/events" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-events">Events</a></li>`),
 							},
 						},
 					})
