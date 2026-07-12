@@ -24,6 +24,7 @@
   const MAX_BEACON_BYTES = 32 * 1024;
   const ENDPOINT = '/debug/client-logs';
 
+  /** @type {Array<{ts:string, level:string, msg:string, stack:string, url:string}>} */
   let buffer = [];
   /** @type {ReturnType<typeof setTimeout> | number | undefined} */
   let flushTimer = undefined;
@@ -34,6 +35,10 @@
     try { return new Date().toISOString(); } catch (_) { /* intentional: never-throw logger — see error-handling.md */ return ''; }
   }
 
+  /**
+   * @param {string} level
+   * @param {unknown[]} args
+   */
   function push(level, args) {
     if (!enabled) return;
     if (buffer.length >= MAX_BUFFER) {
@@ -43,7 +48,7 @@
     let msg = '';
     let stack = '';
     try {
-      msg = args.map(function (a) {
+      msg = args.map(function (/** @type {unknown} */ a) {
         if (a instanceof Error) return a.message;
         if (typeof a === 'string') return a;
         try { return JSON.stringify(a); } catch (_) { /* intentional: never-throw logger — see error-handling.md */ return String(a); }
@@ -115,6 +120,10 @@
     payloadBytes = 0;
   }
 
+  /**
+   * @param {keyof Console} method
+   * @param {string} level
+   */
   function installConsoleHook(method, level) {
     const original = console[method] ? console[method].bind(console) : function () {};
     console[method] = function () {
@@ -166,6 +175,6 @@
         }
       });
     },
-    setEnabled: function (v) { enabled = !!v; },
+    setEnabled: function (/** @type {boolean} */ v) { enabled = !!v; },
   };
 })();

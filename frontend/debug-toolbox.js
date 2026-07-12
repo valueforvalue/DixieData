@@ -21,7 +21,9 @@ const DIXIE_MAX_ERROR_LOG = 30;
 // recentNetwork entries: { method, path, status, startedAt, ms }.
 // We attach to window.fetch via a wrapper that records each call.
 // lastNetwork(n) returns the most recent n entries newest-first.
+/** @type {Array<{method:string, path:string, status:number, ms:number, startedAt:string, error?:string}>} */
 let recentNetwork = [];
+/** @type {Array<{kind:string, message:string, filename?:string|null, lineno?:number|null, colno?:number|null, stack?:string|null, timestamp:string}>} */
 let recentErrors = [];
 
 // pathForCurrentPage computes the same crumb chain that the
@@ -29,6 +31,9 @@ let recentErrors = [];
 // internal/templates/components/breadcrumb_helpers.go +
 // BreadcrumbCrumbs(). If you change the algorithm, sync the
 // Go side too (the test TestBreadcrumbCrumbs_KeyRoutes pins both).
+/**
+ * @param {string} currentPath
+ */
 function pathCrumbsForCurrentPath(currentPath) {
   const path = currentPath || "/";
   const cleanPath = String(path).split("?")[0];
@@ -38,6 +43,10 @@ function pathCrumbsForCurrentPath(currentPath) {
       { label: "Calendar", href: "/calendar", isCurrent: true },
     ];
   }
+  /**
+   * @param {...any} items
+   * @returns {Array<{label:string, href:string, isCurrent:boolean}>}
+   */
   function join(...items) {
     const crumbs = [{ label: "Home", href: "/calendar", isCurrent: false }];
     for (let i = 0; i + 2 < items.length; i += 3) {
@@ -49,6 +58,10 @@ function pathCrumbsForCurrentPath(currentPath) {
     }
     return crumbs;
   }
+  /**
+   * @param {string} p
+   * @returns {string}
+   */
   function labelFromPath(p) {
     const parts = String(p).split("/");
     const last = (parts[parts.length - 1] || "").replace(/[-_]/g, " ").trim();
@@ -58,10 +71,18 @@ function pathCrumbsForCurrentPath(currentPath) {
       .map((w) => (w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
       .join(" ");
   }
+  /**
+   * @param {string} slug
+   * @returns {string}
+   */
   function titleCaseMonth(slug) {
     if (!slug) return slug;
     return slug.charAt(0).toUpperCase() + slug.slice(1);
   }
+  /**
+   * @param {string} p
+   * @returns {string}
+   */
   function jobIDLabel(p) {
     const id = String(p).replace(/^\/jobs\//, "");
     if (!id || id === "active") return "Job";
@@ -213,6 +234,9 @@ function readShareQueueFromLocalStorage() {
   }
 }
 
+/**
+ * @param {string[]} ids
+ */
 function writeShareQueueToLocalStorage(ids) {
   try {
     window.localStorage.setItem("dixiedata.share-queue", JSON.stringify(ids));
@@ -351,6 +375,7 @@ const dixie = {
   },
 
   storage() {
+    /** @type {Record<string, {sizeBytes:number, preview:string}>} */
     const out = {};
     try {
       for (let i = 0; i < window.localStorage.length; i += 1) {
@@ -369,6 +394,9 @@ const dixie = {
     return recentErrors.slice(0, DIXIE_MAX_ERROR_LOG);
   },
 
+  /**
+   * @param {string} path
+   */
   route(path) {
     if (typeof path !== "string" || path.length === 0) {
       return { error: "path must be a non-empty string" };
@@ -419,6 +447,7 @@ function installDixieDebugToolbox() {
         urlPath = String(input);
       }
       return originalFetch(input, init).then(
+        /** @param {Response} response */
         (response) => {
           recentNetwork.unshift({
             method: String(method).toUpperCase(),
@@ -432,6 +461,7 @@ function installDixieDebugToolbox() {
           }
           return response;
         },
+        /** @param {unknown} err */
         (err) => {
           recentNetwork.unshift({
             method: String(method).toUpperCase(),
