@@ -47,7 +47,15 @@ import { registerCleanup } from './_lib/cleanup.mjs';
 
 const PORT = process.env.PROBE_PORT || '8775';
 const BASE = `http://127.0.0.1:${PORT}`;
-const SCRATCH = process.env.SCRATCH_DIR || 'C:/Development/DixieData/.scratch/articles-smoke';
+// Issue #380: smoke_articles previously used a cold scratch dir
+// (.scratch/articles-smoke) which the first request redirected to
+// /setup (initial-setup wizard). That broke the pageerror spam
+// cascade AND the primary-nav-has-tags-link check (no /tags pill
+// pre-#380). Switch to the shared warm scratch dir (.scratch/webmode)
+// so the probe hits an initialized app and finds the Records
+// mega-menu trigger. Per audit harness convention (smoke_tags_nav.mjs
+// already uses .scratch/webmode).
+const SCRATCH = process.env.SCRATCH_DIR || 'C:/Development/DixieData/.scratch/webmode';
 const WEB_BIN = process.env.WEB_BIN || 'C:/Development/DixieData/build/bin/dixiedata-web.exe';
 
 import fs from 'node:fs';
