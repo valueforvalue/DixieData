@@ -424,10 +424,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       background: rgba(255, 247, 231, 0.96);
     }
     .calendar-day.empty {
-      background: rgba(255, 251, 241, 0.78);
       cursor: default;
-      color: var(--muted);
-      opacity: 0.5;
     }
     .calendar-day-number {
       font-size: 0.95rem;
@@ -436,7 +433,6 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     }
     .calendar-day.empty .calendar-day-number {
       color: var(--muted);
-      opacity: 0.4;
     }
     .calendar-day-markers {
       display: flex;
