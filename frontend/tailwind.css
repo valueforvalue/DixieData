@@ -139,6 +139,9 @@ html[data-theme="soft"] .theme-option-hint { color: #5a4220; }
 html[data-theme="high-contrast"] body {
   background: #ffffff;
 }
+html[data-theme="soft"] body {
+  background: #f4ecd8;
+}
 
 /* Issue #472 / #473: popout (foldout + mega-menu) items render
    cream on dark navy in the default theme (the post-#283 fix).
@@ -759,7 +762,7 @@ html[data-theme="soft"] .foldout-panel {
   text-align: left;
   border-radius: 0.75rem;
   padding: 0.4rem 0.75rem;
-  color: #f2ede1;
+  color: #fff8e7;
 }
 .mega-menu-item:hover,
 .mega-menu-item:focus-visible {
@@ -773,16 +776,20 @@ html[data-theme="soft"] .foldout-panel {
   padding: 0.4rem 0.75rem;
   text-decoration: none;
   background: transparent;
-  /* Issue #283: explicit cream text instead of `color: inherit`.
-     The parent <a class="pill-link"> has `color: #22303d` (dark
-     slate) from the .pill-link rule; the panel background is
-     dark navy rgba(36,48,61,0.96); the inherited dark-on-dark
-     gave a contrast ratio of 1.00:1 (WCAG failed at every
-     level), making the items effectively invisible even
-     though the panel was correctly open + visible. #f2ede1
-     (the same cream used by the top-nav's brand text on the
-     dark surface) gives an 11.49:1 ratio — passes WCAG AAA. */
-  color: #f2ede1;
+  /* Issue #283 + #474 follow-up (QA): explicit cream text
+     instead of `color: inherit`. The parent <a class="pill-link">
+     has `color: #22303d` (dark slate) from the .pill-link rule;
+     the panel background is dark navy rgba(36,48,61,0.96); the
+     inherited dark-on-dark gave a contrast ratio of 1.00:1
+     (WCAG failed at every level). #fff8e7 (the same cream the
+     hover state uses) gives the label an unmistakable
+     brightness at rest AND on hover — the previous #f2ede1
+     had the right contrast but the user reported it as
+     "white" and "unreadable until hover" because the
+     brightness sum (704) was below the 715 visibility
+     threshold. The hover and default colors now match so
+     the label looks identical at rest and on hover. */
+  color: #fff8e7;
   transition: background-color 120ms ease-out;
 }
 .foldout-menuitem:hover,

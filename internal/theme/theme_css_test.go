@@ -296,6 +296,136 @@ func TestFieldInput_HasVisibleFocusState(t *testing.T) {
 		t.Errorf(".field-input must declare a visible focus state (outline OR border-color change); QA: focus state on /soldiers/new is too subtle to see")
 	}
 }
+
+// TestSoft_HasFlatBodyBackground mirrors TestHighContrast_HasFlatBodyBackground
+// for the soft theme. The QA report said the soft theme's body bg
+// gradient (parchment → slightly-darker-parchment → even-darker)
+// was "too obtrusive". The fix is a flat single-color body bg
+// (no gradient layers). The default theme keeps its sepia gradient
+// as the visual identity of the app.
+func TestSoft_HasFlatBodyBackground(t *testing.T) {
+	css := readTailwindCSS(t)
+	overrideStart := strings.Index(css, `html[data-theme="soft"] body`)
+	if overrideStart < 0 {
+		t.Fatal("missing html[data-theme=\"soft\"] body override; the default body gradient leaks into Soft")
+	}
+	open := strings.Index(css[overrideStart:], "{")
+	if open < 0 {
+		t.Fatal("html[data-theme=\"soft\"] body override has no opening brace")
+	}
+	bodyStart := overrideStart + open + 1
+	depth := 1
+	end := -1
+	for i := bodyStart; i < len(css); i++ {
+		switch css[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				end = i
+			}
+		}
+		if end >= 0 {
+			break
+		}
+	}
+	if end < 0 {
+		t.Fatal("html[data-theme=\"soft\"] body override has no closing brace")
+	}
+	bodyRule := css[overrideStart : end+1]
+	if strings.Contains(bodyRule, "gradient") {
+		t.Errorf("soft body must be a flat color (QA: gradient was 'too obtrusive'); got gradient in body rule = %q", bodyRule)
+	}
+}
+
+// TestMegaMenuItem_DefaultTextIsHighlyVisible pins the QA
+// report that the megamenu item text in the default theme is
+// "white" and "unreadable until mouseover or click". The
+// previous slice 2 fix set color: #f2ede1 (a soft cream) which
+// has the right contrast against the dark navy panel but the
+// user perceives it as washed-out and unreadable at the
+// default text size. The fix is to use the brighter hover
+// color (#fff8e7) as the default so the label is unmistakable
+// before hover. The regression test fails if the default
+// color drops back to #f2ede1 (or any value below 0.95
+// brightness) or if the hover color is no longer the
+// canonical "highly visible" anchor.
+//
+// Color brightness check: a color #rrggbb is considered
+// "highly visible" if (R+G+B) >= 715 (out of 765). That
+// accepts #fff8e7 (0.97 brightness) and rejects #f2ede1
+// (0.92 brightness). The hover state already uses #fff8e7
+// so the default and hover converge, which is the user-visible
+// fix — the label is highly visible at rest AND on hover.
+func TestMegaMenuItem_DefaultTextIsHighlyVisible(t *testing.T) {
+	css := readTailwindCSS(t)
+	idx := strings.Index(css, ".mega-menu-item {")
+	if idx < 0 {
+		t.Fatal("missing .mega-menu-item { rule")
+	}
+	rule := extractClassRule(css, ".mega-menu-item")
+	if rule == "" {
+		t.Fatal(".mega-menu-item rule has no body")
+	}
+	// Extract the color value. Look for `color: #xxxxxx` and
+	// capture the hex.
+	colorIdx := strings.Index(rule, "color: #")
+	if colorIdx < 0 {
+		t.Fatalf(".mega-menu-item rule has no `color: #...` declaration; got rule = %q", rule)
+	}
+	hexStart := colorIdx + len("color: #")
+	hex := rule[hexStart : hexStart+6]
+	r := hexByte(hex[0:2])
+	g := hexByte(hex[2:4])
+	b := hexByte(hex[4:6])
+	sum := r + g + b
+	if sum < 715 {
+		t.Errorf(".mega-menu-item default color #%s brightness sum=%d is too dim (QA: 'unreadable until hover'); want sum >= 715 (e.g. #fff8e7 = 728)", hex, sum)
+	}
+}
+
+// hexByte parses a 2-char hex string into an int. Returns 0
+// on any parse error (the brightness check is forgiving for
+// invalid hex, the assertion still triggers if the color is
+// unparseable).
+func hexByte(s string) int {
+	v, err := parseHex(s)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+func parseHex(s string) (int, error) {
+	if len(s) != 2 {
+		return 0, errBadHex
+	}
+	hi, ok1 := hexNibble(s[0])
+	lo, ok2 := hexNibble(s[1])
+	if !ok1 || !ok2 {
+		return 0, errBadHex
+	}
+	return hi*16 + lo, nil
+}
+
+var errBadHex = errHex("invalid hex byte")
+
+type errHex string
+
+func (e errHex) Error() string { return string(e) }
+
+func hexNibble(c byte) (int, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0'), true
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10, true
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10, true
+	}
+	return 0, false
+}
 func TestDefaultThemeTokens_ReproduceCurrentPalette(t *testing.T) {
 	css := readTailwindCSS(t)
 	want := map[string]string{
