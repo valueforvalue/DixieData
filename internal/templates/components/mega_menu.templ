@@ -51,12 +51,12 @@ templ MegaMenu(triggerLabel string, menuID string, triggerAttrs templ.Attributes
 			role="menu"
 			aria-label={ triggerLabel + " menu" }
 			data-mega-menu-panel={ menuID }
-			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--theme-accent-strong)] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
 		>
 			<div class="grid grid-cols-2 gap-6">
 				for _, group := range groups {
 					<section aria-labelledby={ menuID + "-" + group.Title }>
-						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#cfb77a]">{ group.Title }</h3>
+						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-sepia-300)]">{ group.Title }</h3>
 						<ul class="flex flex-col gap-1">
 							for _, item := range group.Items {
 								@item
@@ -101,12 +101,12 @@ templ MegaMenuWithBadge(triggerLabel string, menuID string, triggerAttrs templ.A
 			role="menu"
 			aria-label={ triggerLabel + " menu" }
 			data-mega-menu-panel={ menuID }
-			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+			class="mega-menu-panel absolute right-0 top-full z-50 mt-2 hidden w-[36rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--theme-accent-strong)] bg-[rgba(36,48,61,0.96)] p-6 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
 		>
 			<div class="grid grid-cols-2 gap-6">
 				for _, group := range groups {
 					<section aria-labelledby={ menuID + "-" + group.Title }>
-						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#cfb77a]">{ group.Title }</h3>
+						<h3 id={ menuID + "-" + group.Title } class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-sepia-300)]">{ group.Title }</h3>
 						<ul class="flex flex-col gap-1">
 							for _, item := range group.Items {
 								@item

@@ -124,7 +124,7 @@ templ TagDetailPage(t records.Tag, members []records.TagMemberView) {
 						{ fmt.Sprintf("%d members. Deep link: ?tags=%s", t.MemberCount, t.NormalizedName) }
 					</p>
 				</div>
-				<a href={ templ.SafeURL(fmt.Sprintf("/browse?tags=%s", t.NormalizedName)) } class="inline-flex items-center justify-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">
+				<a href={ templ.SafeURL(fmt.Sprintf("/browse?tags=%s", t.NormalizedName)) } class="inline-flex items-center justify-center rounded-2xl border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">
 					View in Browse
 				</a>
 			</div>

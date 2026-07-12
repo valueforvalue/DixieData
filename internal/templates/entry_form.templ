@@ -47,7 +47,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	<div id="entry-form-shell" data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
-			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+			<div class="mb-5 rounded-2xl border border-[var(--theme-review-red)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-3 text-sm text-[var(--theme-review-red)]">
 				<strong class="font-semibold">Save failed.</strong>
 				<span class="ml-1">{ errorMessage }</span>
 			</div>
@@ -86,7 +86,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						>
 							Delete saved local draft
 						</button>
-						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[#6f2c26]">
+						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[var(--theme-review-red)]">
 							<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 							<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 								@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -119,7 +119,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							"data-clear-draft-trigger": "stale",
 						})
 					</div>
-					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[#6f2c26]">
+					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-3 text-sm text-[var(--theme-review-red)]">
 						<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 						<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 							@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -136,7 +136,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			<div class="space-y-5">
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Identity & Relationship</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Identity & Relationship</p>
 						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the person record should behave in the local archive.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
@@ -188,7 +188,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] p-4" data-entry-type-special>
 							<div class="mb-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Person Record Link</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Person Record Link</p>
 								<p class="mt-1 text-sm text-slate-600">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
 							</div>
 							<div class="responsive-two-col grid gap-4">
@@ -218,7 +218,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Service, Pension & Archive Details</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Service, Pension & Archive Details</p>
 						<p class="mt-2 text-sm text-slate-600">Keep the military story, pension trail, and Confederate Home data together so related research stays in one place.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
@@ -276,7 +276,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Life Details & Burial</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Life Details & Burial</p>
 						<p class="mt-2 text-sm text-slate-600">These fields answer when the person lived and where they ended their story.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
@@ -309,7 +309,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Source Records</p>
 							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
 						</div>
 						@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
@@ -317,7 +317,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						})
 					</div>
 					<details>
-						<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Show / hide source records</summary>
+						<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[var(--theme-accent-strong)]">Show / hide source records</summary>
 						<div data-record-list class="space-y-3">
 							for _, record := range formRecords(s.SourceRecords) {
 								@RecordInputRow(record)
@@ -332,7 +332,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<details>
 						<summary class="mb-4 cursor-pointer list-none">
-							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Biography & Internal Notes</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Biography & Internal Notes</p>
 							<p class="mt-2 text-sm text-slate-600">Biography is the public-facing narrative for this person record. Internal notes stay available for research context and workflow details.</p>
 						</summary>
 						<div class="space-y-4">
@@ -350,10 +350,10 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<details class="overflow-hidden rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)]">
 								<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 									<div>
-										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
+										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Advanced PDF Excerpt Override</p>
 										<p class="mt-1 text-sm text-slate-600">Optional. Override default export excerpt when biography needs tighter PDF copy.</p>
 									</div>
-									<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
+									<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-primary)]">Optional</span>
 								</summary>
 								<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-4">
 									<label class="block text-sm text-slate-500 mb-1" for="ef-pdf_excerpt_override">PDF Excerpt Override</label>
@@ -382,7 +382,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Images</p>
 						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
 					</div>
 					<div id={ uiids.PanelSoldierFormImages }>
@@ -507,7 +507,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 							if debug.IsDebugMode(ctx) {
 								checked
 							}
-							class="h-4 w-4 rounded border border-[#8d7440]"
+							class="h-4 w-4 rounded border border-[var(--theme-accent-strong)]"
 						/>
 						Debug mode is on
 					</label>
@@ -553,11 +553,11 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 				<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" data-results-target="#settings-quality-results" class="space-y-4">
 					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
 						<label class="inline-flex items-center gap-2">
-							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
 							<span><strong>High-Confidence</strong> (recommended)</span>
 						</label>
 						<label class="inline-flex items-center gap-2">
-							<input type="radio" name="quality_mode" value="advanced" class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+							<input type="radio" name="quality_mode" value="advanced" class="h-4 w-4 rounded-full border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
 							<span><strong>Advanced</strong> (broader checks)</span>
 						</label>
 					</div>
@@ -573,7 +573,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			// same; only the templ rendering moves.
 			<div id="settings-diagnostics-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support &amp; Diagnostics</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Support &amp; Diagnostics</p>
 					<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
 					<p class="mt-2 text-sm text-slate-600">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
 				</div>
@@ -739,7 +739,7 @@ templ SettingsUpdateStatus(result viewmodel.UpdateCheckResult) {
 				<div class="mt-2 whitespace-pre-wrap rounded-xl bg-[rgb(var(--theme-parchment-rgb)/0.72)] px-3 py-2 text-xs text-slate-600">{ result.ReleaseNotes }</div>
 			}
 			if strings.TrimSpace(result.NotesURL) != "" {
-				<a href={ result.NotesURL } data-open-external class="mt-3 inline-flex text-sm font-semibold text-[#8d7440] underline">Open release notes</a>
+				<a href={ result.NotesURL } data-open-external class="mt-3 inline-flex text-sm font-semibold text-[var(--theme-accent-strong)] underline">Open release notes</a>
 			}
 			if !result.CanApply && strings.TrimSpace(result.DisabledReason) != "" {
 				@SettingsUpdateStatusMessage("error", result.DisabledReason)
@@ -812,7 +812,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 						for _, issue := range group.Issues {
 							<label class="block rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
 								<div class="flex items-start gap-3">
-									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
 									<div class="min-w-0 flex-1">
 										<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
 										if qualityScanProvenanceLine(issue) != "" {
@@ -890,7 +890,7 @@ func updateStatusHeading(kind string) string {
 templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int) {
 	if hasActiveSearch(search) || search.Recent {
 		<div class="mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]">
-			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">
+			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">
 				if search.Recent {
 					Recently Accessed
 				} else if search.Browse {
@@ -900,9 +900,9 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 				}
 			</p>
 			if search.Recent {
-				<p class="mt-2 text-sm font-medium text-[#22303d]">Your ten most recently opened person records.</p>
+				<p class="mt-2 text-sm font-medium text-[var(--theme-text-primary)]">Your ten most recently opened person records.</p>
 			} else {
-				<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
+				<p class="mt-2 text-sm font-medium text-[var(--theme-text-primary)]">{ searchSummary(search) }</p>
 			}
 			if search.Mode == "basic" && strings.TrimSpace(search.Query) != "" {
 				<p class="mt-1 text-xs text-slate-500">Quick search cards now show the exact matching field for each result.</p>
@@ -918,7 +918,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		if len(soldiers) > 0 {
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-parchment-rgb)/0.78)] px-4 py-3">
 				<div>
-					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
+					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Manual Comparison</p>
 					<p id="search-compare-selection-help" data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
 				</div>
 				@components.Button("Compare Selected", components.ButtonSecondary, "opacity-60 cursor-not-allowed", templ.Attributes{
@@ -950,7 +950,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 			<div class="mb-3 flex items-start gap-3">
 				<div class="mt-4 flex shrink-0 flex-col gap-2">
 					<label class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
 						Compare
 					</label>
 					@components.Button("Quick View", components.ButtonSecondary, "px-3 py-2 text-xs", templ.Attributes{
@@ -986,8 +986,8 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-white-rgb)/0.7)] px-4 py-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">{ entryBadgeLabel(s) }</p>
-					<h3 class="mt-2 text-xl font-semibold text-[#22303d]">{ detailHeading(s) }</h3>
+					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">{ entryBadgeLabel(s) }</p>
+					<h3 class="mt-2 text-xl font-semibold text-[var(--theme-text-primary)]">{ detailHeading(s) }</h3>
 					if strings.TrimSpace(detailSubheading(s)) != "" {
 						if detailSubheadingIsMaidenName(s) {
 							<p class="mt-1 text-sm text-slate-600"><em>{ detailSubheading(s) }</em></p>
@@ -1001,99 +1001,99 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			<div class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
 				<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Birth</div>
-					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.BirthDate) }</div>
+					<div class="mt-1 text-[var(--theme-text-primary)]">{ dates.DisplayUnknown(s.BirthDate) }</div>
 				</div>
 				<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Death</div>
-					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.DeathDate) }</div>
+					<div class="mt-1 text-[var(--theme-text-primary)]">{ dates.DisplayUnknown(s.DeathDate) }</div>
 				</div>
 				if strings.TrimSpace(s.Unit) != "" {
 					<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Unit</div>
-						<div class="mt-1 text-[#22303d]">{ s.Unit }</div>
+						<div class="mt-1 text-[var(--theme-text-primary)]">{ s.Unit }</div>
 					</div>
 				}
 				if strings.TrimSpace(s.BuriedIn) != "" {
 					<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.22)] bg-white/70 px-3 py-3">
 						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Burial</div>
-						<div class="mt-1 text-[#22303d]">{ s.BuriedIn }</div>
+						<div class="mt-1 text-[var(--theme-text-primary)]">{ s.BuriedIn }</div>
 					</div>
 				}
 			</div>
 		</div>
 		<div class="grid gap-3 lg:grid-cols-3">
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Local Archive Signals</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Local Archive Signals</p>
 				<dl class="mt-3 space-y-2">
 					<dt class="text-slate-500">Person Record Type</dt>
-					<dd class="text-[#22303d]">{ entryBadgeLabel(s) }</dd>
+					<dd class="text-[var(--theme-text-primary)]">{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Source Records</dt>
-					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.SourceRecordCount) }</dd>
+					<dd class="text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", s.SourceRecordCount) }</dd>
 					<dt class="text-slate-500">Images</dt>
-					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.ImageCount) }</dd>
+					<dd class="text-[var(--theme-text-primary)]">{ fmt.Sprintf("%d", s.ImageCount) }</dd>
 					<dt class="text-slate-500">Review Status</dt>
-					<dd class="text-[#22303d]">{ reviewStatusLabel(s) }</dd>
+					<dd class="text-[var(--theme-text-primary)]">{ reviewStatusLabel(s) }</dd>
 				</dl>
 			</div>
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Research Context</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Research Context</p>
 				<dl class="mt-3 space-y-2">
 					if strings.TrimSpace(s.SearchMatchSnippet) != "" {
 						<dt class="text-slate-500">Search Match</dt>
-						<dd class="text-[#22303d]">{ s.SearchMatchField }: { s.SearchMatchSnippet }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.SearchMatchField }: { s.SearchMatchSnippet }</dd>
 					}
 					if strings.TrimSpace(s.PensionID) != "" {
 						<dt class="text-slate-500">Pension ID</dt>
-						<dd class="text-[#22303d]">{ s.PensionID }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.PensionID }</dd>
 					}
 					if strings.TrimSpace(s.ApplicationID) != "" {
 						<dt class="text-slate-500">Application ID</dt>
-						<dd class="text-[#22303d]">{ s.ApplicationID }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.ApplicationID }</dd>
 					}
 					if strings.TrimSpace(s.BirthInfo) != "" {
 						<dt class="text-slate-500">Birth Detail</dt>
-						<dd class="text-[#22303d]">{ s.BirthInfo }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.BirthInfo }</dd>
 					}
 					if strings.TrimSpace(s.LastEditedBy) != "" || strings.TrimSpace(s.LastEditedAt) != "" {
 						<dt class="text-slate-500">Last Updated</dt>
-						<dd class="text-[#22303d]">{ previewUpdatedByline(s) }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ previewUpdatedByline(s) }</dd>
 					}
 				</dl>
 			</div>
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Family &amp; Links</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Family &amp; Links</p>
 				<dl class="mt-3 space-y-2">
 					if strings.TrimSpace(s.SpouseDisplayID) != "" {
 						<dt class="text-slate-500">Linked Soldier</dt>
-						<dd class="text-[#22303d]">{ s.SpouseDisplayID }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.SpouseDisplayID }</dd>
 					}
 					if strings.TrimSpace(s.RelationshipLabel) != "" {
 						<dt class="text-slate-500">Relationship to Soldier</dt>
-						<dd class="text-[#22303d]">{ s.RelationshipLabel }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ s.RelationshipLabel }</dd>
 					}
 					if strings.TrimSpace(s.MaidenName) != "" {
 						<dt class="text-slate-500">Maiden Name</dt>
-						<dd class="text-[#22303d]"><em>{ s.MaidenName }</em></dd>
+						<dd class="text-[var(--theme-text-primary)]"><em>{ s.MaidenName }</em></dd>
 					}
 					if normalizedConfederateHomeStatus(s.ConfederateHomeStatus) != confederatehomestatus.NotApplicable {
 						<dt class="text-slate-500">Confederate Home</dt>
-						<dd class="text-[#22303d]">{ previewConfederateHomeLabel(s) }</dd>
+						<dd class="text-[var(--theme-text-primary)]">{ previewConfederateHomeLabel(s) }</dd>
 					}
 					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.RelationshipLabel) == "" && strings.TrimSpace(s.MaidenName) == "" && normalizedConfederateHomeStatus(s.ConfederateHomeStatus) == confederatehomestatus.NotApplicable {
 						<dt class="text-slate-500">Purpose</dt>
-						<dd class="text-[#22303d]">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>
+						<dd class="text-[var(--theme-text-primary)]">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>
 					}
 				</dl>
 			</div>
 		</div>
 		if strings.TrimSpace(s.Notes) != "" {
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-4">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Notes Preview</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Notes Preview</p>
 				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, 260) }</p>
 			</div>
 		}
 		if s.NeedsReview {
-			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] px-4 py-4 text-sm text-[var(--theme-review-red)]">
 				<p class="font-semibold">Needs Review</p>
 				<p class="mt-1">{ emptyDetail(s.ReviewReason) }</p>
 			</div>
@@ -1169,8 +1169,8 @@ func previewText(value string, limit int) string {
 // Tracking: issue #98 from the 2026-06-24 audit.
 templ emptyArchiveSetupCard(search viewmodel.PersonRecordSearch) {
 	<section data-empty-archive-setup aria-labelledby="empty-archive-setup-heading" class="rounded-3xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.85)] p-6 shadow-sm">
-		<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Welcome to DixieData</p>
-		<h2 id="empty-archive-setup-heading" class="mt-2 text-2xl font-bold text-[#22303d]">Start your Local Archive</h2>
+		<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Welcome to DixieData</p>
+		<h2 id="empty-archive-setup-heading" class="mt-2 text-2xl font-bold text-[var(--theme-text-primary)]">Start your Local Archive</h2>
 		<p class="mt-2 text-sm leading-6 text-slate-600">
 			Your Local Archive is empty. Add your first Person Record, load a backup archive, or initialise the app to begin.
 		</p>

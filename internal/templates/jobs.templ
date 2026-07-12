@@ -36,8 +36,8 @@ templ JobStatusView(job jobs.Job) {
 	@Layout("Export in progress", true) {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<div>
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Background Export</p>
-				<h2 class="mt-2 text-2xl font-bold text-[#22303d]">{ jobLabel(job.Kind) }</h2>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Background Export</p>
+				<h2 class="mt-2 text-2xl font-bold text-[var(--theme-text-primary)]">{ jobLabel(job.Kind) }</h2>
 				<p class="mt-2 text-sm text-slate-600">Job ID <code class="rounded bg-slate-100 px-1.5 py-0.5">{ job.ID }</code></p>
 			</div>
 			@jobStatusBody(job)
@@ -45,7 +45,7 @@ templ JobStatusView(job jobs.Job) {
 				<button type="button" data-history-back
 					data-fallback-href="/"
 					data-fallback-label="Back to Dashboard"
-					class="inline-flex w-full items-center justify-center rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.85)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					class="inline-flex w-full items-center justify-center rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.85)] bg-[rgb(var(--theme-parchment-rgb)/0.92)] px-4 py-2 text-sm font-semibold text-[var(--theme-text-primary)] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
 					← Back to Dashboard
 				</button>
 				<p class="text-xs text-slate-500 sm:ml-2">Status updates automatically. Leave this page open to keep watching.</p>
@@ -62,7 +62,7 @@ templ JobStatusView(job jobs.Job) {
 //   - Show report button: links to /jobs/{id}/report (placeholder).
 //   - Artifact action (Open / Save): secondary, only when ResultPath is set.
 templ jobSummaryCard(job jobs.Job) {
-	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[#22303d] space-y-4">
+	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[var(--theme-text-primary)] space-y-4">
 		<p class="font-semibold">{ job.Summary().Headline }</p>
 		if len(job.Summary().DetailLines) > 0 {
 			<ul class="space-y-1 text-slate-600">
@@ -154,11 +154,11 @@ templ jobStatusBody(job jobs.Job) {
 		if job.AwaitingConfirmation {
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-4 space-y-3">
 				<div class="flex items-center gap-2 text-sm">
-					<span class="px-2 py-1 rounded-full bg-[#8d7440] text-white text-xs font-semibold uppercase tracking-[0.12em]">Awaiting confirmation</span>
+					<span class="px-2 py-1 rounded-full bg-[var(--theme-accent-strong)] text-white text-xs font-semibold uppercase tracking-[0.12em]">Awaiting confirmation</span>
 					<span class="text-slate-600">{ job.DisplayLabel() }</span>
 				</div>
 				if job.Message != "" {
-					<p class="text-sm text-[#22303d]">{ job.Message }</p>
+					<p class="text-sm text-[var(--theme-text-primary)]">{ job.Message }</p>
 				}
 				<p class="text-xs text-slate-500">This action is irreversible. Confirm to start the import, or cancel to discard.</p>
 				<div class="flex flex-wrap items-center gap-2 pt-1">
@@ -172,13 +172,13 @@ templ jobStatusBody(job jobs.Job) {
 			</div>
 		} else if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
 			<div class="flex items-center justify-between text-sm text-slate-600">
-				<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
+				<span>Status: <strong class="text-[var(--theme-text-primary)]">{ job.Status }</strong></span>
 				if job.Message != "" {
 					<span>{ job.Message }</span>
 				}
 			</div>
 			<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
-				<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+				<div class="h-full rounded-full bg-[var(--theme-accent-strong)] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
 			</div>
 			<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
 		}
@@ -186,7 +186,7 @@ templ jobStatusBody(job jobs.Job) {
 			@jobSummaryCard(job)
 		}
 		if job.Status == jobs.StatusError {
-			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4 text-sm text-[var(--theme-review-red)]">
 				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, false) }</p>
 				<p class="mt-1 break-words">{ job.Error }</p>
 			</div>
@@ -232,9 +232,9 @@ func jobLabel(kind string) string {
 // so a browser print-to-PDF produces a clean document.
 templ JobReportView(job jobs.Job) {
 	@Layout(jobLabel(job.Kind) + " report") {
-		<div class="report-shell relative mx-auto max-w-3xl space-y-6 bg-white p-6 text-[#22303d] print:p-0">
+		<div class="report-shell relative mx-auto max-w-3xl space-y-6 bg-white p-6 text-[var(--theme-text-primary)] print:p-0">
 			<header class="border-b border-slate-200 pb-4">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Job Report</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Job Report</p>
 				<h1 class="mt-2 text-2xl font-bold">{ jobLabel(job.Kind) }</h1>
 				<p class="mt-1 text-sm text-slate-600">Job ID <code class="rounded bg-slate-100 px-1.5 py-0.5">{ job.ID }</code></p>
 			</header>
@@ -317,7 +317,7 @@ templ JobReportView(job jobs.Job) {
 			}
 			<footer class="border-t border-slate-200 pt-4 text-xs text-slate-500">
 				<p>Generated by DixieData. Use your browser's print-to-PDF to save this report.</p>
-				<p class="mt-1"><a href={ templ.SafeURL("/jobs/" + job.ID) } class="text-[#8d7440] underline">Back to live status</a></p>
+				<p class="mt-1"><a href={ templ.SafeURL("/jobs/" + job.ID) } class="text-[var(--theme-accent-strong)] underline">Back to live status</a></p>
 			</footer>
 		</div>
 	}

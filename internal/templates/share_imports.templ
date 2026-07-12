@@ -20,7 +20,7 @@ templ ShareImportsView() {
 	@Layout("Share Imports") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			<nav aria-label="Breadcrumb" class="text-sm text-slate-500">
-				<a href="/share" class="text-[#324253] underline-offset-2 hover:underline">← Back to /share</a>
+				<a href="/share" class="text-[var(--theme-text-mid)] underline-offset-2 hover:underline">← Back to /share</a>
 			</nav>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Imports</h2>
@@ -28,13 +28,13 @@ templ ShareImportsView() {
 			</div>
 			<section id={ uiids.PanelShareImports } class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Import & Restore</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Import & Restore</p>
 					<h3 class="mt-2 text-xl gold font-bold">Bring data back into this local archive</h3>
 					<p class="mt-2 text-sm text-slate-500">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p>
 				</div>
 				<div class="space-y-4">
 					<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Collaborative Merge</p>
 						<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p>
 						<div class="mt-4">
 							@components.ButtonContent(components.ButtonPrimary, "justify-start text-left", templ.Attributes{
@@ -47,7 +47,7 @@ templ ShareImportsView() {
 						</div>
 					</div>
 					<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 p-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Memorial JSON Import</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Memorial JSON Import</p>
 						<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records. The pre-flight analyses how many rows would be added, skipped, or failed; the actual import only runs after you confirm on its own status page.</p>
 						<div class="mt-4">
 							@components.ButtonContent(components.ButtonSecondary, "justify-start text-left", templ.Attributes{
@@ -61,8 +61,8 @@ templ ShareImportsView() {
 						<div id="memorial-preview-target" class="mt-4 text-sm text-slate-600"></div>
 					</div>
 					<div class="rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.35)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
-						<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-review-red)]">Replace Local Archive</p>
+						<p class="mt-2 text-sm text-[var(--theme-review-red)]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
 						<div class="mt-4">
 							@components.ButtonContent(components.ButtonDanger, "justify-start text-left", templ.Attributes{
 								"data-action":       "/import/backup",
@@ -76,7 +76,7 @@ templ ShareImportsView() {
 					</div>
 				</div>
 				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
-					<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.
+					<strong class="text-[var(--theme-text-primary)]">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.
 				</div>
 			</section>
 		</div>

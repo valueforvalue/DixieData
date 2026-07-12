@@ -35,9 +35,9 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 						<span class="gold text-xs font-mono">{ event.DisplayID }</span>
 						<div class="mt-2 flex flex-wrap items-baseline gap-3">
 							if strings.TrimSpace(event.Kind) != "" {
-								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.4)] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ event.Kind }</span>
+								<span class="rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.4)] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">{ event.Kind }</span>
 							}
-							<h2 class="text-2xl font-bold text-[#22303d]">{ eventTitle(event) }</h2>
+							<h2 class="text-2xl font-bold text-[var(--theme-text-primary)]">{ eventTitle(event) }</h2>
 						</div>
 						if event.BeginDate != "" || event.EndDate != "" {
 							<p class="mt-2 text-sm text-slate-600">{ eventDateRange(event) }</p>
@@ -71,7 +71,7 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 				</div>
 				if strings.TrimSpace(event.Description) != "" {
 					<section class="mb-6">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Description</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Description</p>
 						if strings.TrimSpace(event.PDFExcerptOverride) != "" {
 							<div class="mt-2 rounded-2xl border border-amber-700/30 bg-amber-50/80 p-4 text-sm text-amber-950">
 								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-900">PDF Excerpt Override active</p>
@@ -83,13 +83,13 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 				}
 				if strings.TrimSpace(event.Notes) != "" {
 					<section class="mb-6">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Internal Notes</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Internal Notes</p>
 						<p class="mt-2 whitespace-pre-line text-sm text-slate-600">{ event.Notes }</p>
 					</section>
 				}
 				<section class="relative">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Linked Person Records</p>
 						<div class="flex items-center gap-3">
 							<span class="text-xs text-slate-500">{ fmt.Sprintf("%d linked", len(linked)) }</span>
 							<button
@@ -116,7 +116,7 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 				@EventSectionPanel("Tags", len(event.Tags), "attached", fmt.Sprintf("%d", event.ID), "data-event-tags-list", EventTagsListFragment(event.ID, event.Tags))
 				<section class="relative mt-6">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Images</p>
 						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.Images)) }</span>
 					</div>
 					<div id={ uiids.PanelEventDetailImages }>
