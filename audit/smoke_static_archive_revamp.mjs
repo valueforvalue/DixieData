@@ -149,7 +149,7 @@ test('slice2-05 Calendar landing renders 12 month grids from bundle.calendar', (
 
 // --- Slice 3: Browse page (filters + sort + pagination) ---
 
-test('slice3-01 Browse renders 5 filter chips per locked decision 2', () => {
+test('slice3-01 Browse renders 5 filter dropdowns per issue #499', () => {
   assert.ok(
     html.includes('BROWSE_FILTER_FIELDS'),
     'JS must define BROWSE_FILTER_FIELDS array (5 filter fields per locked decision 2)',
@@ -160,6 +160,23 @@ test('slice3-01 Browse renders 5 filter chips per locked decision 2', () => {
       `BROWSE_FILTER_FIELDS must include ${field}`,
     );
   }
+  // Issue #499: filter chips replaced with native <select multiple> dropdowns.
+  assert.ok(
+    html.includes('renderFilterDropdown'),
+    'JS must define renderFilterDropdown (issue #499)',
+  );
+  assert.ok(
+    html.includes('class="filter-select"'),
+    'Browse must render filter-select class (issue #499)',
+  );
+  assert.ok(
+    html.includes('multiple'),
+    'Browse filter selects must be multiple (issue #499)',
+  );
+  assert.ok(
+    html.includes('data-filter-field'),
+    'Browse filter selects must carry data-filter-field (issue #499)',
+  );
 });
 
 test('slice3-02 Browse renders search + sort + page-size controls', () => {
@@ -188,12 +205,25 @@ test('slice3-03 Browse pre-fill reads #/browse?{field}={value} from route hash',
   );
   assert.ok(
     html.includes('applyBrowseFilters'),
-    'JS must define applyBrowseFilters to apply chips + search + sort + page-size',
+    'JS must define applyBrowseFilters to apply dropdowns + search + sort + page-size',
+  );
+  assert.ok(
+    html.includes('getBrowseFilterValues'),
+    'JS must define getBrowseFilterValues for multi-select (issue #499)',
   );
   // The Calendar day-cell drilldown routes via date=.
   assert.ok(
     html.includes('date='),
     'Browse must honour date= pre-fill (Calendar day-cell drilldown)',
+  );
+  // Removable chips + clear-filters button.
+  assert.ok(
+    html.includes('class="filter-removable-chip"'),
+    'Browse must render removable filter chips (issue #499)',
+  );
+  assert.ok(
+    html.includes('browse-clear-filters'),
+    'Browse must render clear-filters button (issue #499)',
   );
 });
 
