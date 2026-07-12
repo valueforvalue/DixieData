@@ -377,6 +377,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/htmx.min.js":
 			a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
+		case "/boot-theme.js":
+			// Issue #483 follow-up: serve the boot-theme script even
+			// before the mux warms so the static index.html shell's
+			// blocking <script src="/boot-theme.js"> in <head> sets
+			// <html data-theme> before the body paints. The handler
+			// is mux-independent (only reads a.theme / disk) so it's
+			// safe to call in the pre-mux window.
+			a.handleBootThemeScript(w, r)
+			return
 		}
 		renderStartupPlaceholder(a, w, r)
 		return

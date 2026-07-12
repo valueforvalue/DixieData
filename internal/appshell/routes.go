@@ -37,6 +37,7 @@ func (a *App) setupRoutes() {
 	r.Get("/debug-toolbox.js", a.handleFrontendAsset("debug-toolbox.js", "text/javascript; charset=utf-8"))
 	r.Get("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
 	r.Get("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
+	r.Get("/boot-theme.js", a.handleBootThemeScript)
 
 	r.Get("/recovery", a.handleRecovery)
 	r.Get("/jobs/active", a.renderActiveJob)
