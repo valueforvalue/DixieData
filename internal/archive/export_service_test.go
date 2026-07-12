@@ -342,6 +342,15 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if !strings.Contains(entries["archive_data.js"], `"biography": "Confederate general whose record biography should travel with archive exports."`) {
 		t.Fatalf("archive_data.js missing biography field: %s", entries["archive_data.js"])
 	}
+	// Issue #501: the rendered index.html must carry a Biography
+	// section in renderDetail so the exported archive actually
+	// surfaces the biography the bundle carries.
+	if !strings.Contains(entries["index.html"], "Biography</h4>") {
+		t.Fatalf("index.html missing Biography section heading (issue #501): %s", entries["index.html"])
+	}
+	if !strings.Contains(entries["index.html"], "record.biography") {
+		t.Fatalf("index.html renderDetail must read record.biography (issue #501): %s", entries["index.html"])
+	}
 	if !strings.Contains(entries["index.html"], "S. Carter&#39;s Civil War Research Archive") {
 		t.Fatalf("index.html missing owner title: %s", entries["index.html"])
 	}
