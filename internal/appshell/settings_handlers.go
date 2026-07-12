@@ -16,8 +16,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -30,9 +32,84 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load update settings.", err)
 		return
 	}
+	// Issue #474: pass the current resolved theme so the Appearance
+	// card can render the right radio as checked. The same value is
+	// served via the per-request context (WithLayoutTheme) so the
+	// first paint of <html data-theme="..."> already matches.
+	var currentTheme string
+	if v := a.theme.Load(); v != nil {
+		if s, ok := v.(string); ok {
+			currentTheme = s
+		}
+	}
+	if currentTheme == "" {
+		currentTheme = records.ThemeDefault
+	}
 	// Issue #384 / Slice 7: wrap Render.
-	if err := presentation.SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w); err != nil {
+	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the settings page.", err)
+	}
+}
+
+// handleSettingsTheme is the POST handler for the Appearance form
+// on the Settings page. It reads the picked theme, validates it
+// against the known set, persists via SaveLocalSettings, and
+// updates the in-memory App.theme store so the next request renders
+// <html data-theme="..."> with the new value. The form is submitted
+// via the JS dispatcher (data-dixie-submit="true") so the response
+// uses the standard X-DixieData-Redirect back to /settings to
+// re-render the page with the new selection.
+//
+// Issue #474 — the theme system. Slice 1 only validates + persists;
+// the palette work is slice 2.
+func (a *App) handleSettingsTheme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the theme form.", err)
+		return
+	}
+	picked := strings.TrimSpace(r.FormValue("theme"))
+	switch picked {
+	case records.ThemeDefault, records.ThemeHighContrast, records.ThemeSoft:
+		// ok
+	default:
+		respondValidation(w, r, "Pick one of: Default, High Contrast, Soft.", nil)
+		return
+	}
+	settings, err := records.LoadLocalSettings(a.dataDir)
+	if err != nil {
+		respondInternal(w, r, "Could not load local settings.", err)
+		return
+	}
+	settings.Theme = picked
+	if err := records.SaveLocalSettings(a.dataDir, settings); err != nil {
+		respondInternal(w, r, "Could not save local settings.", err)
+		return
+	}
+	a.theme.Store(picked)
+	log := debug.FromContext(r.Context())
+	log.Info("theme changed via settings", "theme", picked)
+	setToastHeader(w, fmt.Sprintf("Theme set to %s.", themeDisplayName(picked)))
+	// The form is dispatched via the JS dispatcher; respond with the
+	// standard X-DixieData-Redirect so the browser navigates back to
+	// /settings and the new theme is reflected on the next paint.
+	writeExportRedirect(w, "/settings")
+}
+
+// themeDisplayName maps the persisted theme value to the user-facing
+// label used in toast messages. Keep in sync with the radio options
+// in SettingsAppearancePanel.
+func themeDisplayName(value string) string {
+	switch value {
+	case records.ThemeHighContrast:
+		return "High Contrast"
+	case records.ThemeSoft:
+		return "Soft"
+	default:
+		return "Default"
 	}
 }
 

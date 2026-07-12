@@ -89,3 +89,49 @@ func layoutCurrentPath(ctx context.Context) string {
 func layoutHasOpenReview(ctx context.Context) bool {
 	return LayoutHasOpenReviewFromContext(ctx)
 }
+
+// ThemeFromContext is the templ-callable helper Layout uses to
+// render the <html data-theme="..."> attribute. The appshell
+// tags the resolved theme name (one of records.ThemeDefault /
+// ThemeHighContrast / ThemeSoft) in ServeHTTP so the first
+// paint of every page carries the right theme without a
+// flash of default. Returns the default theme when no tag is
+// present (raw template tests, error pages rendered before
+// the request hook ran, etc.) so the attribute never
+// serializes as an empty string.
+//
+// Issue #474 — the theme system is per-user, lives in
+// .dixiedata-state/local_settings.json, and never travels with
+// the archive on Share / Backup / Restore.
+type layoutThemeCtxKey struct{}
+
+// WithLayoutTheme tags ctx with the resolved theme name for
+// the current request. Pair with PagePathFromContext-style
+// accessors; the appshell calls this in ServeHTTP before
+// the mux dispatches.
+func WithLayoutTheme(ctx context.Context, theme string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, layoutThemeCtxKey{}, theme)
+}
+
+// LayoutThemeFromContext reports the theme name tagged onto
+// ctx via WithLayoutTheme. Returns the empty string when no
+// tag is present.
+func LayoutThemeFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(layoutThemeCtxKey{}).(string)
+	return v
+}
+
+// layoutTheme is the templ-callable shim. Returns the theme
+// name or "default" as a safe fallback.
+func layoutTheme(ctx context.Context) string {
+	if t := LayoutThemeFromContext(ctx); t != "" {
+		return t
+	}
+	return "default"
+}

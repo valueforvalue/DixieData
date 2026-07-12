@@ -38,7 +38,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 	// researchers working with Spanish / French / German Civil War
 	// materials; full UI localisation is tracked separately and will
 	// surface the lang attribute from a user preference when it lands.
-	<html lang="en">
+	<html lang="en" data-theme={ layoutTheme(ctx) }>
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>

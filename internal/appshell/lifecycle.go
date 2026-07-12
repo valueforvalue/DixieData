@@ -166,8 +166,15 @@ func (a *App) startup(ctx context.Context) {
 		enabled := decideDebugModeAtStartupSettings(settings.DebugMode)
 		a.debugMode.Store(enabled)
 		debug.SetDebugMode(enabled)
+		// Issue #474: load the resolved theme name so every
+		// request's Layout() renders <html data-theme="..."> from
+		// the same source. Empty string resolves to ThemeDefault.
+		a.theme.Store(settings.ResolvedTheme())
 	} else {
 		fmt.Printf("warning: could not load local settings: %v\n", err)
+		// Even on a load failure, surface a sane default so the
+		// html data-theme attribute never serializes as "".
+		a.theme.Store(records.ThemeDefault)
 	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
@@ -468,6 +475,20 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ctx = templates.WithLayoutHasOpenReview(ctx, count > 0)
 		}
 	}
+	// Issue #474: tag the resolved theme on the request context so
+	// Layout() can render <html data-theme="..."> from the same
+	// source on the first paint of every page. The atomic load
+	// is nil-safe — a fresh App (no Startup) gets "default".
+	var theme string
+	if v := a.theme.Load(); v != nil {
+		if s, ok := v.(string); ok {
+			theme = s
+		}
+	}
+	if theme == "" {
+		theme = records.ThemeDefault
+	}
+	ctx = templates.WithLayoutTheme(ctx, theme)
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

@@ -460,10 +460,11 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	</div>
 }
 
-templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings) {
+templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme string) {
 	@Layout("Settings") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
+			@SettingsAppearancePanel(currentTheme)
 			@SettingsUpdatePanel(updateState)
 			@SettingsBuildPanel()
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
@@ -595,6 +596,60 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			</div>
 		</div>
 	}
+}
+
+// SettingsAppearancePanel renders the Appearance section at the top
+// of the Settings page. The user picks one of three themes; the
+// choice is per-user (lives in <parent-of-archive>/.dixiedata-state/
+// local_settings.json, NOT inside the archive and NOT in
+// %APPDATA%) so it survives .ddbak restore and in-place app
+// updates. The current selection is read once per request from
+// the same LocalSettings.Theme field that the form submits to.
+//
+// Issue #474 — the theme system. The high-contrast and soft
+// palettes are placeholder resets in slice 1; slice 2 ships the
+// real palette tokens (CSS custom properties + audit harness
+// updates) and slice 3 ships the soft theme + static archive
+// baked-in default.
+templ SettingsAppearancePanel(currentTheme string) {
+	<div id="settings-appearance-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+		<div>
+			<h3 class="text-xl gold font-bold">Appearance</h3>
+			<p class="mt-2 text-sm text-slate-600">Pick a theme for the whole app. The choice is per-user and lives in <code>.dixiedata-state/local_settings.json</code>, so it survives <code>.ddbak</code> restore and in-place app updates. It does NOT travel with the archive on Share / Backup / Restore.</p>
+		</div>
+		<form action="/settings/theme" data-dixie-submit="true" class="space-y-3">
+			<div class="grid gap-3 sm:grid-cols-3" data-theme-picker>
+				for _, option := range []struct {
+					value string
+					label string
+					hint  string
+				}{
+					{ "default", "Default", "Gold / sepia accents on warm navy." },
+					{ "high-contrast", "High Contrast", "Crisp grayscale, WCAG AA, no decorative washes." },
+					{ "soft", "Soft", "Warmer sepia, gentler on the eyes in low light." },
+				} {
+					<label class="theme-option" data-theme-option={ option.value }>
+						<input
+							type="radio"
+							name="theme"
+							value={ option.value }
+							if option.value == currentTheme {
+								checked
+							}
+							class="sr-only"
+						/>
+						<span class="theme-option-body">
+							<span class="theme-option-label">{ option.label }</span>
+							<span class="theme-option-hint">{ option.hint }</span>
+						</span>
+					</label>
+				}
+			</div>
+			<div class="flex justify-end">
+				@components.Button("Apply Theme", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+			</div>
+		</form>
+	</div>
 }
 
 templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
