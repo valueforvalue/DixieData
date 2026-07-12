@@ -296,7 +296,7 @@ const dixie = {
       label: leaf ? leaf.label : "?",
       crumbs: crumbs,
       uiidsPageId: readUiidsFromBody(),
-      h1: document.querySelector("h1") ? document.querySelector("h1").textContent.trim() : null,
+      h1: (() => { const h1 = document.querySelector("h1"); return h1 ? h1.textContent.trim() : null; })(),
       title: document.title || null,
       timestamp: new Date().toISOString(),
     };

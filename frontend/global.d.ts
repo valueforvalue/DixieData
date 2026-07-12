@@ -48,8 +48,8 @@ interface DixieDataWindow {
   // shape mirrors the htmx 2.x type declarations — narrowed at
   // call sites (window.htmx?.on, window.htmx && typeof === "function").
   htmx?: {
-    on: (event: string, handler: (evt: CustomEvent<{ elt?: unknown; xhr?: { status?: number; responseURL?: string; getResponseHeader?: (name: string) => string | null }; target?: unknown }>) => void) => void;
-    off: (event: string, handler?: (evt: CustomEvent<{ elt?: unknown; xhr?: { status?: number; responseURL?: string; getResponseHeader?: (name: string) => string | null }; target?: unknown }>) => void) => void;
+    on: (event: string, handler: (evt: CustomEvent<{ elt?: unknown; xhr?: { status?: number; responseURL?: string; getResponseHeader: (name: string) => string | null }; target?: unknown }>) => void) => void;
+    off: (event: string, handler?: (evt: CustomEvent<{ elt?: unknown; xhr?: { status?: number; responseURL?: string; getResponseHeader: (name: string) => string | null }; target?: unknown }>) => void) => void;
   };
   // DX-mode flag toggled by the dev page badge; default false in
   // production builds. The thin typing reflects the actual usage.
