@@ -1448,6 +1448,9 @@ function escapeHtml(value) {
       if (record.notes) {
         primarySections.push('<section class="detail-section"><h4>Notes</h4><p>' + renderLinkedText(record.notes) + '</p></section>');
       }
+      if (record.biography) {
+        primarySections.push('<section class="detail-section"><h4>Biography</h4><p>' + renderLinkedText(record.biography) + '</p></section>');
+      }
       if (record.records && record.records.length) {
         primarySections.push(
           '<section class="detail-section"><h4>Records</h4><ul>' +

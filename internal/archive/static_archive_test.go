@@ -611,3 +611,37 @@ func TestStaticArchiveIndex_InsightsPageRendersCardsAndDrilldown(t *testing.T) {
 		t.Errorf("Insights page must read bundle.insights (issue #498 slice 4)")
 	}
 }
+
+// TestStaticArchiveIndex_PersonDetailRendersBiographySection (issue #501)
+// asserts renderDetail() produces a "Biography" section when the
+// record carries a non-empty biography field. The section must
+// appear between Notes and Records in the primarySections array
+// and use renderLinkedText for cross-link + URL handling.
+func TestStaticArchiveIndex_PersonDetailRendersBiographySection(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The renderDetail function must reference record.biography.
+	if !strings.Contains(html, "record.biography") {
+		t.Errorf("renderDetail must read record.biography (issue #501)")
+	}
+
+	// A Biography section heading must exist.
+	if !strings.Contains(html, "Biography</h4>") {
+		t.Errorf("renderDetail must produce a Biography section heading (issue #501)")
+	}
+
+	// The biography section must use renderLinkedText for cross-links.
+	detailFn := html[strings.Index(html, "function renderDetail"):]
+	notesIdx := strings.Index(detailFn, "Notes</h4>")
+	bioIdx := strings.Index(detailFn, "Biography</h4>")
+	recordsIdx := strings.Index(detailFn, "Records</h4>")
+	if notesIdx < 0 || bioIdx < 0 || recordsIdx < 0 {
+		t.Fatalf("renderDetail missing expected section headings: Notes=%d Biography=%d Records=%d", notesIdx, bioIdx, recordsIdx)
+	}
+	if bioIdx <= notesIdx {
+		t.Errorf("Biography section must come after Notes (notes at %d, bio at %d)", notesIdx, bioIdx)
+	}
+	if bioIdx >= recordsIdx {
+		t.Errorf("Biography section must come before Records (bio at %d, records at %d)", bioIdx, recordsIdx)
+	}
+}
