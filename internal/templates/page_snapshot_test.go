@@ -68,6 +68,12 @@ func assertNoDebugOverlayAttrs(t *testing.T, name string, doc *goquery.Document)
 
 // TestPageSnapshotBrowse renders the Browse list page and asserts
 // the row container, filter form, and primary actions render.
+//
+// Note: the Layout("Browse") name below is an internal test API
+// surface, not a user-facing label. The user-facing label is
+// "Filter" (issue #503 label-only rename). The route /browse,
+// service layer (records.BrowsePage), and handler names are
+// unchanged.
 func TestPageSnapshotBrowse(t *testing.T) {
 	state := viewmodel.BrowseState{
 		Page:     1,

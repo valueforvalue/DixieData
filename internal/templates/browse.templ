@@ -26,8 +26,13 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 			</div>
 			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
-					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
-					<p class="mt-2 max-w-3xl text-sm text-slate-600">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p>
+					// UI label for the legacy /browse route. The route name stays
+					// /browse (handler: handleBrowse, service: records.BrowsePage) so
+					// existing bookmarks + service-layer plumbing are preserved.
+					// See issue #503 for the rationale; if a future rename of the
+					// route + service layer lands, this comment can be deleted.
+					<h2 class="text-2xl gold font-bold">Filter Local Archive</h2>
+					<p class="mt-2 max-w-3xl text-sm text-slate-600">Filter-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p>
 				</div>
 				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-parchment-rgb)/0.78)] px-4 py-3 text-sm text-slate-600">
 					Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.
@@ -137,11 +142,11 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					</div>
 					<div class="md:col-span-2 xl:col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
 						@components.Button("Apply Filters", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
-						@components.Button("Reset Browse", components.ButtonGhost, "w-full px-4 py-2 font-semibold sm:w-auto", templ.Attributes{
+						@components.Button("Reset filters", components.ButtonGhost, "w-full px-4 py-2 font-semibold sm:w-auto", templ.Attributes{
 							"data-browse-reset": "",
 							"data-browse-reset-path": "/browse",
 						})
-						<p class="text-xs text-slate-500">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p>
+						<p class="text-xs text-slate-500">Filters remember the last scope and chips on this machine. Use Reset filters to clear them.</p>
 					</div>
 					</div>
 				</details>

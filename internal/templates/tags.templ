@@ -125,7 +125,7 @@ templ TagDetailPage(t records.Tag, members []records.TagMemberView) {
 					</p>
 				</div>
 				<a href={ templ.SafeURL(fmt.Sprintf("/browse?tags=%s", t.NormalizedName)) } class="inline-flex items-center justify-center rounded-2xl border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">
-					View in Browse
+					View in Filter
 				</a>
 			</div>
 			<section id={ uiids.PanelTagDetail } class="card rounded-3xl p-5 sm:p-8">
