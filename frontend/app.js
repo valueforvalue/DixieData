@@ -3,20 +3,32 @@
   // by Document / Window event handlers to the actual Element the
   // click landed on (or null). The cost: one typeof check inline
   // at each handler's first `event.target` read. The benefit:
-  // TypeScript stops flagging the 60+ `eventTargetElement(event).closest(...)`
+  // TypeScript stops flagging the 60+ `eventTargetElement(event)?.closest(...)`
   // sites in the DOMContentLoaded install block as TS2339, and the
   // runtime fails safe on synthetic events whose target is not
   // an Element (Text node / Window — DOM does not raise those
   // from a click, but the guard makes the slice-3 narrowing
   // explicit instead of relying on every site to add its own
   // `instanceof Element` check).
+  /**
+   * @param {Event | null | undefined} event
+   * @returns {Element | null}
+   */
   const eventTargetElement = (event) => {
+    // Dual-mode guard. In the browser `Element` is a DOM global; the
+    // Node-based go test JS harnesses (`browse_frontend_harness.js`)
+    // don't define `Element` as a global — only `HTMLElement` +
+    // typed subclasses. Fall back to a duck-type check on `EventTarget`
+    // + `closest` so the harness can exercise the click delegation
+    // paths against the mocked `HTMLElement.closest()`. In the
+    // browser both checks pass and behavior is unchanged.
     if (
       event
       && event.target
-      && event.target instanceof Element
+      && typeof EventTarget !== "undefined"
+      && typeof (/** @type {any} */ (event.target).closest) === "function"
     ) {
-      return event.target;
+      return /** @type {any} */ (event.target);
     }
     return null;
   };
@@ -77,6 +89,7 @@
     }
   }
 
+  /** @param {unknown[]} stack */
   function saveBackStack(stack) {
     try {
       if (!Array.isArray(stack) || stack.length === 0) {
@@ -99,6 +112,7 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveRecentRecords(ids) {
     try {
       const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, 10);
@@ -112,6 +126,10 @@
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {unknown} fallback
+   */
   function loadJSONStorage(key, fallback) {
     try {
       const raw = window.localStorage.getItem(key);
@@ -125,6 +143,10 @@
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {unknown} value
+   */
   function saveJSONStorage(key, value) {
     try {
       if (value == null) {
@@ -142,6 +164,7 @@
     return value && typeof value === "object" ? value : {};
   }
 
+  /** @param {unknown} state */
   function saveBrowseState(state) {
     saveJSONStorage(browseStateStorageKey, state);
   }
@@ -151,6 +174,7 @@
     return Array.isArray(value) && value.length > 0 ? value : defaultBrowseColumns.slice();
   }
 
+  /** @param {unknown} columns */
   function saveBrowseColumns(columns) {
     const normalized = Array.from(new Set((Array.isArray(columns) ? columns : []).filter((value) => typeof value === "string" && value !== "")));
     saveJSONStorage(browseColumnsStorageKey, normalized.length > 0 ? normalized : defaultBrowseColumns);
@@ -166,6 +190,7 @@
     return value === "compact" ? "compact" : "expanded";
   }
 
+  /** @param {string} mode */
   function saveCalendarAnniversaryDensity(mode) {
     saveJSONStorage(calendarAnniversaryDensityStorageKey, mode === "compact" ? "compact" : "expanded");
   }
@@ -175,12 +200,14 @@
     return value === "relaxed" || value === "split-screen" ? value : "auto";
   }
 
+  /** @param {string} mode */
   function saveLayoutModePreference(mode) {
     const normalized = mode === "relaxed" || mode === "split-screen" ? mode : "auto";
     saveJSONStorage(layoutModeStorageKey, normalized);
     return normalized;
   }
 
+  /** @param {string} preference */
   function resolveResponsiveLayoutMode(preference) {
     if (preference === "relaxed" || preference === "split-screen") {
       return preference;
@@ -191,10 +218,12 @@
     return window.innerWidth <= splitScreenBreakpointPx ? "split-screen" : "relaxed";
   }
 
+  /** @param {string} mode */
   function layoutModeLabel(mode) {
     return mode === "split-screen" ? "Split-screen" : "Relaxed";
   }
 
+  /** @param {string} preference */
   function layoutPreferenceLabel(preference) {
     switch (preference) {
       case "relaxed":
@@ -206,6 +235,11 @@
     }
   }
 
+  /**
+   * @param {Document} root
+   * @param {string} preference
+   * @param {string} mode
+   */
   function refreshResponsiveLayoutControls(root, preference, mode) {
     const scope = root && root.nodeType === 9 ? root : document;
     scope.querySelectorAll("[data-layout-mode-option]").forEach((button) => {
@@ -228,6 +262,7 @@
     });
   }
 
+  /** @param {Document} [root] */
   function applyResponsiveLayout(root = document) {
     const doc = root && root.nodeType === 9 ? root : document;
     const body = doc.body;
@@ -257,6 +292,10 @@
   // Per docs/COMMON_BUGS.md §4.14 the previous approach (hand-coded
   // padding-bottom + manual dock repositioning) regressed 5 times;
   // measuring the dock at runtime is the prescribed fix.
+  /**
+   * @param {Document} doc
+   * @param {HTMLElement} html
+   */
   function measureFloatingDockHeight(doc, html) {
     const dock = doc.querySelector(".floating-dock");
     if (!(dock instanceof HTMLElement)) {
@@ -293,6 +332,7 @@
     appShell.style.paddingBottom = `${heightPx}px`;
   }
 
+  /** @param {Document} [root] */
   function clampPopoutPanels(root = document) {
     const scope = root && root.nodeType === 9 ? root : document;
     const viewportPadding = 12;
@@ -345,11 +385,13 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveBrowseSelection(ids) {
     const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
     saveJSONStorage(browseSelectionStorageKey, normalized);
   }
 
+  /** @param {string | null} scope */
   function loadPDFPreferences(scope) {
     if (!scope) {
       return {};
@@ -358,6 +400,10 @@
     return value && typeof value === "object" ? value : {};
   }
 
+  /**
+   * @param {string | null} scope
+   * @param {unknown} values
+   */
   function savePDFPreferences(scope, values) {
     if (!scope) {
       return;
@@ -365,6 +411,10 @@
     saveJSONStorage(`${pdfPreferencesStoragePrefix}${scope}`, values);
   }
 
+  /**
+   * @param {HTMLInputElement | HTMLSelectElement} input
+   * @returns {string | boolean}
+   */
   function pdfPreferenceValue(input) {
     if (input instanceof HTMLInputElement && input.type === "checkbox") {
       return input.checked;
@@ -372,6 +422,7 @@
     return input.value;
   }
 
+  /** @param {Element | null} form */
   function applyPDFPreferences(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -394,11 +445,13 @@
     });
   }
 
+  /** @param {Element | null} form */
   function persistPDFPreferences(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
     const scope = form.getAttribute("data-pdf-pref-scope");
+    /** @type {Record<string, string | number | boolean>} */
     const next = {};
     form.querySelectorAll("[data-pdf-pref-key]").forEach((input) => {
       if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
@@ -445,6 +498,7 @@
     }
   }
 
+  /** @param {unknown} ids */
   function saveResearchRecents(ids) {
     try {
       const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, researchRecentsStorageCap);
@@ -589,6 +643,7 @@
     }
   }
 
+  /** @param {HTMLElement} root */
   function syncClonedFormState(root) {
     root.querySelectorAll("textarea").forEach((textarea) => {
       if (textarea instanceof HTMLTextAreaElement) {
@@ -657,6 +712,7 @@
     saveBackStack(stack);
   }
 
+  /** @param {string} path */
   function smartBackLabel(path) {
     const normalized = String(path || "").toLowerCase();
     if (normalized.startsWith("/calendar")) {
@@ -752,6 +808,7 @@
       // Primary cleanup: when the CSS transition ends.
       // Fallback: 2s timeout in case the transitionend event
       // never fires (e.g. the user navigates away mid-flash).
+      /** @param {AnimationEvent | TransitionEvent} ev */
       const onEnd = (ev) => {
         if (ev && ev.target !== row) {
           return;
@@ -791,6 +848,7 @@
     return true;
   }
 
+  /** @param {string} href */
   function shouldCaptureBackSnapshot(href) {
     const normalized = String(href || "");
     if (/^\/research-collections(?:\/\d+)?(?:\?.*)?$/.test(normalized)) {
@@ -826,6 +884,7 @@
     return false;
   }
 
+  /** @param {Element} el */
   function closestParentForm(el) {
     if (el instanceof HTMLFormElement) {
       return null;
@@ -833,6 +892,7 @@
     return el.closest("form");
   }
 
+  /** @param {Element} el */
   function ownerForm(el) {
     if (el instanceof HTMLFormElement) {
       return el;
@@ -841,6 +901,7 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
+  /** @param {string} group */
   function selectedCompareEntries(group) {
     /** @type {{ id: string; label: string }[]} */
     const out = [];
@@ -859,10 +920,12 @@
     return out;
   }
 
+  /** @param {string} group */
   function selectedCompareIDs(group) {
     return selectedCompareEntries(group).map((entry) => entry.id);
   }
 
+  /** @param {string} group */
   function syncCompareSelectionUI(group) {
     const selected = selectedCompareEntries(group);
     const button = document.querySelector(`[data-compare-selected][data-compare-group="${group}"]`);
@@ -885,6 +948,7 @@
     }
   }
 
+  /** @param {Element} trigger */
   function activateTab(trigger) {
     const group = trigger.getAttribute("data-tab-group");
     const targetId = trigger.getAttribute("data-tab-target");
@@ -918,10 +982,16 @@
     defaults.forEach((button) => activateTab(button));
   }
 
+  /**
+   * @param {number} value
+   * @param {number} min
+   * @param {number} max
+   */
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
   }
 
+  /** @param {EventTarget | null} target */
   function isTextInputTarget(target) {
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
       return false;
@@ -933,10 +1003,12 @@
     return ["text", "search", "url", "tel", "email", "password", "number"].includes(type);
   }
 
+  /** @param {EventTarget | null} target */
   function isEditableTextTarget(target) {
     return isTextInputTarget(target) || target instanceof HTMLElement && target.isContentEditable;
   }
 
+  /** @param {EventTarget} target */
   function textSelectionLength(target) {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
       const start = typeof target.selectionStart === "number" ? target.selectionStart : 0;
@@ -1013,6 +1085,11 @@
     });
   }
 
+  /**
+   * @param {EventTarget | null} target
+   * @param {number} clientX
+   * @param {number} clientY
+   */
   function openTextContextMenu(target, clientX, clientY) {
     const menu = ensureTextContextMenu();
     textContextMenuState.target = target;
@@ -1028,6 +1105,10 @@
     menu.style.top = `${Math.max(8, top)}px`;
   }
 
+  /**
+   * @param {EventTarget} target
+   * @param {string} replacement
+   */
   function replaceTextSelection(target, replacement) {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
       const start = typeof target.selectionStart === "number" ? target.selectionStart : target.value.length;
@@ -1044,6 +1125,7 @@
     }
   }
 
+  /** @param {string | null} action */
   async function performTextContextMenuAction(action) {
     const target = textContextMenuState.target;
     if (!target) {
@@ -1165,6 +1247,7 @@
     document.body.classList.remove("overflow-hidden");
   }
 
+  /** @param {string | null} targetId */
   function openPreviewDrawer(targetId) {
     if (!targetId) {
       return;
@@ -1198,6 +1281,7 @@
     };
   }
 
+  /** @param {string} message */
   function setImageViewerStatus(message) {
     const { status } = imageViewerElements();
     if (status) {
@@ -1263,6 +1347,11 @@
     });
   }
 
+  /**
+   * @param {number} nextZoom
+   * @param {number} [pointerX]
+   * @param {number} [pointerY]
+   */
   function setImageViewerZoom(nextZoom, pointerX = 0, pointerY = 0) {
     const { image } = imageViewerElements();
     if (!(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) {
@@ -1332,6 +1421,7 @@
     }
   }
 
+  /** @param {string} url */
   function cacheBustedImageURL(url) {
     if (!url) {
       return url;
@@ -1340,6 +1430,10 @@
     return `${url}${separator}v=${Date.now()}`;
   }
 
+  /**
+   * @param {string} imageId
+   * @param {string} baseUrl
+   */
   function refreshImageReferences(imageId, baseUrl) {
     if (!imageId || !baseUrl) {
       return;
@@ -1359,6 +1453,7 @@
     return refreshedUrl;
   }
 
+  /** @param {string} direction */
   async function rotateImageViewer(direction) {
     if (!imageViewerState.imageId) {
       setImageViewerStatus("Image rotate failed.");
@@ -1400,6 +1495,12 @@
     }
   }
 
+  /**
+   * @param {string | null} url
+   * @param {string | null} caption
+   * @param {string | null} fileName
+   * @param {string | null} imageId
+   */
   function openImageViewer(url, caption, fileName, imageId) {
     const { viewer, image, caption: text, file } = imageViewerElements();
     if (!(image instanceof HTMLImageElement) || !text || !file) {
@@ -1416,7 +1517,7 @@
     image.onerror = () => {
       setImageViewerStatus("Image preview failed. The stored file may be empty or invalid.");
     };
-    image.setAttribute("src", url);
+    image.setAttribute("src", /** @type {string} */ (url));
     const altText = sanitiseImageAltText(caption, fileName);
     image.setAttribute("alt", altText);
     text.textContent = altText;
@@ -1436,6 +1537,10 @@
   // screen readers may interpret it inconsistently. Mirrors the
   // imageAltText helper used in the templ SoldierCard so both
   // surfaces behave the same way. Audit issue #118.
+  /**
+   * @param {string | null} caption
+   * @param {string | null} fileName
+   */
   function sanitiseImageAltText(caption, fileName) {
     const stripped = sanitiseImageAltText.stripHtml(String(caption || ""));
     const cleaned = stripped.replace(/\s+/g, " ").trim();
@@ -1448,6 +1553,7 @@
     }
     return "Archive image";
   }
+  /** @param {string} value */
   sanitiseImageAltText.stripHtml = function stripHtml(value) {
     if (!value || value.indexOf("<") === -1) {
       return value;
@@ -1468,6 +1574,7 @@
     viewer.classList.remove("flex");
   }
 
+  /** @param {HTMLFormElement | null} form */
   function scratchpadDisplayId(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1499,6 +1606,7 @@
     return "";
   }
 
+  /** @param {Element | null} el */
   function scratchpadFormFromElement(el) {
     if (el instanceof HTMLFormElement) {
       return el;
@@ -1512,15 +1620,18 @@
     return null;
   }
 
+  /** @param {string} displayId */
   function normalizeScratchpadDisplayId(displayId) {
     const value = (displayId || "").trim();
     return value || "unfiled";
   }
 
+  /** @param {string} displayId */
   function scratchpadContentKey(displayId) {
     return `dixiedata:scratchpad:${normalizeScratchpadDisplayId(displayId)}`;
   }
 
+  /** @param {string} displayId */
   function loadLegacyScratchpadText(displayId) {
     try {
       return window.localStorage.getItem(scratchpadContentKey(displayId)) || "";
@@ -1529,6 +1640,7 @@
     }
   }
 
+  /** @param {Element | null} trigger */
   function scratchpadStatusTarget(trigger) {
     if (!(trigger instanceof HTMLElement)) {
       const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
@@ -1545,6 +1657,11 @@
     return globalTarget instanceof HTMLElement ? globalTarget : null;
   }
 
+  /**
+   * @param {Element | null} trigger
+   * @param {string} message
+   * @param {boolean} [isError]
+   */
   function setScratchpadStatus(trigger, message, isError = false) {
     const target = scratchpadStatusTarget(trigger);
     if (!(target instanceof HTMLElement)) {
@@ -1555,6 +1672,7 @@
     target.classList.toggle("text-slate-500", !isError);
   }
 
+  /** @param {Element} trigger */
   async function openScratchpad(trigger) {
     const form = scratchpadFormFromElement(trigger);
     const displayId = scratchpadDisplayId(form) || pageScratchpadDisplayId();
@@ -1592,6 +1710,10 @@
     }
   }
 
+  /**
+   * @param {string} group
+   * @param {boolean} checked
+   */
   function toggleCheckboxGroup(group, checked) {
     document.querySelectorAll(`[data-checkbox-group="${group}"]`).forEach((checkbox) => {
       if (checkbox instanceof HTMLInputElement) {
@@ -1600,6 +1722,7 @@
     });
   }
 
+  /** @param {Element} button */
   function addRecordRow(button) {
     const container = button.closest("form");
     if (!(container instanceof HTMLFormElement)) {
@@ -1613,6 +1736,7 @@
     recordList.appendChild(template.content.cloneNode(true));
   }
 
+  /** @param {Element} button */
   function removeRecordRow(button) {
     const row = button.closest("[data-record-row]");
     if (!(row instanceof HTMLElement)) {
@@ -1634,6 +1758,7 @@
     row.remove();
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftKeyForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1641,11 +1766,13 @@
     return form.getAttribute("data-draft-key") || "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftStorageKeyForForm(form) {
     const key = draftKeyForForm(form);
     return key ? `dixiedata:${key}` : "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftKindForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "new";
@@ -1653,6 +1780,7 @@
     return form.getAttribute("data-record-persistence-kind") || "new";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftRecordVersionForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1660,6 +1788,7 @@
     return form.getAttribute("data-draft-record-version") || "";
   }
 
+  /** @param {HTMLFormElement | null} form */
   function draftResetPathForForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return "";
@@ -1667,6 +1796,7 @@
     return form.getAttribute("data-draft-reset-path") || "";
   }
 
+  /** @param {Element} field */
   function isDraftableField(field) {
     if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
       return false;
@@ -1680,6 +1810,7 @@
     return true;
   }
 
+  /** @param {HTMLFormElement | null} form */
   function recordPersistenceTarget(form) {
     if (!(form instanceof HTMLFormElement)) {
       return null;
@@ -1701,6 +1832,7 @@
     }
   }
 
+  /** @param {{ draftKey?: string, payload?: string } | null} state */
   function saveDeletedDraftState(state) {
     try {
       if (!state) {
@@ -1719,6 +1851,7 @@
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function deletedDraftStateForForm(form) {
     const state = loadDeletedDraftState();
     if (!state || state.draftKey !== draftKeyForForm(form)) {
@@ -1727,12 +1860,14 @@
     return state;
   }
 
+  /** @param {HTMLFormElement | null} form */
   function clearDeletedDraftStateForForm(form) {
     if (deletedDraftStateForForm(form)) {
       clearDeletedDraftState();
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function formRecordRowCount(form) {
     if (!(form instanceof HTMLFormElement)) {
       return 1;
@@ -1741,6 +1876,10 @@
     return count > 0 ? count : 1;
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {number} targetCount
+   */
   function setRecordRowCount(form, targetCount) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -1764,6 +1903,7 @@
     }
   }
 
+  /** @param {Element & { value?: unknown }} field */
   function draftFieldValue(field) {
     if (field instanceof HTMLInputElement) {
       if (field.type === "checkbox") {
@@ -1776,10 +1916,16 @@
     return String(field.value ?? "");
   }
 
-  function serializeDraftFields(form) {
+  /** @param {HTMLFormElement} form */
+  /** @param {HTMLFormElement} form @returns {Record<string, string[]>} */
+function serializeDraftFields(form) {
+    /** @type {Record<string, string[]>} */
     const payload = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
       if (!isDraftableField(field)) {
+        return;
+      }
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
         return;
       }
       if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
@@ -1790,7 +1936,9 @@
     return payload;
   }
 
+  /** @param {Record<string, unknown> | null | undefined} snapshot */
   function cloneDraftSnapshot(snapshot) {
+    /** @type {Record<string, string[]>} */
     const clone = {};
     Object.entries(snapshot || {}).forEach(([name, values]) => {
       clone[name] = Array.isArray(values) ? values.map((value) => String(value ?? "")) : [];
@@ -1798,6 +1946,10 @@
     return clone;
   }
 
+  /**
+   * @param {Record<string, unknown> | null | undefined} left
+   * @param {Record<string, unknown> | null | undefined} right
+   */
   function snapshotsEqual(left, right) {
     const names = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
     for (const name of names) {
@@ -1815,6 +1967,10 @@
     return true;
   }
 
+  /**
+   * @param {Record<string, unknown> | null | undefined} base
+   * @param {Record<string, unknown> | null | undefined} overrides
+   */
   function mergeDraftSnapshot(base, overrides) {
     const merged = cloneDraftSnapshot(base || {});
     Object.entries(overrides || {}).forEach(([name, values]) => {
@@ -1823,6 +1979,7 @@
     return merged;
   }
 
+  /** @param {HTMLFormElement} form */
   function baselineStateForForm(form) {
     let state = draftBaselines.get(form);
     if (state) {
@@ -1837,10 +1994,12 @@
     return state;
   }
 
+  /** @param {unknown} raw */
   function normalizeDraftSnapshot(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       return {};
     }
+    /** @type {Record<string, string[]>} */
     const normalized = {};
     Object.entries(raw).forEach(([name, values]) => {
       if (!Array.isArray(values)) {
@@ -1851,6 +2010,7 @@
     return normalized;
   }
 
+  /** @param {Record<string, unknown> | null | undefined} snapshot */
   function calculateDraftRowCount(snapshot) {
     return Math.max(
       1,
@@ -1860,11 +2020,13 @@
     );
   }
 
+  /** @param {HTMLFormElement} form */
   function buildDraftPayload(form) {
     const kind = draftKindForForm(form);
     const currentFields = serializeDraftFields(form);
     if (kind === "edit") {
       const baseline = baselineStateForForm(form);
+      /** @type {Record<string, string[]>} */
       const delta = {};
       let changed = false;
       const names = new Set([...Object.keys(baseline.fields || {}), ...Object.keys(currentFields || {})]);
@@ -1895,6 +2057,7 @@
     };
   }
 
+  /** @param {HTMLFormElement} form */
   function persistDraftForForm(form) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -1915,6 +2078,10 @@
     }
   }
 
+  /**
+   * @param {Element | null} field
+   * @param {unknown} rawValue
+   */
   function previewValueDisplay(field, rawValue) {
     const normalized = String(rawValue ?? "");
     if (field instanceof HTMLInputElement && field.type === "checkbox") {
@@ -1929,7 +2096,12 @@
     return normalized.trim() === "" ? "(blank)" : normalized;
   }
 
+  /**
+   * @param {string} name
+   * @param {number} occurrence
+   */
   function draftFieldLabel(name, occurrence) {
+    /** @type {Record<string, string>} */
     const labels = {
       display_id: "Display ID",
       entry_type: "Entry Type",
@@ -1972,7 +2144,13 @@
     return base;
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, string[]> | null | undefined} baselineFields
+   * @param {Record<string, string[]> | null | undefined} draftSnapshot
+   */
   function buildDraftDiffEntries(form, baselineFields, draftSnapshot) {
+    /** @type {Array<{ label: string, currentValue: string, localValue: string }>} */
     const entries = [];
     const names = Array.from(new Set([...Object.keys(baselineFields || {}), ...Object.keys(draftSnapshot || {})])).sort();
     names.forEach((name) => {
@@ -1996,6 +2174,11 @@
     return entries;
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Array<{ label: string, currentValue: string, localValue: string }>} entries
+   * @param {boolean} showReapply
+   */
   function renderRecordPersistencePreview(form, entries, showReapply) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
@@ -2043,6 +2226,11 @@
     reapply.classList.toggle("hidden", !showReapply);
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} scope
+   * @param {{ restoreTrigger?: boolean }} [options]
+   */
   function hideDraftDeleteConfirmation(form, scope, options = {}) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2061,6 +2249,10 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} scope
+   */
   function showDraftDeleteConfirmation(form, scope) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2080,11 +2272,16 @@
     }
   }
 
+  /** @param {HTMLFormElement | null} form */
   function resetDraftDeleteConfirmations(form) {
     hideDraftDeleteConfirmation(form, "base", { restoreTrigger: false });
     hideDraftDeleteConfirmation(form, "stale", { restoreTrigger: false });
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {string} state
+   */
   function syncDraftDeleteControls(form, state) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2118,6 +2315,10 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement | null} form
+   * @param {boolean} visible
+   */
   function syncDeletedDraftUndo(form, visible) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2129,6 +2330,11 @@
     panel.classList.toggle("hidden", !visible);
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {string} state
+   * @param {{ entries?: Array<{ label: string, currentValue: string, localValue: string }>, showUndo?: boolean }} [options]
+   */
   function setRecordPersistenceState(form, state, options = {}) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
@@ -2171,6 +2377,10 @@
     syncDeletedDraftUndo(form, Boolean(options.showUndo));
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {{ rememberDeleted?: boolean, preserveDeletedState?: boolean }} [options]
+   */
   function clearDraftForForm(form, options = {}) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -2196,6 +2406,7 @@
     setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty", { showUndo: Boolean(options.rememberDeleted && savedDraft) });
   }
 
+  /** @param {Element} control */
   function confirmDeleteDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2208,11 +2419,17 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, string[]> | null | undefined} snapshot
+   * @param {number} rowCount
+   */
   function applyDraftSnapshot(form, snapshot, rowCount) {
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
     setRecordRowCount(form, rowCount || calculateDraftRowCount(snapshot));
+    /** @type {Record<string, number>} */
     const cursors = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
       if (!isDraftableField(field)) {
@@ -2246,6 +2463,7 @@
     });
   }
 
+  /** @param {HTMLFormElement} form */
   function readStoredDraft(form) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
@@ -2286,6 +2504,7 @@
     };
   }
 
+  /** @param {HTMLFormElement} form */
   function restoreDraftForForm(form) {
     const baseline = baselineStateForForm(form);
     const stored = readStoredDraft(form);
@@ -2313,6 +2532,7 @@
     setRecordPersistenceState(form, "restored");
   }
 
+  /** @param {Element} control */
   function reapplyStaleDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2328,6 +2548,7 @@
     setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
   }
 
+  /** @param {Element} control */
   function undoDeletedDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
@@ -2484,8 +2705,10 @@
           // closed by the outside-click handler. See commit
           // d8f73b7 for the original race fix.
           if (trigger === target || trigger.contains(target)) continue;
+          /** @type {string | null} */
           const id = trigger.getAttribute("data-foldout-trigger");
           if (!id) continue;
+          /** @type {Element | null} */
           const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
           if (!(panel instanceof HTMLElement)) continue;
           if (panel.classList.contains("hidden")) continue;
@@ -2552,6 +2775,7 @@
           firstItem.focus();
         }
       };
+      /** @param {boolean} returnFocus */
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
@@ -2655,8 +2879,10 @@
         for (const trigger of document.querySelectorAll("[data-mega-menu-trigger]")) {
           if (!(trigger instanceof HTMLElement)) continue;
           if (trigger === target || trigger.contains(target)) continue;
+          /** @type {string | null} */
           const id = trigger.getAttribute("data-mega-menu-trigger");
           if (!id) continue;
+          /** @type {Element | null} */
           const panel = document.querySelector('[data-mega-menu-panel="' + id + '"]');
           if (!(panel instanceof HTMLElement)) continue;
           if (panel.classList.contains("hidden")) continue;
@@ -2695,6 +2921,7 @@
         const firstItem = panel.querySelector('[role="menuitem"]');
         if (firstItem instanceof HTMLElement) firstItem.focus();
       };
+      /** @param {boolean} returnFocus */
       const close = (returnFocus) => {
         panel.classList.add("hidden");
         trigger.setAttribute("aria-expanded", "false");
@@ -2724,13 +2951,17 @@
   // panel relative to the currently-focused element. Wraps around
   // so the user can keep pressing ArrowDown to cycle through the
   // list. The WAI-ARIA menu pattern spec wraps; we follow it.
+  /**
+   * @param {HTMLElement} panel
+   * @param {"next" | "prev"} direction
+   */
   function focusSibling(panel, direction) {
     const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
     if (items.length === 0) {
       return;
     }
     const current = document.activeElement;
-    const idx = items.indexOf(current);
+    const idx = items.indexOf(/** @type {Element} */ (current));
     let next;
     if (idx === -1) {
       next = direction === "next" ? 0 : items.length - 1;
@@ -2739,8 +2970,9 @@
         ? (idx + 1) % items.length
         : (idx - 1 + items.length) % items.length;
     }
-    if (items[next] instanceof HTMLElement) {
-      items[next].focus();
+    const nextTarget = items[next];
+    if (nextTarget instanceof HTMLElement) {
+      nextTarget.focus();
     }
   }
 
@@ -2750,6 +2982,7 @@
   // Future triggers add their own mapping. Keeping this in one
   // place makes it easy to audit which nav items are "active"
   // on which routes.
+  /** @param {string} menuID */
   function stemForTrigger(menuID) {
     if (menuID === "layout.share.menu") return "/share";
     return null;
@@ -2827,6 +3060,10 @@
     });
   }
 
+  /**
+   * @param {Element} section
+   * @param {boolean} enabled
+   */
   function setSectionEnabled(section, enabled) {
     if (!(section instanceof HTMLElement)) {
       return;
@@ -2839,6 +3076,7 @@
     });
   }
 
+  /** @param {HTMLFormElement | Element} form */
   function syncEntryTypeFields(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2882,6 +3120,7 @@
     }
   }
 
+  /** @param {string} value */
   function isSoldierEntryType(value) {
     // True for the default Soldier subtype and the linked-person
     // subtypes (wife / widow / linked_person) — anything that
@@ -2897,6 +3136,7 @@
     });
   }
 
+  /** @param {HTMLInputElement | HTMLTextAreaElement} input */
   function updateLiveCount(input) {
     if (!(input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement)) {
       return;
@@ -2945,6 +3185,9 @@
     });
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   */
   function syncConfederateHomeFields(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -2965,6 +3208,9 @@
     }
   }
 
+  /**
+   * @param {string} path
+   */
   function normalizedRedirectPath(path) {
     if (path === "/export") {
       return "/share";
@@ -2972,6 +3218,9 @@
     return path;
   }
 
+  /**
+   * @param {unknown} state
+   */
   function saveRedirectState(state) {
     try {
       window.sessionStorage.setItem(redirectStateStorageKey, JSON.stringify(state));
@@ -3007,6 +3256,9 @@
     return region instanceof HTMLElement ? region : null;
   }
 
+  /**
+   * @param {unknown} state
+   */
   function savePendingToast(state) {
     try {
       window.sessionStorage.setItem(toastStateStorageKey, JSON.stringify(state));
@@ -3029,11 +3281,16 @@
     }
   }
 
+  /**
+   * @param {string} message
+   * @param {string} [kind]
+   */
   function showToast(message, kind = "success") {
     const region = toastRegion();
     if (!(region instanceof HTMLElement) || !message) {
       return;
     }
+    /** @type {Record<string, string>} */
     const headers = {
       success: "Success",
       info: "Heads up",
@@ -3072,6 +3329,12 @@
     showToast(pending.message, pending.kind || "success");
   }
 
+  /**
+   * @param {HTMLElement} el
+   * @param {string} redirectTo
+   * @param {string} responseText
+   * @param {{scrollX?: number, scrollY?: number} | undefined} requestState
+   */
   function rememberRedirectState(el, redirectTo, responseText, requestState) {
     const normalizedPath = normalizedRedirectPath(redirectTo);
     const redirectState = {
@@ -3141,6 +3404,9 @@
     });
   }
 
+  /**
+   * @param {string | number} monthValue
+   */
   async function refreshCalendarGrid(monthValue) {
     const month = Number.parseInt(String(monthValue || ""), 10);
     if (!Number.isInteger(month) || month < 1 || month > 12) {
@@ -3239,25 +3505,41 @@
     });
   }
 
-  function currentBrowseStateFromForm(form) {
+  /**
+   * @param {HTMLFormElement} form
+   */
+  /** @param {HTMLFormElement} form @returns {Record<string, string | null>} */
+function currentBrowseStateFromForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return {};
     }
     const data = new FormData(form);
+    /**
+     * @param {string} key
+     * @returns {string | null}
+     */
+    const get = (key) => {
+      const value = data.get(key);
+      return typeof value === "string" ? value : null;
+    };
     return {
-      page: data.get("page") || "1",
-      page_size: data.get("page_size") || "100",
-      scope: data.get("scope") || "all",
-      sort: data.get("sort") || "display_id_asc",
-      entry_type: data.get("entry_type") || "",
-      unit: data.get("unit") || "",
-      buried_in: data.get("buried_in") || "",
-      pension_state: data.get("pension_state") || "",
-      review_status: data.get("review_status") || "",
-      confederate_home_status: data.get("confederate_home_status") || "",
+      page: get("page") || "1",
+      page_size: get("page_size") || "100",
+      scope: get("scope") || "all",
+      sort: get("sort") || "display_id_asc",
+      entry_type: get("entry_type") || "",
+      unit: get("unit") || "",
+      buried_in: get("buried_in") || "",
+      pension_state: get("pension_state") || "",
+      review_status: get("review_status") || "",
+      confederate_home_status: get("confederate_home_status") || "",
     };
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, unknown> | null | undefined} state
+   */
   function applyBrowseStateToForm(form, state) {
     if (!(form instanceof HTMLFormElement) || !state || typeof state !== "object") {
       return;
@@ -3272,11 +3554,18 @@
     });
   }
 
+  /**
+   * @param {Record<string, string | null>} current
+   * @param {Record<string, string | null>} saved
+   */
   function browseStateDiffers(current, saved) {
     return ["page", "page_size", "scope", "sort", "entry_type", "unit", "buried_in", "pension_state", "review_status", "confederate_home_status"]
       .some((key) => String(current[key] || "") !== String(saved[key] || ""));
   }
 
+  /**
+   * @param {Document | HTMLElement} root
+   */
   function applyBrowseColumns(root) {
     const enabled = new Set(loadBrowseColumns());
     root.querySelectorAll("[data-browse-column-toggle]").forEach((toggle) => {
@@ -3292,6 +3581,9 @@
     });
   }
 
+  /**
+   * @param {Document | HTMLElement} [root]
+   */
   function updateBrowseSelectionStatus(root = document) {
     const selected = loadBrowseSelection();
     root.querySelectorAll("[data-browse-selection-status]").forEach((node) => {
@@ -3313,6 +3605,9 @@
     }
   }
 
+  /**
+   * @param {Document | HTMLElement} root
+   */
   function applyBrowseSelection(root) {
     const selected = new Set(loadBrowseSelection());
     root.querySelectorAll("[data-browse-select]").forEach((input) => {
@@ -3324,6 +3619,9 @@
     updateBrowseSelectionStatus(root);
   }
 
+  /**
+   * @param {Document | HTMLElement} [root]
+   */
   function applyCalendarAnniversaryDensity(root = document) {
     const mode = loadCalendarAnniversaryDensity();
     const activeClasses = ["border-[#22303d]", "bg-[rgba(36,48,61,0.92)]", "text-[#f2ede1]"];
@@ -3382,7 +3680,8 @@
     saveBrowseState(currentBrowseStateFromForm(form));
   }
 
-  function setBusyGroupState(el, busy) {
+  /** @param {Element} el @param {boolean} busy */
+function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
     }
@@ -3402,7 +3701,8 @@
     });
   }
 
-  function setBusyState(el, busy) {
+  /** @param {Element} el @param {boolean} busy */
+function setBusyState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
     }
@@ -3442,7 +3742,8 @@
   // after trim. The check is intentionally narrow so the create
   // gate doesn't fire on edit forms (which carry the same input
   // ids via the entry_form.templ partial) or on synthetic forms.
-  function formIsNewSoldierWithEmptyNames(form) {
+  /** @param {HTMLFormElement} form */
+function formIsNewSoldierWithEmptyNames(form) {
     if (!(form instanceof HTMLFormElement)) {
       return false;
     }
@@ -3492,7 +3793,8 @@
   // The submit event listener is attached exactly once per
   // (form, callback) pair via a marker dataset attribute, so
   // callers can invoke this helper idempotently.
-  function dispatchUtilitySubmit(form, callback) {
+  /** @param {HTMLFormElement} form @param {(form: HTMLFormElement) => void} callback */
+function dispatchUtilitySubmit(form, callback) {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
     if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
@@ -3520,7 +3822,8 @@
   // utility-submit install so the two helpers' install statuses
   // don't conflict (in practice a form uses one or the other,
   // not both).
-  function dispatchSubmitPrep(form, callback) {
+  /** @param {HTMLFormElement} form @param {(form: HTMLFormElement) => void} callback */
+function dispatchSubmitPrep(form, callback) {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
     if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
@@ -3529,7 +3832,8 @@
     });
   }
 
-  async function dispatchDixieDataForm(button) {
+  /** @param {EventTarget | HTMLFormElement} button */
+async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the
     // parent form's action. The earlier code only honored
@@ -3546,7 +3850,7 @@
     let form;
     if (button instanceof HTMLFormElement) {
       form = button;
-    } else {
+    } else if (button instanceof HTMLElement) {
       const dataAction = (button.getAttribute && button.getAttribute("data-action")) || "";
       if (dataAction) {
         const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
@@ -3606,6 +3910,7 @@
       // GET against a route that only accepts PATCH — see
       // issue #428 for the smoke repro on Source Records and
       // event sources.
+      /** @type {RequestInit} */
       const fetchOptions = { method: explicitMethod ? explicitMethod.toUpperCase() : "POST" };
       // Only attach a body for non-GET / non-HEAD requests. Bare-button
       // synthetic forms have no FormData to attach anyway.
@@ -3631,7 +3936,7 @@
         const isSubmitButton = button instanceof HTMLButtonElement
           && button.type === "submit"
           && button.form === form;
-        if (button.closest("form")) {
+        if (button instanceof HTMLElement && button.closest("form")) {
           const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
           if (isSubmitButton && button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
             fd.append(button.name, button.value);
@@ -3765,8 +4070,9 @@
       if (refreshCalendarMonth) {
         refreshCalendarGrid(refreshCalendarMonth);
       }
-      if (button.closest("form") instanceof HTMLFormElement && response.ok) {
-        clearDraftForForm(button.closest("form"));
+      const draftClearForm = button instanceof HTMLElement ? button.closest("form") : null;
+      if (draftClearForm instanceof HTMLFormElement && response.ok) {
+        clearDraftForForm(draftClearForm);
       }
       if (toastMessage && !closeFeedback) {
         savePendingToast({ message: toastMessage, kind: toastKind });
@@ -3885,7 +4191,8 @@
     }
   }
 
-  async function openExternalLinkInChrome(href) {
+  /** @param {string} href */
+async function openExternalLinkInChrome(href) {
     const params = new URLSearchParams();
     params.set("target", href);
     try {
@@ -3926,6 +4233,7 @@
   /** @type {HTMLElement | null} */
   let overlayModalRestoreFocus = null;
 
+  /** @param {Element} modal */
   function showOverlayModal(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
@@ -3945,6 +4253,7 @@
     document.addEventListener("keydown", overlayModalKeydown, true);
   }
 
+  /** @param {Element} modal */
   function hideOverlayModal(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
@@ -3960,7 +4269,8 @@
     }
   }
 
-  function overlayModalKeydown(event) {
+  /** @param {KeyboardEvent} event */
+function overlayModalKeydown(event) {
     if (event.key !== "Tab") {
       return;
     }
@@ -4014,7 +4324,8 @@
   // valid cache the body is restored from memory and no network
   // request fires. The placeholder rendered by the templ (empty
   // chrome, "Loading…" fallback) is overwritten either way.
-  function loadPrintRecordsFragment(modal) {
+  /** @param {Element} modal */
+function loadPrintRecordsFragment(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
     }
@@ -4102,7 +4413,8 @@
   // filter wiring, and refreshes the preview. Mirrors what
   // openPrintConfigModal does for the modal itself, scoped to the
   // fragment that just arrived.
-  function onPrintRecordsFragmentReady(modal) {
+  /** @param {Element} modal */
+function onPrintRecordsFragmentReady(modal) {
     const submit = modal.querySelector("[data-print-config-submit]");
     if (submit instanceof HTMLButtonElement) {
       submit.disabled = false;
@@ -4193,7 +4505,8 @@
       window.location.assign(destination);
     });
   }
-  function pickDismissTarget(fallback) {
+  /** @param {string} fallback @returns {string} */
+function pickDismissTarget(fallback) {
     const ref = String(document.referrer || "");
     if (!ref) return fallback;
     let url;
@@ -4219,7 +4532,8 @@
   // and submits the modal's selected_ids to
   // /export/shared-archive?subset=1.
   const SHARE_QUEUE_STORAGE_KEY = "dixiedata.share-queue";
-  function readShareQueue() {
+  /** @returns {number[]} */
+function readShareQueue() {
     try {
       const raw = window.localStorage && window.localStorage.getItem(SHARE_QUEUE_STORAGE_KEY);
       if (!raw) return [];
@@ -4230,7 +4544,8 @@
       return [];
     }
   }
-  function writeShareQueue(ids) {
+  /** @param {number[]} ids */
+function writeShareQueue(ids) {
     try {
       if (!window.localStorage) return;
       window.localStorage.setItem(SHARE_QUEUE_STORAGE_KEY, JSON.stringify(ids));
@@ -4240,7 +4555,10 @@
     }
     updateShareQueuePill(ids);
   }
-  function updateShareQueuePill(ids) {
+  /**
+   * @param {number[] | null} [ids] omitted → derive from readShareQueue()
+   */
+function updateShareQueuePill(ids) {
     const pill = document.querySelector("[data-share-queue-pill]");
     if (!(pill instanceof HTMLElement)) return;
     if (!ids || ids.length === 0) {
@@ -4253,18 +4571,20 @@
       counter.textContent = String(ids.length);
     }
   }
-  function addToShareQueue(id) {
+  /** @param {number} id */
+function addToShareQueue(id) {
     if (typeof id !== "number" || id <= 0) return;
     const ids = readShareQueue();
     if (ids.indexOf(id) !== -1) return;
     ids.push(id);
     writeShareQueue(ids);
-    updateShareQueuePill();
+    updateShareQueuePill(ids);
   }
-  function removeFromShareQueue(id) {
+  /** @param {number} id */
+function removeFromShareQueue(id) {
     const ids = readShareQueue().filter((n) => n !== id);
     writeShareQueue(ids);
-    updateShareQueuePill();
+    updateShareQueuePill(ids);
   }
   function installShareQueueGlobals() {
     // Per-row [+] Queue buttons. The persistent pill at the
@@ -4308,8 +4628,10 @@
   // pill. The bulk-export form submits via dispatchDixieDataForm
   // to /export/shared-archive?subset=1 with the selected rows
   // injected as hidden selected_ids fields.
-  function getSelectedIdsOnPage() {
+  /** @returns {number[]} */
+function getSelectedIdsOnPage() {
     const inputs = document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]:checked");
+    /** @type {number[]} */
     const ids = [];
     inputs.forEach((el) => {
       if (!(el instanceof HTMLInputElement)) {
@@ -4320,7 +4642,8 @@
     });
     return ids;
   }
-  function pageSetStatus(text) {
+  /** @param {string} text */
+function pageSetStatus(text) {
     const slot = document.querySelector("[data-share-queue-page-status]");
     if (!(slot instanceof HTMLElement)) return;
     slot.textContent = text || "";
@@ -4333,7 +4656,8 @@
     if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !enabled;
     if (exportBtn instanceof HTMLButtonElement) exportBtn.disabled = !enabled;
   }
-  function shareQueuePageRowTemplate(row, index) {
+  /** @param {{ id: number, display_id: string, heading?: string, unit?: string, records?: string[], images?: string[] }} row @param {number} index @returns {HTMLTableRowElement} */
+function shareQueuePageRowTemplate(row, index) {
     const tr = document.createElement("tr");
     tr.setAttribute("data-share-queue-page-row-id", String(row.id));
     tr.className = "border-b border-[rgba(141,116,64,0.18)]";
@@ -4412,7 +4736,8 @@
   // helper of the same name (share_queue_modal.templ) when the
   // modal was deleted in issue #310 PR 2; PR 3 re-mounts the
   // presets UI on the page.
-  function shareQueuePresetStatusPage(panel, text) {
+  /** @param {Element} panel @param {string} text */
+function shareQueuePresetStatusPage(panel, text) {
     if (!(panel instanceof HTMLElement)) return;
     const slot = panel.querySelector("[data-share-queue-preset-status]");
     if (!(slot instanceof HTMLElement)) return;
@@ -4429,7 +4754,8 @@
   // queue to /share/queue/presets and refreshes the preset list.
   // Mirrors the modal save handler; uses the page's presets panel
   // instead of querying the modal's [data-share-queue-modal].
-  async function saveCurrentQueueAsPresetPage(panel, form) {
+  /** @param {Element} panel @param {HTMLFormElement} form */
+async function saveCurrentQueueAsPresetPage(panel, form) {
     if (!(panel instanceof HTMLElement)) return;
     if (!(form instanceof HTMLFormElement)) return;
     const ids = readShareQueue();
@@ -4468,7 +4794,8 @@
   // writes the returned soldier_ids back to localStorage, and
   // re-renders the page's table + pill. If the queue already has
   // items, confirms with the user (same as the deleted modal).
-  async function loadShareQueuePresetPage(panel, id) {
+  /** @param {Element} panel @param {number} id */
+async function loadShareQueuePresetPage(panel, id) {
     if (!(panel instanceof HTMLElement)) return;
     const ids = readShareQueue();
     if (ids.length > 0) {
@@ -4500,7 +4827,8 @@
   // deleteShareQueuePresetPage DELETEs /share/queue/presets/{id}
   // and refreshes the list. Confirms with the user (same as the
   // deleted modal).
-  async function deleteShareQueuePresetPage(panel, id) {
+  /** @param {Element} panel @param {number} id */
+async function deleteShareQueuePresetPage(panel, id) {
     if (!(panel instanceof HTMLElement)) return;
     if (!window.confirm("Delete this saved preset? This cannot be undone.")) {
       return;
@@ -4522,7 +4850,8 @@
   // renders the preset list into the page's [data-share-queue-preset-list]
   // <ul>. The empty-state div is toggled based on whether any presets
   // returned.
-  async function refreshShareQueuePresetsPage(panel) {
+  /** @param {Element} panel */
+async function refreshShareQueuePresetsPage(panel) {
     if (!(panel instanceof HTMLElement)) return;
     const list = panel.querySelector("[data-share-queue-preset-list]");
     const empty = panel.querySelector("[data-share-queue-preset-empty]");
@@ -4956,24 +5285,45 @@
     }
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {{
+   *   scope?: string,
+   *   filters?: Record<string, string[]>,
+   *   sort_by?: string,
+   *   orientation?: "portrait" | "landscape",
+   *   printer_friendly?: boolean,
+   *   full_biography_page?: boolean,
+   *   group_by?: string,
+   *   group_by_unit?: boolean,
+   *   group_by_pension_state?: boolean,
+   *   group_by_confederate_home_status?: boolean,
+   *   group_by_buried_in?: boolean,
+   * }} template
+   */
   function applyTemplateToForm(form, template) {
     if (!template || typeof template !== "object") {
       return;
     }
+    /** @param {string} name @param {unknown} value */
     const setValue = (name, value) => {
       const element = form.elements.namedItem(name);
-      if (!element) {
+      if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) {
         return;
       }
       element.value = value == null ? "" : String(value);
     };
+    /** @param {string} name @param {unknown} checked */
     const setChecked = (name, checked) => {
-      const element = form.elements.namedItem(name);
-      if (!element) {
-        return;
+      const elements = form.elements.namedItem(name);
+      const list = Array.isArray(elements) ? elements : elements ? [elements] : [];
+      for (const el of list) {
+        if (el instanceof HTMLInputElement) {
+          el.checked = Boolean(checked);
+        }
       }
-      element.checked = Boolean(checked);
     };
+    /** @param {string} name @param {unknown} values */
     const setMultiChecked = (name, values) => {
       const elements = form.elements.namedItem(name);
       const list = Array.isArray(elements) ? elements : elements ? [elements] : [];
@@ -4984,7 +5334,11 @@
     };
     if (typeof template.scope === "string") {
       const radios = form.querySelectorAll('input[name="scope"]');
-      radios.forEach((r) => { r.checked = (r.value === template.scope); });
+      radios.forEach(/** @param {Element} r */ (r) => {
+        if (r instanceof HTMLInputElement) {
+          r.checked = (r.value === template.scope);
+        }
+      });
     }
     if (template.filters && typeof template.filters === "object") {
       for (const [family, values] of Object.entries(template.filters)) {
@@ -4993,7 +5347,11 @@
     }
     if (typeof template.sort_by === "string") {
       const radios = form.querySelectorAll('input[name="sort_by"]');
-      radios.forEach((r) => { r.checked = (r.value === template.sort_by); });
+      radios.forEach(/** @param {Element} r */ (r) => {
+        if (r instanceof HTMLInputElement) {
+          r.checked = (r.value === template.sort_by);
+        }
+      });
     }
     if (typeof template.orientation === "string") {
       setValue("orientation", template.orientation);
@@ -5149,6 +5507,7 @@
         method: "POST", // handler accepts POST as well as PATCH
         body: fd,
       });
+      /** @type {{ error?: string, name?: string }} */
       let body = {};
       try {
         body = await response.json();
@@ -5529,13 +5888,13 @@
     if (eventTargetElement(event)?.closest("summary")) {
       window.requestAnimationFrame(() => clampPopoutPanels(document));
     }
-    const textMenuAction = eventTargetElement(event).closest("[data-text-menu-action]");
+    const textMenuAction = eventTargetElement(event)?.closest("[data-text-menu-action]");
     if (textMenuAction instanceof HTMLButtonElement) {
       event.preventDefault();
       performTextContextMenuAction(textMenuAction.getAttribute("data-text-menu-action"));
       return;
     }
-    const recordLink = eventTargetElement(event).closest("a[href]");
+    const recordLink = eventTargetElement(event)?.closest("a[href]");
     if (recordLink instanceof HTMLAnchorElement && !event.defaultPrevented) {
       try {
         const target = new URL(recordLink.href, window.location.origin);
@@ -5546,35 +5905,35 @@
         // Ignore malformed URLs and continue with normal navigation.
       }
     }
-    if (!eventTargetElement(event).closest("#text-context-menu")) {
+    if (!eventTargetElement(event)?.closest("#text-context-menu")) {
       closeTextContextMenu();
     }
-    const externalLink = eventTargetElement(event).closest("a[data-open-external]");
+    const externalLink = eventTargetElement(event)?.closest("a[data-open-external]");
     if (externalLink instanceof HTMLAnchorElement) {
       event.preventDefault();
       openExternalLinkInChrome(externalLink.href);
       return;
     }
-    const openPrintConfig = eventTargetElement(event).closest("[data-print-config-open]");
+    const openPrintConfig = eventTargetElement(event)?.closest("[data-print-config-open]");
     if (openPrintConfig) {
       event.preventDefault();
       openPrintConfigModal();
       return;
     }
-    const openGoogleCalendarPreferences = eventTargetElement(event).closest("[data-google-calendar-preferences-open]");
+    const openGoogleCalendarPreferences = eventTargetElement(event)?.closest("[data-google-calendar-preferences-open]");
     if (openGoogleCalendarPreferences) {
       event.preventDefault();
       openGoogleCalendarPreferencesModal();
       return;
     }
-    const clearBrowseSelection = eventTargetElement(event).closest("[data-browse-clear-selection]");
+    const clearBrowseSelection = eventTargetElement(event)?.closest("[data-browse-clear-selection]");
     if (clearBrowseSelection instanceof HTMLButtonElement) {
       event.preventDefault();
       saveBrowseSelection([]);
       applyBrowseSelection(document);
       return;
     }
-    const resetBrowse = eventTargetElement(event).closest("[data-browse-reset]");
+    const resetBrowse = eventTargetElement(event)?.closest("[data-browse-reset]");
     if (resetBrowse instanceof HTMLButtonElement) {
       event.preventDefault();
       saveBrowseState(null);
@@ -5582,33 +5941,33 @@
       window.location.assign(resetPath);
       return;
     }
-    const anniversaryDensityToggle = eventTargetElement(event).closest("[data-calendar-anniversary-density-toggle]");
+    const anniversaryDensityToggle = eventTargetElement(event)?.closest("[data-calendar-anniversary-density-toggle]");
     if (anniversaryDensityToggle instanceof HTMLButtonElement) {
       event.preventDefault();
       saveCalendarAnniversaryDensity(anniversaryDensityToggle.getAttribute("data-calendar-anniversary-density-toggle") || "expanded");
       applyCalendarAnniversaryDensity(document);
       return;
     }
-    const layoutModeToggle = eventTargetElement(event).closest("[data-layout-mode-option]");
+    const layoutModeToggle = eventTargetElement(event)?.closest("[data-layout-mode-option]");
     if (layoutModeToggle instanceof HTMLButtonElement) {
       event.preventDefault();
       saveLayoutModePreference(layoutModeToggle.getAttribute("data-layout-mode-option") || "auto");
       applyResponsiveLayout(document);
       return;
     }
-    const openFeedback = eventTargetElement(event).closest("[data-feedback-open]");
+    const openFeedback = eventTargetElement(event)?.closest("[data-feedback-open]");
     if (openFeedback) {
       event.preventDefault();
       openFeedbackModal();
       return;
     }
-    const closePrintConfig = eventTargetElement(event).closest("[data-print-config-close]");
+    const closePrintConfig = eventTargetElement(event)?.closest("[data-print-config-close]");
     if (closePrintConfig) {
       event.preventDefault();
       closePrintConfigModal();
       return;
     }
-    const closeGoogleCalendarPreferences = eventTargetElement(event).closest("[data-google-calendar-preferences-close]");
+    const closeGoogleCalendarPreferences = eventTargetElement(event)?.closest("[data-google-calendar-preferences-close]");
     if (closeGoogleCalendarPreferences) {
       event.preventDefault();
       closeGoogleCalendarPreferencesModal();
@@ -5624,13 +5983,13 @@
       syncGoogleCalendarPreview();
       return;
     }
-    const closeFeedback = eventTargetElement(event).closest("[data-feedback-close]");
+    const closeFeedback = eventTargetElement(event)?.closest("[data-feedback-close]");
     if (closeFeedback) {
       event.preventDefault();
       closeFeedbackModal();
       return;
     }
-    const imageTrigger = eventTargetElement(event).closest("[data-image-preview]");
+    const imageTrigger = eventTargetElement(event)?.closest("[data-image-preview]");
     if (imageTrigger) {
       event.preventDefault();
       openImageViewer(
@@ -5641,8 +6000,8 @@
       );
       return;
     }
-    const browseRow = eventTargetElement(event).closest("[data-browse-row-href]");
-    if (browseRow instanceof HTMLElement && !eventTargetElement(event).closest("a, button, input, label, select, textarea")) {
+    const browseRow = eventTargetElement(event)?.closest("[data-browse-row-href]");
+    if (browseRow instanceof HTMLElement && !eventTargetElement(event)?.closest("a, button, input, label, select, textarea")) {
       const href = browseRow.getAttribute("data-browse-row-href");
       if (href) {
         event.preventDefault();
@@ -5651,54 +6010,54 @@
         return;
       }
     }
-    const previewTrigger = eventTargetElement(event).closest("[data-preview-open]");
+    const previewTrigger = eventTargetElement(event)?.closest("[data-preview-open]");
     if (previewTrigger instanceof HTMLElement) {
       event.preventDefault();
       openPreviewDrawer(previewTrigger.getAttribute("data-preview-target"));
       return;
     }
-    if (eventTargetElement(event).closest("[data-preview-close],[data-preview-backdrop]")) {
+    if (eventTargetElement(event)?.closest("[data-preview-close],[data-preview-backdrop]")) {
       event.preventDefault();
       closePreviewDrawer();
       return;
     }
-    const scratchpadOpen = eventTargetElement(event).closest("[data-scratchpad-open]");
+    const scratchpadOpen = eventTargetElement(event)?.closest("[data-scratchpad-open]");
     if (scratchpadOpen) {
       event.preventDefault();
       openScratchpad(scratchpadOpen);
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-rotate-ccw]")) {
+    if (eventTargetElement(event)?.closest("[data-image-rotate-ccw]")) {
       event.preventDefault();
       rotateImageViewer("ccw");
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-rotate-cw]")) {
+    if (eventTargetElement(event)?.closest("[data-image-rotate-cw]")) {
       event.preventDefault();
       rotateImageViewer("cw");
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-zoom-in]")) {
+    if (eventTargetElement(event)?.closest("[data-image-zoom-in]")) {
       event.preventDefault();
       setImageViewerZoom(imageViewerState.zoom * 1.2);
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-zoom-out]")) {
+    if (eventTargetElement(event)?.closest("[data-image-zoom-out]")) {
       event.preventDefault();
       setImageViewerZoom(imageViewerState.zoom / 1.2);
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-reset]")) {
+    if (eventTargetElement(event)?.closest("[data-image-reset]")) {
       event.preventDefault();
       resetImageViewerTransform();
       return;
     }
-    if (eventTargetElement(event).closest("[data-image-screenshot]")) {
+    if (eventTargetElement(event)?.closest("[data-image-screenshot]")) {
       event.preventDefault();
       saveImageViewerScreenshot();
       return;
     }
-    const recordAdd = eventTargetElement(event).closest("[data-record-add]");
+    const recordAdd = eventTargetElement(event)?.closest("[data-record-add]");
     if (recordAdd) {
       event.preventDefault();
       addRecordRow(recordAdd);
@@ -5709,7 +6068,7 @@
       }
       return;
     }
-    const recordRemove = eventTargetElement(event).closest("[data-record-remove]");
+    const recordRemove = eventTargetElement(event)?.closest("[data-record-remove]");
     if (recordRemove) {
       event.preventDefault();
       removeRecordRow(recordRemove);
@@ -5720,31 +6079,31 @@
       }
       return;
     }
-    const clearDraftTrigger = eventTargetElement(event).closest("[data-clear-draft-trigger]");
+    const clearDraftTrigger = eventTargetElement(event)?.closest("[data-clear-draft-trigger]");
     if (clearDraftTrigger instanceof HTMLElement) {
       event.preventDefault();
-      showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger"));
+      showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger") ?? "");
       return;
     }
-    const confirmClearDraft = eventTargetElement(event).closest("[data-confirm-clear-draft]");
+    const confirmClearDraft = eventTargetElement(event)?.closest("[data-confirm-clear-draft]");
     if (confirmClearDraft instanceof HTMLElement) {
       event.preventDefault();
       confirmDeleteDraftFromControl(confirmClearDraft);
       return;
     }
-    const cancelClearDraft = eventTargetElement(event).closest("[data-cancel-clear-draft]");
+    const cancelClearDraft = eventTargetElement(event)?.closest("[data-cancel-clear-draft]");
     if (cancelClearDraft instanceof HTMLElement) {
       event.preventDefault();
-      hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft"));
+      hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft") ?? "");
       return;
     }
-    const undoClearedDraft = eventTargetElement(event).closest("[data-undo-cleared-draft]");
+    const undoClearedDraft = eventTargetElement(event)?.closest("[data-undo-cleared-draft]");
     if (undoClearedDraft instanceof HTMLElement) {
       event.preventDefault();
       undoDeletedDraftFromControl(undoClearedDraft);
       return;
     }
-    const reapplyStaleDraft = eventTargetElement(event).closest("[data-reapply-stale-draft]");
+    const reapplyStaleDraft = eventTargetElement(event)?.closest("[data-reapply-stale-draft]");
     if (reapplyStaleDraft instanceof HTMLElement) {
       event.preventDefault();
       reapplyStaleDraftFromControl(reapplyStaleDraft);
@@ -5756,13 +6115,13 @@
       closeImageViewer();
       return;
     }
-    const tab = eventTargetElement(event).closest("[data-tab-group][data-tab-target]");
+    const tab = eventTargetElement(event)?.closest("[data-tab-group][data-tab-target]");
     if (tab) {
       event.preventDefault();
       activateTab(tab);
       return;
     }
-    const historyBack = eventTargetElement(event).closest("[data-history-back]");
+    const historyBack = eventTargetElement(event)?.closest("[data-history-back]");
     if (historyBack instanceof HTMLElement) {
       event.preventDefault();
       if (restoreBackSnapshot()) {
@@ -5778,7 +6137,7 @@
       }
       return;
     }
-    const compareSelected = eventTargetElement(event).closest("[data-compare-selected]");
+    const compareSelected = eventTargetElement(event)?.closest("[data-compare-selected]");
     if (compareSelected instanceof HTMLButtonElement) {
       event.preventDefault();
       const group = compareSelected.getAttribute("data-compare-group") || "search-compare";
@@ -5799,7 +6158,7 @@
     // Option C: intercept clicks on data-dixie-submit + data-merge-review-action.
 // hx-post / hx-delete / data-hx-* selectors dropped after the templ
 // retag (every template uses data-dixie-submit now).
-    const submitTrigger = eventTargetElement(event).closest("[data-dixie-submit], [data-merge-review-action]");
+    const submitTrigger = eventTargetElement(event)?.closest("[data-dixie-submit], [data-merge-review-action]");
     if (submitTrigger instanceof HTMLElement && !(submitTrigger instanceof HTMLFormElement)) {
       event.preventDefault();
       dispatchDixieDataForm(submitTrigger);
@@ -5845,7 +6204,7 @@
     });
   });
   document.addEventListener("input", (event) => {
-    const form = eventTargetElement(event).closest("form[data-draft-key]");
+    const form = eventTargetElement(event)?.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       const result = persistDraftForForm(form);
       setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
@@ -5863,14 +6222,14 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const form = eventTargetElement(event).closest("form[data-draft-key]");
+    const form = eventTargetElement(event)?.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       const result = persistDraftForForm(form);
       setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
     }
   });
   document.addEventListener("change", (event) => {
-    const pdfInput = eventTargetElement(event).closest("[data-pdf-pref-key]");
+    const pdfInput = eventTargetElement(event)?.closest("[data-pdf-pref-key]");
     if (pdfInput instanceof HTMLElement) {
       const form = pdfInput.closest("form[data-pdf-pref-scope]");
       if (form instanceof HTMLFormElement) {
@@ -5879,7 +6238,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const entryTypeSelect = eventTargetElement(event).closest("[data-entry-type-select]");
+    const entryTypeSelect = eventTargetElement(event)?.closest("[data-entry-type-select]");
     if (entryTypeSelect) {
       const form = entryTypeSelect.closest("form");
       if (form instanceof HTMLFormElement) {
@@ -5888,7 +6247,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const homeStatusSelect = eventTargetElement(event).closest("[data-confederate-home-status]");
+    const homeStatusSelect = eventTargetElement(event)?.closest("[data-confederate-home-status]");
     if (homeStatusSelect) {
       const form = homeStatusSelect.closest("form");
       if (form instanceof HTMLFormElement) {
@@ -5908,14 +6267,14 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const selectAll = eventTargetElement(event).closest("[data-select-all]");
+    const selectAll = eventTargetElement(event)?.closest("[data-select-all]");
     if (!(selectAll instanceof HTMLInputElement)) {
       return;
     }
-    toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
+    toggleCheckboxGroup(selectAll.getAttribute("data-select-all") ?? "", selectAll.checked);
   });
   document.addEventListener("change", (event) => {
-    const browseFilter = eventTargetElement(event).closest("[data-browse-filter-input]");
+    const browseFilter = eventTargetElement(event)?.closest("[data-browse-filter-input]");
     if (browseFilter instanceof HTMLElement) {
       const form = browseFilter.closest("form");
       const pageField = form?.querySelector("[data-browse-page-input]");
@@ -5957,7 +6316,7 @@
       }
       return;
     }
-    const browseColumnToggle = eventTargetElement(event).closest("[data-browse-column-toggle]");
+    const browseColumnToggle = eventTargetElement(event)?.closest("[data-browse-column-toggle]");
     if (browseColumnToggle instanceof HTMLInputElement) {
       const enabled = [];
       for (const input of document.querySelectorAll("[data-browse-column-toggle]")) {
@@ -5969,7 +6328,7 @@
       applyBrowseColumns(document);
       return;
     }
-    const browseSelect = eventTargetElement(event).closest("[data-browse-select]");
+    const browseSelect = eventTargetElement(event)?.closest("[data-browse-select]");
     if (browseSelect instanceof HTMLInputElement) {
       const id = Number.parseInt(browseSelect.value || "", 10);
       const selected = new Set(loadBrowseSelection());
@@ -5985,7 +6344,7 @@
     }
   });
   document.addEventListener("change", (event) => {
-    const compareSelect = eventTargetElement(event).closest("[data-compare-select]");
+    const compareSelect = eventTargetElement(event)?.closest("[data-compare-select]");
     if (!(compareSelect instanceof HTMLInputElement)) {
       return;
     }
@@ -6007,7 +6366,7 @@
     }
   });
   document.addEventListener("contextmenu", (event) => {
-    const editableTarget = eventTargetElement(event).closest("input, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
+    const editableTarget = eventTargetElement(event)?.closest("input, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
     const hasTextSelection = (window.getSelection()?.toString() || "").trim() !== "";
     if (!(editableTarget instanceof HTMLElement) && !hasTextSelection) {
       closeTextContextMenu();
@@ -6038,7 +6397,7 @@
       closeGoogleCalendarPreferencesModal();
       return;
     }
-    const stage = eventTargetElement(event).closest("[data-image-stage]");
+    const stage = eventTargetElement(event)?.closest("[data-image-stage]");
     if (!(stage instanceof HTMLElement) || imageViewerState.zoom <= 1) {
       return;
     }
@@ -6086,7 +6445,7 @@
   document.addEventListener(
     "wheel",
     (event) => {
-      const stage = eventTargetElement(event).closest("[data-image-stage]");
+      const stage = eventTargetElement(event)?.closest("[data-image-stage]");
       if (!(stage instanceof HTMLElement)) {
         return;
       }

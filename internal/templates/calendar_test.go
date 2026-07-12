@@ -65,7 +65,7 @@ func TestCalendarShowsTypedDayMarkers(t *testing.T) {
 	}
 
 	content := buf.String()
-	for _, needle := range []string{"Anniversaries", "Events", "Holidays", ">3<", ">1<", ">2<", "bg-[#c5ab68]", "bg-[#7cb3e2]", "bg-[#d98989]"} {
+	for _, needle := range []string{"Anniversaries", "Events", "Holidays", ">3<", ">1<", ">2<", "var(--theme-accent-light)", "bg-[#7cb3e2]", "bg-[#d98989]"} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("calendar missing marker fragment %s", needle)
 		}
