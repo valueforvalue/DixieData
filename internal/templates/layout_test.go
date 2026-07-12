@@ -52,12 +52,12 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, "DixieData — ") && !strings.Contains(content, `DixieData &#x2014;`) && !strings.Contains(content, `DixieData —`) {
 		t.Fatalf("layout top-shell brand should pair \"DixieData\" with the codename via an em dash (issue #462)")
 	}
-	expectedFooterBoundary := buildinfo.AppLabel() + " — " + buildinfo.Codename()
+	expectedFooterBoundary := buildinfo.AppLabel() + " — <em>" + buildinfo.Codename() + "</em>"
 	if !strings.Contains(content, expectedFooterBoundary) {
-		t.Fatalf("layout footer should swap the · between AppLabel and Codename to an em dash (issue #462 follow-up); expected substring %q in:\n%s", expectedFooterBoundary, content)
+		t.Fatalf("layout footer should swap the · between AppLabel and Codename to an em dash (issue #462 follow-up) AND wrap the codename in <em> for italics (issue #489); expected substring %q in:\n%s", expectedFooterBoundary, content)
 	}
-	if !strings.Contains(content, buildinfo.Codename()+" · Schema v") {
-		t.Fatalf("layout footer should keep the · separator between Codename and Schema (issue #462 scope boundary)")
+	if !strings.Contains(content, "<em>"+buildinfo.Codename()+"</em> · Schema v") {
+		t.Fatalf("layout footer should keep the · separator between Codename and Schema (issue #462 scope boundary) AND wrap the codename in <em> for italics (issue #489)")
 	}
 	if !strings.Contains(content, `data-build-identity="`) || !strings.Contains(content, buildinfo.BuildIdentity()) {
 		t.Fatalf("layout should surface build identity")
