@@ -3,6 +3,9 @@ package templates
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -215,4 +218,98 @@ func TestLayoutShareReviewMegaMenuResearchMenuItemHasFlag(t *testing.T) {
 			t.Fatalf("expected red border classes on the menuitem:\n%s", content)
 		}
 	})
+}
+
+// TestReviewQueueMenuItemPerThemeRedUrgency pins the per-theme
+// red urgency treatment for the "Open Review Queue" mega-menu
+// menuitem. The Default theme gets the red cue from Tailwind
+// utility classes on the markup (border-2 border-review-red +
+// bg-review-red/[0.32]); High Contrast and Soft render the
+// menuitem inside a light panel (HC = white, Soft = parchment)
+// so the utility classes' red-on-dark doesn't show through —
+// the cue needs an explicit override per theme.
+//
+// Bug history: when issue #380 slice 3 relocated the menuitem
+// from the retired R&R foldout to the Share & Review mega-menu,
+// the pre-existing per-theme CSS overrides at
+// `.foldout-menuitem[data-research-review-has-count]` were left
+// behind (the menuitem no longer carries the .foldout-menuitem
+// class) and no replacement selectors were added. In HC + Soft
+// the menuitem rendered with the generic panel bg (white in HC,
+// parchment in Soft) and no red urgency cue at all — the same
+// defect class as the original issue #472 pink-on-pink report,
+// but for the missing-themes case instead of the low-alpha case.
+//
+// The fix: add `.mega-menu-item[data-research-review-has-count]`
+// base + hover selectors under [data-theme="high-contrast"] and
+// [data-theme="soft"] in frontend/tailwind.css. Each carries a
+// distinct light-red bg + dark red border + deep red text tuned
+// to its panel surface (HC = #fde0dc / #6f2c26 / #6f2c26;
+// Soft = #f4d7d2 / #6f2c26 / #4a1d18).
+//
+// This test is a source-scan: it walks frontend/tailwind.css
+// and asserts each required selector is present. A regression
+// that drops one of the four selectors (or relocates the
+// menuitem back to .foldout-menuitem) fails the test with the
+// exact missing selector in the message.
+func TestReviewQueueMenuItemPerThemeRedUrgency(t *testing.T) {
+	css := readTailwindCSSForTemplates(t)
+	required := []struct {
+		selector string
+		why      string
+	}{
+		{
+			selector: `html[data-theme="high-contrast"] .mega-menu-item[data-research-review-has-count]`,
+			why:      "HC base: deep red on light-red bg, on the white panel",
+		},
+		{
+			selector: `html[data-theme="high-contrast"] .mega-menu-item[data-research-review-has-count]:hover`,
+			why:      "HC hover: bumped bg + darker red text",
+		},
+		{
+			selector: `html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]`,
+			why:      "Soft base: deep red on warm-light-red bg, on the parchment panel",
+		},
+		{
+			selector: `html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:hover`,
+			why:      "Soft hover: bumped bg + darker red text",
+		},
+	}
+	for _, r := range required {
+		if !strings.Contains(css, r.selector) {
+			t.Errorf("tailwind.css is missing required per-theme review-queue urgency selector %q (%s); the Open Review Queue menuitem will render with no red urgency cue in this theme", r.selector, r.why)
+		}
+	}
+
+	// Defense in depth: pin the menuitem's selector targets the
+	// mega-menu class, not the orphaned foldout class. If a future
+	// refactor renames `.mega-menu-item` back to `.foldout-menuitem`,
+	// these per-theme overrides must follow.
+	if strings.Contains(css, `html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count]`) {
+		t.Errorf("tailwind.css still carries the orphaned .foldout-menuitem HC override (the menuitem moved to .mega-menu-item in #380 slice 3); the override is dead code")
+	}
+	if strings.Contains(css, `html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]`) {
+		t.Errorf("tailwind.css still carries the orphaned .foldout-menuitem Soft override (the menuitem moved to .mega-menu-item in #380 slice 3); the override is dead code")
+	}
+}
+
+// readTailwindCSSForTemplates locates frontend/tailwind.css
+// relative to this test file. Mirrors readTailwindCSS in
+// internal/theme/theme_css_test.go so each test package can
+// find the file from runtime.Caller without a shared helper.
+func readTailwindCSSForTemplates(t *testing.T) string {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller(0) failed")
+	}
+	// thisFile = .../internal/templates/layout_share_review_mega_menu_test.go
+	pkgDir := filepath.Dir(thisFile)
+	repoRoot := filepath.Dir(filepath.Dir(pkgDir))
+	cssPath := filepath.Join(repoRoot, "frontend", "tailwind.css")
+	data, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", cssPath, err)
+	}
+	return string(data)
 }

@@ -32,10 +32,16 @@ func reviewQueueMenuItem(openReview bool) string {
 		// #fbe1de (a near-pink cream). The fix is a thicker 2px solid
 		// red border + 0.32 alpha background + a brighter cream text
 		// (#fff5f1) so the cue reads as "this needs attention" at a
-		// glance. Per-theme overrides in tailwind.css
-		// (.foldout-menuitem[data-research-review-has-count] under
-		// [data-theme="high-contrast"|"soft"]) keep the contrast
-		// correct in every theme.
+		// glance. Per-theme overrides in tailwind.css target
+		// `.mega-menu-item[data-research-review-has-count]` under
+		// `[data-theme="high-contrast"|"soft"]` (HC = deep red on
+		// light-red bg, Soft = deep red on warm-light-red bg) so
+		// the urgency cue reads in every theme. The menuitem
+		// moved from the retired R&R foldout to the Share &
+		// Review mega-menu during issue #380 slice 3, and the
+		// per-theme overrides had to follow — the pre-#380
+		// `.foldout-menuitem[data-research-review-has-count]`
+		// selectors are now orphaned (defensive-only).
 		return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full border-2 border-review-red bg-review-red/[0.32] hover:bg-review-red/[0.48]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a></li>`
 	}
 	return `<li role="none"><a href="/review-queue" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a></li>`
