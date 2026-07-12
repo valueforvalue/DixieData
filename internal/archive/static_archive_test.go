@@ -201,3 +201,122 @@ func TestStaticArchiveIndex_ArticleBodyUsesRenderLinkedText(t *testing.T) {
 		t.Errorf("renderLinkedText function definition missing (issue #490)")
 	}
 }
+
+// TestStaticArchive_CalendarShape_PinsBundleField (issue #498 slice 1)
+// pins the contract that the archive bundle carries a top-level
+// `calendar` field with all 12 months. The static archive's
+// Calendar landing page renders from this snapshot.
+func TestStaticArchive_CalendarShape_PinsBundleField(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	exportSvc := NewExportService(d, soldierSvc)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "static.zip")
+	if err := exportSvc.ExportStaticArchive(outPath, testtemp.New(t).Path()); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+	zr, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader: %v", err)
+	}
+	defer zr.Close()
+	var data []byte
+	for _, f := range zr.File {
+		if f.Name == "archive_data.js" {
+			rc, rerr := f.Open()
+			if rerr != nil {
+				t.Fatalf("open archive_data.js: %v", rerr)
+			}
+			defer rc.Close()
+			data, err = io.ReadAll(rc)
+			if err != nil {
+				t.Fatalf("read archive_data.js: %v", err)
+			}
+			break
+		}
+	}
+	contents := string(data)
+	if !strings.Contains(contents, `"calendar"`) {
+		t.Errorf("archive_data.js missing calendar key (issue #498 slice 1)")
+	}
+	// Per locked decision 1 (user-chosen), the archive ships all
+	// 12 months even when empty so the JS grid renders a full
+	// wall-calendar. The JSON must carry the month number for
+	// every month from 1 to 12. Note: encoding/json indents with
+	// a space after each colon, so the bundle emits `"month": 1`.
+	for _, m := range []string{`"month": 1`, `"month": 6`, `"month": 12`} {
+		if !strings.Contains(contents, m) {
+			t.Errorf("archive_data.js calendar missing %s (issue #498 slice 1)", m)
+		}
+	}
+}
+
+// TestStaticArchive_CalendarHelper_ReturnsAllTwelveMonths (issue #498
+// slice 1) pins the helper contract: staticArchiveCalendar always
+// returns 12 month entries, in order, even with an empty DB.
+func TestStaticArchive_CalendarHelper_ReturnsAllTwelveMonths(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	months, err := exportSvc.staticArchiveCalendar()
+	if err != nil {
+		t.Fatalf("staticArchiveCalendar: %v", err)
+	}
+	if len(months) != 12 {
+		t.Fatalf("staticArchiveCalendar returned %d months, want 12 (issue #498 slice 1)", len(months))
+	}
+	for i, m := range months {
+		if m.Month != i+1 {
+			t.Errorf("month index %d has Month=%d, want %d (issue #498 slice 1)", i, m.Month, i+1)
+		}
+	}
+}
+
+// TestStaticArchive_CalendarHelper_PopulatesDayCounts (issue #498
+// slice 1) pins that day cells carry the CalendarDaySummary
+// counts when the calendar_items table has rows for that month.
+func TestStaticArchive_CalendarHelper_PopulatesDayCounts(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	calendarSvc := records.NewCalendarService(d)
+
+	// Seed a holiday on May 5 + an event on May 20.
+	if _, err := calendarSvc.CreateCalendarItem(5, 5, records.CalendarItemInput{
+		ItemType: models.CalendarItemTypeHoliday,
+		Title:    "Confederate Memorial Day",
+	}); err != nil {
+		t.Fatalf("CreateCalendarItem holiday: %v", err)
+	}
+	if _, err := calendarSvc.CreateCalendarItem(5, 20, records.CalendarItemInput{
+		ItemType: models.CalendarItemTypeEvent,
+		Title:    "Battle of Palmito Ranch",
+	}); err != nil {
+		t.Fatalf("CreateCalendarItem event: %v", err)
+	}
+
+	months, err := exportSvc.staticArchiveCalendar()
+	if err != nil {
+		t.Fatalf("staticArchiveCalendar: %v", err)
+	}
+	var may *StaticArchiveCalendarMonth
+	for i := range months {
+		if months[i].Month == 5 {
+			may = &months[i]
+			break
+		}
+	}
+	if may == nil {
+		t.Fatalf("staticArchiveCalendar missing May (issue #498 slice 1)")
+	}
+	if day5, ok := may.Days[5]; !ok || day5.HolidayCount != 1 || day5.EventCount != 0 {
+		t.Errorf("May 5 = %+v, want HolidayCount=1 (issue #498 slice 1)", may.Days[5])
+	}
+	if day20, ok := may.Days[20]; !ok || day20.EventCount != 1 || day20.HolidayCount != 0 {
+		t.Errorf("May 20 = %+v, want EventCount=1 (issue #498 slice 1)", may.Days[20])
+	}
+}

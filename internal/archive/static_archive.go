@@ -115,6 +115,44 @@ type StaticArchiveRecordEntry struct {
 }
 
 
+// --- StaticArchiveCalendar types (issue #498 slice 1) ---
+//
+// Per locked decision 1 the static archive ships all 12 months
+// even when empty so the Calendar landing page renders a full
+// wall-calendar. Each month is a single StaticArchiveCalendarMonth
+// carrying the per-day rollup the live calendar grid uses:
+// AnniversaryCount (death-day anniversaries from soldiers),
+// EventCount (calendar_items of type=event), HolidayCount
+// (calendar_items of type=holiday). The JS index builds the
+// month grid client-side from this snapshot.
+//
+// StaticArchiveCalendarDay keeps the omitempty semantics on
+// counts so empty days render compactly in the JSON bundle
+// (`{"h":0,"e":0,"a":0}` -> no, we keep the field names
+// short and human-debuggable — see struct definition).
+type StaticArchiveCalendarDay struct {
+	AnniversaryCount int `json:"a"`
+	EventCount       int `json:"e"`
+	HolidayCount     int `json:"h"`
+}
+
+// StaticArchiveCalendarMonth is one month's grid: the month
+// number plus a map keyed by day-of-month (1-31) to the
+// per-day rollup. The map serializes as a JSON object so the
+// JS can index it in O(1) when rendering day cells.
+type StaticArchiveCalendarMonth struct {
+	Month int                              `json:"month"`
+	Days  map[int]StaticArchiveCalendarDay `json:"days"`
+}
+
+// StaticArchiveCalendar is the calendar snapshot the bundle
+// carries: a slice of 12 StaticArchiveCalendarMonth entries
+// (January first). Per locked decision 1 the archive always
+// ships all 12 months so the JS grid renders a full year;
+// the JS simply hides months with zero markers.
+type StaticArchiveCalendar []StaticArchiveCalendarMonth
+
+
 // --- staticArchiveOwner/IndexData types ---
 type staticArchiveOwner struct {
 	DisplayName string
@@ -2089,4 +2127,44 @@ func newStaticArchiveArticle(article models.Article, refs []StaticArchiveArticle
 		UpdatedAt:    strings.TrimSpace(article.UpdatedAt),
 		CreatedAt:    strings.TrimSpace(article.CreatedAt),
 	}
+}
+
+// staticArchiveCalendar returns the per-month Calendar snapshot
+// the archive bundles for the Calendar landing page (issue #498
+// slice 1). Always 12 months in calendar order (Jan=1 ... Dec=12)
+// per locked decision 1 — the JS grid renders a full wall-calendar
+// and visually hides months with zero markers.
+//
+// Each month carries a day-keyed map of StaticArchiveCalendarDay
+// rollups (AnniversaryCount = soldiers with death on that
+// month+day, EventCount = calendar_items.event rows, HolidayCount
+// = calendar_items.holiday rows). The day map is empty for
+// months with no markers so the JSON bundle stays compact.
+//
+// The helper constructs a CalendarService on the fly —
+// ExportService holds *db.DB but no *CalendarService field,
+// mirroring the pattern in staticArchiveArticles that builds an
+// ArticleService inline rather than widening the struct.
+func (e *ExportService) staticArchiveCalendar() (StaticArchiveCalendar, error) {
+	calendarSvc := records.NewCalendarService(e.db)
+	months := make(StaticArchiveCalendar, 0, 12)
+	for m := 1; m <= 12; m++ {
+		summary, err := calendarSvc.GetMonthSummary(m)
+		if err != nil {
+			return nil, fmt.Errorf("staticArchiveCalendar month %d: %w", m, err)
+		}
+		days := make(map[int]StaticArchiveCalendarDay, len(summary))
+		for day, s := range summary {
+			if s.AnniversaryCount == 0 && s.EventCount == 0 && s.HolidayCount == 0 {
+				continue
+			}
+			days[day] = StaticArchiveCalendarDay{
+				AnniversaryCount: s.AnniversaryCount,
+				EventCount:       s.EventCount,
+				HolidayCount:     s.HolidayCount,
+			}
+		}
+		months = append(months, StaticArchiveCalendarMonth{Month: m, Days: days})
+	}
+	return months, nil
 }
