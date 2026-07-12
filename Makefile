@@ -440,6 +440,10 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-migration-columns
 	make lint-htmx-guard
 	make lint-dialog-guard
+	make lint-typecheck
+
+lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
+	@npm run typecheck --silent
 
 lint-migration-columns: ## Grep production Go for SQL referencing renamed columns (issue #435)
 	@node audit/smoke_migration_columns.mjs
