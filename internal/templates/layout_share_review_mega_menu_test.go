@@ -197,6 +197,15 @@ func TestLayoutShareReviewMegaMenuResearchMenuItemHasFlag(t *testing.T) {
 			t.Fatalf("expected data-research-review-has-count on the menuitem:\n%s", content)
 		}
 		if !strings.Contains(content, "border-review-red/60") {
+			t.Errorf("has-count menuitem should carry border-review-red/60 class for the red border treatment")
+		}
+		// Issue #472: the has-count menuitem must NOT set a
+		// static text-[#fbe1de] color (it blended into the
+		// review-red pill background). The .mega-menu-item
+		// rule in frontend/tailwind.css owns the text color
+		// and themes it per data-theme.
+		if strings.Contains(content, "text-[#fbe1de]") {
+			t.Errorf("has-count menuitem should not set text-[#fbe1de] (issue #472 pink-on-pink); .mega-menu-item rule in tailwind.css owns the color")
 			t.Fatalf("expected red border classes on the menuitem:\n%s", content)
 		}
 	})
