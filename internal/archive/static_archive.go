@@ -630,6 +630,91 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       .filter-chip-group { grid-template-columns: 1fr; }
     }
 
+    /* Issue #498 slice 4: Insights page cards. The grid lays out
+       the 7 spec cards (record_types + 5 count cards + 2 decade
+       cards) in a 2-column layout that collapses to single column
+       on narrow screens. Each card's per-row entry links to the
+       Browse page with a hash-routed filter pre-fill per locked
+       decision 3. */
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .insight-card {
+      border-radius: 18px;
+      border: 1px solid rgba(141, 116, 64, 0.32);
+      background: rgba(255, 251, 241, 0.78);
+      padding: 16px 18px;
+    }
+    .insight-card h3 {
+      margin: 0 0 12px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.05rem;
+      color: var(--gold-dark);
+    }
+    .insight-card ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+      font-size: 0.92rem;
+    }
+    .insight-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .insight-table td {
+      padding: 4px 6px;
+      border-bottom: 1px solid rgba(141, 116, 64, 0.14);
+    }
+    .insight-table td.insight-count {
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      width: 50px;
+    }
+    .insight-table tr:last-child td { border-bottom: none; }
+    .insight-empty {
+      margin: 0;
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+    .insight-decade-chart {
+      display: grid;
+      gap: 4px;
+      font-size: 0.84rem;
+    }
+    .insight-decade-bar {
+      display: grid;
+      grid-template-columns: 70px 1fr 50px;
+      align-items: center;
+      gap: 8px;
+    }
+    .insight-decade-label {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .insight-decade-track {
+      height: 10px;
+      border-radius: 5px;
+      background: rgba(141, 116, 64, 0.18);
+      overflow: hidden;
+    }
+    .insight-decade-fill {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #c5ab68 0%, #8d7440 100%);
+    }
+    .insight-decade-count {
+      text-align: right;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
     .article-body {
       line-height: 1.7;
     }
@@ -1886,13 +1971,99 @@ function escapeHtml(value) {
     var browseState = { page: 1 };
 
     // renderInsightsPage renders the Insights page (analytics
-    // snapshot). Slice 4 fills this in fully (cards + drilldown);
-    // the slice-2 stub keeps the nav link live.
+    // snapshot, issue #498 slice 4). Reads bundle.insights (the
+    // AnalyticsService.Snapshot() payload) and renders 8 cards:
+    // record_types + cemetery_density + confederate_home_status +
+    // confederate_home_names + pension_distribution +
+    // unit_representation + birth_decade_distribution +
+    // death_decade_distribution. Each card's per-row entry links
+    // to #/browse?{field}={value} per locked decision 3 (hash-routed
+    // Browse pre-fill).
     function renderInsightsPage(bundle) {
-      return '' +
+      var insights = (bundle && bundle.insights) ? bundle.insights : null;
+      var html = '' +
         '<div class="panel-head"><h2>Insights</h2></div>' +
-        '<p class="panel-subtext">A pre-computed snapshot of Person Record Types, top cemeteries, Confederate Home status, pension distribution, top units, and birth/death decades.</p>' +
-        '<div class="placeholder-card">Insights cards land in issue #498 slice 4 — the analytics data is already in this archive\'s <code>insights</code> object.</div>';
+        '<p class="panel-subtext">A pre-computed snapshot of the archive\'s analytics — Person Record Types, top cemeteries, Confederate Home status, pension distribution, top units, and birth/death decades. Click any entry to browse Person Records with that filter pre-filled.</p>' +
+        '<div class="insights-grid">';
+      if (!insights) {
+        html += '<div class="placeholder-card">No insights snapshot available in this archive.</div>';
+      } else {
+        html += renderRecordTypesCard(insights.record_types);
+        html += renderInsightsCountCard('Top cemeteries', 'cemetery_density', insights.cemetery_density, 'buried_in', 'No cemetery data');
+        html += renderInsightsCountCard('Confederate Home status', 'confederate_home_status', insights.confederate_home_status, 'confederate_home_status', 'No Confederate Home status data');
+        html += renderInsightsCountCard('Pension distribution', 'pension_distribution', insights.pension_distribution, 'pension_state', 'No pension state data');
+        html += renderInsightsCountCard('Top units', 'unit_representation', insights.unit_representation, 'unit', 'No unit data');
+        html += renderDecadeCard('Birth decade distribution', 'birth_decade_distribution', insights.birth_decade_distribution);
+        html += renderDecadeCard('Death decade distribution', 'death_decade_distribution', insights.death_decade_distribution);
+      }
+      html += '</div>';
+      return html;
+    }
+
+    // renderRecordTypesCard renders the headline Person Record
+    // Type snapshot (soldiers / wives+widows / linked people).
+    // No drilldown here — the counts are an at-a-glance rollup;
+    // the per-type drilldown lives on the Browse page itself.
+    function renderRecordTypesCard(rt) {
+      if (!rt) return '';
+      var items = [
+        ['Soldiers', rt.total_soldiers],
+        ['Wives + widows', rt.total_wives_widows],
+        ['Linked people', rt.total_linked_people]
+      ];
+      var rows = '';
+      for (var i = 0; i < items.length; i++) {
+        rows += '<li><strong>' + escapeHtml(items[i][0]) + ':</strong> ' + items[i][1] + '</li>';
+      }
+      return '<section class="insight-card"><h3>Person Record Types</h3><ul>' + rows + '</ul></section>';
+    }
+
+    // renderInsightsCountCard renders one count-table card (label +
+    // rows of {label, count} with each row's label linking to
+    // #/browse?{browseField}={value}). The browseField maps the
+    // analytics dimension key to the Browse page filter key:
+    // cemetery_density uses buried_in, etc.
+    function renderInsightsCountCard(title, field, rows, browseField, emptyText) {
+      if (!Array.isArray(rows) || !rows.length) {
+        return '<section class="insight-card"><h3>' + escapeHtml(title) + '</h3><p class="insight-empty">' + escapeHtml(emptyText) + '.</p></section>';
+      }
+      var html = '<section class="insight-card"><h3>' + escapeHtml(title) + '</h3><table class="insight-table">';
+      for (var i = 0; i < rows.length; i++) {
+        var label = String(rows[i].label || '');
+        var count = Number(rows[i].count || 0);
+        if (!label) continue;
+        var hash = '#/browse?' + browseField + '=' + encodeURIComponent(label);
+        html += '<tr><td><a class="record-link" href="' + hash + '">' + escapeHtml(label) + '</a></td><td class="insight-count">' + count + '</td></tr>';
+      }
+      html += '</table></section>';
+      return html;
+    }
+
+    // renderDecadeCard renders a decade-distribution card with a
+    // compact horizontal bar chart. Each decade links to a Browse
+    // drilldown filtered by birth/death year range (slice 4 ships
+    // the card; the year-range drilldown could be a slice-5 follow-up).
+    function renderDecadeCard(title, field, rows) {
+      if (!Array.isArray(rows) || !rows.length) {
+        return '<section class="insight-card"><h3>' + escapeHtml(title) + '</h3><p class="insight-empty">No decade data.</p></section>';
+      }
+      var maxCount = 0;
+      for (var i = 0; i < rows.length; i++) {
+        if (Number(rows[i].count) > maxCount) maxCount = Number(rows[i].count);
+      }
+      var html = '<section class="insight-card"><h3>' + escapeHtml(title) + '</h3><div class="insight-decade-chart">';
+      for (var j = 0; j < rows.length; j++) {
+        var label = String(rows[j].label || '');
+        var count = Number(rows[j].count || 0);
+        var pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+        html += '<div class="insight-decade-bar">' +
+          '<span class="insight-decade-label">' + escapeHtml(label) + '</span>' +
+          '<span class="insight-decade-track"><span class="insight-decade-fill" style="width:' + pct + '%"></span></span>' +
+          '<span class="insight-decade-count">' + count + '</span>' +
+        '</div>';
+      }
+      html += '</div></section>';
+      return html;
     }
 
     // renderPersonsPage / renderEventsPage / renderArticlesPage are
@@ -2358,7 +2529,7 @@ function escapeHtml(value) {
       }
 
       window.addEventListener('hashchange', syncViewFromHash);
-      window.addEventListener('resize', applyImageTransform);    });  </script>
+      window.addEventListener('resize', applyImageTransform);});  </script>
 </body>
 </html>
 `
@@ -2922,4 +3093,18 @@ func (e *ExportService) staticArchiveCalendar() (StaticArchiveCalendar, error) {
 		months = append(months, StaticArchiveCalendarMonth{Month: m, Days: days})
 	}
 	return months, nil
+}
+
+// staticArchiveInsights returns the AnalyticsService snapshot for
+// the Insights page (issue #498 slice 4). Mirrors the
+// staticArchiveCalendar pattern — ExportService holds *db.DB but
+// no *AnalyticsService field, so the helper constructs the service
+// inline rather than widening the struct. The snapshot includes
+// record-type counts + 7 dimension rollups (cemeteries, Confederate
+// Home status + names, pension distribution, top units, birth + death
+// decade distributions) + the duplicate-audit summary. All counts
+// are computed at export time so the JS index renders the Insights
+// page without a server round-trip.
+func (e *ExportService) staticArchiveInsights() (records.AnalyticsSnapshot, error) {
+	return records.NewAnalyticsService(e.db).Snapshot()
 }

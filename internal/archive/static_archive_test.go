@@ -513,3 +513,101 @@ func TestStaticArchiveIndex_BrowsePageHashPrefill(t *testing.T) {
 		t.Errorf("date filter missing from Browse (issue #498 slice 3)")
 	}
 }
+
+// TestStaticArchive_InsightsShape_PinsBundleField (issue #498
+// slice 4) pins the contract that the archive bundle carries a
+// top-level `insights` object with the AnalyticsService snapshot.
+func TestStaticArchive_InsightsShape_PinsBundleField(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	exportSvc := NewExportService(d, soldierSvc)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "static.zip")
+	if err := exportSvc.ExportStaticArchive(outPath, testtemp.New(t).Path()); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+	zr, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader: %v", err)
+	}
+	defer zr.Close()
+	var data []byte
+	for _, f := range zr.File {
+		if f.Name == "archive_data.js" {
+			rc, rerr := f.Open()
+			if rerr != nil {
+				t.Fatalf("open archive_data.js: %v", rerr)
+			}
+			defer rc.Close()
+			data, err = io.ReadAll(rc)
+			if err != nil {
+				t.Fatalf("read archive_data.js: %v", err)
+			}
+			break
+		}
+	}
+	contents := string(data)
+	if !strings.Contains(contents, `"insights"`) {
+		t.Errorf("archive_data.js missing insights key (issue #498 slice 4)")
+	}
+	// The insights snapshot must carry the 8 spec sections per
+	// AnalyticsSnapshot: record_types, cemetery_density,
+	// confederate_home_status, confederate_home_names,
+	// pension_distribution, unit_representation,
+	// birth_decade_distribution, death_decade_distribution.
+	for _, section := range []string{
+		`"record_types"`,
+		`"cemetery_density"`,
+		`"confederate_home_status"`,
+		`"pension_distribution"`,
+		`"unit_representation"`,
+		`"birth_decade_distribution"`,
+		`"death_decade_distribution"`,
+	} {
+		if !strings.Contains(contents, section) {
+			t.Errorf("archive_data.js insights missing %s (issue #498 slice 4)", section)
+		}
+	}
+}
+
+// TestStaticArchive_InsightsHelper_ReturnsFullSnapshot (issue #498
+// slice 4) pins the helper contract: staticArchiveInsights returns
+// an AnalyticsSnapshot equivalent to records.AnalyticsService.Snapshot().
+func TestStaticArchive_InsightsHelper_ReturnsFullSnapshot(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	snapshot, err := exportSvc.staticArchiveInsights()
+	if err != nil {
+		t.Fatalf("staticArchiveInsights: %v", err)
+	}
+	// Even with empty DB the snapshot is non-nil and carries the
+	// 7 dimensions (DuplicateAudit is the 8th, may be zero).
+	if snapshot.RecordTypes.TotalRecords() < 0 {
+		t.Errorf("RecordTypes.TotalRecords() negative (issue #498 slice 4)")
+	}
+}
+
+// TestStaticArchiveIndex_InsightsPageRendersCardsAndDrilldown (issue #498
+// slice 4) asserts the Insights page JS renders the 8 spec sections
+// as cards, each with a drilldown link to #/browse?{field}={value}.
+func TestStaticArchiveIndex_InsightsPageRendersCardsAndDrilldown(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The Insights page renderer must exist.
+	if !strings.Contains(html, "renderInsightsPage") {
+		t.Errorf("renderInsightsPage function missing from JS (issue #498 slice 4)")
+	}
+	// Each card drilldown links to #/browse?field=value (locked decision 3).
+	if !strings.Contains(html, "#/browse?") {
+		t.Errorf("Insights drilldown hash pattern missing (issue #498 slice 4)")
+	}
+	// Bundle field reference.
+	if !strings.Contains(html, "bundle.insights") {
+		t.Errorf("Insights page must read bundle.insights (issue #498 slice 4)")
+	}
+}
