@@ -21,6 +21,18 @@ func (a *App) handleLayoutReviewCount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Issue #463: nil-guard a.soldiers for the HTTP-only test path
+	// (NewApp() returns a zero-value *App without calling Startup,
+	// so the soldier facade is unset) and for the setupRequired
+	// case where the layout badge still polls every 30s but no
+	// services are loaded yet. Returning an empty fragment keeps
+	// the badge collapsed — same shape as the count==0 branch
+	// below.
+	if a.soldiers == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	count, err := a.soldiers.CountNeedsReview()
 	if err != nil || count <= 0 {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

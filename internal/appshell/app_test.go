@@ -1300,33 +1300,39 @@ func TestAppServeHTTPSetupRequiredFragmentReturns204WithRedirectHint(t *testing.
 	app.setupRequired = true
 	app.setupRoutes()
 
-	// Case (a): htmx fragment request to a non-allowlisted path.
-	// /layout/review-count is the known case (badge wrapper polling
-	// added in #210). Returns 204 + X-DixieData-Redirect: /setup
-	// so the badge wrapper's innerHTML stays empty while setup is
-	// incomplete.
+	// Case (a): htmx fragment request to an allowlisted polling
+	// path. /layout/review-count was added to setupRequestAllowed
+	// after this test was authored: it used to be the bug example
+	// (204 + X-DixieData-Redirect caused the global afterRequest
+	// listener in app.js to window.location.assign("/setup") and
+	// reload the page every 30s, producing the cursor↔pointer
+	// jitter that Chromium's IPC flood protection eventually
+	// throttled). Now the allowlist lets it pass through to the
+	// real handler, which returns an empty 200 fragment while no
+	// soldiers exist (handleLayoutReviewCount nil-guards
+	// a.soldiers and returns 200 with no body).
 	fragmentReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
 	fragmentReq.Header.Set("HX-Request", "true")
 	fragmentRec := httptest.NewRecorder()
 	app.ServeHTTP(fragmentRec, fragmentReq)
 
-	if fragmentRec.Code != http.StatusNoContent {
-		t.Fatalf("fragment status=%d want %d (htmx fragment during setup-required must get 204, not 303 to /setup); issue #212", fragmentRec.Code, http.StatusNoContent)
+	if fragmentRec.Code == http.StatusSeeOther {
+		t.Fatalf("fragment status=%d -> %s; allowlisted polling paths must pass through to the real handler when setup is required (issue #212; /setup mouse jitter regression)", fragmentRec.Code, fragmentRec.Header().Get("Location"))
 	}
-	if fragmentRec.Body.Len() != 0 {
-		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
-	}
-	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/setup" {
-		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/setup")
+	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got == "/setup" {
+		t.Fatalf("fragment X-DixieData-Redirect=%q; allowlisted paths must not trigger the setupRequired 204 branch", got)
 	}
 
-	// Case (b): same path without HX-Request. Full-page nav still
-	// gets the 303 redirect to /setup (existing behavior, unchanged).
-	fullPageReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	// Case (b): full-page nav on a non-allowlisted path still
+	// gets the 303 redirect to /setup (existing behavior,
+	// unchanged). /soldiers is a good proxy — the real handler
+	// would 404 in this test (no soldier data) but the
+	// setupRequired branch fires first and the 303 wins.
+	fullPageReq := httptest.NewRequest(http.MethodGet, "/soldiers", nil)
 	fullPageRec := httptest.NewRecorder()
 	app.ServeHTTP(fullPageRec, fullPageReq)
 	if fullPageRec.Code != http.StatusSeeOther {
-		t.Fatalf("full-page status=%d want %d (full-page nav must still 303 to /setup)", fullPageRec.Code, http.StatusSeeOther)
+		t.Fatalf("full-page status=%d want %d (full-page nav to a non-allowlisted path must still 303 to /setup)", fullPageRec.Code, http.StatusSeeOther)
 	}
 	if loc := fullPageRec.Header().Get("Location"); loc != "/setup" {
 		t.Fatalf("full-page Location=%q want %q", loc, "/setup")
@@ -1347,18 +1353,7 @@ func TestAppServeHTTPSetupRequiredFragmentReturns204WithRedirectHint(t *testing.
 		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/setup")
 	}
 
-	// Case (d): arbitrary non-allowlisted path without HX-Request
-	// still gets the 303. /soldiers is a good proxy: the real handler
-	// would 404 in this test (no soldier data) but the setupRequired
-	// branch fires first and the 303 wins.
-	soldiersReq := httptest.NewRequest(http.MethodGet, "/soldiers", nil)
-	soldiersRec := httptest.NewRecorder()
-	app.ServeHTTP(soldiersRec, soldiersReq)
-	if soldiersRec.Code != http.StatusSeeOther {
-		t.Fatalf("/soldiers status=%d want %d (full-page nav must still 303 to /setup)", soldiersRec.Code, http.StatusSeeOther)
-	}
-
-	// Case (e): sanity check — allowlisted paths (e.g. /jobs/active)
+	// Case (d): sanity check — allowlisted paths (e.g. /jobs/active)
 	// do NOT hit the new 204 branch. They pass through to the real
 	// handler. We don't assert the real handler's exact status
 	// (depends on test setup), only that the setupRequired branch
@@ -1401,6 +1396,36 @@ func TestAppServeHTTPAllowsJobsEndpointsWhenSetupRequired(t *testing.T) {
 		if rec.Code == http.StatusSeeOther {
 			t.Errorf("GET %s returned 303 -> %s (should not redirect during setup)", path, rec.Header().Get("Location"))
 		}
+	}
+}
+
+func TestAppServeHTTPAllowsLayoutReviewCountWhenSetupRequired(t *testing.T) {
+	// Regression: the layout Review Queue badge polls
+	// /layout/review-count every 30s (layout.templ). When setup is
+	// required and the path was not in setupRequestAllowed, every
+	// poll returned 204 + X-DixieData-Redirect: /setup. The global
+	// htmx:afterRequest listener in app.js then called
+	// window.location.assign("/setup"), which reloaded the page
+	// (the user is already on /setup). The cascade produced rapid
+	// reloads visible as mouse cursor↔pointer jitter until
+	// Chromium's IPC flood protection throttled navigation.
+	//
+	// /layout/review-count must pass through the setupRequired
+	// middleware to the real handler, which returns an empty 200
+	// fragment while no soldiers exist.
+	app := NewApp()
+	app.setupRequired = true
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusSeeOther {
+		t.Fatalf("GET /layout/review-count returned 303 -> %s; the badge poll must pass through to the real handler when setup is required", rec.Header().Get("Location"))
+	}
+	if got := rec.Header().Get("X-DixieData-Redirect"); got == "/setup" {
+		t.Fatalf("GET /layout/review-count returned X-DixieData-Redirect: /setup; the setupRequired branch must not intercept allowlisted polling fragments")
 	}
 }
 

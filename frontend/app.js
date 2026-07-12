@@ -6032,9 +6032,25 @@ async function refreshShareQueuePresetsPage(panel) {
           return;
         }
         const redirect = xhr.getResponseHeader("X-DixieData-Redirect");
-        if (redirect && typeof window.location.assign === "function") {
-          window.location.assign(redirect);
+        if (!redirect || typeof window.location.assign !== "function") {
+          return;
         }
+        // Reload-on-same-path guard. Without this, a polling
+        // fragment whose path is not in setupRequestAllowed
+        // returns 204 + X-DixieData-Redirect: /setup while the
+        // user is already on /setup — every poll triggers a full
+        // reload and Chromium's IPC flood protection eventually
+        // throttles navigation (see /setup mouse jitter report).
+        // Same protection for any other "blocked" state.
+        try {
+          const target = new URL(redirect, window.location.origin);
+          if (target.pathname === window.location.pathname && target.search === window.location.search) {
+            return;
+          }
+        } catch (_) {
+          // fall through to assign
+        }
+        window.location.assign(redirect);
       });
     }
     window.requestAnimationFrame(() => clampPopoutPanels(document));
