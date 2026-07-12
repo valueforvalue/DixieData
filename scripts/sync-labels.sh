@@ -28,6 +28,7 @@ LABELS=(
   "bug|d73a4a|Something isn't working"
   "documentation|0075ca|Improvements or additions to documentation"
   "enhancement|a2eeef|New feature or request"
+  "reference-doc|0E8A16|Long-lived reference doc, not active work"
 
   # --- Status (where in triage) ---
   "needs-triage|D4C5F9|Maintainer needs to evaluate this issue"

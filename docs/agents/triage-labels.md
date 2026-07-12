@@ -7,7 +7,7 @@ state without re-reading every issue title.
 
 | Axis | Question | Labels |
 |---|---|---|
-| **Type** | What's the work? | `bug`, `enhancement`, `documentation` |
+| **Type** | What's the work? | `bug`, `enhancement`, `documentation`, `reference-doc` |
 | **Status** | Where is it in triage? | `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` |
 | **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug` |
 | **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
@@ -52,6 +52,15 @@ the issue hasn't been routed.
 The exception is `Meta` — an issue can carry multiple `Meta`
 labels (`duplicate` + `wontfix` for "this is a dup, also we won't
 fix either"). Process labels compose.
+
+## Type — what's the work
+
+| Label | When to apply |
+|---|---|
+| `bug` | Something isn't working. Includes data loss, crash, regression, and visual regressions. |
+| `enhancement` | New feature or non-trivial capability change. |
+| `documentation` | Documentation-only change (CHANGELOG entries that are the entire issue, docs typo fixes, ADR updates). |
+| `reference-doc` | Long-lived reference document — not active work. The issue body is a maintained checklist or playbook an agent should follow when the documented trigger condition is met (e.g. "add a new canonical status"). Distinct from `documentation` (which is about adding/editing prose) and from `deferred` (which implies a wait for a specific event). Examples: #156 (confederate-home-status extension checklist), #281 (.ddbak format versioning policy), #279 (`dixiedata package` design). Status for these is almost always `needs-triage` is wrong — leave them open indefinitely; the issue IS the doc. |
 
 ## Status — the triage labels
 
