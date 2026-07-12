@@ -95,8 +95,17 @@ jobs:
       # ARIA + navigation behaviors. The probe accepts BASE_URL
       # so it reuses the dev server already running on :8080; no
       # second server is spawned.
-      - name: Foldout regression probe (issue #456)
-        run: BASE_URL=http://127.0.0.1:8080 node audit/smoke_foldout_nav.mjs
+      # Issue #380 slice 3 collapsed the 2 prior top-nav foldouts
+      # (Research & Review + Share) + the standalone Insights pill
+      # into a single 2D Share & Review mega-menu. The probe gates
+      # the post-#380 mega-menu ARIA contract + click-outside + first-click
+      # regressions + WCAG AA contrast on every menuitem.
+      # Originally issue #456 gated the pre-#380 foldout via
+      # smoke_foldout_nav.mjs; that probe was deleted when the foldout
+      # primitive was retired in #380 slice 3 and replaced with the
+      # mega-menu primitive audited here.
+      - name: Mega-menu regression probe (issue #380 slice 3)
+        run: BASE_URL=http://127.0.0.1:8080 node audit/smoke_mega_menu_nav.mjs
         timeout-minutes: 5
 
       - name: Run audit harness
