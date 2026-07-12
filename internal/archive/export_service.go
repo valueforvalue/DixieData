@@ -1686,6 +1686,15 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
+	// Issue #498 slice 1: bundle the Calendar snapshot so the
+	// Calendar landing page can render the month grid offline.
+	// Per locked decision 1 the archive ships all 12 months
+	// even when empty (full wall-calendar). The snapshot is
+	// pre-aggregated at export time; the JS does no SQL.
+	calendarMonths, err := e.staticArchiveCalendar()
+	if err != nil {
+		return err
+	}
 
 	exportRoot, err := os.MkdirTemp("", "dixiedata-static-archive-*")
 	if err != nil {
@@ -1703,14 +1712,18 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	// marshal in insertion order; events stay sorted by DisplayID
 	// via staticArchiveEvents. Issue #321 slice 5.3 adds the
 	// articles array so the JS index can render an Articles tab.
+	// Issue #498 slice 1 adds `calendar` so the Calendar landing
+	// page can render the month grid client-side.
 	bundle := struct {
-		Records  []StaticArchiveRecord `json:"records"`
-		Events   []StaticArchiveRecord `json:"events"`
-		Articles []StaticArchiveRecord `json:"articles"`
+		Records  []StaticArchiveRecord   `json:"records"`
+		Events   []StaticArchiveRecord   `json:"events"`
+		Articles []StaticArchiveRecord   `json:"articles"`
+		Calendar StaticArchiveCalendar   `json:"calendar"`
 	}{
 		Records:  records,
 		Events:   events,
 		Articles: articles,
+		Calendar: calendarMonths,
 	}
 	dataPayload, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
