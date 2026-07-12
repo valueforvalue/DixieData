@@ -101,6 +101,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					}.Attrs()... } hx-sync="this:replace" class="contents">
 						<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
 							value={ query }
+							data-quick-search
 							class="field-input" aria-label="Quick search across the Local Archive"/>
 					</form>
 					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
