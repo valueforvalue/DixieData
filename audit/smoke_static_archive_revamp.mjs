@@ -136,7 +136,7 @@ test('slice2-04 routeFromHash handles legacy #record= #event= #article= aliases'
   );
 });
 
-test('slice2-05 Calendar landing renders 12 month grids from bundle.calendar', () => {
+test('slice2-05 Calendar landing renders single-month grid with selector (issue #500)', () => {
   assert.ok(
     html.includes('renderCalendarPage'),
     'JS must define renderCalendarPage (slice 2 Calendar landing)',
@@ -144,6 +144,23 @@ test('slice2-05 Calendar landing renders 12 month grids from bundle.calendar', (
   assert.ok(
     html.includes('bundle.calendar'),
     'renderCalendarPage must read bundle.calendar',
+  );
+  // Issue #500: month selector + prev/next buttons + single-month view.
+  assert.ok(
+    html.includes('calendar-month-select'),
+    'Calendar must render month selector dropdown (issue #500)',
+  );
+  assert.ok(
+    html.includes('calendar-prev-month'),
+    'Calendar must render previous-month button (issue #500)',
+  );
+  assert.ok(
+    html.includes('calendar-next-month'),
+    'Calendar must render next-month button (issue #500)',
+  );
+  assert.ok(
+    html.includes('parseCalendarQuery'),
+    'Calendar must define parseCalendarQuery for month hash pre-fill (issue #500)',
   );
 });
 

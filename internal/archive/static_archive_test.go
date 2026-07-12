@@ -363,29 +363,37 @@ func TestStaticArchiveIndex_HashRouterRendersCalendarLanding(t *testing.T) {
 }
 
 // TestStaticArchiveIndex_CalendarGridRendersAllTwelveMonths (issue #498
-// slice 2) asserts the Calendar landing page renders a 12-month grid
-// from bundle.calendar[]. The grid's per-day cell must read
-// bundle.calendar[month-1].days[day] and surface the AnniversaryCount /
-// EventCount / HolidayCount markers.
+// slice 2, updated for issue #500) asserts the Calendar landing page
+// renders a single-month grid (per issue #500 locked decision 1) with
+// a month selector dropdown. The bundle still carries all 12 months;
+// only the view renders one at a time.
 func TestStaticArchiveIndex_CalendarGridRendersAllTwelveMonths(t *testing.T) {
 	html := renderIndexForTest(t)
 
-	// The renderCalendarPage function must walk bundle.calendar and
-	// emit a 12-month grid (per locked decision 1).
+	// The renderCalendarPage function must walk bundle.calendar.
 	if !strings.Contains(html, "renderCalendarPage") {
 		t.Errorf("missing renderCalendarPage function (issue #498 slice 2)")
 	}
-	// Must read bundle.calendar in JS.
 	if !strings.Contains(html, "bundle.calendar") {
 		t.Errorf("renderCalendarPage must read bundle.calendar (issue #498 slice 2)")
 	}
-	// Must surface the per-day marker counts in JS (Anniversary / Event /
-	// Holiday — abbreviated a/e/h in the bundle, so the JS must
-	// reference those keys).
 	for _, key := range []string{".a", ".e", ".h"} {
 		if !strings.Contains(html, key) {
 			t.Errorf("renderCalendarPage must read .a/.e/.h day-marker keys (issue #498 slice 2)")
 		}
+	}
+	// Issue #500: month selector + prev/next buttons + single-month view.
+	if !strings.Contains(html, "calendar-month-select") {
+		t.Errorf("month selector dropdown missing (issue #500)")
+	}
+	if !strings.Contains(html, "calendar-prev-month") {
+		t.Errorf("previous-month button missing (issue #500)")
+	}
+	if !strings.Contains(html, "calendar-next-month") {
+		t.Errorf("next-month button missing (issue #500)")
+	}
+	if !strings.Contains(html, "parseCalendarQuery") {
+		t.Errorf("parseCalendarQuery function missing (issue #500)")
 	}
 }
 
