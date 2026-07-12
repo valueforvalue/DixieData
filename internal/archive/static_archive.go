@@ -122,21 +122,47 @@ type staticArchiveOwner struct {
 }
 
 type staticArchiveIndexData struct {
-	ArchiveTitle string
-	OwnerShort   string
-	Version      string
-	Build        string
-	GeneratedAt  string
+	ArchiveTitle  string
+	OwnerShort    string
+	Version       string
+	Build         string
+	GeneratedAt   string
+	// FileStemJS + GeneratedAtJS are JS-string-literal-safe
+	// versions of FileStem and GeneratedAt for the per-archive
+	// localStorage key. See issue #475 — the static archive's
+	// theme pick is scoped per archive so switching themes in
+	// archive X does not bleed into archive Y.
+	FileStemJS    string
+	GeneratedAtJS string
 }
 
 
 // --- staticArchiveIndexHTML template ---
 const staticArchiveIndexHTML = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="default">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ .ArchiveTitle }}</title>
+  <!-- Issue #475: the static archive always starts on the Default
+       theme (matches the desktop app's Default), so a fresh
+       browser visit renders predictably. A small inline script
+       reads the per-archive localStorage key and applies the
+       reader's last pick BEFORE the body paints, so switching
+       themes in archive X never bleeds into archive Y. The key
+       is namespaced by FileStem + GeneratedAt so two archives
+       with the same filename on the same origin don't collide. -->
+  <script>
+    (function() {
+      try {
+        var key = "dixiedata.static.theme:" + {{ .FileStemJS }} + ":" + {{ .GeneratedAtJS }};
+        var picked = window.localStorage.getItem(key);
+        if (picked === "default" || picked === "high-contrast" || picked === "soft") {
+          document.documentElement.setAttribute("data-theme", picked);
+        }
+      } catch (err) { /* localStorage blocked; fall back to Default (already on <html>) */ }
+    })();
+  </script>
   <script defer src="./archive_data.js"></script>
   <style>
     :root {
@@ -151,6 +177,38 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       --ink: #22303d;
       --muted: #445260;
       --shadow: 0 16px 32px rgba(23, 33, 43, 0.16);
+    }
+
+    /* Issue #475 — theme system. The static archive has its
+       own CSS variable system (it ships as a self-contained
+       browser-viewable HTML file, no network calls back to
+       the app) and ships the same three themes the desktop
+       app exposes: Default (current look), High Contrast
+       (WCAG AA grayscale), Soft (parchment reading). The
+       per-theme overrides below swap the --paper / --panel /
+       --ink / --gold / --muted tokens; everything that
+       references var(--token) follows along. */
+    html[data-theme="high-contrast"] {
+      --paper: #ffffff;
+      --panel: #ffffff;
+      --panel-strong: #f5f5f5;
+      --panel-dark: #1f1f1f;
+      --border: #222222;
+      --gold: #1d4ed8;
+      --gold-dark: #1e3a8a;
+      --ink: #111111;
+      --muted: #1f1f1f;
+    }
+    html[data-theme="soft"] {
+      --paper: #f4ecd8;
+      --panel: #ede2c5;
+      --panel-strong: #f4ecd8;
+      --panel-dark: #3b2a1a;
+      --border: #b08f45;
+      --gold: #8d7440;
+      --gold-dark: #5a4220;
+      --ink: #3b2a1a;
+      --muted: #5a4220;
     }
 
     * {
@@ -241,6 +299,47 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       gap: 12px 20px;
       font-size: 0.9rem;
       color: rgba(244, 234, 208, 0.8);
+    }
+
+    /* Issue #475: theme picker. Three buttons next to the
+       archive metadata. The currently active button is
+       styled with the gold border + filled background; the
+       other two are flat. JS toggles the aria-pressed attr
+       and the data-theme attr on <html> when a button is
+       clicked. */
+    .theme-picker {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .theme-picker-label {
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      color: rgba(244, 234, 208, 0.7);
+      text-transform: uppercase;
+    }
+    .theme-pick {
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(168, 138, 70, 0.4);
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(244, 234, 208, 0.9);
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: border-color 120ms, background 120ms, color 120ms;
+    }
+    .theme-pick:hover,
+    .theme-pick:focus-visible {
+      border-color: var(--gold);
+      outline: none;
+    }
+    .theme-pick[aria-pressed="true"] {
+      border-color: var(--gold);
+      background: rgba(168, 138, 70, 0.18);
+      color: #fff8e7;
     }
 
     .screen {
@@ -706,6 +805,12 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         <div class="archive-meta">
           <span id="result-count">0 records</span>
           <span>Generated {{ .GeneratedAt }}</span>
+        </div>
+        <div class="theme-picker" role="group" aria-label="Theme">
+          <span class="theme-picker-label">Theme:</span>
+          <button type="button" class="theme-pick" data-theme-pick="default" aria-pressed="true">Default</button>
+          <button type="button" class="theme-pick" data-theme-pick="high-contrast" aria-pressed="false">High Contrast</button>
+          <button type="button" class="theme-pick" data-theme-pick="soft" aria-pressed="false">Soft</button>
         </div>
       </div>
     </header>
@@ -1279,6 +1384,37 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       window.addEventListener('hashchange', syncViewFromHash);
       window.addEventListener('resize', applyImageTransform);
     });
+
+    // Issue #475: theme picker. Three buttons next to the
+    // archive metadata. The current selection is reflected in
+    // aria-pressed on the button and the data-theme attr on
+    // <html> (already set by the inline script in <head> on
+    // first paint). Picking a theme writes the choice to
+    // per-archive localStorage so the next visit to this same
+    // archive restores it; opening a different archive resets
+    // to Default because the localStorage key is namespaced
+    // by FileStem + GeneratedAt.
+    (function() {
+      var storageKey = "dixiedata.static.theme:" + {{ .FileStemJS }} + ":" + {{ .GeneratedAtJS }};
+      var buttons = document.querySelectorAll('[data-theme-pick]');
+      function syncPressedFromDom() {
+        var current = document.documentElement.getAttribute("data-theme") || "default";
+        buttons.forEach(function(btn) {
+          btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-pick") === current ? "true" : "false");
+        });
+      }
+      function pick(value) {
+        document.documentElement.setAttribute("data-theme", value);
+        try { window.localStorage.setItem(storageKey, value); } catch (err) { /* blocked; in-memory only */ }
+        syncPressedFromDom();
+      }
+      buttons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          pick(btn.getAttribute("data-theme-pick"));
+        });
+      });
+      syncPressedFromDom();
+    })();
   </script>
 </body>
 </html>
