@@ -256,6 +256,44 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
 
     /* Issue #494: theme picker CSS removed — archive is Soft-only. */
 
+    /* Issue #490: tab bar for Persons / Events / Articles. */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 16px;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 12px;
+    }
+    .tab-button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(244, 234, 208, 0.7);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(244, 234, 208, 0.9);
+    }
+    .tab-button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tab-button.hidden {
+      display: none;
+    }
+    .article-body {
+      line-height: 1.7;
+    }
+    .article-body a.record-link {
+      color: var(--accent);
+    }
+
     .screen {
       border: 1px solid var(--border);
       border-radius: 30px;
@@ -720,6 +758,14 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           <span id="result-count">0 records</span>
           <span>Generated {{ .GeneratedAt }}</span>
         </div>
+        <!-- Issue #490: three-tab segmented control. The JS shows/hides
+             tabs based on bundle contents — a tab with zero items is
+             hidden, not shown empty. -->
+        <nav class="tab-bar" id="archive-tabs">
+          <button type="button" class="tab-button active" data-tab="persons">Persons</button>
+          <button type="button" class="tab-button" data-tab="events">Events</button>
+          <button type="button" class="tab-button" data-tab="articles">Articles</button>
+        </nav>
         <!-- Issue #494: theme picker removed. The static archive ships with
              Soft hardcoded; no theme switching inside the archive. -->
       </div>
@@ -733,6 +779,13 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         <p class="panel-subtext">Images stay off the main list for faster browsing. Use <strong>View More</strong> on any entry to open a full-page archive view.</p>
         <section id="archive-results" class="results" aria-live="polite"></section>
         <div id="archive-empty" class="empty-state">No records matched the current search.</div>
+        <!-- Issue #490: Events + Articles list containers. The JS
+             populates these from bundle.events / bundle.articles and
+             toggles visibility via the tab-bar. -->
+        <section id="archive-events-results" class="results hidden" aria-live="polite"></section>
+        <div id="archive-events-empty" class="empty-state hidden">No events in this archive.</div>
+        <section id="archive-articles-results" class="results hidden" aria-live="polite"></section>
+        <div id="archive-articles-empty" class="empty-state hidden">No articles in this archive.</div>
       </section>
 
       <section id="archive-detail-screen" class="screen detail-screen hidden">
@@ -990,6 +1043,22 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           '</ul></section>'
         );
       }
+      // Issue #490: Linked Events section — shows events from
+      // bundle.events whose linkedDisplayIds contains this
+      // record's displayId.
+      const linkedEvents = linkedEventsForRecord(record, allEvents);
+      if (linkedEvents.length) {
+        primarySections.push(
+          '<section class="detail-section"><h4>Linked Events</h4><div class="related-list">' +
+            linkedEvents.map(function(ev) {
+              const evTitle = escapeHtml(ev.description || ev.kind || 'Untitled Event');
+              const evMeta = escapeHtml((ev.kind || '') + (ev.dateRange ? ' · ' + ev.dateRange : ''));
+              return '<div class="related-card"><strong>' + evTitle + '</strong><p>' + evMeta + '</p>' +
+                '<div class="related-links"><a class="image-button" href="#event=' + encodeURIComponent(String(ev.displayId || ev.id || '')) + '">Open Event</a></div></div>';
+            }).join('') +
+          '</div></section>'
+        );
+      }
       sideSections.push(
         '<section class="detail-section"><h4>Archive Metadata</h4><dl class="detail-grid compact">' +
           '<dt>Review Status</dt><dd>' + escapeHtml(record.needsReview ? 'Needs Review' : 'Clean') + '</dd>' +
@@ -1042,6 +1111,99 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         '</div>';
     }
 
+    // Issue #490: Linked Events section — filters allEvents for
+    // events whose linkedDisplayIds contains this record's displayId.
+    function linkedEventsForRecord(record, allEvents) {
+      if (!Array.isArray(allEvents) || !record || !record.displayId) return [];
+      return allEvents.filter(function(ev) {
+        return Array.isArray(ev.linkedDisplayIds) && ev.linkedDisplayIds.indexOf(record.displayId) !== -1;
+      });
+    }
+
+    function renderEventRow(event, index) {
+      return '' +
+        '<article class="record-row" data-event-index="' + index + '">' +
+          '<div class="row-main">' +
+            '<div class="row-meta">' +
+              '<span class="pill">Event</span>' +
+              (event.kind ? '<span class="pill">' + escapeHtml(event.kind) + '</span>' : '') +
+            '</div>' +
+            '<h3 class="row-title">' + escapeHtml(event.description || event.kind || 'Untitled Event') + '</h3>' +
+            '<div class="row-summary">' +
+              '<span><strong>Date:</strong> ' + escapeHtml(event.dateRange || 'N/A') + '</span>' +
+              (event.location ? '<span><strong>Location:</strong> ' + escapeHtml(event.location) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<button type="button" class="action-button" data-view-event="' + index + '">View More</button>' +
+        '</article>';
+    }
+
+    function renderEventDetail(event, allRecords) {
+      const details = [
+        ['Kind', detailValue(event.kind)],
+        ['Date Range', event.dateRange || 'N/A'],
+        ['Location', detailValue(event.location)],
+        ['Source Citation', detailValue(event.sourceCitation)]
+      ];
+      const linkedPersons = Array.isArray(event.linkedPersons) ? event.linkedPersons : [];
+      let linkedHtml = '';
+      if (linkedPersons.length) {
+        linkedHtml = '<section class="detail-section"><h4>Linked Persons</h4><div class="related-list">' +
+          linkedPersons.map(function(p) {
+            const link = p.displayId ? '<div class="related-links"><a class="image-button" href="#record=' + encodeURIComponent(p.displayId) + '">Open Person Record</a></div>' : '';
+            return '<div class="related-card"><strong>' + escapeHtml(p.name || p.displayId || 'Unknown') + '</strong><p>' + escapeHtml(p.displayId || '') + '</p>' + link + '</div>';
+          }).join('') +
+        '</div></section>';
+      }
+      return '' +
+        '<div class="detail-header">' +
+          '<div class="row-meta"><span class="pill">Event</span>' + (event.kind ? '<span class="pill">' + escapeHtml(event.kind) + '</span>' : '') + '</div>' +
+          '<h3>' + escapeHtml(event.description || event.kind || 'Untitled Event') + '</h3>' +
+        '</div>' +
+        '<div class="detail-layout"><div>' +
+          '<dl class="detail-grid">' +
+            details.map(function(line) { return '<dt>' + escapeHtml(line[0]) + '</dt><dd>' + detailMarkup(line[0], line[1]) + '</dd>'; }).join('') +
+          '</dl>' +
+          linkedHtml +
+        '</div><div></div></div>';
+    }
+
+    function renderArticleRow(article, index) {
+      return '' +
+        '<article class="record-row" data-article-index="' + index + '">' +
+          '<div class="row-main">' +
+            '<div class="row-meta"><span class="pill">Article</span></div>' +
+            '<h3 class="row-title">' + escapeHtml(article.title || 'Untitled Article') + '</h3>' +
+            (article.subtitle ? '<div class="row-summary"><span>' + escapeHtml(article.subtitle) + '</span></div>' : '') +
+          '</div>' +
+          '<button type="button" class="action-button" data-view-article="' + index + '">View More</button>' +
+        '</article>';
+    }
+
+    function renderArticleDetail(article) {
+      const refs = Array.isArray(article.resolvedRefs) ? article.resolvedRefs : [];
+      let refsHtml = '';
+      if (refs.length) {
+        refsHtml = '<section class="detail-section"><h4>Referenced Person Records</h4><ul>' +
+          refs.map(function(ref) {
+            const marker = ref.resolved ? '' : ' <em>(Unknown)</em>';
+            const link = ref.resolved && ref.displayId ? '<a class="record-link" href="#record=' + encodeURIComponent(ref.displayId) + '">' + escapeHtml(ref.name || ref.displayId) + '</a>' : escapeHtml(ref.name || ref.displayId || 'Unknown');
+            return '<li>' + link + marker + '</li>';
+          }).join('') +
+        '</ul></section>';
+      }
+      return '' +
+        '<div class="detail-header">' +
+          '<div class="row-meta"><span class="pill">Article</span></div>' +
+          '<h3>' + escapeHtml(article.title || 'Untitled Article') + '</h3>' +
+        '</div>' +
+        '<div class="detail-layout"><div>' +
+          (article.subtitle ? '<p class="row-summary">' + escapeHtml(article.subtitle) + '</p>' : '') +
+          '<section class="detail-section"><h4>Body</h4><div class="article-body">' + renderLinkedText(article.bodyHtml || article.bodyMd || '') + '</div></section>' +
+          refsHtml +
+        '</div><div></div></div>';
+    }
+
     function findRecordIndex(records, hash) {
       const match = String(hash || '').match(/^#record=(.+)$/);
       if (!match) {
@@ -1053,6 +1215,21 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       });
     }
 
+    // Issue #490: hash routers for #event= and #article= hashes.
+    function findEventIndex(events, hash) {
+      const match = String(hash || '').match(/^#event=(.+)$/);
+      if (!match) return -1;
+      const id = decodeURIComponent(match[1]);
+      return events.findIndex(function(ev) { return String(ev.displayId || ev.id || '') === id; });
+    }
+
+    function findArticleIndex(articles, hash) {
+      const match = String(hash || '').match(/^#article=(.+)$/);
+      if (!match) return -1;
+      const id = decodeURIComponent(match[1]);
+      return articles.findIndex(function(a) { return String(a.id || '') === id; });
+    }
+
     function showListScreen() {
       document.getElementById('archive-list-screen').classList.remove('hidden');
       document.getElementById('archive-detail-screen').classList.add('hidden');
@@ -1061,10 +1238,10 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       });
     }
 
-    function showDetailScreen(record, index, visibleCount, allRecords) {
+    function showDetailScreen(record, index, visibleCount, allRecords, allEvents) {
       document.getElementById('archive-list-screen').classList.add('hidden');
       document.getElementById('archive-detail-screen').classList.remove('hidden');
-      document.getElementById('detail-content').innerHTML = renderDetail(record, allRecords);
+      document.getElementById('detail-content').innerHTML = renderDetail(record, allRecords, allEvents);
       document.getElementById('detail-position').textContent = 'Record ' + (index + 1) + ' of ' + visibleCount;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1169,13 +1346,78 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       const bundle = (window.DIXIE_DATA && typeof window.DIXIE_DATA === 'object') ? window.DIXIE_DATA : {};
       const records = Array.isArray(bundle.records) ? bundle.records : [];
       const events = Array.isArray(bundle.events) ? bundle.events : [];
+      const articles = Array.isArray(bundle.articles) ? bundle.articles : [];
       window.__DIXIE_EVENTS__ = events;
       const searchInput = document.getElementById('archive-search');
       const previewStage = document.getElementById('image-preview-stage');
+      let activeTab = 'persons';
       let filteredRecords = updateResults(records, '');
 
+      // Issue #490: hide tabs with zero items — no empty tabs.
+      if (!events.length) {
+        const evTab = document.querySelector('[data-tab="events"]');
+        if (evTab) evTab.classList.add('hidden');
+      }
+      if (!articles.length) {
+        const artTab = document.querySelector('[data-tab="articles"]');
+        if (artTab) artTab.classList.add('hidden');
+      }
+
+      // Issue #490: render events + articles lists.
+      function updateEventResults() {
+        const container = document.getElementById('archive-events-results');
+        if (events.length) {
+          container.innerHTML = events.map(function(ev, i) { return renderEventRow(ev, i); }).join('');
+        }
+      }
+      function updateArticleResults() {
+        const container = document.getElementById('archive-articles-results');
+        if (articles.length) {
+          container.innerHTML = articles.map(function(a, i) { return renderArticleRow(a, i); }).join('');
+        }
+      }
+      updateEventResults();
+      updateArticleResults();
+
+      // Issue #490: tab switching.
+      function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-button').forEach(function(btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+        });
+        var isPersons = tab === 'persons';
+        var isEvents = tab === 'events';
+        var isArticles = tab === 'articles';
+        document.getElementById('archive-results').classList.toggle('hidden', !isPersons);
+        var ae = document.getElementById('archive-empty'); if (ae) ae.classList.toggle('hidden', !isPersons);
+        document.getElementById('archive-events-results').classList.toggle('hidden', !isEvents);
+        var aee = document.getElementById('archive-events-empty'); if (aee) aee.classList.toggle('hidden', !isEvents);
+        document.getElementById('archive-articles-results').classList.toggle('hidden', !isArticles);
+        var aae = document.getElementById('archive-articles-empty'); if (aae) aae.classList.toggle('hidden', !isArticles);
+      }
+
       function syncViewFromHash() {
-        const matchIndex = findRecordIndex(records, window.location.hash);
+        const hash = window.location.hash;
+        // Issue #490: check #event= and #article= before #record=.
+        var evIdx = findEventIndex(events, hash);
+        if (evIdx >= 0) {
+          document.getElementById('archive-list-screen').classList.add('hidden');
+          document.getElementById('archive-detail-screen').classList.remove('hidden');
+          document.getElementById('detail-content').innerHTML = renderEventDetail(events[evIdx], records);
+          document.getElementById('detail-position').textContent = 'Event';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+        var artIdx = findArticleIndex(articles, hash);
+        if (artIdx >= 0) {
+          document.getElementById('archive-list-screen').classList.add('hidden');
+          document.getElementById('archive-detail-screen').classList.remove('hidden');
+          document.getElementById('detail-content').innerHTML = renderArticleDetail(articles[artIdx]);
+          document.getElementById('detail-position').textContent = 'Article';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+        const matchIndex = findRecordIndex(records, hash);
         if (matchIndex < 0) {
           showListScreen();
           return;
@@ -1193,7 +1435,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           showListScreen();
           return;
         }
-        showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);
+        showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records, events);
       }
 
       syncViewFromHash();
@@ -1208,11 +1450,38 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       });
 
       document.addEventListener('click', function(event) {
+        // Issue #490: tab switching.
+        const tabButton = event.target.closest('.tab-button');
+        if (tabButton) {
+          switchTab(tabButton.getAttribute('data-tab'));
+          if (window.location.hash) window.location.hash = '';
+          return;
+        }
+
         const viewButton = event.target.closest('[data-view-record]');
         if (viewButton) {
           const index = Number(viewButton.getAttribute('data-view-record'));
           if (!Number.isNaN(index) && records[index]) {
             window.location.hash = detailHash(records[index]);
+          }
+          return;
+        }
+
+        // Issue #490: event + article view-more buttons.
+        const viewEventButton = event.target.closest('[data-view-event]');
+        if (viewEventButton) {
+          const index = Number(viewEventButton.getAttribute('data-view-event'));
+          if (!Number.isNaN(index) && events[index]) {
+            window.location.hash = '#event=' + encodeURIComponent(String(events[index].displayId || events[index].id || ''));
+          }
+          return;
+        }
+
+        const viewArticleButton = event.target.closest('[data-view-article]');
+        if (viewArticleButton) {
+          const index = Number(viewArticleButton.getAttribute('data-view-article'));
+          if (!Number.isNaN(index) && articles[index]) {
+            window.location.hash = '#article=' + encodeURIComponent(String(articles[index].id || ''));
           }
           return;
         }

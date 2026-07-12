@@ -348,9 +348,9 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if !strings.Contains(entries["index.html"], "Family Links") || !strings.Contains(entries["index.html"], "Archive Metadata") {
 		t.Fatalf("index.html missing expanded detail sections: %s", entries["index.html"])
 	}
-	if !strings.Contains(entries["index.html"], "function showDetailScreen(record, index, visibleCount, allRecords)") ||
-		!strings.Contains(entries["index.html"], "renderDetail(record, allRecords)") ||
-		!strings.Contains(entries["index.html"], "showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);") {
+	if !strings.Contains(entries["index.html"], "function showDetailScreen(record, index, visibleCount, allRecords, allEvents)") ||
+		!strings.Contains(entries["index.html"], "renderDetail(record, allRecords, allEvents)") ||
+		!strings.Contains(entries["index.html"], "showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records, events);") {
 		t.Fatalf("index.html missing static detail render wiring fix: %s", entries["index.html"])
 	}
 	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
