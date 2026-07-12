@@ -1,4 +1,8 @@
-# 04 — Browse (Local Archive)
+# 04 — Filter (Local Archive)
+
+> **UI label changed from "Browse" to "Filter" in issue #503 (label-only rename).**
+> The route `/browse`, service layer (`records.BrowsePage`), and handler names are unchanged.
+> Only user-facing labels were updated; the wireframe content below reflects the original scope.
 
 - **Route**: `/browse` (full page) + `/browse/results` (HTMX fragment)
 - **Builder**: `routebuilder.BrowseResults()`

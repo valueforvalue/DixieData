@@ -74,11 +74,13 @@ func BreadcrumbCrumbs(currentPath string) []BreadcrumbCrumb {
 		// /soldiers/{id} or /soldiers/{id}/tags
 		return handleSoldierDetailCrumbs(path)
 
-	// Browse family
+	// Browse family — the UI label is "Filter" for the
+	// legacy /browse route (handler: handleBrowse,
+	// service: records.BrowsePage). See issue #503.
 	case path == "/browse":
-		return joinCrumbs("Browse", "/browse", true)
+		return joinCrumbs("Filter", "/browse", true)
 	case path == "/browse/results":
-		return joinCrumbs("Browse", "/browse", false, "Results", "/browse/results", true)
+		return joinCrumbs("Filter", "/browse", false, "Results", "/browse/results", true)
 
 	// Review queue
 	case path == "/review-queue":

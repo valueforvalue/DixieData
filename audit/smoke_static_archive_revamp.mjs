@@ -121,7 +121,7 @@ test('slice2-02 nav menu has data-route markers for all 6 routes', () => {
 });
 
 test('slice2-03 nav menu label text matches the issue spec', () => {
-  for (const label of ['Calendar', 'Browse', 'Insights', 'Person Records', 'Events', 'Articles']) {
+  for (const label of ['Calendar', 'Filter', 'Insights', 'Person Records', 'Events', 'Articles']) {
     assert.ok(
       html.includes(label),
       `nav menu must render the label "${label}"`,

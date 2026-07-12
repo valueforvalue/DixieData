@@ -8,7 +8,7 @@ import (
 )
 
 // TestLayoutRendersRecordsMegaMenu pins issue #380 slice 2:
-// the 5 flat top-nav pills (Search/Browse/Events/Articles/Tags)
+// the 5 flat top-nav pills (Search/Filter/Events/Articles/Tags)
 // collapse into one Records mega-menu (NN/g 2D panel pattern).
 // Each assertion catches a single anti-pattern:
 //

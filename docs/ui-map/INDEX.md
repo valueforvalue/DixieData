@@ -38,7 +38,7 @@ below but worth knowing:
 | 01 | Calendar | `panel.calendar.quote`, `panel.calendar.grid`, `panel.calendar.details` | — | `overlay.print-config.modal` (via popout) | [01-calendar.md](wireframes/01-calendar.md) |
 | 02 | Calendar Day | (inline w/ Calendar) | — | — | (in `01-calendar.md`) |
 | 03 | Soldiers List (Search) | `panel.soldiers.search.basic`, `panel.soldiers.search.advanced`, `panel.soldiers.results` | `tab.soldiers.search.basic`, `tab.soldiers.search.advanced` | — | [wireframes/03-soldiers-list.md](wireframes/03-soldiers-list.md) |
-| 04 | Browse | `panel.browse.results` | — | — | [wireframes/04-browse.md](wireframes/04-browse.md) |
+| 04 | Filter | `panel.browse.results` | — | — | [wireframes/04-filter.md](wireframes/04-filter.md) |
 | 05 | Soldier Detail | `panel.soldier.detail.summary`, `panel.soldier.detail.records`, `panel.soldier.detail.images` | — | `overlay.image.viewer` | [wireframes/05-soldier-detail.md](wireframes/05-soldier-detail.md) |
 | 06 | Soldier New | `panel.soldier.form.scratchpad`, `panel.soldier.form.records`, `panel.soldier.form.images` | — | — | [wireframes/06-soldier-new.md](wireframes/06-soldier-new.md) |
 | 07 | Soldier Edit | (same as New) | — | — | [wireframes/07-soldier-edit.md](wireframes/07-soldier-edit.md) |

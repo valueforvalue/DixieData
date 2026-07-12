@@ -5,7 +5,7 @@
 // issue #380 Phase 2 + the recon in docs/agents/notes/380-
 // workflow-grouping.md, the top nav shrinks from 11 items to
 // 5 visible (Calendar + 2 mega-menus + Settings + CTA) by
-// folding Search / Browse / Events / Articles / Tags into a
+// folding Search / Filter / Events / Articles / Tags into a
 // Records mega-menu, and Review Queue / Timeline / Research
 // Log / Collections / Insights / Share items into a Share &
 // Review mega-menu.
@@ -114,7 +114,7 @@ func TestMegaMenu_RendersAllGroupsAndItems(t *testing.T) {
 		{
 			Title: "More records",
 			Items: []templ.Component{
-				megaMenuLink("/browse", "Browse", "records-browse"),
+				megaMenuLink("/browse", "Filter", "records-browse"),
 				megaMenuLink("/articles", "Articles", "records-articles"),
 			},
 		},

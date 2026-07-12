@@ -282,6 +282,8 @@ func TestJobStatusViewPollsForUpdates(t *testing.T) {
 // different job (when it doesn't). Layout has a variadic
 // omitJobsOverlay option; JobStatusView passes true so the popup
 // is stripped. Other call sites (@Layout("Browse"), @Layout(...))
+// Note: "Browse" is the internal Layout name; the user-facing label is
+// "Filter" per issue #503 label-only rename. The route /browse is unchanged.
 // continue to render the popup.
 func TestJobStatusViewOmitsJobsOverlay(t *testing.T) {
 	job := jobs.NewJob("job-overlay-omit", "static_archive")

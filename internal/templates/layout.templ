@@ -124,7 +124,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// Articles). Tags followed in the same pass —
 					// moved out of the People column into the More
 					// records column so the People group stays the
-					// surface-navigation pair (Search + Browse) and
+					// surface-navigation pair (Search + Filter) and
 					// More records collects the secondary listing
 					// surfaces (Tags, Articles, Events). The
 					// pre-mega-menu data-* hooks survive inside the
@@ -134,12 +134,15 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// readers + middle-click + htmx compatibility.
 					// The "Search" item uses the new label (slice
 					// 5); URL stays /soldiers.
+					// The "Filter" item is the UI label for the
+					// legacy /browse route (handler: handleBrowse,
+					// service: records.BrowsePage). See issue #503.
 					@components.MegaMenu("Records", uiids.LayoutRecordsMenu, nil, []components.MegaGroup{
 						{
 							Title: "People",
 							Items: []templ.Component{
 								templ.Raw(`<li role="none"><a href="/soldiers" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-search">Search</a></li>`),
-								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Browse</a></li>`),
+								templ.Raw(`<li role="none"><a href="/browse" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-marker="records-browse">Filter</a></li>`),
 							},
 						},
 						{

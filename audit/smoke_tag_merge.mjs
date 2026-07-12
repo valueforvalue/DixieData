@@ -109,7 +109,7 @@ try {
     const panel = document.querySelector('[data-mega-menu-panel="layout.records.menu"]');
     if (!panel) return null;
     const a = Array.from(panel.querySelectorAll('a[role="menuitem"]'))
-      .find((x) => (x.textContent || "").trim() === "Browse");
+      .find((x) => (x.textContent || "").trim() === "Filter");
     return a ? a.getAttribute("href") : null;
   });
   if (!browseUrl) {
