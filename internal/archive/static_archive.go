@@ -407,8 +407,10 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       background: rgba(255, 247, 231, 0.96);
     }
     .calendar-day.empty {
-      background: rgba(36, 48, 61, 0.04);
+      background: rgba(255, 251, 241, 0.78);
       cursor: default;
+      color: var(--muted);
+      opacity: 0.5;
     }
     .calendar-day-number {
       font-size: 0.95rem;
@@ -486,6 +488,35 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       height: 10px;
       border-radius: 999px;
       border: 1px solid rgba(141, 116, 64, 0.55);
+    }
+    .calendar-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 4px;
+    }
+    .calendar-nav-btn {
+      border-radius: 12px;
+      border: 1px solid rgba(141, 116, 64, 0.55);
+      background: rgba(255, 251, 241, 0.7);
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .calendar-nav-btn:hover {
+      background: rgba(255, 247, 231, 0.96);
+    }
+    .calendar-month-select {
+      border-radius: 12px;
+      border: 1px solid rgba(141, 116, 64, 0.55);
+      background: rgba(245, 242, 236, 0.96);
+      padding: 7px 12px;
+      font-size: 0.95rem;
+      color: var(--ink);
+      min-width: 160px;
     }
 
     /* Issue #498 slice 3/4: Browse + Insights cards. Defined here so
@@ -1726,15 +1757,22 @@ function escapeHtml(value) {
     }
 
     // renderCalendarPage renders the Calendar landing page from
-    // bundle.calendar (issue #498 slice 1). Always renders 12
-    // months in calendar order per locked decision 1; months with
-    // zero markers still show the grid skeleton so the user has
-    // visual confirmation of "this month had nothing".
-    function renderCalendarPage(bundle) {
+    // bundle.calendar (issue #498 slice 1). Renders ONE month at a
+    // time per issue #500 locked decision 1; a month selector
+    // dropdown + prev/next buttons let the user flip between months.
+    // Defaults to the current calendar month on first mount; hash
+    // pre-fill (?month=N) jumps to a specific month.
+    function renderCalendarPage(bundle, query) {
       var months = Array.isArray(bundle.calendar) ? bundle.calendar : [];
+      // Determine the initial month from the query string or today.
+      var q = parseCalendarQuery(query);
+      var currentMonth = new Date().getMonth() + 1; // 1-12
+      var monthNum = q.month ? Number(q.month) : currentMonth;
+      if (monthNum < 1 || monthNum > 12 || isNaN(monthNum)) monthNum = currentMonth;
+
       var totalDaysWithData = 0;
       var blocks = [];
-      for (var m = 1; m <= 12; m++) {
+      function renderMonthGrid(m) {
         var monthData = null;
         for (var i = 0; i < months.length; i++) {
           if (months[i].month === m) { monthData = months[i]; break; }
@@ -1800,12 +1838,44 @@ function escapeHtml(value) {
           '</div>'
         );
       }
+
+      // Build the full 12-month index once for the empty check
+      // and the total-days-with-data counter.
+      for (var m = 1; m <= 12; m++) {
+        var monthData = null;
+        for (var i = 0; i < months.length; i++) {
+          if (months[i].month === m) { monthData = months[i]; break; }
+        }
+        var days = (monthData && monthData.days) ? monthData.days : {};
+        for (var k in days) {
+          if (Object.prototype.hasOwnProperty.call(days, k)) {
+            var d = days[k];
+            if (d.a + d.e + d.h > 0) totalDaysWithData++;
+          }
+        }
+      }
+
+      // Month selector — dropdown for Jan-Dec + prev/next buttons.
+      var monthOpts = '';
+      for (var mi = 1; mi <= 12; mi++) {
+        monthOpts += '<option value="' + mi + '"' + (mi === monthNum ? ' selected' : '') + '>' + escapeHtml(ARCHIVE_CALENDAR_MONTHS[mi]) + '</option>';
+      }
+      var selectorHtml = '<div class="calendar-selector">' +
+        '<button type="button" class="calendar-nav-btn" id="calendar-prev-month" aria-label="Previous month">←</button>' +
+        '<select id="calendar-month-select" class="calendar-month-select">' + monthOpts + '</select>' +
+        '<button type="button" class="calendar-nav-btn" id="calendar-next-month" aria-label="Next month">→</button>' +
+      '</div>';
+
+      // Render grid for the current month.
+      renderMonthGrid(monthNum);
+
       return '' +
         '<div class="panel-head"><h2>Calendar</h2></div>' +
         '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to browse Person Records for that date.</p>' +
+        selectorHtml +
         (totalDaysWithData === 0
           ? '<div class="placeholder-card">No anniversaries, events, or holidays recorded in this archive.</div>'
-          : blocks.join(''));
+          : '<div id="calendar-month-grid">' + blocks.join('') + '</div>');
     }
 
     // renderBrowsePage renders the Browse page (filterable Person
@@ -1816,6 +1886,25 @@ function escapeHtml(value) {
     // Per locked decision 2 review_status is dropped (no review
     // queue in a read-only archive) and scope is hidden (always
     // "all" — the archive IS the full snapshot).
+    // parseCalendarQuery extracts month from the Calendar route
+    // query string (?month=5). Issue #500: default to current month
+    // when no query is present.
+    function parseCalendarQuery(queryString) {
+      var out = {};
+      var s = String(queryString || '').replace(/^\?/, '');
+      if (!s) return out;
+      var parts = s.split('&');
+      for (var i = 0; i < parts.length; i++) {
+        var eq = parts[i].indexOf('=');
+        if (eq < 0) {
+          out[decodeURIComponent(parts[i])] = '';
+        } else {
+          out[decodeURIComponent(parts[i].slice(0, eq))] = decodeURIComponent(parts[i].slice(eq + 1));
+        }
+      }
+      return out;
+    }
+
     function renderBrowsePage(bundle, query) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
       return '' +
@@ -2387,7 +2476,7 @@ function escapeHtml(value) {
         updateNavActive(route.name);
         var html = '';
         switch (route.name) {
-          case 'calendar': html = renderCalendarPage(bundle); break;
+          case 'calendar': html = renderCalendarPage(bundle, route.query); break;
           case 'browse':
             html = renderBrowsePage(bundle, route.query);
             setPageHtml(html);
@@ -2406,10 +2495,38 @@ function escapeHtml(value) {
           case 'persons': html = renderPersonsPage(bundle); break;
           case 'events': html = renderEventsPage(bundle); break;
           case 'articles': html = renderArticlesPage(bundle); break;
-          default: html = renderCalendarPage(bundle);
+          default: html = renderCalendarPage(bundle, '');
         }
         setPageHtml(html);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Wire Calendar month-selector listeners (issue #500).
+        if (route.name === 'calendar') {
+          var monthSel = document.getElementById('calendar-month-select');
+          if (monthSel) {
+            monthSel.addEventListener('change', function() {
+              window.location.hash = '#/calendar?month=' + monthSel.value;
+            });
+          }
+          var prevBtn = document.getElementById('calendar-prev-month');
+          var nextBtn = document.getElementById('calendar-next-month');
+          if (prevBtn) {
+            prevBtn.addEventListener('click', function() {
+              var sel = document.getElementById('calendar-month-select');
+              if (!sel) return;
+              var v = Number(sel.value) || 1;
+              if (v > 1) window.location.hash = '#/calendar?month=' + (v - 1);
+            });
+          }
+          if (nextBtn) {
+            nextBtn.addEventListener('click', function() {
+              var sel = document.getElementById('calendar-month-select');
+              if (!sel) return;
+              var v = Number(sel.value) || 12;
+              if (v < 12) window.location.hash = '#/calendar?month=' + (v + 1);
+            });
+          }
+        }
       }
 
       // applyBrowsePrefillSelects selects the dropdown options whose
