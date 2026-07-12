@@ -1713,11 +1713,13 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	}
 
 	indexHTML, err := renderStaticArchiveIndex(staticArchiveIndexData{
-		ArchiveTitle: owner.DisplayName + "'s Civil War Research Archive",
-		OwnerShort:   owner.DisplayName,
-		Version:      buildinfo.AppVersion,
-		Build:        buildinfo.BuildIdentity(),
-		GeneratedAt:  time.Now().Format("January 2, 2006"),
+		ArchiveTitle:  owner.DisplayName + "'s Civil War Research Archive",
+		OwnerShort:    owner.DisplayName,
+		Version:       buildinfo.AppVersion,
+		Build:         buildinfo.BuildIdentity(),
+		GeneratedAt:   time.Now().Format("January 2, 2006"),
+		FileStemJS:    strconv.Quote(owner.FileStem),
+		GeneratedAtJS: strconv.Quote(time.Now().Format("January 2, 2006")),
 	})
 	if err != nil {
 		return err
