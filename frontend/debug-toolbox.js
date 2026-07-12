@@ -14,7 +14,7 @@
 // hangs global error + fetch interceptors off the window so the
 // toolbox has data to inspect.
 
-const DIXIE_TOOLBOX_VERSION = 1;
+const DIXIE_TOOLBOX_VERSION = "1";
 const DIXIE_MAX_NETWORK_LOG = 50;
 const DIXIE_MAX_ERROR_LOG = 30;
 
@@ -38,7 +38,7 @@ function pathCrumbsForCurrentPath(currentPath) {
       { label: "Calendar", href: "/calendar", isCurrent: true },
     ];
   }
-  function join(items) {
+  function join(...items) {
     const crumbs = [{ label: "Home", href: "/calendar", isCurrent: false }];
     for (let i = 0; i + 2 < items.length; i += 3) {
       const label = items[i];
@@ -406,7 +406,11 @@ function installDixieDebugToolbox() {
   if (originalFetch) {
     window.fetch = function patchedFetch(input, init) {
       const startedAt = Date.now();
-      const method = (init && init.method) || (input && input.method) || "GET";
+      let method = (init && init.method) || undefined;
+      if (!method && input instanceof Request) {
+        method = input.method;
+      }
+      method = method || "GET";
       let urlPath;
       try {
         const req = input instanceof Request ? input : new Request(input, init);
