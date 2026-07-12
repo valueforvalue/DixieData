@@ -276,6 +276,58 @@ func TestHighContrast_HasFlatBodyBackground(t *testing.T) {
 	}
 }
 
+// TestHighContrast_AccentIsGrayscale pins the issue #483 follow-up
+// design decision: the High Contrast theme's interactive accent
+// (links, focus rings, button borders, hover inversion) is
+// grayscale, not blue. The pre-fix HC theme used a blue accent
+// family (#1d4ed8 / #3b82f6 / #1e40af / #93c5fd / #1e3a8a) that
+// the user found out of place in a "high contrast" theme. This
+// test fails if any of the HC accent tokens regress to a blue
+// (or any saturated hue) value, and pins the grayscale values
+// so a future palette drift fails `go test` instead of the
+// next manual audit.
+func TestHighContrast_AccentIsGrayscale(t *testing.T) {
+	css := readTailwindCSS(t)
+	hcBlock := extractBlock(css, `html[data-theme="high-contrast"]`)
+	if hcBlock == "" {
+		t.Fatal("missing html[data-theme=\"high-contrast\"] block")
+	}
+	// The HC accent family must resolve to grayscale hex values.
+	// Each entry: token -> expected hex (grayscale).
+	want := map[string]string{
+		"--theme-accent":        "#111111",
+		"--theme-accent-light":  "#2a2a2a",
+		"--theme-accent-deep":   "#000000",
+		"--theme-accent-glow":   "#6a6a6a",
+		"--theme-accent-strong": "#000000",
+	}
+	for token, hex := range want {
+		needle := token + ": " + hex + ";"
+		if !strings.Contains(hcBlock, needle) {
+			t.Errorf("HC %s must be %s (grayscale; no blue); not found in HC block. block = %q", token, hex, hcBlock)
+		}
+	}
+	// Hard guard: no blue hex literal may appear anywhere in the
+	// HC token block. The pre-fix blue family was #1d4ed8 / #3b82f6
+	// / #1e40af / #93c5fd / #1e3a8a. If any returns, fail.
+	for _, blue := range []string{
+		"#1d4ed8", "#3b82f6", "#1e40af", "#93c5fd", "#1e3a8a",
+	} {
+		if strings.Contains(hcBlock, blue) {
+			t.Errorf("HC block must not contain blue accent %s (issue #483 follow-up: HC is grayscale); block = %q", blue, hcBlock)
+		}
+	}
+	// The gold + info rgb tuples (formerly blue 29 78 216) must
+	// also be neutralized so alpha-modified gold usages (focus
+	// rings, tints) read as gray, not blue.
+	if strings.Contains(hcBlock, "--theme-gold-rgb: 29 78 216") {
+		t.Errorf("HC --theme-gold-rgb must not be the blue 29 78 216 (issue #483 follow-up); block = %q", hcBlock)
+	}
+	if strings.Contains(hcBlock, "--theme-info-rgb: 29 78 216") {
+		t.Errorf("HC --theme-info-rgb must not be the blue 29 78 216 (issue #483 follow-up); block = %q", hcBlock)
+	}
+}
+
 // TestFieldInput_HasSolidVisibleBorder pins the QA report that
 // every text field on /soldiers/new has "no outline" — i.e. the
 // user can't tell where the field is until they click. The cause

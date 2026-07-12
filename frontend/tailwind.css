@@ -126,10 +126,17 @@ html { scrollbar-gutter: stable; }
 }
 
 /* High Contrast — WCAG AA across every surface, no decorative
-   gold/sepia washes, single restrained blue accent for
-   interactive elements, 1.5–2px solid borders, focus rings
-   always visible, no gradient backgrounds on cards or
-   buttons. Replaces the slice 1 placeholder filter. */
+   gold/sepia washes, grayscale interactive accent (no blue;
+   issue #483 follow-up), 1.5–2px solid borders, focus rings
+   always visible, no gradient backgrounds on cards or buttons.
+   Interactive elements (links, focus rings, button borders,
+   hover inversion) use a black/near-black accent instead of a
+   colored hue so the theme is clean grayscale. Semantic state
+   colors (success green, review/error red, warning amber) are
+   kept but desaturated/muted so state meaning survives without
+   vivid color; info (formerly blue) is neutralized to dark gray
+   since blue was the hue the user wanted gone. Replaces the
+   slice 1 placeholder filter. */
 html[data-theme="high-contrast"] {
   --theme-bg-page-top: #ffffff;
   --theme-bg-page-mid: #f5f5f5;
@@ -142,37 +149,47 @@ html[data-theme="high-contrast"] {
   --theme-text-mid: #1f1f1f;
   --theme-text-muted: #1f1f1f;
   --theme-text-faint: #2a2a2a;
-  --theme-accent: #1d4ed8;
-  --theme-accent-light: #3b82f6;
-  --theme-accent-deep: #1e40af;
-  --theme-accent-glow: #93c5fd;
-  --theme-accent-strong: #1e3a8a;
+  /* Interactive accent = grayscale (issue #483 follow-up).
+     #111 main accent for links + focus borders; #000 strong for
+     2px borders; #2a2a2a light + #6a6a6a glow for the rare
+     gradient/outline needs. No blue. */
+  --theme-accent: #111111;
+  --theme-accent-light: #2a2a2a;
+  --theme-accent-deep: #000000;
+  --theme-accent-glow: #6a6a6a;
+  --theme-accent-strong: #000000;
   --theme-sepia-300: #444444;
   --theme-border: #222222;
   --theme-border-strong: #000000;
   --theme-review-red: #7a2d2d;
-  /* rgb tuples for the templ arbitrary-value classes */
+  /* rgb tuples for the templ arbitrary-value classes. Gold
+     (formerly blue in HC) is now near-black so the alpha-modified
+     gold usages (focus rings, tints) read as neutral gray. */
   --theme-sepia-rgb: 0 0 0;
   --theme-parchment-rgb: 255 255 255;
   --theme-white-rgb: 255 255 255;
-  --theme-amber-700-rgb: 180 83 9;
-  --theme-emerald-700-rgb: 4 120 87;
+  /* Semantic state colors: kept but desaturated/muted so state
+     meaning survives without vivid color. Green/amber/red hues
+     retained at low saturation; info (was blue) neutralized to
+     dark gray since the user wanted blue gone. */
+  --theme-amber-700-rgb: 110 80 35;
+  --theme-emerald-700-rgb: 30 75 50;
   --theme-review-red-rgb: 122 45 45;
-  --theme-error-red-bg-rgb: 255 245 245;
-  --theme-success-green-bg-rgb: 240 253 244;
-  --theme-amber-100-rgb: 254 243 199;
-  --theme-amber-200-rgb: 253 230 138;
-  --theme-emerald-700-rgb-2: 4 120 87;
-  --theme-warning-rgb: 180 83 9;
-  --theme-info-rgb: 29 78 216;
-  --theme-success-green-rgb: 22 101 52;
-  --theme-gold-rgb: 29 78 216;
-  --theme-amber-50-rgb: 255 251 235;
-  --theme-amber-500-rgb: 245 158 11;
-  --theme-amber-600-rgb: 217 119 6;
-  --theme-emerald-50-rgb: 236 253 245;
-  --theme-rose-50-rgb: 255 241 242;
-  --theme-rose-200-rgb: 254 205 211;
+  --theme-error-red-bg-rgb: 245 240 240;
+  --theme-success-green-bg-rgb: 238 245 240;
+  --theme-amber-100-rgb: 238 235 228;
+  --theme-amber-200-rgb: 232 224 205;
+  --theme-emerald-700-rgb-2: 30 75 50;
+  --theme-warning-rgb: 110 80 35;
+  --theme-info-rgb: 51 51 51;
+  --theme-success-green-rgb: 30 75 50;
+  --theme-gold-rgb: 17 17 17;
+  --theme-amber-50-rgb: 242 240 235;
+  --theme-amber-500-rgb: 140 110 50;
+  --theme-amber-600-rgb: 110 80 35;
+  --theme-emerald-50-rgb: 238 245 240;
+  --theme-rose-50-rgb: 242 240 240;
+  --theme-rose-200-rgb: 224 214 214;
 }
 
 /* Soft — warmer sepia-leaning palette for long reading
@@ -1227,4 +1244,50 @@ html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:focus-
 [data-article-body] th {
   font-weight: 600;
   color: #22303d;
+}
+/* Issue #483 follow-up: the primary-button default rule builds a
+   linear-gradient(--theme-accent-light -> --theme-accent-deep) bg
+   with color: var(--theme-text-deep). In HC the accent tokens are
+   now grayscale (#2a2a2a -> #000) and --theme-text-deep is #000,
+   so the default rule would render black text on a near-black
+   gradient (invisible). Override the primary CTA in HC to match
+   the grayscale interactive language: white bg, 2px black border,
+   #111 text (outline style, same as the secondary-button), and
+   invert on hover (black bg, white text) -- the user's chosen
+   preview for HC buttons. Placed at the END of the file (top-level,
+   not inside @layer) so it (a) wins by source order over the base
+   .primary-button rule and (b) has higher priority than the
+   @layer components base rule, while extractClassRule finds the
+   base rule first (the TestPrimaryButton_UsesThemeVars pin still
+   passes because the base rule appears earlier in the file). The
+   danger button keeps its red state treatment (desaturated) so the
+   destructive meaning survives. */
+html[data-theme="high-contrast"] .primary-button {
+  background: var(--theme-bg-card);
+  background-image: none;
+  color: var(--theme-text-primary);
+  border: 2px solid var(--theme-accent-strong);
+}
+html[data-theme="high-contrast"] .primary-button:hover {
+  background: var(--theme-accent-strong);
+  background-image: none;
+  color: #ffffff;
+}
+html[data-theme="high-contrast"] .secondary-button:hover,
+html[data-theme="high-contrast"] .pill-link:hover {
+  background: var(--theme-accent-strong);
+  color: #ffffff;
+}
+
+/* Issue #483 follow-up: article-body links are hardcoded blue
+   (#1d4ed8) in the base [data-article-body] a rule, which leaks
+   color into the grayscale High Contrast theme. Override in HC
+   so article links follow the grayscale accent (near-black,
+   still underlined) instead of blue. The research surface
+   (text-research-text / -accent) keeps its own blue palette —
+   that's a distinct intentional feature surface, not the HC
+   theme accent, and is out of scope for this grayscale pass. */
+html[data-theme="high-contrast"] [data-article-body] a,
+html[data-theme="high-contrast"] [data-article-body] a:hover {
+  color: var(--theme-text-primary);
 }
