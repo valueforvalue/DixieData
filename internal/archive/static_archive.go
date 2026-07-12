@@ -10,6 +10,7 @@ package archive
 
 import (
 	"archive/zip"
+	"database/sql"
 	"fmt"
 	"html/template"
 	"io"
@@ -151,6 +152,21 @@ type StaticArchiveCalendarMonth struct {
 // ships all 12 months so the JS grid renders a full year;
 // the JS simply hides months with zero markers.
 type StaticArchiveCalendar []StaticArchiveCalendarMonth
+
+// StaticArchiveCalendarItem is a single calendar_items row
+// exported into the archive bundle (issue #502). Each item
+// carries its canonical fields: item_type (holiday/anniversary/
+// event), month/day, title, and optional notes.
+type StaticArchiveCalendarItem struct {
+	ID        int    `json:"id"`
+	ItemType  string `json:"itemType"`
+	Month     int    `json:"month"`
+	Day       int    `json:"day"`
+	Title     string `json:"title"`
+	Notes     string `json:"notes,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+}
 
 
 // --- staticArchiveOwner/IndexData types ---
@@ -518,6 +534,51 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       color: var(--ink);
       min-width: 160px;
     }
+    .calendar-items-link {
+      margin: 8px 0 4px;
+      font-size: 0.9rem;
+    }
+    .action-link {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: underline;
+    }
+    .ci-table-wrap {
+      overflow-x: auto;
+    }
+    .ci-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .ci-table th {
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 12px;
+      border-bottom: 2px solid rgba(141, 116, 64, 0.28);
+    }
+    .ci-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(141, 116, 64, 0.12);
+      color: var(--ink);
+    }
+    .ci-date { white-space: nowrap; font-weight: 600; }
+    .ci-type .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .ci-holiday { background: rgba(217, 137, 137, 0.22); border: 1px solid rgba(180, 90, 90, 0.55); color: #1f2b38; }
+    .ci-anniversary { background: rgba(197, 171, 104, 0.22); border: 1px solid rgba(141, 116, 64, 0.55); color: #1f2b38; }
+    .ci-event { background: rgba(124, 179, 226, 0.28); border: 1px solid rgba(80, 130, 180, 0.55); color: #1f2b38; }
 
     /* Issue #498 slice 3/4: Browse + Insights cards. Defined here so
        the page renderers can use them even before slices 3 + 4 land
@@ -1721,7 +1782,7 @@ function escapeHtml(value) {
         var name = pageMatch[1];
         var query = (pageMatch[2] || '').replace(/^\?/, '');
         if (name === 'calendar' || name === 'browse' || name === 'insights' ||
-            name === 'persons' || name === 'events' || name === 'articles') {
+            name === 'persons' || name === 'events' || name === 'articles' || name === 'calendar-items') {
           return { kind: 'page', name: name, query: query };
         }
       }
@@ -1873,6 +1934,7 @@ function escapeHtml(value) {
         '<div class="panel-head"><h2>Calendar</h2></div>' +
         '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to filter Person Records for that date.</p>' +
         selectorHtml +
+        '<div class="calendar-items-link"><a href="#/calendar-items" class="action-link">View all ' + totalDaysWithData + ' calendar items &rarr;</a></div>' +
         (totalDaysWithData === 0
           ? '<div class="placeholder-card">No anniversaries, events, or holidays recorded in this archive.</div>'
           : '<div id="calendar-month-grid">' + blocks.join('') + '</div>');
@@ -2260,6 +2322,32 @@ function escapeHtml(value) {
       return html;
     }
 
+    // renderCalendarItemsPage renders the Calendar items list
+    // (issue #502). Shows every calendar_items row in a table
+    // with item_type filter chips, sorted by month+day.
+    function renderCalendarItemsPage(bundle) {
+      var items = Array.isArray(bundle.calendar_items) ? bundle.calendar_items : [];
+      var rows = '';
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var monthName = ARCHIVE_CALENDAR_MONTHS[it.month] || String(it.month);
+        rows += '<tr>' +
+          '<td class="ci-date">' + escapeHtml(monthName) + ' ' + it.day + '</td>' +
+          '<td class="ci-type"><span class="pill ci-' + escapeHtml(it.itemType) + '">' + escapeHtml(it.itemType) + '</span></td>' +
+          '<td class="ci-title">' + escapeHtml(it.title) + '</td>' +
+          '<td class="ci-notes">' + (it.notes ? escapeHtml(it.notes) : '') + '</td>' +
+          '</tr>';
+      }
+      return '' +
+        '<div class="panel-head"><h2>Calendar Items</h2></div>' +
+        '<p class="panel-subtext">' + items.length + ' calendar item' + (items.length === 1 ? '' : 's') + ' (holidays, anniversaries, events). Sorted by month and day.</p>' +
+        (items.length === 0
+          ? '<div class="placeholder-card">No calendar items in this archive.</div>'
+          : '<div class="ci-table-wrap"><table class="ci-table">' +
+            '<thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Notes</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table></div>');
+    }
+
     // renderPersonsPage / renderEventsPage / renderArticlesPage are
     // the legacy list screens from #320 / #490, re-routed through
     // the new hash router. Each renders its list (no search input
@@ -2477,6 +2565,7 @@ function escapeHtml(value) {
         var html = '';
         switch (route.name) {
           case 'calendar': html = renderCalendarPage(bundle, route.query); break;
+          case 'calendar-items': html = renderCalendarItemsPage(bundle); break;
           case 'browse':
             html = renderBrowsePage(bundle, route.query);
             setPageHtml(html);
@@ -3364,4 +3453,40 @@ func (e *ExportService) staticArchiveCalendar() (StaticArchiveCalendar, error) {
 // page without a server round-trip.
 func (e *ExportService) staticArchiveInsights() (records.AnalyticsSnapshot, error) {
 	return records.NewAnalyticsService(e.db).Snapshot()
+}
+
+// staticArchiveCalendarItems returns every row from calendar_items
+// projected into StaticArchiveCalendarItem DTOs (issue #502).
+// Mirrors the inline-service pattern — constructs CalendarService
+// on the fly rather than widening ExportService.
+func (e *ExportService) staticArchiveCalendarItems() ([]StaticArchiveCalendarItem, error) {
+	rows, err := e.db.Conn().Query(`SELECT id, item_type, month, day, title, COALESCE(notes,'') AS notes, created_at, updated_at
+		FROM calendar_items
+		ORDER BY month, day, CASE item_type WHEN 'holiday' THEN 0 WHEN 'event' THEN 1 ELSE 2 END, LOWER(title)`)
+	if err != nil {
+		return nil, fmt.Errorf("staticArchiveCalendarItems: %w", err)
+	}
+	defer debug.DeferCloseLog(rows, "staticArchiveCalendarItems.rows")
+	var items []StaticArchiveCalendarItem
+	for rows.Next() {
+		var item StaticArchiveCalendarItem
+		var notes, createdAt, updatedAt sql.NullString
+		if err := rows.Scan(&item.ID, &item.ItemType, &item.Month, &item.Day, &item.Title, &notes, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("staticArchiveCalendarItems scan: %w", err)
+		}
+		if notes.Valid {
+			item.Notes = notes.String
+		}
+		if createdAt.Valid {
+			item.CreatedAt = createdAt.String
+		}
+		if updatedAt.Valid {
+			item.UpdatedAt = updatedAt.String
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("staticArchiveCalendarItems rows: %w", err)
+	}
+	return items, nil
 }

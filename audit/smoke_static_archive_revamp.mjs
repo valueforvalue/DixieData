@@ -75,7 +75,7 @@ const jobsSrc = readFileSync(JOBS_GO, 'utf8');
 
 test('slice1-01 archive bundle carries a Calendar field', () => {
   assert.ok(
-    exportSrc.includes('Calendar StaticArchiveCalendar'),
+    /Calendar\s+StaticArchiveCalendar/.test(exportSrc),
     'export_service.go must declare the Calendar field on the bundle struct',
   );
   assert.ok(
@@ -161,6 +161,38 @@ test('slice2-05 Calendar landing renders single-month grid with selector (issue 
   assert.ok(
     html.includes('parseCalendarQuery'),
     'Calendar must define parseCalendarQuery for month hash pre-fill (issue #500)',
+  );
+});
+
+// --- Slice 2.5: Calendar items page (issue #502) ---
+
+test('slice2-5-01 archive bundle carries a calendar_items field', () => {
+  assert.ok(
+    /CalendarItems\s+\[\]StaticArchiveCalendarItem/.test(exportSrc),
+    'export_service.go must declare the CalendarItems field on the bundle struct (issue #502)',
+  );
+  assert.ok(
+    html.includes('staticArchiveCalendarItems()'),
+    'static_archive.go must define staticArchiveCalendarItems() helper (issue #502)',
+  );
+  assert.ok(
+    html.includes('StaticArchiveCalendarItem'),
+    'static_archive.go must declare StaticArchiveCalendarItem type (issue #502)',
+  );
+});
+
+test('slice2-5-02 Calendar items page renders with route #/calendar-items', () => {
+  assert.ok(
+    html.includes('renderCalendarItemsPage'),
+    'JS must define renderCalendarItemsPage (issue #502)',
+  );
+  assert.ok(
+    html.includes('bundle.calendar_items'),
+    'renderCalendarItemsPage must read bundle.calendar_items (issue #502)',
+  );
+  assert.ok(
+    html.includes('calendar-items'),
+    'routeFromHash must support #/calendar-items (issue #502)',
   );
 });
 
@@ -258,7 +290,7 @@ test('slice3-03 Browse pre-fill reads #/browse?{field}={value} from route hash',
 
 test('slice4-01 Insights page reads bundle.insights', () => {
   assert.ok(
-    exportSrc.includes('Insights AnalyticsSnapshot'),
+    /Insights\s+AnalyticsSnapshot/.test(exportSrc),
     'export_service.go bundle struct must declare Insights field',
   );
   assert.ok(
