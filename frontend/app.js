@@ -3157,6 +3157,9 @@
     });
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   */
   function syncConfederateHomeFields(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -3177,6 +3180,9 @@
     }
   }
 
+  /**
+   * @param {string} path
+   */
   function normalizedRedirectPath(path) {
     if (path === "/export") {
       return "/share";
@@ -3184,6 +3190,9 @@
     return path;
   }
 
+  /**
+   * @param {unknown} state
+   */
   function saveRedirectState(state) {
     try {
       window.sessionStorage.setItem(redirectStateStorageKey, JSON.stringify(state));
@@ -3219,6 +3228,9 @@
     return region instanceof HTMLElement ? region : null;
   }
 
+  /**
+   * @param {unknown} state
+   */
   function savePendingToast(state) {
     try {
       window.sessionStorage.setItem(toastStateStorageKey, JSON.stringify(state));
@@ -3241,6 +3253,10 @@
     }
   }
 
+  /**
+   * @param {string} message
+   * @param {string} [kind]
+   */
   function showToast(message, kind = "success") {
     const region = toastRegion();
     if (!(region instanceof HTMLElement) || !message) {
@@ -3284,6 +3300,12 @@
     showToast(pending.message, pending.kind || "success");
   }
 
+  /**
+   * @param {HTMLElement} el
+   * @param {string} redirectTo
+   * @param {string} responseText
+   * @param {{scrollX?: number, scrollY?: number} | undefined} requestState
+   */
   function rememberRedirectState(el, redirectTo, responseText, requestState) {
     const normalizedPath = normalizedRedirectPath(redirectTo);
     const redirectState = {
@@ -3353,6 +3375,9 @@
     });
   }
 
+  /**
+   * @param {string | number} monthValue
+   */
   async function refreshCalendarGrid(monthValue) {
     const month = Number.parseInt(String(monthValue || ""), 10);
     if (!Number.isInteger(month) || month < 1 || month > 12) {
@@ -3451,6 +3476,9 @@
     });
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   */
   function currentBrowseStateFromForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return {};
@@ -3470,6 +3498,10 @@
     };
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {Record<string, unknown> | null | undefined} state
+   */
   function applyBrowseStateToForm(form, state) {
     if (!(form instanceof HTMLFormElement) || !state || typeof state !== "object") {
       return;
@@ -3484,11 +3516,18 @@
     });
   }
 
+  /**
+   * @param {Record<string, string | null>} current
+   * @param {Record<string, string | null>} saved
+   */
   function browseStateDiffers(current, saved) {
     return ["page", "page_size", "scope", "sort", "entry_type", "unit", "buried_in", "pension_state", "review_status", "confederate_home_status"]
       .some((key) => String(current[key] || "") !== String(saved[key] || ""));
   }
 
+  /**
+   * @param {Document | HTMLElement} root
+   */
   function applyBrowseColumns(root) {
     const enabled = new Set(loadBrowseColumns());
     root.querySelectorAll("[data-browse-column-toggle]").forEach((toggle) => {
@@ -3504,6 +3543,9 @@
     });
   }
 
+  /**
+   * @param {Document | HTMLElement} [root]
+   */
   function updateBrowseSelectionStatus(root = document) {
     const selected = loadBrowseSelection();
     root.querySelectorAll("[data-browse-selection-status]").forEach((node) => {
@@ -3525,6 +3567,9 @@
     }
   }
 
+  /**
+   * @param {Document | HTMLElement} root
+   */
   function applyBrowseSelection(root) {
     const selected = new Set(loadBrowseSelection());
     root.querySelectorAll("[data-browse-select]").forEach((input) => {
@@ -3536,6 +3581,9 @@
     updateBrowseSelectionStatus(root);
   }
 
+  /**
+   * @param {Document | HTMLElement} [root]
+   */
   function applyCalendarAnniversaryDensity(root = document) {
     const mode = loadCalendarAnniversaryDensity();
     const activeClasses = ["border-[#22303d]", "bg-[rgba(36,48,61,0.92)]", "text-[#f2ede1]"];
@@ -3594,7 +3642,8 @@
     saveBrowseState(currentBrowseStateFromForm(form));
   }
 
-  function setBusyGroupState(el, busy) {
+  /** @param {Element} el @param {boolean} busy */
+function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
     }
@@ -3614,7 +3663,8 @@
     });
   }
 
-  function setBusyState(el, busy) {
+  /** @param {Element} el @param {boolean} busy */
+function setBusyState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
     }
@@ -3654,7 +3704,8 @@
   // after trim. The check is intentionally narrow so the create
   // gate doesn't fire on edit forms (which carry the same input
   // ids via the entry_form.templ partial) or on synthetic forms.
-  function formIsNewSoldierWithEmptyNames(form) {
+  /** @param {HTMLFormElement} form */
+function formIsNewSoldierWithEmptyNames(form) {
     if (!(form instanceof HTMLFormElement)) {
       return false;
     }
@@ -3704,7 +3755,8 @@
   // The submit event listener is attached exactly once per
   // (form, callback) pair via a marker dataset attribute, so
   // callers can invoke this helper idempotently.
-  function dispatchUtilitySubmit(form, callback) {
+  /** @param {HTMLFormElement} form @param {(form: HTMLFormElement) => void} callback */
+function dispatchUtilitySubmit(form, callback) {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
     if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
@@ -3732,7 +3784,8 @@
   // utility-submit install so the two helpers' install statuses
   // don't conflict (in practice a form uses one or the other,
   // not both).
-  function dispatchSubmitPrep(form, callback) {
+  /** @param {HTMLFormElement} form @param {(form: HTMLFormElement) => void} callback */
+function dispatchSubmitPrep(form, callback) {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
     if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
@@ -3741,7 +3794,8 @@
     });
   }
 
-  async function dispatchDixieDataForm(button) {
+  /** @param {EventTarget | HTMLFormElement} button */
+async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the
     // parent form's action. The earlier code only honored
@@ -4097,7 +4151,8 @@
     }
   }
 
-  async function openExternalLinkInChrome(href) {
+  /** @param {string} href */
+async function openExternalLinkInChrome(href) {
     const params = new URLSearchParams();
     params.set("target", href);
     try {
@@ -4138,6 +4193,7 @@
   /** @type {HTMLElement | null} */
   let overlayModalRestoreFocus = null;
 
+  /** @param {Element} modal */
   function showOverlayModal(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
@@ -4157,6 +4213,7 @@
     document.addEventListener("keydown", overlayModalKeydown, true);
   }
 
+  /** @param {Element} modal */
   function hideOverlayModal(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
@@ -4172,7 +4229,8 @@
     }
   }
 
-  function overlayModalKeydown(event) {
+  /** @param {KeyboardEvent} event */
+function overlayModalKeydown(event) {
     if (event.key !== "Tab") {
       return;
     }
@@ -4226,7 +4284,8 @@
   // valid cache the body is restored from memory and no network
   // request fires. The placeholder rendered by the templ (empty
   // chrome, "Loading…" fallback) is overwritten either way.
-  function loadPrintRecordsFragment(modal) {
+  /** @param {Element} modal */
+function loadPrintRecordsFragment(modal) {
     if (!(modal instanceof HTMLElement)) {
       return;
     }
@@ -4314,7 +4373,8 @@
   // filter wiring, and refreshes the preview. Mirrors what
   // openPrintConfigModal does for the modal itself, scoped to the
   // fragment that just arrived.
-  function onPrintRecordsFragmentReady(modal) {
+  /** @param {Element} modal */
+function onPrintRecordsFragmentReady(modal) {
     const submit = modal.querySelector("[data-print-config-submit]");
     if (submit instanceof HTMLButtonElement) {
       submit.disabled = false;
@@ -4405,7 +4465,8 @@
       window.location.assign(destination);
     });
   }
-  function pickDismissTarget(fallback) {
+  /** @param {string} fallback @returns {string} */
+function pickDismissTarget(fallback) {
     const ref = String(document.referrer || "");
     if (!ref) return fallback;
     let url;
@@ -4442,7 +4503,8 @@
       return [];
     }
   }
-  function writeShareQueue(ids) {
+  /** @param {number[]} ids */
+function writeShareQueue(ids) {
     try {
       if (!window.localStorage) return;
       window.localStorage.setItem(SHARE_QUEUE_STORAGE_KEY, JSON.stringify(ids));
@@ -4452,7 +4514,8 @@
     }
     updateShareQueuePill(ids);
   }
-  function updateShareQueuePill(ids) {
+  /** @param {number[] | null} ids */
+function updateShareQueuePill(ids) {
     const pill = document.querySelector("[data-share-queue-pill]");
     if (!(pill instanceof HTMLElement)) return;
     if (!ids || ids.length === 0) {
@@ -4465,7 +4528,8 @@
       counter.textContent = String(ids.length);
     }
   }
-  function addToShareQueue(id) {
+  /** @param {number} id */
+function addToShareQueue(id) {
     if (typeof id !== "number" || id <= 0) return;
     const ids = readShareQueue();
     if (ids.indexOf(id) !== -1) return;
@@ -4473,7 +4537,8 @@
     writeShareQueue(ids);
     updateShareQueuePill();
   }
-  function removeFromShareQueue(id) {
+  /** @param {number} id */
+function removeFromShareQueue(id) {
     const ids = readShareQueue().filter((n) => n !== id);
     writeShareQueue(ids);
     updateShareQueuePill();
@@ -4532,7 +4597,8 @@
     });
     return ids;
   }
-  function pageSetStatus(text) {
+  /** @param {string} text */
+function pageSetStatus(text) {
     const slot = document.querySelector("[data-share-queue-page-status]");
     if (!(slot instanceof HTMLElement)) return;
     slot.textContent = text || "";
@@ -4545,7 +4611,8 @@
     if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !enabled;
     if (exportBtn instanceof HTMLButtonElement) exportBtn.disabled = !enabled;
   }
-  function shareQueuePageRowTemplate(row, index) {
+  /** @param {{id: number, label: string}} row @param {number} index @returns {HTMLTableRowElement} */
+function shareQueuePageRowTemplate(row, index) {
     const tr = document.createElement("tr");
     tr.setAttribute("data-share-queue-page-row-id", String(row.id));
     tr.className = "border-b border-[rgba(141,116,64,0.18)]";
@@ -4624,7 +4691,8 @@
   // helper of the same name (share_queue_modal.templ) when the
   // modal was deleted in issue #310 PR 2; PR 3 re-mounts the
   // presets UI on the page.
-  function shareQueuePresetStatusPage(panel, text) {
+  /** @param {Element} panel @param {string} text */
+function shareQueuePresetStatusPage(panel, text) {
     if (!(panel instanceof HTMLElement)) return;
     const slot = panel.querySelector("[data-share-queue-preset-status]");
     if (!(slot instanceof HTMLElement)) return;
@@ -4641,7 +4709,8 @@
   // queue to /share/queue/presets and refreshes the preset list.
   // Mirrors the modal save handler; uses the page's presets panel
   // instead of querying the modal's [data-share-queue-modal].
-  async function saveCurrentQueueAsPresetPage(panel, form) {
+  /** @param {Element} panel @param {HTMLFormElement} form */
+async function saveCurrentQueueAsPresetPage(panel, form) {
     if (!(panel instanceof HTMLElement)) return;
     if (!(form instanceof HTMLFormElement)) return;
     const ids = readShareQueue();
@@ -4680,7 +4749,8 @@
   // writes the returned soldier_ids back to localStorage, and
   // re-renders the page's table + pill. If the queue already has
   // items, confirms with the user (same as the deleted modal).
-  async function loadShareQueuePresetPage(panel, id) {
+  /** @param {Element} panel @param {number} id */
+async function loadShareQueuePresetPage(panel, id) {
     if (!(panel instanceof HTMLElement)) return;
     const ids = readShareQueue();
     if (ids.length > 0) {
@@ -4712,7 +4782,8 @@
   // deleteShareQueuePresetPage DELETEs /share/queue/presets/{id}
   // and refreshes the list. Confirms with the user (same as the
   // deleted modal).
-  async function deleteShareQueuePresetPage(panel, id) {
+  /** @param {Element} panel @param {number} id */
+async function deleteShareQueuePresetPage(panel, id) {
     if (!(panel instanceof HTMLElement)) return;
     if (!window.confirm("Delete this saved preset? This cannot be undone.")) {
       return;
@@ -4734,7 +4805,8 @@
   // renders the preset list into the page's [data-share-queue-preset-list]
   // <ul>. The empty-state div is toggled based on whether any presets
   // returned.
-  async function refreshShareQueuePresetsPage(panel) {
+  /** @param {Element} panel */
+async function refreshShareQueuePresetsPage(panel) {
     if (!(panel instanceof HTMLElement)) return;
     const list = panel.querySelector("[data-share-queue-preset-list]");
     const empty = panel.querySelector("[data-share-queue-preset-empty]");
@@ -5168,10 +5240,12 @@
     }
   }
 
+  /** @param {HTMLFormElement} form @param {unknown} template */
   function applyTemplateToForm(form, template) {
     if (!template || typeof template !== "object") {
       return;
     }
+    /** @param {string} name @param {unknown} value */
     const setValue = (name, value) => {
       const element = form.elements.namedItem(name);
       if (!element) {
@@ -5179,6 +5253,7 @@
       }
       element.value = value == null ? "" : String(value);
     };
+    /** @param {string} name @param {unknown} checked */
     const setChecked = (name, checked) => {
       const element = form.elements.namedItem(name);
       if (!element) {
@@ -5186,6 +5261,7 @@
       }
       element.checked = Boolean(checked);
     };
+    /** @param {string} name @param {unknown} values */
     const setMultiChecked = (name, values) => {
       const elements = form.elements.namedItem(name);
       const list = Array.isArray(elements) ? elements : elements ? [elements] : [];
@@ -5196,7 +5272,7 @@
     };
     if (typeof template.scope === "string") {
       const radios = form.querySelectorAll('input[name="scope"]');
-      radios.forEach((r) => { r.checked = (r.value === template.scope); });
+      radios.forEach(/** @param {HTMLInputElement} r */ (r) => { r.checked = (r.value === template.scope); });
     }
     if (template.filters && typeof template.filters === "object") {
       for (const [family, values] of Object.entries(template.filters)) {
@@ -5205,7 +5281,7 @@
     }
     if (typeof template.sort_by === "string") {
       const radios = form.querySelectorAll('input[name="sort_by"]');
-      radios.forEach((r) => { r.checked = (r.value === template.sort_by); });
+      radios.forEach(/** @param {HTMLInputElement} r */ (r) => { r.checked = (r.value === template.sort_by); });
     }
     if (typeof template.orientation === "string") {
       setValue("orientation", template.orientation);
