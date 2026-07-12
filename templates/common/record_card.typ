@@ -470,7 +470,13 @@
   // Body of the footer: a horizontal rule above the text. The
   // rule uses place(top, ...) to anchor the line at the top of
   // the footer area; the v(0.4em) reserves the gap between the
-  // rule and the centered footer text below it.
+  // rule and the centered footer text below it. Issue #489:
+  // the codename is now passed in as its own field on the
+  // branding map so the footer can italicize it. The plain
+  // "Made with DixieData | Version: ..." string lives in
+  // branding.footer_text and is unchanged for PDF text-
+  // extraction tests; the codename is appended with #emph()
+  // for the visual italics.
   let footer-content = if not opts.at("printerFriendly", default: false) {
     {
       place(top, line(length: 100%, stroke: 0.6pt + theme.palette.accent))
@@ -478,7 +484,11 @@
       align(center, text(
         size: 6pt,
         fill: theme.palette.text_muted,
-      )[#branding.at("footer_text", default: "")])
+      )[
+        #branding.at("footer_text", default: "")
+        #h(0.4em)
+        #emph[#branding.at("codename", default: "")]
+      ])
     }
   } else {
     none

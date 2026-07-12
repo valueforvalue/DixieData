@@ -59,6 +59,16 @@
   "Made with DixieData"
 }
 
+// Issue #489: codename is now its own field on the branding
+// map so the footer can italicize it. The plain footer-text
+// stays unchanged for PDF text-extraction tests; the codename
+// is appended with #emph() for the visual italics.
+#let codename = if "codename" in branding {
+  branding.codename
+} else {
+  ""
+}
+
 #set page(
   paper: "us-letter",
   margin: (
@@ -72,7 +82,7 @@
     size: 7pt, fill: theme.palette.text_muted,
     font: "Arial",
   )[
-    #footer-text
+    #footer-text #h(0.4em) #emph[#codename]
   ]),
 )
 

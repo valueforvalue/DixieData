@@ -479,6 +479,14 @@ func (e *ExportService) archiveBranding(printerFriendly bool) map[string]string 
 	branding := map[string]string{
 		"archive_title": owner + "'s Civil War Research Archive",
 		"footer_text":   "Made with DixieData | Version: " + buildinfo.AppVersion + " | Build: " + buildinfo.BuildIdentity(),
+		// Issue #489: codename is now its own field so the typst
+		// footer template can italicize it. Keep the literal in
+		// footer_text unchanged so PDF text-extraction tests still
+		// find "Made with DixieData | Version: ..." verbatim; the
+		// typst template composes the final footer by combining the
+		// plain footer_text with the italicized codename from this
+		// field.
+		"codename": buildinfo.Codename(),
 	}
 	_ = printerFriendly
 	return branding

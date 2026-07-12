@@ -653,6 +653,13 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 	if !strings.Contains(text, "Build:") {
 		t.Fatalf("pdf missing build label")
 	}
+	// Issue #489: PDF footer wraps the codename in #emph() for
+	// italics. The PDF text-extraction layer does NOT see
+	// formatting (italics are a render-time concern), so the
+	// codename still appears as plain text. Assert it's present.
+	if !strings.Contains(text, buildinfo.Codename()) {
+		t.Fatalf("pdf missing codename in footer; expected %s in:\n%s", buildinfo.Codename(), text)
+	}
 }
 
 func TestExportService_ExportImages(t *testing.T) {
