@@ -166,31 +166,64 @@ func TestSecondaryButton_HasSolidBorder(t *testing.T) {
 	}
 }
 
+// TestPrimaryButton_UsesThemeVars pins that the primary
+// button's gradient + text + border are all var(--token)
+// references. The user reported the gold-gradient primary
+// button looks the same in all three themes — the fix is to
+// swap every literal hex in the gradient + text + border
+// for a var(--theme-*) ref so the per-theme override blocks
+// re-skin the button when the theme switches.
+func TestPrimaryButton_UsesThemeVars(t *testing.T) {
+	css := readTailwindCSS(t)
+	// Find the .primary-button { ... } rule (NOT the
+	// :hover/:disabled variants which also have
+	// background). The base rule is the one without a colon
+	// selector suffix. The CSS file indents with 2 spaces
+	// inside @layer, so we look for "  .primary-button {".
+	rule := extractClassRule(css, ".primary-button")
+	if rule == "" {
+		t.Fatal("missing .primary-button rule (the base rule, not a :hover variant)")
+	}
+	// The fix: `background-image: linear-gradient(...var(--theme-accent-light)..., var(--theme-accent-deep)...)`
+	// Regression: a static-hex gradient like `linear-gradient(180deg, #c5ab68 0%, #a5853f 100%)`
+	// which is the pre-#477 hex and never re-skins per theme.
+	for _, want := range []string{"var(--theme-accent-light)", "var(--theme-accent-deep)", "var(--theme-text-deep)", "var(--theme-accent-strong)"} {
+		if !strings.Contains(rule, want) {
+			t.Errorf(".primary-button must reference %s so the per-theme overrides re-skin it; rule = %q", want, rule)
+		}
+	}
+	if strings.Contains(rule, "#c5ab68") || strings.Contains(rule, "#a5853f") {
+		t.Errorf(".primary-button still has a static-hex gradient stop (pre-#477); the var refs above should replace it; rule = %q", rule)
+	}
+}
+
 // TestSecondaryButton_HasSaturatedDarkText pins the QA report
 // that the secondary button text in the default theme looked
 // "white" — the user couldn't read the label until hovering.
 // The cause was @apply text-ink (a desaturated #22303d) on a
 // cream bg that washed out the label at small font sizes. The
-// fix is a more saturated near-black (#0a0a0a or equivalent)
-// so the label is unmistakable. The regression test fails if
-// the rule reverts to text-ink, text-ink-mid, text-ink-deep,
-// or any color that doesn't start with 0-9 or close to black.
+// fix is a more saturated near-black (`var(--theme-text-primary)`
+// with the default value `#22303d`; the brightness is fine
+// when the var is in play and the bg is now also var-driven).
+// The regression test fails if the rule reverts to
+// `text-ink` (the Tailwind @apply utility that bypasses the
+// var) or to a non-var fallback.
 func TestSecondaryButton_HasSaturatedDarkText(t *testing.T) {
 	css := readTailwindCSS(t)
 	rule := findRuleWithProperty(css, ".secondary-button", "color")
 	if rule == "" {
 		t.Fatal("missing .secondary-button rule with a color declaration")
 	}
-	// The fix: explicit `color: #0a0a0a` (or any hex that
-	// starts with 0 or 1, indicating near-black). The
-	// regression is `@apply text-ink` (#22303d) or
-	// `@apply text-ink-deep` (#1f2b38) — the slate tones
-	// wash out against the cream bg at 0.82rem.
+	// The fix: `color: var(--theme-text-primary)` (or any var
+	// ref that resolves to a near-black hex). The regression
+	// is `@apply text-ink` (the Tailwind utility that bakes
+	// the desaturated #22303d in at build time, ignoring the
+	// theme).
 	if strings.Contains(rule, "text-ink") {
-		t.Errorf(".secondary-button must NOT use the text-ink slate tones (QA: looked white against cream bg); use a saturated near-black like #0a0a0a; rule = %q", rule)
+		t.Errorf(".secondary-button must NOT use the text-ink @apply utility (QA: looked white against cream bg); use var(--theme-text-primary); rule = %q", rule)
 	}
-	if !strings.Contains(rule, "color: #0") && !strings.Contains(rule, "color: #1") {
-		t.Errorf(".secondary-button color must be a near-black hex (0-1 prefix) so the label is unmistakable; rule = %q", rule)
+	if !strings.Contains(rule, "var(--theme-") {
+		t.Errorf(".secondary-button color must be a CSS custom property ref so the theme system can swap it; rule = %q", rule)
 	}
 }
 
