@@ -401,7 +401,6 @@
     // Reset any prior transform so the new measurement is against
     // the panel's natural anchored position.
     panel.style.removeProperty("transform");
-    const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;

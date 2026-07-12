@@ -93,6 +93,9 @@ test('DixieDataWindow interface is declared with all install-once markers', () =
     '__megaMenuInstallN',
     '__megaMenuDocHandlerBound',
     '__megaMenuBoundTriggers',
+    // Issue #476 floating-nav panel markers (installFloatingNavPanel).
+    '__floatingNavInstallN',
+    '__floatingNavBoundTriggers',
     '__dixieBrowseFilterTimer',
     '__dixieDebug',
     '__dixieDebugDisabled',
