@@ -1829,10 +1829,10 @@ func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string)
 
 	tagSet := make(map[string]struct{})
 	for _, entry := range personEntries {
-		// Subtype split: wife/widow vs. linked_person. The
-		// entry.EntryType field is the source-of-truth; the
-		// header "Person records" count above is the total
-		// across all three subtypes.
+		for _, t := range entry.Tags {
+			tagSet[t] = struct{}{}
+		}
+		// Subtype split: wife/widow vs. linked_person.
 		switch entry.EntryType {
 		case "wife", "widow":
 			result.SpouseRecords++
@@ -1841,15 +1841,8 @@ func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string)
 		}
 		result.PersonImages += len(entry.Images)
 		result.SourceRecords += len(entry.Records)
-		// Distinct tags: the static archive bundle does not
-		// currently carry a per-record tag list (issue #489
-		// deferred the tag-categorisation work), so the
-		// distinct-tags count is best-effort. Set to 0
-		// until the bundle gains a tags field; the GUI
-		// panel + CLI jobs show the line only when > 0.
-		_ = tagSet
 	}
-	result.DistinctTags = 0
+	result.DistinctTags = len(tagSet)
 
 	// Issue #498 slice 5: Calendar landing page — count the days
 	// with at least one anniversary / event / holiday marker across

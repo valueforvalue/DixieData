@@ -68,6 +68,7 @@ type StaticArchiveRecord struct {
 	PensionState       string                     `json:"pensionState,omitempty"`
 	HomeStatus         string                     `json:"homeStatus,omitempty"`
 	HomeName           string                     `json:"homeName,omitempty"`
+	Tags               []string                   `json:"tags,omitempty"`
 	NeedsReview        bool                       `json:"needsReview,omitempty"`
 	ReviewReason       string                     `json:"reviewReason,omitempty"`
 	AddedBy            string                     `json:"addedBy,omitempty"`
@@ -1517,6 +1518,7 @@ function escapeHtml(value) {
               (record.spouseDisplayId || relatedFamily.length ? '<span class="pill">Family Linked</span>' : '') +
               (record.needsReview ? '<span class="pill">Needs Review</span>' : '') +
             '</div>' +
+            (record.tags && record.tags.length ? '<div class="row-meta">' + record.tags.map(function(t) { return '<span class="pill pill-tag">' + escapeHtml(t) + '</span>'; }).join('') + '</div>' : '') +
             '<h3 class="row-title">' + escapeHtml(record.name) + '</h3>' +
             '<div class="row-summary">' +
               '<span><strong>Dates:</strong> ' + escapeHtml(record.dates || 'N/A') + '</span>' +
@@ -1593,6 +1595,10 @@ function escapeHtml(value) {
       }
       if (record.biography) {
         primarySections.push('<section class="detail-section"><h4>Biography</h4><p>' + renderLinkedText(record.biography) + '</p></section>');
+      }
+      if (record.tags && record.tags.length) {
+        var tagPills = record.tags.map(function(t) { return '<span class="pill pill-tag">' + escapeHtml(t) + '</span>'; }).join(' ');
+        primarySections.push('<section class="detail-section"><h4>Tags</h4><div class="tag-pills">' + tagPills + '</div></section>');
       }
       if (record.records && record.records.length) {
         primarySections.push(
@@ -3088,6 +3094,7 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 		LastEditedFields:  strings.TrimSpace(soldier.LastEditedFields),
 		Images:            make([]StaticArchiveImage, 0, len(soldier.Images)),
 		Records:           make([]StaticArchiveRecordEntry, 0, len(soldier.Records)),
+		Tags:              soldier.Tags,
 	}
 	if record.HomeStatus == confederatehomestatus.NotApplicable {
 		record.HomeStatus = ""
