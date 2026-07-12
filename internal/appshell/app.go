@@ -111,6 +111,7 @@ type App struct {
 	startupErr              error
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
+	theme                   atomic.Value // string; resolved theme name (default/high-contrast/soft). Issue #474.
 	pendingLaunchStateClear bool
 	pendingRecovery         *update.RestorePointRecord
 	recoveryFailure         string

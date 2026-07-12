@@ -17,6 +17,64 @@
    doesn't shift while clicking around). */
 html { scrollbar-gutter: stable; }
 
+/* Issue #474 — theme system. The high-contrast and soft themes
+   are placeholder resets in slice 1 (everything grayscale, with
+   a 1px solid border on every interactive surface) so we can
+   confirm the data-theme attribute is reaching the browser and
+   the picker on /settings is wired. Slice 2 replaces this
+   block with a real palette built on CSS custom properties
+   extracted from the current gold/sepia tokens. Until then,
+   the high-contrast theme is functional but not yet final. */
+html[data-theme="high-contrast"] {
+  background: #ffffff;
+  color: #111111;
+  filter: grayscale(1) contrast(1.1);
+}
+html[data-theme="high-contrast"] * {
+  border-color: #222 !important;
+}
+html[data-theme="soft"] {
+  background: #f4ecd8;
+  color: #3b2a1a;
+}
+html[data-theme="soft"] .top-shell,
+html[data-theme="soft"] .card {
+  background: #ede2c5 !important;
+}
+
+/* Settings → Appearance panel theme-option radio cards. The
+   radio itself is sr-only; the visible card is the label. The
+   card with the checked radio gets the outline + selected
+   background. Works in all three themes. */
+.theme-option {
+  display: block;
+  cursor: pointer;
+  border: 1.5px solid rgba(141, 116, 64, 0.28);
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  transition: border-color 120ms, background 120ms;
+}
+.theme-option:hover {
+  border-color: rgba(141, 116, 64, 0.6);
+  background: rgba(255, 255, 255, 0.85);
+}
+.theme-option:has(input:checked) {
+  border-color: #8d7440;
+  background: rgba(255, 255, 255, 0.95);
+  outline: 2px solid rgba(141, 116, 64, 0.35);
+  outline-offset: 2px;
+}
+.theme-option-body { display: flex; flex-direction: column; gap: 0.2rem; }
+.theme-option-label { font-weight: 700; color: #22303d; }
+.theme-option-hint { font-size: 0.8rem; color: #475569; }
+html[data-theme="high-contrast"] .theme-option { background: #fff; border-color: #222 !important; }
+html[data-theme="high-contrast"] .theme-option-label { color: #111; }
+html[data-theme="high-contrast"] .theme-option-hint { color: #222; }
+html[data-theme="soft"] .theme-option { background: #ede2c5; border-color: #b08f45 !important; }
+html[data-theme="soft"] .theme-option-label { color: #3b2a1a; }
+html[data-theme="soft"] .theme-option-hint { color: #5a4220; }
+
 /* PR1 — pure file move from internal/templates/layout.templ (inline <style>).
    Drop .gold-border (zero matches in repo, dead code per design D1).
    Computed styles identical to pre-PR1; layout_test.go byte-stability

@@ -154,6 +154,25 @@ func LogsRoot(dataDir string) string {
 	return filepath.Join(filepath.Dir(dataDir), folderName+"-logs")
 }
 
+// StateRoot returns the root directory DixieData uses for per-user
+// preference state that is not part of the archive schema and must
+// not be wiped on .ddbak restore. The directory is a sibling of the
+// data directory (not a child), mirroring the LogsRoot precedent
+// for the same reason: restore renames the entire .dixiedata
+// directory and any file held open inside it would block the rename
+// on Windows with "Access is denied". User state (theme choice,
+// debug mode toggle, future settings) lives here so it survives
+// restore and so an in-place app update can read the user's choice,
+// ship a corrected palette, and save the corrected value back.
+//
+// For dataDir = ".../DixieData/.dixiedata" it returns
+// ".../DixieData/.dixiedata-state". The folder starts with a dot
+// so it sorts with the data folder in directory listings and is
+// hidden by default in file explorers.
+func StateRoot(dataDir string) string {
+	return filepath.Join(filepath.Dir(dataDir), folderName+"-state")
+}
+
 // LogsDir returns the directory that holds the JSONL log files. As
 // of the layout change that splits app state from archive state,
 // this is LogsRoot(dataDir), not dataDir/logs. The data directory
