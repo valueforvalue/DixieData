@@ -1016,7 +1016,7 @@ func TestServeHTTPServesFrontendAssets(t *testing.T) {
 			t.Fatalf("%s body should not be empty", path)
 		}
 	}
-	if !strings.Contains(recorderBodyForPath(t, app, "/app.js"), `const timers = new WeakMap();`) {
+	if !strings.Contains(recorderBodyForPath(t, app, "/app.js"), `function dispatchUtilitySubmit(form, callback)`) {
 		t.Fatalf("/app.js should serve the frontend bootstrap script")
 	}
 }
