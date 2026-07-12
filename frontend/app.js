@@ -5326,7 +5326,11 @@ async function refreshShareQueuePresetsPage(panel) {
     };
     if (typeof template.scope === "string") {
       const radios = form.querySelectorAll('input[name="scope"]');
-      radios.forEach(/** @param {HTMLInputElement} r */ (r) => { r.checked = (r.value === template.scope); });
+      radios.forEach(/** @param {Element} r */ (r) => {
+        if (r instanceof HTMLInputElement) {
+          r.checked = (r.value === template.scope);
+        }
+      });
     }
     if (template.filters && typeof template.filters === "object") {
       for (const [family, values] of Object.entries(template.filters)) {
@@ -5335,7 +5339,11 @@ async function refreshShareQueuePresetsPage(panel) {
     }
     if (typeof template.sort_by === "string") {
       const radios = form.querySelectorAll('input[name="sort_by"]');
-      radios.forEach(/** @param {HTMLInputElement} r */ (r) => { r.checked = (r.value === template.sort_by); });
+      radios.forEach(/** @param {Element} r */ (r) => {
+        if (r instanceof HTMLInputElement) {
+          r.checked = (r.value === template.sort_by);
+        }
+      });
     }
     if (typeof template.orientation === "string") {
       setValue("orientation", template.orientation);

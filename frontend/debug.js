@@ -126,11 +126,26 @@
    */
   function installConsoleHook(method, level) {
     const original = console[method] ? console[method].bind(console) : function () {};
-    console[method] = function () {
+    // intentional: console method overloads are heterogeneous
+    // (console.log(...data: any[]) vs console.assert(condition: boolean, ...data: any[]) vs
+    // console.label(label?: string)).
+    // Wrapping them generically means the call site shape doesn't
+    // match a single method signature — TS2684 (strict mode) flags
+    // the apply(this, arguments) return type. The runtime behavior
+    // is correct: arguments pass through verbatim to the bound original.
+    /**
+     * @this {Console}
+     * @returns {void}
+     */
+    const patched = function () {
       try { push(level, Array.prototype.slice.call(arguments)); }
       catch (_) { /* intentional: never-throw logger — see error-handling.md */ }
+      // intentional: heterogeneous console overloads make this return type
+      // unspeakable; the runtime behavior is correct (arguments pass through).
+      // @ts-expect-error TS2684
       return original.apply(console, arguments);
     };
+    console[method] = patched;
   }
   installConsoleHook('log', 'info');
   installConsoleHook('info', 'info');
