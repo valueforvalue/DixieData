@@ -2093,6 +2093,7 @@ function serializeDraftFields(form) {
    * @param {number} occurrence
    */
   function draftFieldLabel(name, occurrence) {
+    /** @type {Record<string, string>} */
     const labels = {
       display_id: "Display ID",
       entry_type: "Entry Type",
@@ -3281,6 +3282,7 @@ function serializeDraftFields(form) {
     if (!(region instanceof HTMLElement) || !message) {
       return;
     }
+    /** @type {Record<string, string>} */
     const headers = {
       success: "Success",
       info: "Heads up",
@@ -3498,22 +3500,31 @@ function serializeDraftFields(form) {
   /**
    * @param {HTMLFormElement} form
    */
-  function currentBrowseStateFromForm(form) {
+  /** @param {HTMLFormElement} form @returns {Record<string, string | null>} */
+function currentBrowseStateFromForm(form) {
     if (!(form instanceof HTMLFormElement)) {
       return {};
     }
     const data = new FormData(form);
+    /**
+     * @param {string} key
+     * @returns {string | null}
+     */
+    const get = (key) => {
+      const value = data.get(key);
+      return typeof value === "string" ? value : null;
+    };
     return {
-      page: data.get("page") || "1",
-      page_size: data.get("page_size") || "100",
-      scope: data.get("scope") || "all",
-      sort: data.get("sort") || "display_id_asc",
-      entry_type: data.get("entry_type") || "",
-      unit: data.get("unit") || "",
-      buried_in: data.get("buried_in") || "",
-      pension_state: data.get("pension_state") || "",
-      review_status: data.get("review_status") || "",
-      confederate_home_status: data.get("confederate_home_status") || "",
+      page: get("page") || "1",
+      page_size: get("page_size") || "100",
+      scope: get("scope") || "all",
+      sort: get("sort") || "display_id_asc",
+      entry_type: get("entry_type") || "",
+      unit: get("unit") || "",
+      buried_in: get("buried_in") || "",
+      pension_state: get("pension_state") || "",
+      review_status: get("review_status") || "",
+      confederate_home_status: get("confederate_home_status") || "",
     };
   }
 
@@ -4513,7 +4524,8 @@ function pickDismissTarget(fallback) {
   // and submits the modal's selected_ids to
   // /export/shared-archive?subset=1.
   const SHARE_QUEUE_STORAGE_KEY = "dixiedata.share-queue";
-  function readShareQueue() {
+  /** @returns {number[]} */
+function readShareQueue() {
     try {
       const raw = window.localStorage && window.localStorage.getItem(SHARE_QUEUE_STORAGE_KEY);
       if (!raw) return [];
@@ -4535,7 +4547,9 @@ function writeShareQueue(ids) {
     }
     updateShareQueuePill(ids);
   }
-  /** @param {number[] | null} ids */
+  /**
+   * @param {number[] | null} [ids] omitted → derive from readShareQueue()
+   */
 function updateShareQueuePill(ids) {
     const pill = document.querySelector("[data-share-queue-pill]");
     if (!(pill instanceof HTMLElement)) return;
@@ -4556,13 +4570,13 @@ function addToShareQueue(id) {
     if (ids.indexOf(id) !== -1) return;
     ids.push(id);
     writeShareQueue(ids);
-    updateShareQueuePill();
+    updateShareQueuePill(ids);
   }
   /** @param {number} id */
 function removeFromShareQueue(id) {
     const ids = readShareQueue().filter((n) => n !== id);
     writeShareQueue(ids);
-    updateShareQueuePill();
+    updateShareQueuePill(ids);
   }
   function installShareQueueGlobals() {
     // Per-row [+] Queue buttons. The persistent pill at the
@@ -4606,8 +4620,10 @@ function removeFromShareQueue(id) {
   // pill. The bulk-export form submits via dispatchDixieDataForm
   // to /export/shared-archive?subset=1 with the selected rows
   // injected as hidden selected_ids fields.
-  function getSelectedIdsOnPage() {
+  /** @returns {number[]} */
+function getSelectedIdsOnPage() {
     const inputs = document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]:checked");
+    /** @type {number[]} */
     const ids = [];
     inputs.forEach((el) => {
       if (!(el instanceof HTMLInputElement)) {
@@ -4632,7 +4648,7 @@ function pageSetStatus(text) {
     if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !enabled;
     if (exportBtn instanceof HTMLButtonElement) exportBtn.disabled = !enabled;
   }
-  /** @param {{id: number, label: string}} row @param {number} index @returns {HTMLTableRowElement} */
+  /** @param {{ id: number, display_id: string, heading?: string, unit?: string, records?: string[], images?: string[] }} row @param {number} index @returns {HTMLTableRowElement} */
 function shareQueuePageRowTemplate(row, index) {
     const tr = document.createElement("tr");
     tr.setAttribute("data-share-queue-page-row-id", String(row.id));
@@ -5261,7 +5277,22 @@ async function refreshShareQueuePresetsPage(panel) {
     }
   }
 
-  /** @param {HTMLFormElement} form @param {unknown} template */
+  /**
+   * @param {HTMLFormElement} form
+   * @param {{
+   *   scope?: string,
+   *   filters?: Record<string, string[]>,
+   *   sort_by?: string,
+   *   orientation?: "portrait" | "landscape",
+   *   printer_friendly?: boolean,
+   *   full_biography_page?: boolean,
+   *   group_by?: string,
+   *   group_by_unit?: boolean,
+   *   group_by_pension_state?: boolean,
+   *   group_by_confederate_home_status?: boolean,
+   *   group_by_buried_in?: boolean,
+   * }} template
+   */
   function applyTemplateToForm(form, template) {
     if (!template || typeof template !== "object") {
       return;
@@ -5269,18 +5300,20 @@ async function refreshShareQueuePresetsPage(panel) {
     /** @param {string} name @param {unknown} value */
     const setValue = (name, value) => {
       const element = form.elements.namedItem(name);
-      if (!element) {
+      if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) {
         return;
       }
       element.value = value == null ? "" : String(value);
     };
     /** @param {string} name @param {unknown} checked */
     const setChecked = (name, checked) => {
-      const element = form.elements.namedItem(name);
-      if (!element) {
-        return;
+      const elements = form.elements.namedItem(name);
+      const list = Array.isArray(elements) ? elements : elements ? [elements] : [];
+      for (const el of list) {
+        if (el instanceof HTMLInputElement) {
+          el.checked = Boolean(checked);
+        }
       }
-      element.checked = Boolean(checked);
     };
     /** @param {string} name @param {unknown} values */
     const setMultiChecked = (name, values) => {
@@ -5458,6 +5491,7 @@ async function refreshShareQueuePresetsPage(panel) {
         method: "POST", // handler accepts POST as well as PATCH
         body: fd,
       });
+      /** @type {{ error?: string, name?: string }} */
       let body = {};
       try {
         body = await response.json();
@@ -6032,7 +6066,7 @@ async function refreshShareQueuePresetsPage(panel) {
     const clearDraftTrigger = eventTargetElement(event).closest("[data-clear-draft-trigger]");
     if (clearDraftTrigger instanceof HTMLElement) {
       event.preventDefault();
-      showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger"));
+      showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger") ?? "");
       return;
     }
     const confirmClearDraft = eventTargetElement(event).closest("[data-confirm-clear-draft]");
@@ -6044,7 +6078,7 @@ async function refreshShareQueuePresetsPage(panel) {
     const cancelClearDraft = eventTargetElement(event).closest("[data-cancel-clear-draft]");
     if (cancelClearDraft instanceof HTMLElement) {
       event.preventDefault();
-      hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft"));
+      hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft") ?? "");
       return;
     }
     const undoClearedDraft = eventTargetElement(event).closest("[data-undo-cleared-draft]");
@@ -6221,7 +6255,7 @@ async function refreshShareQueuePresetsPage(panel) {
     if (!(selectAll instanceof HTMLInputElement)) {
       return;
     }
-    toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
+    toggleCheckboxGroup(selectAll.getAttribute("data-select-all") ?? "", selectAll.checked);
   });
   document.addEventListener("change", (event) => {
     const browseFilter = eventTargetElement(event).closest("[data-browse-filter-input]");
