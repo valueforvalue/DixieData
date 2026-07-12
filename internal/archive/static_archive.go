@@ -1968,11 +1968,19 @@ function escapeHtml(value) {
       // Render grid for the current month.
       renderMonthGrid(monthNum);
 
+      // Issue #507: link copy must match the destination. The
+      // destination page renders bundle.calendar_items.length
+      // (the total count of items), not totalDaysWithData
+      // (which is the per-month day-cell count -- different
+      // number). User reported "View all 294 calendar items
+      // doesn't do anything" because the destination showed
+      // a different total.
+      var totalItems = Array.isArray(bundle.calendar_items) ? bundle.calendar_items.length : 0;
       return '' +
         '<div class="panel-head"><h2>Calendar</h2></div>' +
         '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to filter Person Records for that date.</p>' +
         selectorHtml +
-        '<div class="calendar-items-link"><a href="#/calendar-items" class="action-link">View all ' + totalDaysWithData + ' calendar items &rarr;</a></div>' +
+        '<div class="calendar-items-link"><a href="#/calendar-items" class="action-link">View all ' + totalItems + ' calendar items &rarr;</a></div>' +
         (totalDaysWithData === 0
           ? '<div class="placeholder-card">No anniversaries, events, or holidays recorded in this archive.</div>'
           : '<div id="calendar-month-grid">' + blocks.join('') + '</div>');
