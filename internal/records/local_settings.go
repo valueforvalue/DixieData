@@ -12,11 +12,18 @@ import (
 )
 
 // Theme names. Stored verbatim in local_settings.json and resolved
-// against the empty-string default ("default") at read time. The
-// High Contrast and Soft palettes are wired in slice 1 as a
-// placeholder reset; slice 2 ships the real palette tokens.
+// against the empty-string fallback at read time. The "default"
+// value identifies the Classic palette (the historically-Default
+// gold/sepia-on-warm-navy theme, renamed to "Classic" in the UI
+// in issue #494). Fresh installs see Soft on first launch via the
+// empty-string fallback in ResolvedTheme — the persisted value
+// "default" continues to bind to the Classic palette for users
+// who picked it before the rename. The CSS attribute is
+// data-theme="default" for Classic users (preserved for stability);
+// data-theme="soft" for Soft users; data-theme="high-contrast"
+// for High Contrast users.
 const (
-	ThemeDefault      = "default"
+	ThemeClassic      = "default"
 	ThemeHighContrast = "high-contrast"
 	ThemeSoft         = "soft"
 )
@@ -29,15 +36,21 @@ const (
 // theme corrections that overwrite the file atomically).
 type LocalSettings struct {
 	DebugMode bool   `json:"debug_mode"`
-	Theme     string `json:"theme,omitempty"` // "" == ThemeDefault
+	Theme     string `json:"theme,omitempty"` // "" == ThemeSoft (issue #494)
 }
 
-// ResolvedTheme returns the theme name with the empty-string default
-// resolved to ThemeDefault. Use this everywhere instead of reading
-// the raw field so callers don't have to repeat the fallback.
+// ResolvedTheme returns the theme name with the empty-string fallback
+// resolved to ThemeSoft (so fresh installs see Soft on first launch).
+// Use this everywhere instead of reading the raw field so callers
+// don't have to repeat the fallback. The empty-string fallback
+// flipping from ThemeClassic to ThemeSoft is the half of issue #494
+// that makes Soft the new default for new users; users whose
+// local_settings.json has Theme:"default" continue to resolve to
+// ThemeClassic (the constant rename only swapped the Go identifier,
+// not the persisted string value).
 func (s LocalSettings) ResolvedTheme() string {
 	if s.Theme == "" {
-		return ThemeDefault
+		return ThemeSoft
 	}
 	return s.Theme
 }

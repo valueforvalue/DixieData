@@ -87,7 +87,7 @@ func TestBootThemeScript(t *testing.T) {
 		}
 	})
 
-	t.Run("fresh app with no settings file falls back to default", func(t *testing.T) {
+	t.Run("fresh app with no settings file falls back to soft", func(t *testing.T) {
 		parent := t.TempDir()
 		dataDir := filepath.Join(parent, "data")
 		if err := os.MkdirAll(dataDir, 0o755); err != nil {
@@ -106,14 +106,18 @@ func TestBootThemeScript(t *testing.T) {
 			t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
 		}
 		body := rec.Body.String()
-		if !strings.Contains(body, `"default"`) {
-			t.Fatalf("boot-theme.js must fall back to default when no settings file; got:\n%s", body)
+		// Issue #494: Soft is the new default for fresh installs.
+		// The empty-string fallback now resolves to ThemeSoft, so
+		// the boot-theme.js script stamps data-theme="soft" when
+		// no settings file exists.
+		if !strings.Contains(body, `"soft"`) {
+			t.Fatalf("boot-theme.js must fall back to soft when no settings file; got:\n%s", body)
 		}
 	})
 
 	t.Run("rejects non-GET", func(t *testing.T) {
 		app := NewApp()
-		app.theme.Store(records.ThemeDefault)
+		app.theme.Store(records.ThemeClassic)
 		app.setupRoutes()
 
 		req := httptest.NewRequest(http.MethodPost, "/boot-theme.js", nil)

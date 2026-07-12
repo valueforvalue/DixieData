@@ -62,7 +62,8 @@ func resolvedBootTheme(a *App) string {
 		}
 	}
 	if theme == "" {
-		theme = records.ThemeDefault
+		// Issue #494: Soft is the new default for fresh installs.
+		theme = records.ThemeSoft
 	}
 	return theme
 }
@@ -104,7 +105,8 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if currentTheme == "" {
-		currentTheme = records.ThemeDefault
+		// Issue #494: Soft is the new default for fresh installs.
+		currentTheme = records.ThemeSoft
 	}
 	// Issue #384 / Slice 7: wrap Render.
 	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme).Render(r.Context(), w); err != nil {
@@ -134,10 +136,10 @@ func (a *App) handleSettingsTheme(w http.ResponseWriter, r *http.Request) {
 	}
 	picked := strings.TrimSpace(r.FormValue("theme"))
 	switch picked {
-	case records.ThemeDefault, records.ThemeHighContrast, records.ThemeSoft:
+	case records.ThemeClassic, records.ThemeHighContrast, records.ThemeSoft:
 		// ok
 	default:
-		respondValidation(w, r, "Pick one of: Default, High Contrast, Soft.", nil)
+		respondValidation(w, r, "Pick one of: Classic, High Contrast, Soft.", nil)
 		return
 	}
 	settings, err := records.LoadLocalSettings(a.dataDir)
@@ -170,7 +172,8 @@ func themeDisplayName(value string) string {
 	case records.ThemeSoft:
 		return "Soft"
 	default:
-		return "Default"
+		// Issue #494: ThemeClassic is the renamed Default theme.
+		return "Classic"
 	}
 }
 

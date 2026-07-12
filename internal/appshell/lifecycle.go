@@ -174,7 +174,8 @@ func (a *App) startup(ctx context.Context) {
 		fmt.Printf("warning: could not load local settings: %v\n", err)
 		// Even on a load failure, surface a sane default so the
 		// html data-theme attribute never serializes as "".
-		a.theme.Store(records.ThemeDefault)
+		// Issue #494: Soft is the new default for fresh installs.
+		a.theme.Store(records.ThemeSoft)
 	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
@@ -495,7 +496,8 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if theme == "" {
-		theme = records.ThemeDefault
+		// Issue #494: Soft is the new default for fresh installs.
+		theme = records.ThemeSoft
 	}
 	ctx = templates.WithLayoutTheme(ctx, theme)
 	a.mux.ServeHTTP(w, r.WithContext(ctx))

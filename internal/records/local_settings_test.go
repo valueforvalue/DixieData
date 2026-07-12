@@ -95,15 +95,19 @@ func TestLoadLocalSettings_MigratesFromLegacyPath(t *testing.T) {
 	}
 }
 
-// TestLocalSettings_ResolvedTheme pins the empty-string default
+// TestLocalSettings_ResolvedTheme pins the empty-string fallback
 // resolution so callers don't have to repeat the fallback.
+// Issue #494: empty-string now resolves to ThemeSoft (the new
+// default for fresh installs). The persisted "default" value
+// continues to resolve to ThemeClassic (the renamed Default).
 func TestLocalSettings_ResolvedTheme(t *testing.T) {
 	cases := []struct {
 		in   LocalSettings
 		want string
 	}{
-		{LocalSettings{Theme: ""}, ThemeDefault},
-		{LocalSettings{Theme: ThemeDefault}, ThemeDefault},
+		{LocalSettings{Theme: ""}, ThemeSoft},
+		{LocalSettings{Theme: "default"}, ThemeClassic},
+		{LocalSettings{Theme: ThemeClassic}, ThemeClassic},
 		{LocalSettings{Theme: ThemeHighContrast}, ThemeHighContrast},
 		{LocalSettings{Theme: ThemeSoft}, ThemeSoft},
 	}
