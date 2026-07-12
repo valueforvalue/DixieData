@@ -2017,6 +2017,7 @@ function escapeHtml(value) {
             '<select id="browse-sort">' +
               '<option value="display_id">Display ID</option>' +
               '<option value="name" selected>Last name</option>' +
+              '<option value="tag">Tag (alphabetical)</option>' +
               '<option value="last_edited">Last Edited</option>' +
             '</select>' +
           '</div>' +
@@ -2035,6 +2036,7 @@ function escapeHtml(value) {
           renderFilterDropdown('unit', 'Unit', records, function(r) { return r.unit; }) +
           renderFilterDropdown('buried_in', 'Buried in', records, function(r) { return r.location; }) +
           renderFilterDropdown('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
+          buildTagsDropdown(records) +
         '</div>' +
         '<div class="browse-active-filters" id="browse-active-filters"></div>' +
         '<div class="browse-clear-row"><button type="button" class="image-button" id="browse-clear-filters">Clear filters</button></div>' +
@@ -2064,6 +2066,33 @@ function escapeHtml(value) {
       return '<div class="filter-dropdown" data-filter-group="' + field + '">' +
         '<label class="filter-dropdown-label" for="filter-select-' + field + '">' + escapeHtml(label) + '</label>' +
         '<select multiple id="filter-select-' + field + '" class="filter-select" data-filter-field="' + field + '">' +
+          options +
+        '</select>' +
+      '</div>';
+    }
+
+    // buildTagsDropdown collects all distinct tag values across
+    // records and renders a multi-select dropdown (issue #506).
+    function buildTagsDropdown(records) {
+      var values = {};
+      for (var i = 0; i < records.length; i++) {
+        var tags = Array.isArray(records[i].tags) ? records[i].tags : [];
+        for (var j = 0; j < tags.length; j++) {
+          var v = String(tags[j] || '').trim();
+          if (!v) continue;
+          values[v] = (values[v] || 0) + 1;
+        }
+      }
+      var sorted = Object.keys(values).sort(function(a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
+      if (sorted.length === 0) return '';
+      var options = '';
+      for (var j = 0; j < sorted.length; j++) {
+        var val = sorted[j];
+        options += '<option value="' + escapeHtml(val) + '">' + escapeHtml(val) + ' (' + values[val] + ')</option>';
+      }
+      return '<div class="filter-dropdown" data-filter-group="tags">' +
+        '<label class="filter-dropdown-label">Tags</label>' +
+        '<select multiple id="filter-select-tags" class="filter-select" data-filter-field="tags">' +
           options +
         '</select>' +
       '</div>';
@@ -2154,6 +2183,15 @@ function escapeHtml(value) {
           else if (field === 'unit') got = r.unit;
           else if (field === 'buried_in') got = r.location;
           else if (field === 'confederate_home_status') got = r.homeStatus;
+          else if (field === 'tags') {
+            var recordTags = Array.isArray(r.tags) ? r.tags : [];
+            var tagsMatch = false;
+            for (var w = 0; w < wants.length; w++) {
+              if (recordTags.indexOf(wants[w]) >= 0) { tagsMatch = true; break; }
+            }
+            if (!tagsMatch) return false;
+            continue;
+          }
           var gotStr = String(got || '').trim();
           // OR within field: match if any selected value matches.
           var match = false;
@@ -2179,6 +2217,7 @@ function escapeHtml(value) {
         var ak = '', bk = '';
         if (sort === 'display_id') { ak = a.displayId || ''; bk = b.displayId || ''; }
         else if (sort === 'name') { ak = (a.name || '').toLowerCase(); bk = (b.name || '').toLowerCase(); }
+        else if (sort === 'tag') { ak = (Array.isArray(a.tags) && a.tags.length ? a.tags[0] : '').toLowerCase(); bk = (Array.isArray(b.tags) && b.tags.length ? b.tags[0] : '').toLowerCase(); }
         else { ak = a.lastEditedAt || ''; bk = b.lastEditedAt || ''; }
         if (ak < bk) return 1;
         if (ak > bk) return -1;
@@ -2254,7 +2293,7 @@ function escapeHtml(value) {
     // BROWSE_FILTER_FIELDS is the canonical filter list per
     // locked decision 2: 5 chips. Review status dropped (no review
     // queue in read-only archive); scope hidden (always "all").
-    var BROWSE_FILTER_FIELDS = ['entry_type', 'pension_state', 'unit', 'buried_in', 'confederate_home_status'];
+    var BROWSE_FILTER_FIELDS = ['entry_type', 'pension_state', 'unit', 'buried_in', 'confederate_home_status', 'tags'];
 
     // browseState holds the current page index for Browse pagination.
     var browseState = { page: 1 };
@@ -2285,6 +2324,8 @@ function escapeHtml(value) {
         html += renderDecadeCard('Birth decade distribution', 'birth_decade_distribution', insights.birth_decade_distribution);
         html += renderDecadeCard('Death decade distribution', 'death_decade_distribution', insights.death_decade_distribution);
       }
+      // Issue #506: tag distribution computed from bundle.records.
+      html += renderTagDistributionCard(bundle);
       html += '</div>';
       return html;
     }
@@ -2353,6 +2394,31 @@ function escapeHtml(value) {
       }
       html += '</div></section>';
       return html;
+    }
+
+    // renderTagDistributionCard computes tag distribution from
+    // bundle.records and renders an Insights card (issue #506).
+    function renderTagDistributionCard(bundle) {
+      var records = Array.isArray(bundle.records) ? bundle.records : [];
+      var tagCounts = {};
+      for (var i = 0; i < records.length; i++) {
+        var tags = Array.isArray(records[i].tags) ? records[i].tags : [];
+        for (var j = 0; j < tags.length; j++) {
+          var t = String(tags[j] || '').trim();
+          if (!t) continue;
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        }
+      }
+      var sorted = Object.keys(tagCounts).sort(function(a, b) { return tagCounts[b] - tagCounts[a] || a.toLowerCase().localeCompare(b.toLowerCase()); });
+      if (!sorted.length) {
+        return '<section class="insight-card"><h3>Tag distribution</h3><p class="insight-empty">No tags in this archive.</p></section>';
+      }
+      var rows = '';
+      for (var k = 0; k < sorted.length; k++) {
+        var tag = sorted[k];
+        rows += '<tr><td><a href="#/browse?tags=' + encodeURIComponent(tag) + '" class="insight-link">' + escapeHtml(tag) + '</a></td><td class="insight-count">' + tagCounts[tag] + '</td></tr>';
+      }
+      return '<section class="insight-card"><h3>Tag distribution</h3><table class="insight-table"><tbody>' + rows + '</tbody></table></section>';
     }
 
     // renderCalendarItemsPage renders the Calendar items list
