@@ -47,6 +47,7 @@
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const draftBaselines = new WeakMap();
   const staleDrafts = new WeakMap();
+  /** @type {MediaQueryList | null} */
   let layoutModeMediaQuery = null;
   const imageViewerState = {
     baseScale: 1,
@@ -60,6 +61,7 @@
     imageId: "",
     imageUrl: "",
   };
+  /** @type {{ target: EventTarget | null, selectionText: string }} */
   const textContextMenuState = {
     target: null,
     selectionText: "",
@@ -712,6 +714,7 @@
   // The CSS animation lives in frontend/tailwind.css under
   // [data-source-record-id][data-just-moved=\"true\"].
   function flashLastMovedSourceRecord() {
+    /** @type {string | null} */
     let movedId = null;
     try {
       movedId = window.sessionStorage.getItem("dixiedata.lastMovedSource");
@@ -839,17 +842,21 @@
   }
 
   function selectedCompareEntries(group) {
-    return Array.from(document.querySelectorAll(`[data-checkbox-group="${group}"][data-compare-select]:checked`))
-      .map((checkbox) => {
-        if (!(checkbox instanceof HTMLInputElement)) {
-          return null;
-        }
-        return {
-          id: checkbox.value,
-          label: checkbox.getAttribute("data-compare-label") || checkbox.value,
-        };
-      })
-      .filter((entry) => entry && entry.id);
+    /** @type {{ id: string; label: string }[]} */
+    const out = [];
+    for (const checkbox of document.querySelectorAll(`[data-checkbox-group="${group}"][data-compare-select]:checked`)) {
+      if (!(checkbox instanceof HTMLInputElement)) {
+        continue;
+      }
+      if (!checkbox.value) {
+        continue;
+      }
+      out.push({
+        id: checkbox.value,
+        label: checkbox.getAttribute("data-compare-label") || checkbox.value,
+      });
+    }
+    return out;
   }
 
   function selectedCompareIDs(group) {
@@ -974,9 +981,10 @@
     const target = textContextMenuState.target;
     const editable = isEditableTextTarget(target);
     const selectionLen = target ? textSelectionLength(target) : 0;
-    const canCut = editable && selectionLen > 0 && !target.readOnly && !target.disabled;
+    const targetReadable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target : null;
+    const canCut = editable && selectionLen > 0 && !(targetReadable && targetReadable.readOnly) && !(targetReadable && targetReadable.disabled);
     const canCopy = selectionLen > 0 || !!textContextMenuState.selectionText;
-    const canPaste = editable && !target.readOnly && !target.disabled;
+    const canPaste = editable && !(targetReadable && targetReadable.readOnly) && !(targetReadable && targetReadable.disabled);
     const canSelectAll = editable || !!textContextMenuState.selectionText;
 
     menu.querySelectorAll("[data-text-menu-action]").forEach((button) => {
@@ -1791,7 +1799,7 @@
   }
 
   function snapshotsEqual(left, right) {
-    const names = new Set([].concat(Object.keys(left || {}), Object.keys(right || {})));
+    const names = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
     for (const name of names) {
       const leftValues = Array.isArray(left?.[name]) ? left[name] : [];
       const rightValues = Array.isArray(right?.[name]) ? right[name] : [];
@@ -1859,7 +1867,7 @@
       const baseline = baselineStateForForm(form);
       const delta = {};
       let changed = false;
-      const names = new Set([].concat(Object.keys(baseline.fields || {}), Object.keys(currentFields || {})));
+      const names = new Set([...Object.keys(baseline.fields || {}), ...Object.keys(currentFields || {})]);
       names.forEach((name) => {
         const baselineValues = Array.isArray(baseline.fields?.[name]) ? baseline.fields[name] : [];
         const currentValues = Array.isArray(currentFields?.[name]) ? currentFields[name] : [];
@@ -1966,7 +1974,7 @@
 
   function buildDraftDiffEntries(form, baselineFields, draftSnapshot) {
     const entries = [];
-    const names = Array.from(new Set([].concat(Object.keys(baselineFields || {}), Object.keys(draftSnapshot || {})))).sort();
+    const names = Array.from(new Set([...Object.keys(baselineFields || {}), ...Object.keys(draftSnapshot || {})])).sort();
     names.forEach((name) => {
       const field = form.querySelector(`[name="${name}"]`);
       const baselineValues = Array.isArray(baselineFields?.[name]) ? baselineFields[name] : [];
@@ -2168,6 +2176,7 @@
     if (!storageKey) {
       return;
     }
+    /** @type {string | null} */
     let savedDraft = null;
     try {
       savedDraft = window.localStorage.getItem(storageKey);
@@ -2366,6 +2375,7 @@
       if (!sourceID) return;
       const source = document.getElementById(sourceID);
       if (!(source instanceof HTMLTextAreaElement)) return;
+      /** @type {number | null} */
       let timer = null;
       source.addEventListener("input", () => {
         if (timer) clearTimeout(timer);
@@ -2778,6 +2788,9 @@
     // compare against that baseline so users who pick the default option
     // for a non-empty default (e.g. sort) don't get a phantom badge.
     function updateCount() {
+      if (!(form instanceof HTMLFormElement) || !(countNode instanceof HTMLElement)) {
+        return;
+      }
       const inputs = form.querySelectorAll("[data-browse-filter-input]");
       let active = 0;
       inputs.forEach((input) => {
@@ -3910,6 +3923,7 @@
     '[tabindex]:not([tabindex="-1"])',
   ].join(",");
 
+  /** @type {HTMLElement | null} */
   let overlayModalRestoreFocus = null;
 
   function showOverlayModal(modal) {
@@ -3985,7 +3999,9 @@
   // by invalidatePrintRecordsCache() when an archive-mutating
   // action completes (export template save, share queue edit, etc.)
   // so the next open re-fetches.
+  /** @type {string | null} */
   let printRecordsFragmentCache = null;
+  /** @type {Promise<string | null> | null} */
   let printRecordsFragmentInflight = null;
 
   function invalidatePrintRecordsCache() {
@@ -4015,10 +4031,14 @@
       // Reuse the in-flight promise to dedupe concurrent opens.
       printRecordsFragmentInflight
         .then((html) => {
+          if (html === null) {
+            return null;
+          }
           if (document.body.contains(modal)) {
             body.innerHTML = html;
             onPrintRecordsFragmentReady(modal);
           }
+          return html;
         })
         .catch((err) => {
           // The inflight fragment fetch failed (network error,
@@ -4073,6 +4093,7 @@
         if (typeof showToast === "function") {
           showToast("Could not load print options.", "error");
         }
+        return null;
       });
   }
 
@@ -4659,7 +4680,8 @@
   // rapid checkbox toggles collapse to one debounced server fetch.
   // The Refresh Preview button forces an immediate fetch. The server
   // returns an HTML fragment we inject into [data-print-config-preview].
-  let printConfigPreviewDebounceTimer = null;
+  /** @type {number | undefined} */
+  let printConfigPreviewDebounceTimer = undefined;
   function installPrintConfigPreview() {
     const modal = printConfigModal();
     if (!(modal instanceof HTMLElement)) {
@@ -5104,7 +5126,8 @@
   // shape; the templates-status slot carries the message.
   async function updateSelectedTemplate() {
     const modal = printConfigModal();
-    const form = modal && modal.querySelector("#share-print-config-form");
+    if (!(modal instanceof HTMLElement)) return;
+    const form = modal.querySelector("#share-print-config-form");
     if (!(form instanceof HTMLFormElement)) return;
     const select = modal.querySelector("[data-export-templates-select]");
     const status = modal.querySelector("[data-export-templates-status]");

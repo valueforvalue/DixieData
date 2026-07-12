@@ -25,7 +25,8 @@
   const ENDPOINT = '/debug/client-logs';
 
   let buffer = [];
-  let flushTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | number | undefined} */
+  let flushTimer = undefined;
   let enabled = true;
   let payloadBytes = 0;
 
@@ -68,7 +69,7 @@
   }
 
   function flush() {
-    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+    if (flushTimer) { clearTimeout(flushTimer); flushTimer = undefined; }
     if (buffer.length === 0) return;
     const payload = JSON.stringify({ entries: buffer });
     buffer = [];
