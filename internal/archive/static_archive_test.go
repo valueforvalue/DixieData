@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"io"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -394,6 +395,55 @@ func TestStaticArchiveIndex_CalendarGridRendersAllTwelveMonths(t *testing.T) {
 	}
 	if !strings.Contains(html, "parseCalendarQuery") {
 		t.Errorf("parseCalendarQuery function missing (issue #500)")
+	}
+}
+
+// TestStaticArchiveIndex_CalendarDayBordersAreUniform (issue #514)
+// pins the CSS rule + JS trailing-pad that make every day cell —
+// marker day <button> + empty day <div> + leading/trailing pad
+// cells — share the same 1 px border on all four sides. The bug
+// the rule fixes: the <button> UA default `border: 2px outset`
+// leaked through on marker cells because the .calendar-day CSS
+// only declared border-right + border-bottom, leaving the marker
+// cells visually raised vs the flat empty cells. The fix is the
+// border shorthand + appearance:none on .calendar-day, plus a
+// trailing-pad loop in renderCalendarPage so partial last rows
+// keep their right + bottom edges.
+func TestStaticArchiveIndex_CalendarDayBordersAreUniform(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// CSS: .calendar-day must use the border shorthand (not just
+	// border-right + border-bottom) so <button> cells get the same
+	// left + top borders as <div> cells. Grep the rule body out
+	// of the inlined stylesheet to pin the shape.
+	rule := regexp.MustCompile(`(?s)\.calendar-day\s*\{([^}]*)\}`)
+	match := rule.FindStringSubmatch(html)
+	if len(match) < 2 {
+		t.Fatalf(".calendar-day rule not found in rendered HTML (issue #514)")
+	}
+	body := match[1]
+	if !strings.Contains(body, "border: 1px solid rgba(141, 116, 64, 0.18)") {
+		t.Errorf(".calendar-day must declare the uniform border shorthand (issue #514); rule body: %s", strings.TrimSpace(body))
+	}
+	if !strings.Contains(body, "appearance: none") {
+		t.Errorf(".calendar-day must declare appearance: none to neutralise the <button> UA default (issue #514); rule body: %s", strings.TrimSpace(body))
+	}
+	// Negative pin: the old border-right / border-bottom pair
+	// must NOT still be present — if a future refactor re-adds
+	// them as overrides, the test fails and the fix stays visible.
+	if strings.Contains(body, "border-right: 1px solid") || strings.Contains(body, "border-bottom: 1px solid") {
+		t.Errorf(".calendar-day must not declare border-right or border-bottom overrides (issue #514); rule body: %s", strings.TrimSpace(body))
+	}
+
+	// JS: renderCalendarPage must pad trailing cells to complete
+	// the last row. Assert the trailingPad computation is present
+	// so a future refactor that drops the pad fails loudly. (The
+	// "Issue #514" breadcrumb lives in a // line comment that
+	// html/template strips from the rendered output, so we don't
+	// pin that here — the trailingPad identifier is the load-bearing
+	// marker.)
+	if !strings.Contains(html, "trailingPad") {
+		t.Errorf("renderCalendarPage missing trailingPad loop (issue #514)")
 	}
 }
 

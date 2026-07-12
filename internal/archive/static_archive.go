@@ -423,18 +423,27 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     .calendar-weekday:last-child {
       border-right: none;
     }
+    /* Issue #514: every day cell (marker day <button> + empty day
+       <div>) needs the same border on all four sides. Previously
+       only border-right + border-bottom were set, so the <button>
+       UA default border style leaked through on the left + top of
+       marker cells, making them look raised and inconsistent with
+       the flat empty cells. The border shorthand + appearance:none
+       neutralise the button UA styles so the grid reads as one
+       consistent surface. */
     .calendar-day {
       position: relative;
       min-height: 86px;
       padding: 8px 10px;
       background: rgba(255, 251, 241, 0.78);
-      border-right: 1px solid rgba(141, 116, 64, 0.18);
-      border-bottom: 1px solid rgba(141, 116, 64, 0.18);
+      border: 1px solid rgba(141, 116, 64, 0.18);
       cursor: pointer;
       text-align: left;
       font: inherit;
       color: inherit;
       transition: background 0.12s;
+      appearance: none;
+      -webkit-appearance: none;
     }
     .calendar-day:hover {
       background: rgba(255, 247, 231, 0.96);
@@ -2374,6 +2383,19 @@ function escapeHtml(value) {
           } else {
             cells.push('<div class="calendar-day empty"><span class="calendar-day-number">' + day + '</span></div>');
           }
+        }
+        // Issue #514: pad the trailing cells of the last row to
+        // 7 so the grid's right + bottom framing stays consistent
+        // for months that don't end on Saturday. Without this,
+        // months like July (offset=2, days=31) leave cols 6-7 of
+        // the last row empty — no DOM, no border — and the last
+        // partial row's right edge looks broken vs the full rows
+        // above. Match the leading-pad style: <div class="calendar-day
+        // empty"> with no number, just the empty cell + uniform
+        // border from the .calendar-day rule.
+        var trailingPad = (7 - (cells.length % 7)) % 7;
+        for (var t = 0; t < trailingPad; t++) {
+          cells.push('<div class="calendar-day empty"></div>');
         }
         blocks.push(
           '<div class="calendar-month-block">' +
