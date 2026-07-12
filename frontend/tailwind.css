@@ -43,10 +43,16 @@ html { scrollbar-gutter: stable; }
   --theme-bg-card-soft: rgba(246, 241, 228, 0.72);
   --theme-bg-input: rgba(245, 242, 236, 0.96);
   --theme-text-primary: #22303d;
+  --theme-text-deep: #1f2b38;
+  --theme-text-mid: #324253;
   --theme-text-muted: rgba(34, 45, 57, 0.7);
   --theme-text-faint: rgba(34, 45, 57, 0.025);
   --theme-ink-deep-rgb: 31 43 56;
+  --theme-review-red-deep: #54211d;
   --theme-accent: #a88a46;
+  --theme-accent-light: #c5ab68;
+  --theme-accent-deep: #a5853f;
+  --theme-accent-glow: #eddca6;
   --theme-accent-strong: #8d7440;
   --theme-border: rgba(141, 116, 64, 0.85);
   --theme-border-strong: #8d7440;
@@ -120,9 +126,14 @@ html[data-theme="high-contrast"] {
   --theme-bg-card-soft: #f5f5f5;
   --theme-bg-input: #ffffff;
   --theme-text-primary: #111111;
+  --theme-text-deep: #000000;
+  --theme-text-mid: #1f1f1f;
   --theme-text-muted: #1f1f1f;
   --theme-text-faint: #2a2a2a;
   --theme-accent: #1d4ed8;
+  --theme-accent-light: #3b82f6;
+  --theme-accent-deep: #1e40af;
+  --theme-accent-glow: #93c5fd;
   --theme-accent-strong: #1e3a8a;
   --theme-border: #222222;
   --theme-border-strong: #000000;
@@ -163,9 +174,14 @@ html[data-theme="soft"] {
   --theme-bg-card-soft: #e3d6b3;
   --theme-bg-input: #f4ecd8;
   --theme-text-primary: #3b2a1a;
+  --theme-text-deep: #2a1a08;
+  --theme-text-mid: #5a4220;
   --theme-text-muted: #5a4220;
   --theme-text-faint: #5a4220;
   --theme-accent: #8d7440;
+  --theme-accent-light: #b08f45;
+  --theme-accent-deep: #5a4220;
+  --theme-accent-glow: #c5ab68;
   --theme-accent-strong: #5a4220;
   --theme-border: #b08f45;
   --theme-border-strong: #8d7440;
@@ -321,7 +337,7 @@ html[data-theme="soft"] .foldout-panel {
     font-family: "Helvetica Neue", Arial, sans-serif;
   }
   .gold {
-    @apply text-gold;
+    color: var(--theme-accent);
     font-family: Georgia, "Times New Roman", serif;
   }
   .card {
@@ -369,8 +385,8 @@ html[data-theme="soft"] .foldout-panel {
   }
   .field-input:focus {
     outline: none;
-    @apply border-gold;
-    box-shadow: 0 0 0 3px rgba(168, 138, 70, 0.2);
+    border-color: var(--theme-accent);
+    box-shadow: 0 0 0 3px rgb(var(--theme-gold-rgb) / 0.2);
   }
   .primary-button,
   .secondary-button,
@@ -394,31 +410,33 @@ html[data-theme="soft"] .foldout-panel {
      also stay literal — they're a separate gradient set the
      palette absorption did not propose tokens for. */
   .primary-button {
-    background-image: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
-    @apply text-ink-deep border-sepia-500;
+    background-image: linear-gradient(180deg, var(--theme-accent-light) 0%, var(--theme-accent-deep) 100%);
+    color: var(--theme-text-deep);
+    border: 1px solid var(--theme-accent-strong);
   }
-  .primary-button:hover { background: linear-gradient(180deg, #d1b676 0%, #b08f45 100%); }
+  .primary-button:hover { background-image: linear-gradient(180deg, var(--theme-accent-glow) 0%, var(--theme-accent) 100%); }
   .secondary-button,
   .pill-link {
-    background: rgba(246, 241, 228, 0.96);
-    color: #0a0a0a;
-    border: 1.5px solid #8d7440;
+    background: var(--theme-bg-card-soft);
+    color: var(--theme-text-primary);
+    border: 1.5px solid var(--theme-accent-strong);
   }
   .secondary-button:hover,
-  .pill-link:hover { background: rgba(255, 247, 231, 0.98); }
+  .pill-link:hover { background: var(--theme-bg-card); }
   .danger-button {
-    @apply bg-review-red border-review-red-deep;
+    background: var(--theme-review-red);
+    border: 1px solid var(--theme-review-red-deep);
     color: #fff8e7;
   }
   .danger-button:hover { @apply bg-review-red-deep; }
   .ghost-link {
-    @apply text-ink-mid;
+    color: var(--theme-text-mid);
     font-size: 0.9rem;
     font-weight: 500;
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
   }
-  .ghost-link:hover { @apply text-ink-deep; }
+  .ghost-link:hover { color: var(--theme-text-deep); }
 
   /* --- v2 button states (issue #251) --- */
   /* :focus-visible uses the keyboard-only focus ring so mouse clicks
@@ -431,23 +449,23 @@ html[data-theme="soft"] .foldout-panel {
   .primary-button:focus-visible {
     outline: 2px solid;
     outline-offset: 2px;
-    @apply outline-gold-glow;
+    outline-color: var(--theme-accent-glow);
   }
   .secondary-button:focus-visible,
   .pill-link:focus-visible {
     outline: 2px solid;
     outline-offset: 2px;
-    @apply outline-gold;
+    outline-color: var(--theme-accent);
   }
   .danger-button:focus-visible {
     outline: 2px solid;
     outline-offset: 2px;
-    @apply outline-review-red;
+    outline-color: var(--theme-review-red);
   }
   .ghost-link:focus-visible {
     outline: 2px solid;
     outline-offset: 2px;
-    @apply outline-ink-mid;
+    outline-color: var(--theme-text-mid);
   }
 
   /* :active — pressed state. Subtle inset shadow + slight scale-down
