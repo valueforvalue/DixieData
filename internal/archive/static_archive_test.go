@@ -433,3 +433,83 @@ func TestStaticArchiveIndex_LegacyHashAliasesStillResolve(t *testing.T) {
 		t.Errorf("rendered index.html missing legacyRecord handler (issue #498 slice 2)")
 	}
 }
+
+// TestStaticArchiveIndex_BrowsePageRendersFiltersAndSearch (issue #498
+// slice 3) asserts the Browse page renders the spec filter UI:
+// search input + 5 filter chips (entry_type, pension_state, unit,
+// buried_in, confederate_home_status) + sort control + pagination
+// size control. The hash-routed Browse page is the destination for
+// Insights drilldowns, so the filter chip IDs must be deterministic.
+// The chip attributes use html/template's JS-context URL escape
+// which strips a leading '#' from URL-like substrings — we assert
+// the JS literals (BROWSE_FILTER_FIELDS array) + the rendered HTML
+// attribute prefixes (the actual `data-filter="<field>"` strings
+// are produced at JS runtime, so the static HTML carries the JS
+// expression `'data-filter="' + field + '"'` instead).
+func TestStaticArchiveIndex_BrowsePageRendersFiltersAndSearch(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// BROWSE_FILTER_FIELDS is the canonical 5-field filter list
+	// per locked decision 2.
+	if !strings.Contains(html, "BROWSE_FILTER_FIELDS") {
+		t.Errorf("BROWSE_FILTER_FIELDS array missing from JS (issue #498 slice 3)")
+	}
+	for _, field := range []string{"entry_type", "pension_state", "unit", "buried_in", "confederate_home_status"} {
+		if !strings.Contains(html, "'"+field+"'") {
+			t.Errorf("Browse filter field %q missing from BROWSE_FILTER_FIELDS (issue #498 slice 3)", field)
+		}
+	}
+	// Search box.
+	if !strings.Contains(html, "browse-search") {
+		t.Errorf("Browse search input missing (issue #498 slice 3)")
+	}
+	// Sort control — the 3 sort options are inlined as
+	// <option value="display_id"> etc. in the rendered HTML.
+	for _, opt := range []string{"display_id", "name", "last_edited"} {
+		if !strings.Contains(html, `value="`+opt+`"`) {
+			t.Errorf("Browse sort option %q missing (issue #498 slice 3)", opt)
+		}
+	}
+	// Pagination sizes (25 / 50 / 100) are inlined as
+	// <option value="25"> etc.
+	for _, size := range []string{"25", "50", "100"} {
+		if !strings.Contains(html, `value="`+size+`"`) {
+			t.Errorf("Browse page-size option %q missing (issue #498 slice 3)", size)
+		}
+	}
+	// Filter application function (the JS that reads chip values +
+	// search + sort + page-size and re-renders the list).
+	if !strings.Contains(html, "applyBrowseFilters") {
+		t.Errorf("applyBrowseFilters function missing from JS (issue #498 slice 3)")
+	}
+	// The chip CSS class + data-filter attribute shape (the runtime
+	// template) — pins the contract that the chip elements render
+	// correctly when JS evaluates.
+	if !strings.Contains(html, `class="filter-chip"`) {
+		t.Errorf("filter-chip class missing from JS (issue #498 slice 3)")
+	}
+	if !strings.Contains(html, `data-filter`) {
+		t.Errorf("data-filter attribute missing from JS (issue #498 slice 3)")
+	}
+}
+
+// TestStaticArchiveIndex_BrowsePageHashPrefill (issue #498 slice 3)
+// asserts the Browse page reads filter pre-fill from the route
+// query string. Insights drilldowns link to #/browse?entry_type=widow
+// (per locked decision 3) and the page must surface the pre-filtered
+// list immediately on mount, not require a second click.
+func TestStaticArchiveIndex_BrowsePageHashPrefill(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// The JS must parse the query string from the route and apply
+	// it on initial Browse mount. parseBrowseQuery is the seam.
+	if !strings.Contains(html, "parseBrowseQuery") {
+		t.Errorf("parseBrowseQuery function missing (issue #498 slice 3)")
+	}
+	// Date filter is a separate drilldown surface — Calendar day
+	// cells link to #/browse?date=MM-DD and the page must surface
+	// records whose death day matches.
+	if !strings.Contains(html, "date=") {
+		t.Errorf("date filter missing from Browse (issue #498 slice 3)")
+	}
+}

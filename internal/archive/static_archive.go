@@ -504,6 +504,132 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       font-size: 0.95rem;
     }
 
+    /* Issue #498 slice 3: Browse toolbar + filter chips +
+       pagination + prefill banner. The toolbar arranges the
+       search input, sort selector, and page-size selector in a
+       grid that collapses on narrow screens. */
+    .browse-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(160px, 0.7fr) minmax(120px, 0.5fr);
+      gap: 14px;
+      margin: 14px 0 16px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 251, 241, 0.62);
+      border: 1px solid rgba(141, 116, 64, 0.28);
+    }
+    .browse-toolbar label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .browse-toolbar input,
+    .browse-toolbar select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(141, 116, 64, 0.55);
+      background: rgba(245, 242, 236, 0.96);
+      padding: 9px 12px;
+      font-size: 0.95rem;
+      color: var(--ink);
+    }
+    .filter-chips {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .filter-chip-group {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      align-items: start;
+      gap: 12px;
+    }
+    .filter-chip-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold-dark);
+      padding-top: 8px;
+    }
+    .filter-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .filter-chip {
+      border-radius: 999px;
+      border: 1px solid rgba(141, 116, 64, 0.55);
+      background: rgba(255, 251, 241, 0.7);
+      color: var(--ink);
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .filter-chip:hover {
+      background: rgba(255, 247, 231, 0.95);
+    }
+    .filter-chip.active {
+      background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
+      color: #1f2b38;
+      border-color: var(--gold-dark);
+    }
+    .filter-chip-count {
+      font-size: 0.72rem;
+      opacity: 0.7;
+      margin-left: 2px;
+    }
+    .browse-prefilter-banner {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(141, 116, 64, 0.45);
+      background: rgba(197, 171, 104, 0.16);
+      font-size: 0.9rem;
+      color: var(--ink);
+    }
+    .browse-prefilter-banner.hidden {
+      display: none;
+    }
+    .browse-pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin: 16px 0 6px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(255, 251, 241, 0.62);
+      border: 1px solid rgba(141, 116, 64, 0.22);
+    }
+    .browse-pagination .action-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .browse-page-indicator {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .browse-count {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    @media (max-width: 720px) {
+      .browse-toolbar { grid-template-columns: 1fr; }
+      .filter-chip-group { grid-template-columns: 1fr; }
+    }
+
     .article-body {
       line-height: 1.7;
     }
@@ -1571,17 +1697,193 @@ function escapeHtml(value) {
     }
 
     // renderBrowsePage renders the Browse page (filterable Person
-    // Record list). Slice 3 fills this in fully (search + filter
-    // chips + sort + pagination); the slice-2 stub keeps the nav
-    // link live so a reader who clicks Browse before slice 3 lands
-    // sees a clear "coming soon" instead of a blank screen.
+    // Record list, issue #498 slice 3). Hash-routed pre-fill via
+    // the route query string (e.g. #/browse?entry_type=widow from
+    // an Insights drilldown). Search + 5 filter chips + sort +
+    // pagination are all client-side against bundle.records[].
+    // Per locked decision 2 review_status is dropped (no review
+    // queue in a read-only archive) and scope is hidden (always
+    // "all" — the archive IS the full snapshot).
     function renderBrowsePage(bundle, query) {
+      var records = Array.isArray(bundle.records) ? bundle.records : [];
       return '' +
-        '<div class="panel-head"><h2>Browse</h2></div>' +
-        '<p class="panel-subtext">Filter the Person Records by entry type, pension state, unit, cemetery, Confederate Home membership, and review status. Search across names, units, notes, and source records.</p>' +
-        '<div class="placeholder-card">Browse filter UI lands in issue #498 slice 3 — the data is already in this archive\'s <code>records[]</code> array.</div>' +
-        (query ? '<div class="placeholder-card">Pre-filter from hash: <code>' + escapeHtml(query) + '</code></div>' : '');
+        '<div class="panel-head"><h2>Browse</h2>' +
+        '<span class="browse-count" id="browse-count">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + '</span>' +
+        '</div>' +
+        '<p class="panel-subtext">Search and filter the Person Records. Click any row for the full detail view. Click an Insights card on the Insights page to pre-filter this list.</p>' +
+        '<div class="browse-toolbar">' +
+          '<div class="browse-search-row">' +
+            '<label for="browse-search">Search</label>' +
+            '<input id="browse-search" type="search" placeholder="Search names, units, locations, notes…" autocomplete="off" spellcheck="false">' +
+          '</div>' +
+          '<div class="browse-sort-row">' +
+            '<label>Sort by</label>' +
+            '<select id="browse-sort">' +
+              '<option value="display_id">Display ID</option>' +
+              '<option value="name">Name</option>' +
+              '<option value="last_edited" selected>Last Edited</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="browse-page-size-row">' +
+            '<label>Per page</label>' +
+            '<select id="browse-page-size">' +
+              '<option value="25" selected>25</option>' +
+              '<option value="50">50</option>' +
+              '<option value="100">100</option>' +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="filter-chips" id="browse-filter-chips">' +
+          renderFilterChip('entry_type', 'Entry type', records, function(r) { return r.entryType; }) +
+          renderFilterChip('pension_state', 'Pension state', records, function(r) { return r.pensionState; }) +
+          renderFilterChip('unit', 'Unit', records, function(r) { return r.unit; }) +
+          renderFilterChip('buried_in', 'Buried in', records, function(r) { return r.location; }) +
+          renderFilterChip('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
+        '</div>' +
+        '<div id="browse-prefilter-banner" class="browse-prefilter-banner hidden"></div>' +
+        '<div class="results" id="browse-results"></div>' +
+        '<div class="browse-pagination" id="browse-pagination"></div>' +
+        '<div class="empty-state" id="browse-empty" style="display:none;">No Person Records matched the current filters.</div>';
     }
+
+    // renderFilterChip renders one filter-chip group: a label +
+    // a horizontal scroll of pill buttons, one per distinct value
+    // in the records slice. Each pill carries data-filter="<field>"
+    // + data-value="<value>" so the click handler can toggle.
+    function renderFilterChip(field, label, records, getter) {
+      var values = {};
+      for (var i = 0; i < records.length; i++) {
+        var v = String(getter(records[i]) || '').trim();
+        if (!v) continue;
+        values[v] = (values[v] || 0) + 1;
+      }
+      var sorted = Object.keys(values).sort(function(a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
+      var buttons = '<button type="button" class="filter-chip active" data-filter="' + field + '" data-value="">All ' + sorted.length + '</button>';
+      for (var j = 0; j < sorted.length; j++) {
+        var val = sorted[j];
+        buttons += '<button type="button" class="filter-chip" data-filter="' + field + '" data-value="' + escapeHtml(val) + '">' + escapeHtml(val) + ' <span class="filter-chip-count">' + values[val] + '</span></button>';
+      }
+      return '<div class="filter-chip-group" data-filter-group="' + field + '">' +
+        '<span class="filter-chip-label">' + escapeHtml(label) + '</span>' +
+        '<div class="filter-chip-row">' + buttons + '</div>' +
+      '</div>';
+    }
+
+    // parseBrowseQuery parses the Browse route query string into
+    // an object: {field: value, ...}. The Calendar day-cell drilldown
+    // uses #/browse?date=05-12 (MM-DD); Insights card drilldowns use
+    // #/browse?entry_type=widow or #/browse?unit=1st%20Texas%20Infantry.
+    function parseBrowseQuery(queryString) {
+      var out = {};
+      var s = String(queryString || '').replace(/^\?/, '');
+      if (!s) return out;
+      var parts = s.split('&');
+      for (var i = 0; i < parts.length; i++) {
+        var eq = parts[i].indexOf('=');
+        if (eq < 0) {
+          out[decodeURIComponent(parts[i])] = '';
+        } else {
+          var key = decodeURIComponent(parts[i].slice(0, eq));
+          var val = decodeURIComponent(parts[i].slice(eq + 1));
+          out[key] = val;
+        }
+      }
+      return out;
+    }
+
+    // getBrowseFilterValue reads the currently-selected filter value
+    // for the given field from the chip group. Empty string = "All".
+    function getBrowseFilterValue(field) {
+      var active = document.querySelector('[data-filter-group="' + field + '"] .filter-chip.active');
+      return active ? (active.getAttribute('data-value') || '') : '';
+    }
+
+    // applyBrowseFilters reads the search input + every chip's active
+    // value + the sort + page size + current page, applies them to
+    // bundle.records[], and re-renders the list. Called on every
+    // input change and every chip click. Hash pre-fill is applied
+    // once on initial Browse mount (not on every re-render).
+    function applyBrowseFilters(bundle, prefill) {
+      var records = Array.isArray(bundle.records) ? bundle.records : [];
+      var searchInput = document.getElementById('browse-search');
+      var sortSelect = document.getElementById('browse-sort');
+      var pageSizeSelect = document.getElementById('browse-page-size');
+      if (!searchInput || !sortSelect || !pageSizeSelect) return;
+      var query = String(searchInput.value || '').trim().toLowerCase();
+      var sort = sortSelect.value || 'last_edited';
+      var pageSize = Number(pageSizeSelect.value) || 25;
+
+      var filtered = records.filter(function(r) {
+        if (query && !matchesSearch(r, query)) return false;
+        for (var fi = 0; fi < BROWSE_FILTER_FIELDS.length; fi++) {
+          var field = BROWSE_FILTER_FIELDS[fi];
+          var want = prefill && prefill[field] !== undefined ? prefill[field] : getBrowseFilterValue(field);
+          if (!want) continue;
+          var got = '';
+          if (field === 'entry_type') got = r.entryType;
+          else if (field === 'pension_state') got = r.pensionState;
+          else if (field === 'unit') got = r.unit;
+          else if (field === 'buried_in') got = r.location;
+          else if (field === 'confederate_home_status') got = r.homeStatus;
+          if (String(got || '').trim() !== want) return false;
+        }
+        if (prefill && prefill.date) {
+          var date = prefill.date;
+          var dStr = String(r.deathDate || '').trim();
+          if (dStr.length >= 5) {
+            var mmdd = dStr.slice(0, 2) + '-' + dStr.slice(3, 5);
+            if (mmdd !== date) return false;
+          } else {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      filtered.sort(function(a, b) {
+        var ak = '', bk = '';
+        if (sort === 'display_id') { ak = a.displayId || ''; bk = b.displayId || ''; }
+        else if (sort === 'name') { ak = (a.name || '').toLowerCase(); bk = (b.name || '').toLowerCase(); }
+        else { ak = a.lastEditedAt || ''; bk = b.lastEditedAt || ''; }
+        if (ak < bk) return 1;
+        if (ak > bk) return -1;
+        return 0;
+      });
+
+      var totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      if (browseState.page < 1) browseState.page = 1;
+      if (browseState.page > totalPages) browseState.page = totalPages;
+      var startIdx = (browseState.page - 1) * pageSize;
+      var pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+      var results = document.getElementById('browse-results');
+      if (results) {
+        var rowsHtml = '';
+        for (var i = 0; i < pageItems.length; i++) {
+          rowsHtml += renderRecord(pageItems[i], startIdx + i, records);
+        }
+        results.innerHTML = rowsHtml;
+      }
+      var pagination = document.getElementById('browse-pagination');
+      if (pagination) {
+        var pHtml = '<button type="button" class="action-button" id="browse-prev"' + (browseState.page <= 1 ? ' disabled' : '') + '>← Prev</button>';
+        pHtml += '<span class="browse-page-indicator">Page ' + browseState.page + ' of ' + totalPages + '</span>';
+        pHtml += '<button type="button" class="action-button" id="browse-next"' + (browseState.page >= totalPages ? ' disabled' : '') + '>Next →</button>';
+        pagination.innerHTML = pHtml;
+      }
+      var count = document.getElementById('browse-count');
+      if (count) count.textContent = filtered.length + ' of ' + records.length + ' Person Record' + (records.length === 1 ? '' : 's');
+      var empty = document.getElementById('browse-empty');
+      if (empty) empty.style.display = filtered.length ? 'none' : 'block';
+    }
+
+    // BROWSE_FILTER_FIELDS is the canonical filter list per
+    // locked decision 2: 5 chips. Review status dropped (no review
+    // queue in read-only archive); scope hidden (always "all").
+    var BROWSE_FILTER_FIELDS = ['entry_type', 'pension_state', 'unit', 'buried_in', 'confederate_home_status'];
+
+    // browseState holds the current page index for Browse pagination.
+    var browseState = { page: 1 };
 
     // renderInsightsPage renders the Insights page (analytics
     // snapshot). Slice 4 fills this in fully (cards + drilldown);
@@ -1810,7 +2112,20 @@ function escapeHtml(value) {
         var html = '';
         switch (route.name) {
           case 'calendar': html = renderCalendarPage(bundle); break;
-          case 'browse': html = renderBrowsePage(bundle, route.query); break;
+          case 'browse':
+            html = renderBrowsePage(bundle, route.query);
+            setPageHtml(html);
+            // Issue #498 slice 3: pre-fill chips from the hash query
+            // (Insights drilldown target), wire chip + search +
+            // sort + page-size + pagination listeners, then render.
+            var prefill = parseBrowseQuery(route.query);
+            applyBrowsePrefillChips(prefill);
+            renderBrowsePrefillBanner(prefill);
+            browseState.page = 1;
+            applyBrowseFilters(bundle, prefill);
+            wireBrowseListeners(bundle);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
           case 'insights': html = renderInsightsPage(bundle); break;
           case 'persons': html = renderPersonsPage(bundle); break;
           case 'events': html = renderEventsPage(bundle); break;
@@ -1819,6 +2134,121 @@ function escapeHtml(value) {
         }
         setPageHtml(html);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // applyBrowsePrefillChips activates the chip(s) whose value
+      // matches the prefill object from the route query. The 'All'
+      // chip in each group is deactivated when a specific value
+      // matches; the matched chip is activated.
+      function applyBrowsePrefillChips(prefill) {
+        if (!prefill) return;
+        for (var key in prefill) {
+          if (Object.prototype.hasOwnProperty.call(prefill, key)) {
+            var val = prefill[key];
+            // date= handled separately (banner, not chip)
+            if (key === 'date') continue;
+            var chip = document.querySelector('[data-filter-group="' + key + '"] [data-value="' + cssEscape(val) + '"]');
+            if (chip) {
+              var group = chip.closest('[data-filter-group]');
+              if (group) {
+                group.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+              }
+              chip.classList.add('active');
+            }
+          }
+        }
+      }
+
+      // cssEscape escapes a string for use as a CSS attribute-selector
+      // value. Quotes the string and escapes backslash + quote chars
+      // per the CSS Attribute Selectors Level 4 spec.
+      function cssEscape(s) {
+        return String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      }
+
+      // renderBrowsePrefillBanner shows a small banner above the
+      // results when the Browse page was opened via a drilldown
+      // (Insights card or Calendar day cell). The banner has a
+      // "Clear filter" button that resets to the unfiltered list.
+      function renderBrowsePrefillBanner(prefill) {
+        var banner = document.getElementById('browse-prefilter-banner');
+        if (!banner) return;
+        if (!prefill || Object.keys(prefill).length === 0) {
+          banner.classList.add('hidden');
+          banner.innerHTML = '';
+          return;
+        }
+        var chips = [];
+        for (var k in prefill) {
+          if (Object.prototype.hasOwnProperty.call(prefill, k)) {
+            var label = k.replace(/_/g, ' ');
+            chips.push('<span class="pill">' + escapeHtml(label) + ': <strong>' + escapeHtml(prefill[k]) + '</strong></span>');
+          }
+        }
+        banner.innerHTML = '<strong>Filtered by:</strong> ' + chips.join(' ') +
+          ' <button type="button" class="image-button" id="browse-clear-prefilter">Clear filter</button>';
+        banner.classList.remove('hidden');
+      }
+
+      // wireBrowseListeners attaches the chip / search / sort /
+      // page-size / pagination click + change handlers. Called
+      // once per Browse mount; the handlers re-read inputs and
+      // call applyBrowseFilters(bundle, null) — no prefill, the
+      // user has taken control from this point.
+      function wireBrowseListeners(bundle) {
+        document.querySelectorAll('[data-filter-group] .filter-chip').forEach(function(chip) {
+          chip.addEventListener('click', function() {
+            var group = chip.closest('[data-filter-group]');
+            if (!group) return;
+            group.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+            chip.classList.add('active');
+            browseState.page = 1;
+            applyBrowseFilters(bundle, null);
+          });
+        });
+        var searchInput = document.getElementById('browse-search');
+        if (searchInput) {
+          searchInput.addEventListener('input', function() {
+            browseState.page = 1;
+            applyBrowseFilters(bundle, null);
+          });
+        }
+        var sortSelect = document.getElementById('browse-sort');
+        if (sortSelect) {
+          sortSelect.addEventListener('change', function() {
+            browseState.page = 1;
+            applyBrowseFilters(bundle, null);
+          });
+        }
+        var pageSizeSelect = document.getElementById('browse-page-size');
+        if (pageSizeSelect) {
+          pageSizeSelect.addEventListener('change', function() {
+            browseState.page = 1;
+            applyBrowseFilters(bundle, null);
+          });
+        }
+        var prevBtn = document.getElementById('browse-prev');
+        var nextBtn = document.getElementById('browse-next');
+        if (prevBtn) {
+          prevBtn.addEventListener('click', function() {
+            if (browseState.page > 1) {
+              browseState.page--;
+              applyBrowseFilters(bundle, null);
+            }
+          });
+        }
+        if (nextBtn) {
+          nextBtn.addEventListener('click', function() {
+            browseState.page++;
+            applyBrowseFilters(bundle, null);
+          });
+        }
+        var clearBtn = document.getElementById('browse-clear-prefilter');
+        if (clearBtn) {
+          clearBtn.addEventListener('click', function() {
+            window.location.hash = '#/browse';
+          });
+        }
       }
 
       syncViewFromHash();
@@ -1928,8 +2358,7 @@ function escapeHtml(value) {
       }
 
       window.addEventListener('hashchange', syncViewFromHash);
-      window.addEventListener('resize', applyImageTransform);
-    });  </script>
+      window.addEventListener('resize', applyImageTransform);    });  </script>
 </body>
 </html>
 `
