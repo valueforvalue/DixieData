@@ -291,6 +291,111 @@ async function main() {
       }
     });
 
+    // Step 2b (issue #487 regression): recents-list Open button
+    // must honor the picker URL's ?next= query param. The prior
+    // CSS-selector bug
+    // (`#page.research.picker form input[name='next']`)
+    // never matched the dotted-id page wrapper and silently fell
+    // back to "camaraderie", so Open Timeline / Open Research Log
+    // shortcuts always landed at /soldiers/{id}/camaraderie.
+    //
+    // Visit /research?next=timeline, click the recents Open
+    // button, assert the destination is /soldiers/{id}/timeline
+    // (NOT /soldiers/{id}/camaraderie). Re-seed localStorage
+    // explicitly so the test is independent of later step order.
+    // Placed BEFORE step-03 because step-03 has a pre-existing
+    // unrelated flake (a CSS-escape selector that fails on this
+    // Playwright version); if step-03 fails first, this regression
+    // net never runs.
+    await step(page, 'step-02b recents-open-honors-next-query-timeline', async () => {
+      await page.evaluate((id) => {
+        try {
+          window.localStorage.setItem('dixiedata.research.recents', JSON.stringify([id]));
+        } catch (_) {
+          // best effort
+        }
+      }, soldierA);
+      await page.goto(`${BASE}/research?next=timeline`, { waitUntil: 'domcontentloaded' });
+      const deadline = Date.now() + 5000;
+      let list = null;
+      while (Date.now() < deadline) {
+        list = await page.$('[data-research-recent-list]');
+        if (list) break;
+        await sleep(80);
+      }
+      if (!list) {
+        throw new Error('recents <ul> did not appear after localStorage hydration (issue #487)');
+      }
+      // Sanity: the SSR page must echo the next keyword into a
+      // hidden form field so the JS hydration fetch can round-trip
+      // it. If this assertion fails, the picker-page SSR lost the
+      // ?next= and no amount of JS fix will recover. Use the
+      // getElementById form (matches the fix in
+      // researchPickerNextKeyword) to dodge the dotted-id CSS
+      // selector bug being tested.
+      const hiddenNext = await page.evaluate(() => {
+        const pageEl = document.getElementById('page.research.picker');
+        if (!(pageEl instanceof HTMLElement)) return null;
+        const input = pageEl.querySelector("form input[name='next']");
+        return input instanceof HTMLInputElement ? input.value : null;
+      });
+      if (hiddenNext !== 'timeline') {
+        throw new Error(`SSR search form's hidden next field expected 'timeline', got ${JSON.stringify(hiddenNext)}`);
+      }
+      const form = await page.$('[data-research-recent-list] form[data-dixie-submit="true"]');
+      if (!form) {
+        throw new Error('recents <form> is missing data-dixie-submit="true" (issue #426 follow-up)');
+      }
+      await Promise.all([
+        page.waitForURL(/\/soldiers\/\d+\/timeline/, { timeout: 5000 }),
+        form.$eval('button[type="submit"]', (b) => b.click()),
+      ]);
+      if (!/\/soldiers\/\d+\/timeline/.test(page.url())) {
+        throw new Error(
+          `expected page.url() to match /soldiers/{id}/timeline for ?next=timeline; got ${page.url()} ` +
+          `(recents Open ignored the picker URL's ?next= — issue #487)`,
+        );
+      }
+    });
+
+    // Step 2c (issue #487 regression): same defect for ?next=research-log.
+    // Catches a future fix that accidentally hardcodes "timeline"
+    // instead of reading the SSR-rendered next value.
+    await step(page, 'step-02c recents-open-honors-next-query-research-log', async () => {
+      await page.evaluate((id) => {
+        try {
+          window.localStorage.setItem('dixiedata.research.recents', JSON.stringify([id]));
+        } catch (_) {
+          // best effort
+        }
+      }, soldierA);
+      await page.goto(`${BASE}/research?next=research-log`, { waitUntil: 'domcontentloaded' });
+      const deadline = Date.now() + 5000;
+      let list = null;
+      while (Date.now() < deadline) {
+        list = await page.$('[data-research-recent-list]');
+        if (list) break;
+        await sleep(80);
+      }
+      if (!list) {
+        throw new Error('recents <ul> did not appear after localStorage hydration (issue #487)');
+      }
+      const form = await page.$('[data-research-recent-list] form[data-dixie-submit="true"]');
+      if (!form) {
+        throw new Error('recents <form> is missing data-dixie-submit="true" (issue #426 follow-up)');
+      }
+      await Promise.all([
+        page.waitForURL(/\/soldiers\/\d+\/research-log/, { timeout: 5000 }),
+        form.$eval('button[type="submit"]', (b) => b.click()),
+      ]);
+      if (!/\/soldiers\/\d+\/research-log/.test(page.url())) {
+        throw new Error(
+          `expected page.url() to match /soldiers/{id}/research-log for ?next=research-log; got ${page.url()} ` +
+          `(recents Open ignored the picker URL's ?next= — issue #487)`,
+        );
+      }
+    });
+
     // Step 3: ?next=research-pack surfaces the picker sub-screen
     // with a <select name="geography"> that has both "state" and
     // "county" options. The sub-screen is its own section

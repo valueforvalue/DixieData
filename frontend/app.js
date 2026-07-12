@@ -612,8 +612,23 @@
   // the right sub-page. The picker echoes it into a hidden form
   // field with name="next"; we read that off the first picker form
   // and fall back to "camaraderie" when no picker is on the page.
+  //
+  // Issue #487: the prior `document.querySelector("#" + "page.research.picker form input[name='next']")`
+  // never matched. CSS parses `#page.research.picker` as a compound
+  // selector requiring id="page" + class "research" + class "picker",
+  // not the literal id "page.research.picker". Every picker
+  // navigation silently fell back to "camaraderie" — the
+  // Open Timeline / Open Research Log shortcuts landed on
+  // /soldiers/{id}/camaraderie instead of the requested sub-page.
+  // Use getElementById for the dotted-id lookup (matches the
+  // sibling researchRecentsTarget() pattern at this same boundary)
+  // then querySelector for the descendant form + input.
   function researchPickerNextKeyword() {
-    const form = document.querySelector("#" + "page.research.picker form input[name='next']");
+    const pageEl = document.getElementById("page.research.picker");
+    if (!(pageEl instanceof HTMLElement)) {
+      return "camaraderie";
+    }
+    const form = pageEl.querySelector("form input[name='next']");
     if (form instanceof HTMLInputElement && form.value) {
       return form.value;
     }
