@@ -335,27 +335,45 @@ html[data-theme="soft"] .foldout-panel {
   border: 1.5px solid #b08f45 !important;
 }
 
-/* Issue #472 follow-up: the Review Queue count-state pill
-   needs the same red urgency in High Contrast (dark text on
-   light bg) and Soft (brown text on cream bg). Override after
-   the generic theme rules so it wins specificity. */
-html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count] {
+/* Issue #472 follow-up + mega-menu relocation (#380 slice 3).
+   The "Open Review Queue" menuitem now lives in the Share &
+   Review mega-menu (post-#380), not the retired R&R foldout,
+   so the per-theme red urgency overrides below target
+   `.mega-menu-item[data-research-review-has-count]` — the
+   pre-#380 `.foldout-menuitem[data-research-review-has-count]`
+   selectors further down were orphaned by the slice 3
+   relocation and never matched a rendered element. The new
+   selectors mirror the same per-theme palette choices:
+     - Default theme: relies on the Tailwind utility classes
+       (border-2 border-review-red + bg-review-red/[0.32]) +
+       the base .mega-menu-item cream text — red on dark navy.
+     - High Contrast: deep red text on a light-red bg + solid
+       dark red border — the urgency cue is preserved on the
+       white panel without breaking the grayscale theme (the
+       review-red hue is the only place in HC we keep a real
+       color, on purpose).
+     - Soft: deep red text on a warm-light-red bg + solid dark
+       red border — matches the warm Soft palette while still
+       reading as "needs attention".
+   Placed AFTER the generic per-theme .mega-menu-item rules
+   above so the data-attribute selector wins specificity. */
+html[data-theme="high-contrast"] .mega-menu-item[data-research-review-has-count] {
   background: #fde0dc;
   border: 2px solid #6f2c26;
   color: #6f2c26;
 }
-html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count]:hover,
-html[data-theme="high-contrast"] .foldout-menuitem[data-research-review-has-count]:focus-visible {
+html[data-theme="high-contrast"] .mega-menu-item[data-research-review-has-count]:hover,
+html[data-theme="high-contrast"] .mega-menu-item[data-research-review-has-count]:focus-visible {
   background: #f9c8c0;
   color: #4a1d18;
 }
-html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count] {
+html[data-theme="soft"] .mega-menu-item[data-research-review-has-count] {
   background: #f4d7d2;
   border: 2px solid #6f2c26;
   color: #4a1d18;
 }
-html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:hover,
-html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:focus-visible {
+html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:hover,
+html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-visible {
   background: #ecc0b8;
   color: #4a1d18;
 }
@@ -979,18 +997,21 @@ html[data-theme="soft"] .foldout-menuitem[data-research-review-has-count]:focus-
    the Set call and the menuitem renders in its neutral
    pill-link state. The hover state is ratcheted brighter so
    the cue is still readable on the dark panel surface. */
-.foldout-menuitem[data-research-review-has-count] {
+.mega-menu-item[data-research-review-has-count] {
   /* Issue #472 follow-up: solid (not translucent) 2px red border
      so the "needs attention" cue reads at a glance, matching the
      trigger pill's badge. Background bumped to 0.32 alpha and text
      brightened to pure cream so the label is legible — the prior
-     0.18 alpha + #fbe1de text was the pink-on-pink regression. */
+     0.18 alpha + #fbe1de text was the pink-on-pink regression.
+     The .mega-menu-item class replaces .foldout-menuitem after
+     issue #380 slice 3 relocated the menuitem from the retired
+     R&R foldout to the Share & Review mega-menu. */
   border: 2px solid #6f2c26;
   background: rgba(111, 44, 38, 0.32);
   color: #fff5f1;
 }
-.foldout-menuitem[data-research-review-has-count]:hover,
-.foldout-menuitem[data-research-review-has-count]:focus-visible {
+.mega-menu-item[data-research-review-has-count]:hover,
+.mega-menu-item[data-research-review-has-count]:focus-visible {
   background: rgba(111, 44, 38, 0.48);
   color: #ffffff;
 }
