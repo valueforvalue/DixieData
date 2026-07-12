@@ -1760,6 +1760,13 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 		GeneratedAt:   time.Now().Format("January 2, 2006"),
 		FileStemJS:    strconv.Quote(owner.FileStem),
 		GeneratedAtJS: strconv.Quote(time.Now().Format("January 2, 2006")),
+		// Issue #509: printable-view chrome constants. Mirror
+		// the values ExportSoldierPDF passes to the typst
+		// renderer so the browser-printed report reads the
+		// same as the live PDF export.
+		ArchiveTitleJS: strconv.Quote(owner.DisplayName + "'s Civil War Research Archive"),
+		FooterTextJS:   strconv.Quote("Made with DixieData | Version: " + buildinfo.AppVersion + " | Build: " + buildinfo.BuildIdentity()),
+		CodenameJS:     strconv.Quote(buildinfo.Codename()),
 	})
 	if err != nil {
 		return err

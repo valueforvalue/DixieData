@@ -407,9 +407,96 @@ test('slice6-01 Export Report button renders on Person Record detail toolbar', (
     html.includes('target="_blank"'),
     'Export Report button must open in new tab (issue #505)',
   );
+  // Issue #509 follow-up: client-side printable view. The button
+  // now points at index.html#/print/{displayId} (a hash route in
+  // the same archive) rather than a static report-{id}.html
+  // file that no longer ships in the .zip.
   assert.ok(
-    html.includes('report-'),
-    'JS must reference report-{displayId}.html pattern (issue #505)',
+    /href\s*=\s*['"]index\.html#\/print\//.test(html) ||
+    /href\s*=\s*['"]index\.html#\/print\//.test(exportSrc) ||
+    /index\.html#\/print\//.test(exportSrc) ||
+    /index\.html#\/print\//.test(html),
+    'Export Report button must link to index.html#/print/{displayId} (issue #509)',
+  );
+});
+
+// --- Slice 10: Printable report (issue #509) ---
+test('slice10-01 #/print/{displayId} route renders renderPrintableReport from bundle (issue #509)', () => {
+  // Pin: routeFromHash recognises the #/print/{id} shape; the
+  // dispatch branch handles kind='print'; the renderer emits the
+  // typst-mirroring sections (title, identity, service,
+  // household, records, biography, image panel).
+  assert.ok(
+    /^\/print\/\(\.\+\)\$/.test(html) || /\/print\//.test(html),
+    'routeFromHash must parse #/print/{displayId} (issue #509)',
+  );
+  assert.ok(
+    html.includes("kind: 'print'") || html.includes('kind:"print"'),
+    'syncViewFromHash must dispatch the print route kind (issue #509)',
+  );
+  assert.ok(
+    html.includes('renderPrintableReport'),
+    'JS must define renderPrintableReport (issue #509)',
+  );
+  assert.ok(
+    html.includes('printLongDate'),
+    'JS must define printLongDate that mirrors the typst long-date formatter (issue #509)',
+  );
+  assert.ok(
+    html.includes('printComposeName'),
+    'JS must define printComposeName that mirrors the typst compose-name helper (issue #509)',
+  );
+  assert.ok(
+    html.includes('printRenderLink'),
+    'JS must define printRenderLink that emits the "Click to view" link annotation (issue #509)',
+  );
+  assert.ok(
+    /print-section[\s\S]{0,200}Identity/.test(html),
+    'printable view must render the Identity & Vital Details section (issue #509)',
+  );
+  assert.ok(
+    html.includes('print-biography'),
+    'printable view must carry the biography section with page-break-before (issue #509)',
+  );
+  assert.ok(
+    html.includes('@media print'),
+    'printable view must include @media print rules (issue #509)',
+  );
+  assert.ok(
+    html.includes('@page'),
+    'printable view must include @page rules for letter-size + margins (issue #509)',
+  );
+});
+
+// --- Slice 11: Export Report button styling (issue #511) ---
+test('slice11-01 --accent declared + button has visible resting-state styling (issue #511)', () => {
+  // Issue #511: --accent was referenced by .export-report-button
+  // but never declared, so the browser fell back to its default
+  // and the button rendered with white text on no visible fill.
+  // Pin: --accent is declared in :root; .export-report-button
+  // has explicit background, border, and color so it reads as a
+  // button at rest; .export-report-button:hover has a darker
+  // hover state; .export-report-button:focus-visible has a
+  // visible focus ring for keyboard users.
+  assert.ok(
+    /--accent:\s*#8d7440/.test(html),
+    ':root must declare --accent: #8d7440 (issue #511)',
+  );
+  // Extract the .export-report-button rule body.
+  const btnRule = html.match(/\.export-report-button\s*\{[^}]*\}/);
+  assert.ok(btnRule, 'static_archive.go must define a .export-report-button rule');
+  const rule = btnRule[0];
+  assert.ok(
+    /background:\s*var\(--accent\)/.test(rule) || /background:\s*#8d7440/.test(rule),
+    `.export-report-button must set a visible resting-state background (issue #511): ${rule}`,
+  );
+  assert.ok(
+    /color:\s*#ffffff/i.test(rule) || /color:\s*#fff/i.test(rule) || /color:\s*var\(--ink\)/.test(rule),
+    `.export-report-button must set readable text color (issue #511): ${rule}`,
+  );
+  assert.ok(
+    html.includes('.export-report-button:focus-visible'),
+    'static_archive.go must declare a focus-visible ring for keyboard users (issue #511)',
   );
 });
 

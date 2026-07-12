@@ -189,6 +189,13 @@ type staticArchiveIndexData struct {
 	// archive X does not bleed into archive Y.
 	FileStemJS    string
 	GeneratedAtJS string
+	// Issue #509: constants exposed to the printable-report
+	// renderer so the print chrome (header archive title,
+	// footer "Made with DixieData" text, italic codename)
+	// matches what the live PDF export emits.
+	ArchiveTitleJS string
+	FooterTextJS   string
+	CodenameJS     string
 }
 
 
@@ -216,6 +223,15 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       --gold-dark: #5a4220;
       --ink: #3b2a1a;
       --muted: #5a4220;
+      /* Issue #511: --accent was referenced by .export-report-button
+         and several other controls but was never declared, so it
+         resolved to the browser default (transparent / system color)
+         and the button rendered with white text on no visible fill.
+         Declared here so all --accent usages resolve to the gold
+         accent + readable ink-on-gold contrast. */
+      --accent: #8d7440;
+      --accent-dark: #5a4220;
+      --accent-soft: rgba(141, 116, 64, 0.18);
       --shadow: 0 16px 32px rgba(23, 33, 43, 0.16);
     }
 
@@ -1041,13 +1057,22 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       border: 2px solid var(--accent);
       cursor: pointer;
       text-decoration: none;
+      /* Issue #511: explicit resting-state fill + border + text so
+         the button reads as a button at rest (not white-on-white).
+         The filled-gold treatment matches the .back-button /
+         .image-button style used by the rest of the toolbar. */
       background: var(--accent);
-      color: #fff;
-      transition: background 0.12s;
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+      transition: background 0.12s, border-color 0.12s;
     }
     .export-report-button:hover {
-      background: #7a6635;
-      border-color: #7a6635;
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+    .export-report-button:focus-visible {
+      outline: 2px solid var(--accent-dark);
+      outline-offset: 2px;
     }
     .export-report-tip {
       font-size: 0.72rem;
@@ -1306,6 +1331,205 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       .image-row {
         flex-direction: column;
         align-items: stretch;
+      }
+    }
+
+    /* ============================================================
+       Issue #509: Printable report styles. The viewer renders a
+       per-Person-Record printable view at #/print/{displayId} on
+       click of the Export Report button; this stylesheet makes that
+       view produce a clean browser printout that mirrors the live
+       app's Typst PDF as closely as CSS can.
+
+       Typst chrome that is reproducible:
+         - letter page size (8.5in × 11in portrait, 11in × 8.5in
+           landscape via .print-root.landscape)
+         - 0.4in top/bottom + 0.63in left/right margins
+         - top-left 7pt archive title + horizontal rule below
+         - bottom-center 6pt footer ("Made with DixieData | ...")
+           + horizontal rule above + italic codename
+         - body font Arial 9pt (theme.palette.text_primary in typst)
+         - title font Times New Roman 14pt bold
+         - page-break-before:always on the biography section so
+           long biographies get their own page (typst's pagebreak()
+           model)
+         - @media screen: hide print-only header/footer chrome; the
+           print view is the visible page when not printing.
+       ============================================================ */
+
+    .print-root {
+      max-width: 8.5in;
+      margin: 0 auto;
+      padding: 0.4in 0.63in;
+      background: #ffffff;
+      color: #1f2b38;
+      font-family: Arial, "Liberation Sans", sans-serif;
+      font-size: 9pt;
+      line-height: 1.4;
+      position: relative;
+    }
+    .print-root.landscape {
+      max-width: 11in;
+    }
+    .print-header {
+      position: running(printHeader);
+      border-bottom: 0.6pt solid #8d7440;
+      padding-bottom: 0.15in;
+      margin-bottom: 0.25in;
+      color: #5a4220;
+      font-size: 7pt;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .print-footer {
+      position: running(printFooter);
+      border-top: 0.6pt solid #8d7440;
+      padding-top: 0.15in;
+      margin-top: 0.25in;
+      color: #5a4220;
+      font-size: 6pt;
+      text-align: center;
+    }
+    .print-footer .print-codename {
+      font-style: italic;
+    }
+    .print-title-block {
+      margin: 0 0 0.25in 0;
+    }
+    .print-title-block .print-name {
+      font-family: "Times New Roman", "Liberation Serif", "DejaVu Serif", serif;
+      font-size: 14pt;
+      font-weight: 700;
+      color: #1f2b38;
+    }
+    .print-title-block .print-subtitle {
+      font-family: "Times New Roman", "Liberation Serif", "DejaVu Serif", serif;
+      font-size: 9pt;
+      color: #5a4220;
+      margin-top: 0.05em;
+    }
+    .print-section {
+      margin: 0.2in 0;
+    }
+    .print-section h3 {
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      font-weight: 700;
+      color: #1f2b38;
+      margin: 0 0 0.1in 0;
+      padding-bottom: 0.05in;
+      border-bottom: 0.6pt solid rgba(141, 116, 64, 0.4);
+    }
+    .print-grid {
+      display: grid;
+      grid-template-columns: 1.4in 1fr;
+      column-gap: 0.15in;
+      row-gap: 0.05in;
+      margin: 0;
+    }
+    .print-grid dt {
+      font-weight: 700;
+      color: #5a4220;
+    }
+    .print-grid dd {
+      margin: 0;
+      color: #1f2b38;
+    }
+    .print-grid dd em {
+      font-style: italic;
+    }
+    .print-image-panel {
+      width: 100%;
+      height: 2.2in;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0.15in 0;
+      border: 1px solid rgba(141, 116, 64, 0.4);
+    }
+    .print-image-panel img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .print-biography {
+      page-break-before: always;
+      padding-top: 0.25in;
+    }
+    .print-biography h3 {
+      font-family: "Times New Roman", "Liberation Serif", "DejaVu Serif", serif;
+      font-size: 20pt;
+      font-weight: 700;
+      color: #1f2b38;
+      margin: 0 0 0.15in 0;
+      border-bottom: 0;
+    }
+    .print-biography-body {
+      font-size: 9pt;
+      color: #1f2b38;
+      white-space: pre-wrap;
+    }
+    .print-records ul {
+      margin: 0;
+      padding-left: 0.3in;
+    }
+    .print-records li {
+      margin: 0.05in 0;
+    }
+    .print-record-link {
+      color: #1f2b38;
+      text-decoration: underline;
+    }
+    .print-record-link::after {
+      content: " (Click to view)";
+      color: #5a4220;
+      font-style: italic;
+    }
+
+    @media screen {
+      .print-header,
+      .print-footer {
+        position: static;
+        margin: 0.2in 0;
+      }
+      body.print-mode .archive-shell {
+        display: none;
+      }
+    }
+
+    @page {
+      size: letter;
+      margin: 0.4in 0.63in;
+    }
+    @media print {
+      body {
+        margin: 0;
+        background: #ffffff;
+        color: #1f2b38;
+      }
+      .archive-shell {
+        display: none;
+      }
+      .print-root {
+        margin: 0;
+        padding: 0;
+        max-width: none;
+      }
+      .print-header {
+        position: running(printHeader);
+        border-bottom: 0.6pt solid #8d7440;
+      }
+      .print-footer {
+        position: running(printFooter);
+        border-top: 0.6pt solid #8d7440;
+      }
+      .print-section {
+        break-inside: avoid;
+      }
+      .print-biography {
+        break-before: page;
       }
     }
   </style>
@@ -1672,6 +1896,230 @@ function escapeHtml(value) {
         '</div>';
     }
 
+    // --- Printable report helpers (issue #509) ---
+
+    // printMonthNames mirrors templates/common/record_card.typ's
+    // month-names dictionary. The Typst long-date formatter maps
+    // "05" -> "May"; we reproduce that in JS so the printable
+    // view matches what the live PDF export shows.
+    var PRINT_MONTH_NAMES = {
+      '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+      '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+      '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+    };
+
+    // printLongDate renders a date string in the same long form as
+    // templates/common/record_card.typ::long-date. Input is the
+    // canonical MM/DD/YYYY shape used by the bundle's date fields.
+    //   "00/00/0000" -> "Unknown"
+    //   "00/00/1835" -> "1835"        (year only)
+    //   "05/00/1844" -> "May 1844"    (month + year, no day)
+    //   "05/22/1844" -> "May 22, 1844" (full)
+    function printLongDate(s) {
+      if (!s || s === 'Unknown' || s === '0000-00-00') return 'Unknown';
+      var parts = String(s).split('/');
+      if (parts.length !== 3) {
+        // Non-canonical shape — passthrough, same as typst's
+        // fallback branch (returns the raw string).
+        return String(s);
+      }
+      var monthIdx = parts[0];
+      var dayRaw = parts[1];
+      var yearRaw = parts[2];
+      if (monthIdx === '00' && dayRaw === '00' && yearRaw === '00') return 'Unknown';
+      if (monthIdx === '00' && dayRaw === '00') return yearRaw;
+      if (dayRaw === '00' && monthIdx !== '00' && yearRaw !== '00') {
+        return (PRINT_MONTH_NAMES[monthIdx] || monthIdx) + ' ' + yearRaw;
+      }
+      if (monthIdx === '00' || dayRaw === '00' || yearRaw === '00') return 'Unknown';
+      var day = (dayRaw.length > 1 && dayRaw.charAt(0) === '0') ? dayRaw.slice(1) : dayRaw;
+      return (PRINT_MONTH_NAMES[monthIdx] || monthIdx) + ' ' + day + ', ' + yearRaw;
+    }
+
+    // printEntryTypeLabel mirrors templates/common/record_card.typ::
+    // entry-type-label so the printable view's title subtitle uses
+    // the same wording as the live PDF export.
+    function printEntryTypeLabel(raw) {
+      var r = String(raw || '').trim().toLowerCase();
+      if (!r) return 'Soldier';
+      if (r === 'soldier') return 'Soldier';
+      if (r === 'wife') return 'Wife';
+      if (r === 'widow') return 'Widow';
+      if (r === 'linked_person') return 'Person Record';
+      return r.charAt(0).toUpperCase() + r.slice(1);
+    }
+
+    // printRenderLink mirrors templates/common/record_card.typ::
+    // render-link. Renders a URL as a 'Click to view' anchor (the
+    // URL itself is the href; the visible text reads 'Click to
+    // view'). Plain text passes through unchanged.
+    function printRenderLink(url) {
+      var u = String(url || '').trim();
+      if (!u) return '';
+      if (!/^https?:\/\//i.test(u)) return escapeHtml(u);
+      return '<a class="print-record-link" href="' + escapeHtml(u) + '" target="_blank" rel="noreferrer noopener">Click to view</a>';
+    }
+
+    // printFieldRow renders a (label, value) pair as a
+    // definition-list row. Used to mirror typst's field-row.
+    function printFieldRow(label, value) {
+      var display = value;
+      if (value === undefined || value === null || String(value).trim() === '') {
+        display = 'N/A';
+      }
+      if (label === 'Maiden Name' && display !== 'N/A') {
+        return '<dt>' + escapeHtml(label) + '</dt><dd><em>' + escapeHtml(String(display)) + '</em></dd>';
+      }
+      return '<dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(String(display)) + '</dd>';
+    }
+
+    // printComposeName mirrors templates/common/record_card.typ's
+    // compose-name helper: Prefix First Middle Last, dropping
+    // blank parts. The suffix is appended with a leading space
+    // when present (matches typst's "[suffix]" suffix concat).
+    function printComposeName(record) {
+      var parts = [];
+      if (record.prefix) parts.push(record.prefix);
+      if (record.firstName) parts.push(record.firstName);
+      if (record.middleName) parts.push(record.middleName);
+      if (record.lastName) parts.push(record.lastName);
+      var name = parts.join(' ');
+      var suffix = String(record.suffix || '').trim();
+      if (suffix) name = name + ' ' + suffix;
+      return name || 'Unknown';
+    }
+
+    // renderPrintableReport renders a printable DOM for a single
+    // Person Record, mirroring the section structure of
+    // templates/common/record_card.typ (title block, identity,
+    // service, household, records, biography, image panel). The
+    // output is consumed by the #/print/{displayId} route, which
+    // replaces the document body so a new tab can Cmd+P / Ctrl+P
+    // it directly.
+    //
+    // Design: client-side from bundle, no Typst at export time.
+    // The bundle already carries the StaticArchiveRecord superset
+    // of what typst's data.at("soldier") sees; this function
+    // reproduces the typst visual surface via HTML + CSS (no
+    // 50 MB binary, no per-record tempdir, no shell-out, no
+    // per-record .html file in the .zip).
+    function renderPrintableReport(record, bundle, landscape) {
+      var primaryImage = '';
+      if (Array.isArray(record.images) && record.images.length) {
+        var primary = record.images[0];
+        var filePath = primary.filePath || ('images/' + (primary.fileName || ''));
+        if (filePath) {
+          primaryImage = '<div class="print-image-panel"><img src="' + escapeHtml(filePath) + '" alt="' + escapeHtml(primary.caption || primary.fileName || '') + '"></div>';
+        }
+      }
+
+      // Identity section mirrors typst::render-identity-section.
+      var identityRows = [
+        printFieldRow('Prefix', record.prefix),
+        printFieldRow('First Name', record.firstName),
+        printFieldRow('Middle Name', record.middleName),
+        printFieldRow('Last Name', record.lastName),
+        printFieldRow('Suffix', record.suffix),
+        printFieldRow('Birth Date', printLongDate(record.birthDate)),
+        printFieldRow('Death Date', printLongDate(record.deathDate)),
+        printFieldRow('Birth Info', record.birthInfo),
+        printFieldRow('Buried In', record.location),
+      ].join('');
+
+      // Service section is conditional on entry type, mirroring
+      // typst::render-service-section. Soldiers get the full
+      // service block; widows get Pension + Application IDs;
+      // wives + linked_person get nothing here.
+      var serviceRows = '';
+      if (record.entryType === 'wife') {
+        // No service section for wives (matches typst).
+      } else if (record.entryType === 'widow') {
+        serviceRows = [
+          printFieldRow('Pension ID', record.pensionId),
+          printFieldRow('Application ID', record.appId),
+        ].join('');
+      } else if (record.entryType === 'linked_person') {
+        serviceRows = [
+          printFieldRow('Relationship to Soldier', record.relationshipLabel),
+          printFieldRow('Linked Soldier Record', record.spouseDisplayId),
+        ].join('');
+      } else {
+        serviceRows = [
+          printFieldRow('Record Type', printEntryTypeLabel(record.entryType)),
+          printFieldRow('Rank', record.rankOut || record.rank || record.rankIn),
+          printFieldRow('Rank In', record.rankIn),
+          printFieldRow('Rank Out', record.rankOut || record.rank),
+          printFieldRow('Unit', record.unit),
+          printFieldRow('Pension State', record.pensionState),
+          printFieldRow('Pension ID', record.pensionId),
+          printFieldRow('Application ID', record.appId),
+          printFieldRow('Confederate Home Status', record.homeStatus),
+          printFieldRow('Confederate Home Name', record.homeName),
+        ].join('');
+      }
+
+      // Household section mirrors typst::render-household-section.
+      // Suppressed when all entries are blank (matches typst
+      // suppression at L349 of record_card.typ).
+      var householdRows = '';
+      if (record.entryType === 'wife' || record.entryType === 'widow') {
+        householdRows = [
+          printFieldRow('Married To', record.spouseName),
+          printFieldRow('Linked Soldier Record', record.spouseDisplayId),
+          printFieldRow('Maiden Name', record.maidenName),
+        ].join('');
+      }
+      var hasHousehold = householdRows.replace(/<[^>]+>/g, '').replace(/N\/A/g, '').trim().length > 0;
+
+      // Records section mirrors typst::render-records-section.
+      var recordsHtml = '';
+      if (Array.isArray(record.records) && record.records.length) {
+        recordsHtml = '<ul>' + record.records.map(function(r) {
+          var app = r.appId ? ' (' + escapeHtml(r.appId) + ')' : '';
+          var details = r.details ? '<br>' + printRenderLink(r.details) : '';
+          return '<li><strong>' + escapeHtml(r.recordType || 'Record') + '</strong>' + app + details + '</li>';
+        }).join('') + '</ul>';
+      }
+
+      // Biography section mirrors typst::render-biography-page.
+      // page-break-before:always via .print-biography so long
+      // bios get their own page.
+      var biographyHtml = '';
+      if (record.biography && String(record.biography).trim()) {
+        biographyHtml = '<section class="print-biography">' +
+          '<h3>' + escapeHtml(printComposeName(record)) + '</h3>' +
+          '<div class="print-biography-body">' + renderLinkedText(record.biography) + '</div>' +
+        '</section>';
+      }
+
+      var archiveTitle = (bundle && bundle.archiveTitle) || 'DixieData Archive';
+      var footerText = (bundle && bundle.footerText) || 'Made with DixieData';
+      var codename = (bundle && bundle.codename) || '';
+
+      var orientationClass = landscape ? ' landscape' : '';
+      return '' +
+        '<div class="print-root' + orientationClass + '">' +
+          '<div class="print-header">' +
+            '<span>' + escapeHtml(archiveTitle) + '</span>' +
+            '<span>' + escapeHtml(record.displayId || '') + '</span>' +
+          '</div>' +
+          '<div class="print-title-block">' +
+            '<div class="print-name">' + escapeHtml(printComposeName(record)) + '</div>' +
+            '<div class="print-subtitle">' + escapeHtml((record.displayId || '') + ' \u2014 ' + printEntryTypeLabel(record.entryType)) + '</div>' +
+          '</div>' +
+          primaryImage +
+          '<section class="print-section"><h3>Identity &amp; Vital Details</h3><dl class="print-grid">' + identityRows + '</dl></section>' +
+          (serviceRows ? '<section class="print-section"><h3>Service &amp; Archive Details</h3><dl class="print-grid">' + serviceRows + '</dl></section>' : '') +
+          (hasHousehold ? '<section class="print-section"><h3>Household &amp; Context</h3><dl class="print-grid">' + householdRows + '</dl></section>' : '') +
+          (recordsHtml ? '<section class="print-section print-records"><h3>Records</h3>' + recordsHtml + '</section>' : '') +
+          '<div class="print-footer">' +
+            '<span>' + escapeHtml(footerText) + '</span>' +
+            (codename ? ' <span class="print-codename">\u2014 ' + escapeHtml(codename) + '</span>' : '') +
+          '</div>' +
+          biographyHtml +
+        '</div>';
+    }
+
     function linkedEventsForRecord(record, allEvents) {
       if (!Array.isArray(allEvents) || !record || !record.displayId) return [];
       return allEvents.filter(function(ev) {
@@ -1788,6 +2236,13 @@ function escapeHtml(value) {
       jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
     };
 
+    // Issue #509: printable-report constants. These are templated
+    // into index.html at export time so the printable view's
+    // header / footer / codename match the live PDF export.
+    var ARCHIVE_TITLE = {{ .ArchiveTitleJS }};
+    var FOOTER_TEXT = {{ .FooterTextJS }};
+    var CODENAME = {{ .CodenameJS }};
+
     // routeFromHash parses the current window.location.hash and
     // returns one of: {kind:'page', name:'calendar'|'browse'|
     // 'insights'|'persons'|'events'|'articles', query:''},
@@ -1814,6 +2269,12 @@ function escapeHtml(value) {
       // New #/person/{id}, #/event/{id}, #/article/{id} detail routes.
       var detailMatch = path.match(/^\/(person|event|article)\/(.+)$/);
       if (detailMatch) return { kind: 'detail', entity: detailMatch[1], id: decodeURIComponent(detailMatch[2]) };
+      // Issue #509: printable-report route #/print/{displayId}.
+      // Opens in a new tab via the toolbar Export Report button;
+      // renders renderPrintableReport(record) and replaces the
+      // document body so Cmd+P / Ctrl+P produces a clean PDF.
+      var printMatch = path.match(/^\/print\/(.+)$/);
+      if (printMatch) return { kind: 'print', id: decodeURIComponent(printMatch[1]) };
       // Page routes: #/calendar, #/browse?..., #/insights, #/persons, #/events, #/articles.
       var pageMatch = path.match(/^\/([a-z]+)(\?.*)?$/);
       if (pageMatch) {
@@ -2653,6 +3114,31 @@ function escapeHtml(value) {
       // or the detail screen.
       function syncViewFromHash() {
         const route = routeFromHash(window.location.hash);
+        // Issue #509: #/print/{displayId} replaces the document
+        // body with a printable report DOM, then auto-fires
+        // window.print() so the user can save to PDF without
+        // clicking through the print dialog manually.
+        if (route.kind === 'print') {
+          var printIdx = findRecordByDisplayId(records, route.id);
+          if (printIdx >= 0) {
+            document.body.classList.add('print-mode');
+            document.title = 'Report — ' + records[printIdx].name + ' (' + records[printIdx].displayId + ')';
+            var landscape = false;
+            try { landscape = window.location.search.indexOf('landscape=1') >= 0; } catch (e) {}
+            document.body.innerHTML = renderPrintableReport(records[printIdx], {
+              archiveTitle: typeof ARCHIVE_TITLE !== 'undefined' ? ARCHIVE_TITLE : 'DixieData Archive',
+              footerText: typeof FOOTER_TEXT !== 'undefined' ? FOOTER_TEXT : 'Made with DixieData',
+              codename: typeof CODENAME !== 'undefined' ? CODENAME : '',
+            }, landscape);
+            // Defer print until after the layout settles.
+            setTimeout(function() { try { window.print(); } catch (e) {} }, 200);
+            window.scrollTo(0, 0);
+            return;
+          }
+          document.body.classList.add('print-mode');
+          document.body.innerHTML = '<div class="print-root"><p>Person Record "' + escapeHtml(route.id) + '" not found in this archive.</p></div>';
+          return;
+        }
         if (route.kind === 'detail') {
           showDetailScreen();
           updateNavActive(route.entity === 'person' ? 'persons' : (route.entity === 'event' ? 'events' : 'articles'));
@@ -2665,7 +3151,14 @@ function escapeHtml(value) {
               pos.textContent = 'Person Record';
               var reportBtn = document.getElementById('detail-export-report');
               if (reportBtn) {
-                reportBtn.href = 'report-' + encodeURIComponent(records[idx].displayId) + '.html';
+                // Issue #509: client-side printable view. The
+                // button opens a new tab pointing at the archive
+                // root with the #/print/{displayId} hash; the new
+                // tab loads the same bundle, the router dispatches
+                // to renderPrintableReport, and the document body
+                // is replaced with the printable DOM. No static
+                // report-{displayId}.html file ships in the .zip.
+                reportBtn.href = 'index.html#/print/' + encodeURIComponent(records[idx].displayId);
                 reportBtn.style.display = '';
               }
             } else {
