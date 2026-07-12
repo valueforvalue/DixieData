@@ -885,8 +885,8 @@ func TestSettingsQualityScanResultsRendersGenerateDisplayIDButton(t *testing.T) 
 	if !strings.Contains(content, "Generate Display ID") {
 		t.Fatalf("button label not found in render; got: %s", content)
 	}
-	if !strings.Contains(content, "/soldiers/7/display-id/recover") {
-		t.Fatalf("button action URL not found; got: %s", content)
+	if !strings.Contains(content, `/soldiers/7/display-id/recover`) {
+		t.Fatalf("button formaction URL not found; got: %s", content)
 	}
 	// The non-identity-missing row's button is NOT present.
 	if strings.Contains(content, `data-recover-display-id="8"`) {
@@ -895,5 +895,23 @@ func TestSettingsQualityScanResultsRendersGenerateDisplayIDButton(t *testing.T) 
 	// The Move Selected to Review Queue form is unchanged.
 	if !strings.Contains(content, "Move Selected to Review Queue") {
 		t.Fatalf("Move Selected to Review Queue button should still render (unchanged)")
+	}
+	// data-reload-on-success is present so the page refreshes after
+	// a successful recover (issue #493: without it the toast is
+	// queued for next nav and never surfaces).
+	if !strings.Contains(content, `data-reload-on-success="true"`) {
+		t.Fatalf("Generate Display ID button must carry data-reload-on-success=\"true\" so the page refreshes after a 200 (issue #493); got: %s", content)
+	}
+	// Issue #493: there must be NO nested <form> inside the Move
+	// Selected form. Per the new design the per-row recover affordance
+	// is a plain submit button with formaction="..." overriding the
+	// outer form's action — no inner <form> tag at all.
+	if strings.Contains(content, `<form method="post" action="/soldiers/`) {
+		t.Fatalf("found nested <form> for per-row recover — issue #493 fix uses button[formaction] not a nested <form>; got: %s", content)
+	}
+	// The Move Selected form's id must be present so the form has a
+	// stable anchor for future test selectors.
+	if !strings.Contains(content, `id="settings-quality-apply"`) {
+		t.Fatalf("Move Selected form must have id=\"settings-quality-apply\"; got: %s", content)
 	}
 }

@@ -804,46 +804,51 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 	if len(result.Groups) == 0 {
 		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgb(var(--theme-success-green-bg-rgb)/0.95)] px-4 py-3 text-sm text-success-green">No obvious issues were found in this run.</div>
 	} else {
-		<form action={ templ.SafeURL(routebuilder.SettingsQualityApply()) } data-dixie-submit="true" class="space-y-3">
+		// Issue #493: the per-row "Generate Display ID" submit
+		// uses HTML5 `formaction` to override this form's action,
+		// so the recover button submits to
+		// /soldiers/{id}/display-id/recover WITHOUT nesting an
+		// inner <form> (HTML5 forbids nesting; Chromium/WebView2
+		// auto-close the inner form and submit behavior becomes
+		// renderer-dependent). The recover handler reads only
+		// r.URL.Path, so the extra selected_ids in the body is
+		// harmless. data-reload-on-success triggers a full page
+		// reload after a 200 so the row disappears from the scan
+		// results on the next paint (toast machinery queues for
+		// next nav, which the reload fulfills).
+		<form id="settings-quality-apply" action={ templ.SafeURL(routebuilder.SettingsQualityApply()) } data-dixie-submit="true" class="space-y-3">
 			for _, group := range result.Groups {
 				<details class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-[rgb(var(--theme-parchment-rgb)/0.72)]">
 					<summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">{ group.Group } ({ fmt.Sprintf("%d", group.Count) })</summary>
 					<div class="max-h-72 space-y-2 overflow-auto px-3 pb-3">
 						for _, issue := range group.Issues {
-							<label class="block rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
-								<div class="flex items-start gap-3">
-									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
-									<div class="min-w-0 flex-1">
-										<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
-										if qualityScanProvenanceLine(issue) != "" {
-											<div class="mt-1 text-xs text-slate-500" data-quality-scan-provenance>{ qualityScanProvenanceLine(issue) }</div>
-										}
-										<div class="mt-1 text-xs text-slate-500">{ issue.Summary }</div>
-										if strings.TrimSpace(issue.Detail) != "" {
-											<div class="mt-1 text-xs text-slate-500">{ issue.Detail }</div>
-										}
+							<div class="flex items-start gap-3">
+								<label class="block flex-1 rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<div class="flex items-start gap-3">
+										<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"/>
+										<div class="min-w-0 flex-1">
+											<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
+											if qualityScanProvenanceLine(issue) != "" {
+												<div class="mt-1 text-xs text-slate-500" data-quality-scan-provenance>{ qualityScanProvenanceLine(issue) }</div>
+											}
+											<div class="mt-1 text-xs text-slate-500">{ issue.Summary }</div>
+											if strings.TrimSpace(issue.Detail) != "" {
+												<div class="mt-1 text-xs text-slate-500">{ issue.Detail }</div>
+											}
+										</div>
 									</div>
-									// Issue #416: per-row "Generate Display ID"
-									// affordance for identity-missing rows
-									// only. Separate form (different action)
-									// so it lives outside the outer
-									// Move-Selected form.
-									if issue.Code == "identity-missing" {
-										<form
-											method="post"
-											action={ templ.SafeURL(routebuilder.SoldierRecoverDisplayID(issue.PersonRecordID)) }
-											data-dixie-submit="true"
-											class="shrink-0"
-										>
-											<button
-												type="submit"
-												class="pill-link"
-												data-recover-display-id={ fmt.Sprintf("%d", issue.PersonRecordID) }
-											>Generate Display ID</button>
-										</form>
-									}
-								</div>
-							</label>
+								</label>
+								if issue.Code == "identity-missing" {
+									<button
+										type="submit"
+										data-recover-display-id={ fmt.Sprintf("%d", issue.PersonRecordID) }
+										data-action={ templ.SafeURL(routebuilder.SoldierRecoverDisplayID(issue.PersonRecordID)) }
+										data-reload-on-success="true"
+										data-dixie-submit="true"
+										class="pill-link shrink-0 self-center"
+									>Generate Display ID</button>
+								}
+							</div>
 						}
 					</div>
 				</details>
