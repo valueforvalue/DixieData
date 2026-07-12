@@ -22,6 +22,7 @@ import (
 
 "github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/update"
 "github.com/valueforvalue/DixieData/internal/archive"
@@ -195,7 +196,7 @@ func TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests(t *testing.T)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 
-	renderStartupPlaceholder(rec, req)
+	renderStartupPlaceholder(NewApp(), rec, req)
 
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d want %d (htmx fragment must get 204, not full HTML cascade)", rec.Code, http.StatusNoContent)
@@ -222,6 +223,76 @@ func TestAppServeHTTPStartupServesFrontendAssetsWithoutMux(t *testing.T) {
 	if body := rec.Body.String(); !strings.Contains(body, "(() =>") {
 		t.Fatalf("expected frontend app.js body, got %q", body)
 	}
+}
+
+// TestAppServeHTTPStartupPlaceholderEchoesPersistedTheme pins
+// issue #481: when the Wails WebView2 fires its first request
+// before App.Startup finishes setting up the mux, the placeholder
+// HTML must carry the user's persisted theme on its <html
+// data-theme="..."> attribute, not the Default theme. The pre-#481
+// behavior stamped no theme attribute at all (so the CSS tokens
+// fell through to the Default palette), giving High Contrast /
+// Soft users a brief flash of the gold/sepia loading card before
+// the real /calendar page rendered.
+//
+// Two sub-cases:
+//   - persisted High Contrast theme: placeholder renders with
+//     data-theme="high-contrast" so the user's chosen palette
+//     applies during the 700ms loading window.
+//   - uninitialized app (atomic.Value nil, the NewApp() fresh
+//     path): placeholder falls back to data-theme="default" via
+//     the same nil-safe pattern as lifecycle.go:478-490 so the
+//     html attribute never serializes as an empty string.
+func TestAppServeHTTPStartupPlaceholderEchoesPersistedTheme(t *testing.T) {
+	t.Run("persisted High Contrast theme stamps the placeholder", func(t *testing.T) {
+		app := NewApp()
+		app.theme.Store(records.ThemeHighContrast)
+
+		req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("status=%d want %d", rec.Code, http.StatusAccepted)
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, `data-theme="high-contrast"`) {
+			t.Fatalf("placeholder must carry data-theme=\"high-contrast\" when the persisted theme is High Contrast; got body:\n%s", body)
+		}
+		// The loading card itself must NOT be hardcoded to the
+		// Default-theme palette (bg-[rgba(36,48,61,0.92)],
+		// border-[#8d7440], text-[#cfb77a], text-[#f2ede1]) —
+		// those hex literals would override the user's chosen
+		// theme on the placeholder card.
+		for _, hardcoded := range []string{
+			"bg-[rgba(36,48,61,0.92)]",
+			"border-[#8d7440]",
+			"text-[#cfb77a]",
+			"text-[#f2ede1]",
+			"text-[#d8cfbc]",
+		} {
+			if strings.Contains(body, hardcoded) {
+				t.Errorf("placeholder hardcodes Default-theme color %q; switch to var(--theme-*) so the loading card follows the active theme (issue #481); got body:\n%s", hardcoded, body)
+			}
+		}
+	})
+
+	t.Run("uninitialized app falls back to default theme", func(t *testing.T) {
+		app := NewApp()
+		// a.theme left as zero-value atomic.Value (Load() returns nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("status=%d want %d", rec.Code, http.StatusAccepted)
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, `data-theme="default"`) {
+			t.Fatalf("placeholder must carry data-theme=\"default\" when a.theme is uninitialized; got body:\n%s", body)
+		}
+	})
 }
 
 func TestAppServeHTTPRedirectsToRecoveryWhenPending(t *testing.T) {

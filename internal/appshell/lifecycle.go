@@ -378,7 +378,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
 		}
-		renderStartupPlaceholder(w, r)
+		renderStartupPlaceholder(a, w, r)
 		return
 	}
 	if a.pendingRecovery != nil && !recoveryRequestAllowed(r.URL.Path) {

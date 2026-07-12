@@ -364,7 +364,7 @@ type scratchpadOpener interface {
 
 const initializeDataConfirmationWord = "INITIALIZE"
 
-func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
+func renderStartupPlaceholder(a *App, w http.ResponseWriter, r *http.Request) {
 	// When the request is an htmx fragment (polling job progress,
 	// review counts, etc.) during the pre-mux window, return 204
 	// instead of a full HTML document.  Without this guard the
@@ -390,14 +390,41 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		targetJS = []byte(`"/calendar?_dd_boot=1"`)
 	}
+	// Issue #481: stamp the resolved theme on the placeholder's
+	// <html data-theme="..."> so the user's chosen palette applies
+	// during the ~700ms pre-mux loading window. The pre-#481
+	// behavior emitted no data-theme attribute, so High Contrast /
+	// Soft users saw a flash of the gold/sepia Default-theme
+	// loading card before the real /calendar page rendered with
+	// the right theme. The atomic load is nil-safe — a fresh App
+	// (no Startup yet, the WebView2 first-paint race) falls back
+	// to ThemeDefault, matching the lifecycle.go:478-490 pattern.
+	var theme string
+	if a != nil {
+		if v := a.theme.Load(); v != nil {
+			if s, ok := v.(string); ok {
+				theme = s
+			}
+		}
+	}
+	if theme == "" {
+		theme = records.ThemeDefault
+	}
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
 	w.Header().Set("Refresh", fmt.Sprintf("1; url=%s", retryTarget))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusAccepted)
+	// Issue #481 follow-up: the placeholder card colors now flow
+	// through var(--theme-*) tokens (body bg uses the theme's page
+	// gradient stops; card uses --theme-bg-card + --theme-accent-strong;
+	// text uses --theme-text-primary / muted / accent) so the
+	// loading card matches the active theme instead of hardcoding
+	// the Default-theme gold/sepia hex values that previously
+	// overrode the user's chosen theme during the pre-mux flash.
 	fmt.Fprintf(w, `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="%s">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="1;url=%s">
@@ -406,12 +433,12 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 <meta http-equiv="expires" content="0">
 <title>Loading DixieData...</title>
 </head>
-<body class="min-h-screen" style="background: linear-gradient(180deg, #d7d2c9 0%%, #c9c2b5 42%%, #b9b1a3 100%%);">
+<body class="min-h-screen" style="background: linear-gradient(180deg, var(--theme-bg-page-top) 0%%, var(--theme-bg-page-mid) 42%%, var(--theme-bg-page-bottom) 100%%);">
 <div class="flex min-h-screen items-center justify-center px-6">
-  <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
-    <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Local Archive</p>
-    <p class="text-2xl font-semibold text-[#f2ede1]">Loading DixieData...</p>
-    <p class="mt-2 text-sm text-[#d8cfbc]">The local archive is still starting up. This screen will refresh automatically.</p>
+  <div class="rounded-3xl border border-[var(--theme-accent-strong)] bg-[var(--theme-bg-card)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
+    <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[var(--theme-accent)]">Local Archive</p>
+    <p class="text-2xl font-semibold text-[var(--theme-text-primary)]">Loading DixieData...</p>
+    <p class="mt-2 text-sm text-[var(--theme-text-muted)]">The local archive is still starting up. This screen will refresh automatically.</p>
   </div>
 </div>
 <script>
@@ -420,7 +447,7 @@ window.setTimeout(function() {
 }, 700);
 </script>
 </body>
-</html>`, html.EscapeString(retryTarget), string(targetJS))
+</html>`, theme, html.EscapeString(retryTarget), string(targetJS))
 }
 
 func startupPlaceholderRetryTarget(target string) string {
