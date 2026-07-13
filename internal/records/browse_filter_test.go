@@ -118,3 +118,45 @@ func TestBrowse_TagFilterEmptyListNoOp(t *testing.T) {
 	// service-layer normalisation is the boundary under test.
 	_ = rows
 }
+
+// TestBrowse_RecentlyAddedScopeEnforcesRecencyWindow (issue #512)
+// pins the recency predicate added to BrowseScopeRecentlyAdded:
+// a row whose created_at falls outside the 7-day window must NOT
+// surface under the Recently added scope, even when its
+// created_at is non-empty. Mirrors the user-visible bug: a Shared
+// Archive import preserves the source created_at, so a years-old
+// import would leak rows into the recently-added view without
+// the datetime() cutoff.
+func TestBrowse_RecentlyAddedScopeEnforcesRecencyWindow(t *testing.T) {
+	svc, _, database := newBrowseTestDB(t)
+	ctx := context.Background()
+
+	recent := insertBrowseSeedRow(t, database, "RECENT")
+	old := insertBrowseSeedRow(t, database, "OLD")
+
+	// Recent row: created_at defaults to CURRENT_TIMESTAMP via the
+	// schema (db/schema.go:69), so it falls inside the 7-day window.
+	// Old row: pin created_at to 2 years ago so the cutoff excludes it.
+	twoYearsAgo := "datetime('now', '-2 years')"
+	if _, err := database.Conn().Exec(
+		`UPDATE soldiers SET created_at = `+twoYearsAgo+` WHERE id = ?`, old); err != nil {
+		t.Fatalf("pin old created_at: %v", err)
+	}
+
+	rows, _, _, err := svc.BrowsePage(BrowseRequest{Scope: BrowseScopeRecentlyAdded})
+	if err != nil {
+		t.Fatalf("BrowsePage(recently_added): %v", err)
+	}
+
+	gotIDs := make(map[int64]bool, len(rows))
+	for _, r := range rows {
+		gotIDs[r.ID] = true
+	}
+	if !gotIDs[recent] {
+		t.Errorf("recent row (id=%d) missing from Recently added scope; want it present", recent)
+	}
+	if gotIDs[old] {
+		t.Errorf("old row (id=%d, created_at pinned to -2 years) leaked into Recently added scope; want it excluded by the 7-day cutoff", old)
+	}
+	_ = ctx
+}
