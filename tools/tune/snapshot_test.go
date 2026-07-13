@@ -36,9 +36,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -555,6 +557,65 @@ func TestTuneDBStrictRefusesMissingDB(t *testing.T) {
 	}
 	if _, statErr := os.Stat(filepath.Join(optout, "dixiedata.db")); statErr != nil {
 		t.Fatalf("opt-out should have created the db file; stat %s: %v", filepath.Join(optout, "dixiedata.db"), statErr)
+	}
+}
+
+// TestTuneWatchDebounceAndDedupe (issue #515 slice D5) pins the
+// watcher's structural fixes without spawning a long-running
+// process (which would be flaky in CI). The assertions:
+// (a) the source file defines `doRenderParsed` as a separate
+// function (the dedupe seam);
+// (b) `doWatch` calls `doRenderParsed` and not `doRender(args, ...)`
+// (proving the pre-parsed rf is reused on every mtime tick);
+// (c) the watcher's debounce constant is in the 200-500ms range
+// (proves the rapid-save collapse is wired).
+// The actual end-to-end watch behavior is smoke-tested manually
+// (run `dixiedata-tune watch ...`, edit a template, observe
+// one re-render after the quiet period).
+func TestTuneWatchDebounceAndDedupe(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("read main.go: %v", err)
+	}
+	contents := string(src)
+	// (a) doRenderParsed exists as a function definition.
+	if !strings.Contains(contents, "func doRenderParsed(") {
+		t.Fatalf("main.go must define doRenderParsed function (issue #515 slice D5 dedupe)")
+	}
+	// (b) doWatch uses doRenderParsed (not the args-parsing wrapper).
+	// Locate the doWatch function body and assert it references
+	// doRenderParsed at least once.
+	watchStart := strings.Index(contents, "func doWatch(")
+	if watchStart < 0 {
+		t.Fatalf("main.go missing doWatch function (issue #515 slice D5)")
+	}
+	// End of doWatch body = next top-level `func ` declaration.
+	rest := contents[watchStart:]
+	nextFunc := strings.Index(rest[1:], "\nfunc ")
+	watchEnd := len(rest)
+	if nextFunc >= 0 {
+		watchEnd = nextFunc + 1
+	}
+	watchBody := rest[:watchEnd]
+	if !strings.Contains(watchBody, "doRenderParsed(") {
+		t.Fatalf("doWatch must call doRenderParsed (issue #515 slice D5 dedupe); body lacks the call:\n%s", watchBody)
+	}
+	if strings.Contains(watchBody, "doRender(args,") {
+		t.Fatalf("doWatch must not re-call doRender(args,...) on every tick (issue #515 slice D5 dedupe); body still contains the parse-twice path:\n%s", watchBody)
+	}
+	// (c) Debounce constant is in the 200-500ms range. Look for
+	// the literal `debounce = ... * time.Millisecond` line.
+	debounceRe := regexp.MustCompile(`const debounce\s*=\s*(\d+)\s*\*\s*time\.Millisecond`)
+	m := debounceRe.FindStringSubmatch(watchBody)
+	if m == nil {
+		t.Fatalf("doWatch must declare a 'const debounce = N * time.Millisecond' (issue #515 slice D5 debounce); body lacks the constant")
+	}
+	ms := 0
+	if _, err := fmt.Sscanf(m[1], "%d", &ms); err != nil {
+		t.Fatalf("parse debounce ms %q: %v", m[1], err)
+	}
+	if ms < 200 || ms > 500 {
+		t.Fatalf("debounce=%dms is outside the 200-500ms range (issue #515 slice D5); pick a value that collapses rapid saves without making single-save iteration feel laggy", ms)
 	}
 }
 

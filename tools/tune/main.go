@@ -424,11 +424,20 @@ func splitCSV(raw string) []string {
 }
 
 // doRender is the main entry point for `dixiedata-tune render`.
+// doRender is the public entry point for the `render` subcommand.
+// It parses args once via parseRenderFlags then delegates to
+// doRenderParsed so callers that already have a parsed *renderFlags
+// (e.g. doWatch, which parses once per watcher session and reuses
+// the rf on every mtime-change tick) don't pay the parse cost again.
 func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
 	rf, err := parseRenderFlags("render", args)
 	if err != nil {
 		return err
 	}
+	return doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir)
+}
+
+func doRenderParsed(rf *renderFlags, dbPath, typstPath, templatesDir, dataDir string) error {
 	settings, err := exportbridge.PrintSettingsFromForm(urlValuesFromFlags(rf))
 	if err != nil {
 		return err
@@ -798,7 +807,11 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 	return nil
 }
 
-// doWatch re-renders on templates/*.typ mtime change.
+// doWatch re-renders on templates/*.typ mtime change. Polls every
+// 500ms, debounces rapid saves to a single re-render after 300ms
+// of quiet (issue #515 slice D5). Parses the render flags ONCE
+// at watcher start (vs re-parsing on every tick as the previous
+// implementation did) via doRenderParsed.
 func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
 	rf, err := parseRenderFlags("render", args)
 	if err != nil {
@@ -812,13 +825,15 @@ func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) err
 		rf.recordIDsRaw = "1,2,3,4,5"
 	}
 
-	if err := doRender(args, dbPath, typstPath, templatesDir, dataDir); err != nil {
+	if err := doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir); err != nil {
 		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "watching %s for changes (Ctrl-C to stop)\n", templatesDir)
 
 	lastMtime := map[string]time.Time{}
+	const debounce = 300 * time.Millisecond
+	var pendingRender *time.Timer
 	tick := time.NewTicker(500 * time.Millisecond)
 	defer tick.Stop()
 	for range tick.C {
@@ -845,11 +860,20 @@ func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) err
 				}
 			}
 		}
-		if changed {
-			if err := doRender(args, dbPath, typstPath, templatesDir, dataDir); err != nil {
+		if !changed {
+			continue
+		}
+		// Debounce: collapse rapid saves (e.g. an editor's burst
+		// of atomic-rename saves) into a single re-render after
+		// `debounce` of quiet. Reset the timer on every change.
+		if pendingRender != nil {
+			pendingRender.Stop()
+		}
+		pendingRender = time.AfterFunc(debounce, func() {
+			if err := doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir); err != nil {
 				fmt.Fprintf(os.Stderr, "re-render failed: %v\n", err)
 			}
-		}
+		})
 	}
 	return nil
 }
