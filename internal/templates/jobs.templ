@@ -57,6 +57,11 @@ templ JobStatusView(job jobs.Job) {
 // jobSummaryCard renders the terminal-state summary card.
 // Layout (issue #131 acceptance):
 //   - Headline: kind-specific one-liner with size.
+//   - Remote link button (issue #552): Google Drive / Sheets
+//     uploads render a single "Open in Drive" / "Open in Sheets"
+//     anchor here, BEFORE the detail-list, when the worker
+//     captured a non-empty RemoteURL. Empty RemoteURL = no
+//     button (matches how ResultPath / LogPath are conditional).
 //   - Detail lines: structured bullet list (size / duration / kind note).
 //   - Primary CTA: Dismiss (routes to job.DismissTargetPath()).
 //   - Show report button: links to /jobs/{id}/report (placeholder).
@@ -64,6 +69,24 @@ templ JobStatusView(job jobs.Job) {
 templ jobSummaryCard(job jobs.Job) {
 	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[var(--theme-text-primary)] space-y-4">
 		<p class="font-semibold">{ job.Summary().Headline }</p>
+		if job.Summary().RemoteURL != "" {
+			// Issue #552: remote-link affordance for Google Drive /
+			// Sheets uploads. Renders as a plain secondary anchor
+			// (matching the Download log pattern) so the user
+			// can navigate from /jobs/{id} straight to the
+			// uploaded artifact. target="_blank" + rel=noopener
+			// preserves the user's place in the desktop app
+			// (the WebView2 back-button otherwise surfaces an
+			// unclosable Google page).
+			<a
+				href={ templ.SafeURL(job.Summary().RemoteURL) }
+				target="_blank"
+				rel="noopener noreferrer"
+				class="secondary-button px-3 py-1 text-xs"
+				aria-label={ fmt.Sprintf("Open uploaded %s artifact in a new tab", job.Summary().RemoteLabel) }
+				data-job-remote-link
+			>{ job.Summary().RemoteLabel }</a>
+		}
 		if len(job.Summary().DetailLines) > 0 {
 			<ul class="space-y-1 text-slate-600">
 				for _, line := range job.Summary().DetailLines {
@@ -196,11 +219,74 @@ templ jobStatusBody(job jobs.Job) {
 				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, true) }</p>
 			</div>
 		}
+		if job.Status == jobs.StatusInterrupted {
+			@jobInterruptedCard(job)
+		}
 		if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
 			<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/cancel") } class="flex justify-end">
 				@components.Button("Cancel", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 			</form>
 		}
+	</div>
+}
+
+// jobInterruptedCard renders the terminal-state card for a job that
+// was interrupted (most often: the previous app process exited
+// while the worker was running, so NewFromLog flipped the job's
+// Status to StatusInterrupted on startup; or the worker returned
+// because its context was cancelled mid-flight). The card shape
+// mirrors jobSummaryCard / jobErrorCard / jobCancelledCard so the
+// four terminal states share one visual language.
+//
+// Content (issue #551 acceptance):
+//   - Headline: the kind's DisplayLabel so the user sees which
+//     operation was interrupted. No "complete — N B." line
+//     because there is no result file.
+//   - Last worker Message: the worker's last p.Set(...) call
+//     before the interrupt (e.g. "Moved 3 image(s) into temp
+//     trash." for an image_orphan_cleanup at 50%). Without this
+//     the user has no clue how far the work got.
+//   - Last reported Progress: shown as a stopped progress bar
+//     at the worker's last value so the user sees the freeze point.
+//   - Timestamps: StartedAt always populated; FinishedAt populated
+//     when the registry recorded a clean shutdown.
+//   - Hint copy: explains what interrupted means + links back to
+//     the kind-specific dismiss target so the user can re-run the
+//     operation from the page that started it.
+//
+// We do NOT render a Resume button. Most workers do not
+// checkpoint, so "Resume" would silently re-do the work the user
+// already saw finish; "re-run from the source page" is the
+// honest UX (issue #551 triage decision).
+templ jobInterruptedCard(job jobs.Job) {
+	<div data-jobs-interrupted class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 space-y-3">
+		<div class="flex items-start justify-between gap-3">
+			<p class="font-semibold">{ job.DisplayLabel() }</p>
+			<span class="rounded-full border border-amber-400 bg-white px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Interrupted</span>
+		</div>
+		if job.Message != "" {
+			<p class="break-words text-sm">{ job.Message }</p>
+		}
+		<div class="h-2 w-full overflow-hidden rounded-full bg-amber-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Progress when interrupted">
+			<div class="h-full rounded-full bg-amber-500 transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+		</div>
+		<p class="text-xs text-amber-800">
+			Stopped at { fmt.Sprintf("%d", job.Progress) } percent.
+			if !job.StartedAt.IsZero() {
+				<span class="ml-1">Started { job.StartedAt.Format("2006-01-02 15:04:05 MST") }.</span>
+			}
+			if !job.FinishedAt.IsZero() {
+				<span class="ml-1">Finished { job.FinishedAt.Format("2006-01-02 15:04:05 MST") }.</span>
+			} else {
+				<span class="ml-1">— interrupted at unknown time.</span>
+			}
+		</p>
+		<p class="text-xs text-amber-900">
+			This job was interrupted. Re-run the operation from <a href={ templ.SafeURL(job.DismissTargetPath()) } class="font-semibold underline">its source page</a> to retry.
+		</p>
+		<div class="flex flex-wrap items-center gap-2 pt-1">
+			@components.Button("Dismiss", components.ButtonSecondary, "", templ.Attributes{"type": "button", "data-dismiss-job": "", "data-dismiss-target": job.DismissTargetPath()})
+		</div>
 	</div>
 }
 
@@ -246,6 +332,21 @@ templ JobReportView(job jobs.Job) {
 					<p class="mt-2 text-sm text-rose-700">Error.</p>
 				} else if job.Status == jobs.StatusCancelled {
 					<p class="mt-2 text-sm text-slate-700">Cancelled.</p>
+				} else if job.Status == jobs.StatusInterrupted {
+					// Issue #551: a job in StatusInterrupted is a
+					// terminal state (NewFromLog flipped StatusRunning
+					// to StatusInterrupted because the previous app
+					// process exited, or the worker returned from a
+					// cancelled context mid-flight). The pre-fix
+					// else-arm printed "{job.Status} (in progress)."
+					// which misclassified a state that will NEVER
+					// progress further. Carry the worker's last
+					// Message so the user sees how far the work got
+					// before the interrupt.
+					<p class="mt-2 text-sm text-amber-800">Interrupted.</p>
+					if job.Message != "" {
+						<p class="mt-1 text-sm text-amber-900">{ job.Message }</p>
+					}
 				} else {
 					<p class="mt-2 text-sm text-slate-700">{ job.Status } (in progress).</p>
 				}
