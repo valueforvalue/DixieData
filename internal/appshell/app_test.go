@@ -2544,7 +2544,7 @@ func multipartRequestBody(t *testing.T, files map[string][]byte) (*bytes.Buffer,
 
 func configureTestIdentity(t *testing.T, app *App) {
 	t.Helper()
-	if _, err := app.database.ConfigureUserIdentity("Test", "Harness", "User", 1900); err != nil {
+	if _, err := app.database.ConfigureUserIdentity("Test", "Harness", "User", 1900, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	if err := app.reloadServices(); err != nil {

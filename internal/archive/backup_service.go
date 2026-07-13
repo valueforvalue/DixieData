@@ -856,7 +856,12 @@ func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity
 	// runs Close in this frame, before replaceDataDir fires.
 	defer func() { _ = database.Close() }()
 
-	_, err = database.ConfigureUserIdentity(identity.FirstName, identity.MiddleName, identity.LastName, identity.BirthYear)
+	// Issue #495: backup restore intentionally overwrites any
+	// existing identity (the restore's source archive defines the
+	// canonical identity). Pass IdentityForceOverwrite explicitly so
+	// the data-layer guard accepts the call — the call site carries
+	// the intent.
+	_, err = database.ConfigureUserIdentity(identity.FirstName, identity.MiddleName, identity.LastName, identity.BirthYear, db.IdentityForceOverwrite())
 	return err
 }
 

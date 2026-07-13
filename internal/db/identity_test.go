@@ -71,3 +71,72 @@ func TestEntryAuditIdentityBackfillNeeded(t *testing.T) {
 		t.Fatalf("expected backfill to be unnecessary after audit identity is populated")
 	}
 }
+
+// TestConfigureUserIdentity_RefusesOverwriteOfCompleteIdentity
+// (issue #495) pins the data-layer guard: once user_identity_complete
+// is set, ConfigureUserIdentity returns ErrIdentityAlreadyComplete
+// unless the caller opts in via IdentityForceOverwrite. The handler-
+// level !a.setupRequired guard in handleInitialSetup is the primary
+// gate; this is the defense-in-depth companion so a future code path
+// (test helper, backup restore edge case, future API) cannot silently
+// overwrite the node_prefix namespace and rename every existing
+// soldier's display_id under the old prefix.
+func TestConfigureUserIdentity_RefusesOverwriteOfCompleteIdentity(t *testing.T) {
+	d, err := Open(testtemp.New(t).Path())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer d.Close()
+
+	if _, err := d.ConfigureUserIdentity("Real", "Operator", "Identity", 1965); err != nil {
+		t.Fatalf("first ConfigureUserIdentity: %v", err)
+	}
+	identityBefore, err := d.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity before: %v", err)
+	}
+
+	// Second call WITHOUT IdentityForceOverwrite must fail and
+	// leave the existing identity untouched.
+	_, err = d.ConfigureUserIdentity("Test", "Harness", "User", 1900)
+	if err == nil {
+		t.Fatal("second ConfigureUserIdentity succeeded without IdentityForceOverwrite; want ErrIdentityAlreadyComplete")
+	}
+	if err != ErrIdentityAlreadyComplete {
+		t.Errorf("error = %v, want ErrIdentityAlreadyComplete", err)
+	}
+
+	identityAfter, err := d.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity after: %v", err)
+	}
+	if identityAfter.FirstName != identityBefore.FirstName ||
+		identityAfter.NodePrefix != identityBefore.NodePrefix {
+		t.Errorf("identity changed despite guard: before=%#v after=%#v", identityBefore, identityAfter)
+	}
+}
+
+// TestConfigureUserIdentity_ForceOverwriteSucceeds (issue #495)
+// pins the escape hatch: callers that legitimately need to write
+// the identity a second time (backup restore on top of a freshly
+// imported archive, gold-master fixtures, tests/stress helpers)
+// pass IdentityForceOverwrite and the write goes through.
+func TestConfigureUserIdentity_ForceOverwriteSucceeds(t *testing.T) {
+	d, err := Open(testtemp.New(t).Path())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer d.Close()
+
+	if _, err := d.ConfigureUserIdentity("Real", "Operator", "Identity", 1965); err != nil {
+		t.Fatalf("first ConfigureUserIdentity: %v", err)
+	}
+
+	identity, err := d.ConfigureUserIdentity("Test", "Harness", "User", 1900, IdentityForceOverwrite())
+	if err != nil {
+		t.Fatalf("force-overwrite ConfigureUserIdentity: %v", err)
+	}
+	if identity.FirstName != "Test" || identity.NodePrefix != "THU00" {
+		t.Errorf("force-overwrite identity = %#v, want FirstName=Test NodePrefix=THU00", identity)
+	}
+}
