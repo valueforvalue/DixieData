@@ -676,7 +676,7 @@ templ SoldierRecordsListFragment(soldierID int64, records []viewmodel.SourceReco
 						if r.AppID != "" {
 							<span class="ml-2 text-slate-500">App: { r.AppID }</span>
 						}
-						@LinkedText(r.Details, "text-slate-600 mt-2 leading-6")
+						@RecordDetails(r.Details, "text-slate-600 mt-2 leading-6")
 					</div>
 					<div class="flex items-center gap-1 shrink-0">
 						<form
@@ -1157,6 +1157,47 @@ templ LinkedText(text string, className string) {
 			}
 		}
 	</div>
+}
+
+// RecordDetails renders a Source Record details field (issue #541).
+// When the field is a single http(s) URL, it collapses to a
+// "Click to view" anchor with the URL hidden — mirroring
+// templates/common/record_card.typ::render-link and the JS
+// printRenderLink helper. Freeform text passes through as plain
+// text (no link wrapper). Trailing punctuation detaches so
+// "https://example.com." renders the period after the anchor.
+templ RecordDetails(text string, className string) {
+	<div class={ className }>
+		for _, seg := range recordDetailsSegments(text) {
+			if seg.IsURL {
+				@recordDetailsAnchor(seg)
+			} else {
+				{ seg.Text }
+			}
+		}
+	</div>
+}
+
+templ recordDetailsAnchor(seg recordDetailsSegment) {
+	if safeRecordDetailsHref(seg.Href) != "" && isRecordDetailsURLAcceptable(seg.Href) {
+		<a
+			href={ templ.SafeURL(safeRecordDetailsHref(seg.Href)) }
+			target="_blank"
+			rel="noreferrer noopener"
+			class="text-[#7b1e2b] underline underline-offset-2"
+		>{ recordDetailsAnchorText }</a>
+		if seg.Suffix != "" {
+			{ seg.Suffix }
+		}
+	} else {
+		// Fallback: render the URL as plain text. Mirrors Typst's
+		// fall-through for overlong URLs and the JS helper's
+		// non-URL passthrough.
+		{ seg.Href }
+		if seg.Suffix != "" {
+			{ seg.Suffix }
+		}
+	}
 }
 
 func imageURL(filePath string) templ.SafeURL {

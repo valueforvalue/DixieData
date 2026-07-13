@@ -862,3 +862,107 @@ func TestSoldierDetailRendersReorderControlsOnEachSourceRecord(t *testing.T) {
 		t.Fatalf("expected position input fields; not found in content")
 	}
 }
+
+// TestSoldierDetailRendersClickToViewAnchorOnURLDetails (issue #541)
+// pins the Source Record details rendering on the Wails Person
+// Record detail page. A single http(s) URL in `details` must
+// collapse to a "Click to view" anchor with the URL hidden from
+// the visible text. Trailing punctuation detaches. Freeform text
+// passes through as plain text with no link wrapper. The anchor
+// must open in a new tab with rel="noreferrer noopener" (same as
+// the printable export's printRenderLink).
+func TestSoldierDetailRendersClickToViewAnchorOnURLDetails(t *testing.T) {
+	const longURL = "https://www.fold3.com/page/document/hzp-123456789/"
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.PersonRecord{
+		ID:        7,
+		DisplayID: "DXD-00007",
+		FirstName: "Jane",
+		LastName:  "Doe",
+		SourceRecords: []viewmodel.SourceRecord{
+			{
+				ID:               200,
+				SourceRecordType: "Service Record",
+				AppID:            "A-1",
+				Details:          longURL,
+			},
+			{
+				ID:               201,
+				SourceRecordType: "Letter",
+				AppID:            "A-2",
+				Details:          longURL + ".", // trailing period
+			},
+			{
+				ID:               202,
+				SourceRecordType: "Note",
+				AppID:            "",
+				Details:          "Died of pneumonia, Rock Island Barracks, IL.",
+			},
+		},
+	}, nil, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+
+	// 1. Anchor copy is "Click to view" for the two URL rows.
+	if c := strings.Count(content, ">Click to view<"); c != 2 {
+		t.Errorf("want 2 'Click to view' anchors, got %d. content:\n%s", c, content)
+	}
+	// 2. The full URL must NOT appear as visible anchor text.
+	// It can still appear once as the href= attribute.
+	if c := strings.Count(content, ">"+longURL+"<"); c != 0 {
+		t.Errorf("full URL must not appear as visible anchor text; found %d occurrences. content:\n%s", c, content)
+	}
+	// 3. The href must equal the URL on both rows (the count includes
+	// the trailing-period row which has href=URL but visible text
+	// = "Click to view" followed by literal ".").
+	if c := strings.Count(content, `href="`+longURL+`"`); c != 2 {
+		t.Errorf("want 2 href=URL attributes, got %d. content:\n%s", c, content)
+	}
+	// 4. target/rel attributes present (new-tab pattern).
+	if !strings.Contains(content, `target="_blank"`) {
+		t.Error("expected target=_blank on Click-to-view anchors")
+	}
+	if !strings.Contains(content, `rel="noreferrer noopener"`) {
+		t.Error("expected rel=noreferrer noopener on Click-to-view anchors")
+	}
+	// 5. Trailing period detaches: the literal "." must appear after
+	// the closing </a> tag for row 201. Find the SECOND href=URL
+	// occurrence (row 201) — row 200 has Suffix="" so its </a> is
+	// followed by the close-div, not a period.
+	firstIdx := strings.Index(content, `href="`+longURL+`"`)
+	if firstIdx < 0 {
+		t.Fatal("cannot locate first URL href")
+	}
+	periodIdx := strings.Index(content[firstIdx+1:], `href="`+longURL+`"`)
+	if periodIdx < 0 {
+		t.Fatal("cannot locate second URL href (row 201)")
+	}
+	periodIdx += firstIdx + 1
+	after := content[periodIdx:]
+	closeIdx := strings.Index(after, "</a>")
+	if closeIdx < 0 {
+		t.Fatal("cannot locate </a> close for period-detach assertion")
+	}
+	rest := after[closeIdx+len("</a>"):]
+	if !strings.HasPrefix(strings.TrimLeft(rest, " \t"), ".") {
+		t.Errorf("trailing period must detach from URL; rest after </a> = %q", rest[:min(20, len(rest))])
+	}
+	// 6. Freeform text row (202) must render as plain text with no
+	// anchor wrapping the URL (no URL present here, but must NOT
+	// see "Click to view" inside this row's span).
+	if strings.Contains(content, ">Click to view<Died") || strings.Contains(content, "Click to view</a>Died") {
+		t.Error("freeform-text Source Record row must not wrap in a Click-to-view anchor")
+	}
+	if !strings.Contains(content, "Died of pneumonia, Rock Island Barracks, IL.") {
+		t.Error("freeform-text details must pass through unchanged")
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
