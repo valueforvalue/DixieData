@@ -10,6 +10,21 @@
 
 // --- formatting helpers ---
 
+// pdf-records-per-page is the maximum Source Records rendered
+// per Person-Record PDF. 12 fits the landscape 11x8.5 layout
+// with margin at 9pt + v(0.2em) per row (~0.5in per card,
+// 6.5in usable text height → ~13 rows). 12 leaves ~8% headroom
+// for tight `details` text. Portrait gets the same cap to keep
+// the one-page mental model consistent across modes (the extra
+// portrait whitespace is intentional — predictability over
+// density).
+//
+// Issue #513: mirrored as records.PDFRecordsPerPage in Go so the
+// export-time warning toast (X-DixieData-Toast) can announce
+// truncation using the same number. If you change one side,
+// change the other — the audit net pins the pair.
+#let pdf-records-per-page = 12
+
 // title-case capitalizes the first character of a string and
 // lowercases the rest. Used for entry-type fallbacks.
 #let title-case(s) = {
@@ -360,6 +375,12 @@
 }
 
 // render-records-section renders the right-column "Records" section.
+// Caps the rendered list at pdf-records-per-page and emits a
+// muted footnote when records were truncated so the user can see
+// they have more Source Records than the PDF shows. The export
+// pipeline surfaces a parallel warning toast (X-DixieData-Toast)
+// driven by records.PDFRecordsPerPage so the user gets the same
+// truncation signal whether they look at the PDF or the UI.
 #let render-records-section(s) = {
   v(0.5em)
   let records = s.at("records", default: ())
@@ -367,7 +388,10 @@
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Records]
     #v(0.2em)
     #set text(size: 9pt)
-    #for r in records [
+    #let limit = pdf-records-per-page
+    #let shown = records.slice(0, calc.min(limit, records.len()))
+    #let omitted = records.len() - shown.len()
+    #for r in shown [
       #block(width: 100%)[
         *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
         #if r.at("details", default: "") != "" [
@@ -375,6 +399,12 @@
         ]
       ]
       #v(0.2em)
+    ]
+    #if omitted > 0 [
+      #v(0.3em)
+      #text(size: 7pt, fill: theme.palette.muted)[
+        #omitted additional record(s) omitted — reorder Source Records to control which are included in this PDF.
+      ]
     ]
   ]
 }
