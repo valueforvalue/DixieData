@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -537,5 +538,161 @@ func TestSummaryZeroStateKindsAreMessageDriven(t *testing.T) {
 					c.kind, s.DetailLines)
 			}
 		})
+	}
+}
+// TestSummaryGoogleDriveBackup_HasRemoteLink pins down the
+// /jobs/{id} summary card for successful Google Drive uploads
+// after the #552 fix: a worker that captured the upload's
+// WebViewLink via JobResult.RemoteURL must surface the URL as
+// a RemoteLink on the JobSummary so the template can render an
+// "Open in Drive" button. The kind-by-kind Summary() switch
+// (already handling the google_drive_backup zero-state headline
+// after #543) needs the new branch to copy RemoteURL through.
+//
+// Before the fix DetailLines were the only way to surface the
+// URL, which forced the template to detect-and-render magic
+// strings. The cleaner shape is a dedicated JobSummary field
+// mirroring how ResultPath / LogPath already render as
+// dedicated anchors — see jobs.templ::jobSummaryCard.
+func TestSummaryGoogleDriveBackup_HasRemoteLink(t *testing.T) {
+	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+	j := NewJob("job-drive-1", "google_drive_backup")
+	j.Status = StatusDone
+	j.StartedAt = now
+	j.FinishedAt = now.Add(800 * time.Millisecond)
+	j.Progress = 100
+	j.Message = "Uploaded 12 soldiers, 4 images."
+	j.Result = JobResult{
+		RemoteURL:  "https://drive.google.com/file/d/abc123/view",
+		RemoteName: "dixiedata-2026-07-13-120000.ddbak",
+		RemoteKind: "drive",
+	}
+	s := j.Summary()
+	if s.RemoteURL != "https://drive.google.com/file/d/abc123/view" {
+		t.Errorf("RemoteURL = %q, want the captured WebViewLink", s.RemoteURL)
+	}
+	if s.RemoteLabel != "Open in Drive" {
+		t.Errorf("RemoteLabel = %q, want %q", s.RemoteLabel, "Open in Drive")
+	}
+}
+
+// TestSummaryGoogleSheetsExport_HasRemoteLink is the sheets
+// counterpart. RemoteKind="sheets" must surface "Open in
+// Sheets" so the user can navigate from /jobs/{id} straight to
+// the uploaded Google Sheet. Both kinds share the same Summary
+// branch (issue #543 collapsed them) but produce different
+// button labels.
+func TestSummaryGoogleSheetsExport_HasRemoteLink(t *testing.T) {
+	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+	j := NewJob("job-sheets-1", "google_sheets_export")
+	j.Status = StatusDone
+	j.StartedAt = now
+	j.FinishedAt = now.Add(500 * time.Millisecond)
+	j.Progress = 100
+	j.Message = "Google Sheet ready."
+	j.Result = JobResult{
+		RemoteURL:  "https://docs.google.com/spreadsheets/d/sh987/edit",
+		RemoteName: "DixieData Export",
+		RemoteKind: "sheets",
+	}
+	s := j.Summary()
+	if s.RemoteURL != "https://docs.google.com/spreadsheets/d/sh987/edit" {
+		t.Errorf("RemoteURL = %q, want the captured WebViewLink", s.RemoteURL)
+	}
+	if s.RemoteLabel != "Open in Sheets" {
+		t.Errorf("RemoteLabel = %q, want %q", s.RemoteLabel, "Open in Sheets")
+	}
+}
+
+// TestSummaryGoogleBackup_NoRemoteLinkLeavesFieldEmpty guards
+// the failure case: if the worker discarded the upload result
+// (the original #552 bug shape), RemoteURL is empty and the
+// summary card does NOT advertise a non-functional link. The
+// template is expected to skip the "Open in Drive" button when
+// RemoteURL is empty, just like ResultPath.
+func TestSummaryGoogleBackup_NoRemoteLinkLeavesFieldEmpty(t *testing.T) {
+	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+	j := NewJob("job-drive-empty", "google_drive_backup")
+	j.Status = StatusDone
+	j.StartedAt = now
+	j.FinishedAt = now.Add(800 * time.Millisecond)
+	j.Progress = 100
+	j.Message = "Uploaded 12 soldiers, 4 images."
+	// Result deliberately not populated; mimics the pre-#552 handler.
+	s := j.Summary()
+	if s.RemoteURL != "" {
+		t.Errorf("RemoteURL = %q, want empty when worker discarded the upload result", s.RemoteURL)
+	}
+	if s.RemoteLabel != "" {
+		t.Errorf("RemoteLabel = %q, want empty when RemoteURL is empty", s.RemoteLabel)
+	}
+}
+
+// TestJobResultJSONRoundTrip_PreservesRemoteLinkFields pins
+// down the wire-format contract for the new RemoteURL /
+// RemoteName / RemoteKind fields on JobResult: jobs written
+// via the JSONL log (persistedSnapshot) must round-trip the
+// new fields so an app restart can still surface the "Open in
+// Drive" button on rehydrated jobs. Old log lines that omit
+// the fields must decode cleanly into a zero-value JobResult
+// (omitempty keeps the on-disk format backward-compatible).
+func TestJobResultJSONRoundTrip_PreservesRemoteLinkFields(t *testing.T) {
+	src := JobResult{
+		Records:    42,
+		Images:     7,
+		Sources:    3,
+		RemoteURL:  "https://drive.google.com/file/d/zzz/view",
+		RemoteName: "dixiedata-2026-07-13.ddbak",
+		RemoteKind: "drive",
+	}
+	payload, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	encoded := string(payload)
+	for _, want := range []string{
+		`"remote_url":"https://drive.google.com/file/d/zzz/view"`,
+		`"remote_name":"dixiedata-2026-07-13.ddbak"`,
+		`"remote_kind":"drive"`,
+	} {
+		if !strings.Contains(encoded, want) {
+			t.Errorf("encoded payload missing %s; got %s", want, encoded)
+		}
+	}
+	var got JobResult
+	if err := json.Unmarshal(payload, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if got.RemoteURL != src.RemoteURL {
+		t.Errorf("RemoteURL = %q, want %q", got.RemoteURL, src.RemoteURL)
+	}
+	if got.RemoteName != src.RemoteName {
+		t.Errorf("RemoteName = %q, want %q", got.RemoteName, src.RemoteName)
+	}
+	if got.RemoteKind != src.RemoteKind {
+		t.Errorf("RemoteKind = %q, want %q", got.RemoteKind, src.RemoteKind)
+	}
+	if got.Records != 42 || got.Images != 7 || got.Sources != 3 {
+		t.Errorf("pre-existing stats lost; got %+v", got)
+	}
+}
+
+// TestJobResultJSON_OmitEmptyRemoteLinkFields guards the
+// backward-compatibility half of the wire-format contract:
+// JobResults without the new fields encode without them
+// (omitempty kicks in) so old log lines written before the
+// #552 migration parse cleanly. The default zero-value
+// decode must NOT invent a RemoteURL of "" that breaks any
+// downstream "link is missing" check.
+func TestJobResultJSON_OmitEmptyRemoteLinkFields(t *testing.T) {
+	payload, err := json.Marshal(JobResult{Records: 5})
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	encoded := string(payload)
+	for _, banned := range []string{"remote_url", "remote_name", "remote_kind"} {
+		if strings.Contains(encoded, banned) {
+			t.Errorf("omitempty failure: %q should be absent from %s", banned, encoded)
+		}
 	}
 }
