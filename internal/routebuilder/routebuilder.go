@@ -574,6 +574,19 @@ func ArticlePDF(articleID int64) string {
 	return fmt.Sprintf("/articles/%d/pdf", articleID)
 }
 
+// ArticlePreview (issue #526) returns the URL for the
+// editor's preview endpoint. Registered as POST
+// /articles/preview in routes.go. The editor's Preview
+// button POSTs the current textarea body here and the
+// response HTML is shown in the preview overlay
+// (article_preview_modal.templ). The handler accepts
+// both application/x-www-form-urlencoded (Wails path)
+// and multipart/form-data (browser path); see
+// handleArticlePreview in appshell/articles_handlers.go.
+func ArticlePreview() string {
+	return "/articles/preview"
+}
+
 // ArticleRaw (issue #321 slice 4.4) returns the URL for
 // GET /articles/{id}/raw. Returns the body_md verbatim
 // as text/markdown with a Content-Disposition: attachment
