@@ -915,7 +915,13 @@ func (j Job) Summary() JobSummary {
 	if j.Status != StatusDone || j.StartedAt.IsZero() || j.FinishedAt.IsZero() {
 		return s
 	}
-	s.Duration = j.FinishedAt.Sub(j.StartedAt).Round(time.Second)
+	// Issue #543: keep the raw sub-second precision so
+	// formatDuration can render "0.8s" for fast jobs instead
+	// of collapsing them to "Duration: 0s". The old
+	// .Round(time.Second) made the duration line useless for
+	// cleanup / audit / review-bulk jobs that finish in
+	// hundreds of milliseconds.
+	s.Duration = j.FinishedAt.Sub(j.StartedAt)
 	if j.ResultPath != "" {
 		if info, err := os.Stat(j.ResultPath); err == nil {
 			s.SizeBytes = info.Size()
@@ -926,25 +932,25 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 	case "soldier_jpg":
 		s.Headline = fmt.Sprintf("Soldier JPG export complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 	case "monthly_pdf":
 		s.Headline = fmt.Sprintf("Monthly calendar PDF complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 	case "backup_archive":
 		s.Headline = fmt.Sprintf("Backup archive complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 			"Use 'Load Backup' on the Share page to restore this archive.",
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
@@ -952,7 +958,7 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("Shared archive complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 			"Send this .ddshare file to another DixieData user; they can preview it on the Share page.",
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
@@ -960,7 +966,7 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("Subset shared archive complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 			"Subset of Person Records staged from the Share Queue; send to another DixieData user.",
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
@@ -968,14 +974,14 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
 	case "database_pdf":
 		s.Headline = fmt.Sprintf("Printable archive PDF complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 			"The PDF contains every record grouped and sorted per your export settings.",
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
@@ -983,7 +989,7 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("Static archive complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
 		}
 		// Issue #492: per-kind content counts (Person Records, Events,
@@ -999,40 +1005,57 @@ func (j Job) Summary() JobSummary {
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 	case "image_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		}
 	case "backup_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		}
 		s.DetailLines = appendBackupRestoreStats(s.DetailLines, j.Result)
 	case "shared_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		}
 		s.DetailLines = appendSharedImportStats(s.DetailLines, j.Result)
 	case "memorial_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-		s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+		s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
 		s.DetailLines = appendMemorialImportStats(s.DetailLines, j.Result)
+	// Issue #543: zero-state kinds produce no ResultPath, so the
+	// Size line is meaningless (and the default arm's "Size: 0 B"
+	// headline is actively misleading). All six kinds populate
+	// j.Message via p.Set(100, "...") inside the worker; the
+	// summary card surfaces that message as the headline so the
+	// user sees what the job actually did.
+	case "image_orphan_cleanup", "duplicate_audit", "review_bulk_resolve", "review_bulk_delete", "google_drive_backup", "google_sheets_export":
+		if j.Message != "" {
+			s.Headline = j.Message
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
+		} else {
+			// Defensive fallback for an old JSONL log entry that
+			// somehow lost its progress message — keep the card
+			// usable rather than rendering an empty headline.
+			s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
+		}
 	default:
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
+			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
 		}
 	}
 	return s
@@ -1168,6 +1191,33 @@ func appendBackupRestoreStats(lines []string, r JobResult) []string {
 		}
 	}
 	return lines
+}
+
+// formatDuration renders a duration as a short, human-friendly
+// string for the "Duration:" detail line on the job summary
+// card. Format rules (issue #543):
+//
+//   - elapsed < 60s   ->  "0.8s", "12.4s"   (one decimal place)
+//   - elapsed < 60m   ->  "75s"             (whole seconds)
+//   - elapsed >= 60m  ->  "1m5s", "12m40s"  (m + remainder seconds)
+//
+// The sub-second rule restores visibility for fast jobs
+// (cleanup / audit / review-bulk / google uploads) whose
+// sub-second elapsed time was previously collapsed to "0s"
+// by the Round(time.Second) call on s.Duration.
+func formatDuration(d time.Duration) string {
+	switch {
+	case d < 0:
+		return "0.0s"
+	case d < 60*time.Second:
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	case d < 60*time.Minute:
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	default:
+		mins := int(d / time.Minute)
+		secs := int((d % time.Minute) / time.Second)
+		return fmt.Sprintf("%dm%ds", mins, secs)
+	}
 }
 
 // formatBytes renders a byte count as a human-friendly size
