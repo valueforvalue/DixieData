@@ -25,10 +25,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 // TestHandleArticleCRUD_RoundTrip pins the slice-1 headline
@@ -1120,5 +1124,175 @@ func TestHandleArticleRawReturnsMarkdown(t *testing.T) {
 	resp405.Body.Close()
 	if resp405.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("POST status = %d, want 405", resp405.StatusCode)
+	}
+}
+
+// TestHandleArticlePDF_RoutesThroughJobsFlow (issue #533) pins
+// the parity contract: the article PDF handler now enqueues a
+// job and returns X-DixieData-Redirect to /jobs/{id} instead of
+// the legacy inline render + 200 + X-DixieData-Toast shape.
+//
+// The user requirement (per issue #533) is that BOTH the
+// X-DixieData-Redirect header (so the dispatcher navigates to
+// /jobs/{id} where the terminal Completion card surfaces) AND
+// the X-DixieData-Toast header (so the user gets the immediate
+// save-confirmation signal even if they never click into the
+// jobs page) land on the same response. The toast header MUST
+// be staged BEFORE enqueueExport calls writeExportRedirect — once
+// WriteHeader is called, Go's ResponseWriter ignores further
+// Header() mutations.
+//
+// The test also verifies the worker actually runs (the file
+// lands at the dialog-returned path with non-empty bytes) and
+// that the job ends in a terminal success state (per the
+// /jobs/{id} success-card surface).
+func TestHandleArticlePDF_RoutesThroughJobsFlow(t *testing.T) {
+	app := newStressApp(t)
+
+	// Stub the native SaveFileDialog with a deterministic path
+	// inside t.TempDir() so the test is hermetic.
+	dialogPath := filepath.Join(t.TempDir(), "exported-article.pdf")
+	app.saveFileDialogOverride = func(opts any) (string, error) {
+		return dialogPath, nil
+	}
+
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Create an article with a body long enough that the render
+	// isn't degenerate.
+	src, err := app.articles.Create(models.Article{
+		Title:  "Battle of Antietam excerpt",
+		BodyMD: "# Dawn\n\nA regimental narrative covering the morning of September 17, 1862, with brigade strength and casualty reports.",
+	})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+
+	// POST /articles/{id}/pdf and capture both headers.
+	form := url.Values{}
+	form.Set("orientation", "portrait")
+	resp, err := http.PostForm(server.URL+"/articles/"+intStr(src.ID)+"/pdf", form)
+	if err != nil {
+		t.Fatalf("POST pdf: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Status: 200 OK (the X-DixieData-Redirect contract).
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST pdf status = %d, want 200", resp.StatusCode)
+	}
+
+	// X-DixieData-Redirect MUST be /jobs/{jobID} so the
+	// dispatcher navigates the user to the jobs page where the
+	// terminal Completion card renders.
+	redirect := resp.Header.Get("X-DixieData-Redirect")
+	if !strings.HasPrefix(redirect, "/jobs/") {
+		t.Fatalf("X-DixieData-Redirect = %q, want /jobs/{id} prefix", redirect)
+	}
+	jobID := strings.TrimPrefix(redirect, "/jobs/")
+	if jobID == "" {
+		t.Fatalf("X-DixieData-Redirect %q carries no job id", redirect)
+	}
+
+	// X-DixieData-Toast MUST be the success message — the
+	// immediate save-confirmation signal. This header is set
+	// on the OUTER response BEFORE enqueueExport writes the
+	// redirect header; setting it after would be a no-op
+	// because WriteHeader(200) has already been called.
+	toast := resp.Header.Get("X-DixieData-Toast")
+	if !strings.Contains(toast, "Article PDF saved to") {
+		t.Errorf("X-DixieData-Toast = %q, want contains 'Article PDF saved to'", toast)
+	}
+	if got := resp.Header.Get("X-DixieData-Toast-Type"); got != "success" {
+		t.Errorf("X-DixieData-Toast-Type = %q, want 'success'", got)
+	}
+
+	// Wait for the worker to finish writing the file. The
+	// /jobs/{id} status endpoint is the natural way to poll
+	// for completion; spin until the job ends or a deadline
+	// elapses. The job ID is alphanumeric; we look it up
+	// directly via the app's job service.
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		job, ok := app.jobs.Get(jobID)
+		if ok && (job.Status == "done" || job.Status == "error") {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// The file MUST exist on disk with non-empty bytes
+	// (i.e. the worker actually wrote the rendered PDF).
+	info, err := os.Stat(dialogPath)
+	if err != nil {
+		t.Fatalf("expected PDF at %q, stat: %v", dialogPath, err)
+	}
+	if info.Size() == 0 {
+		t.Errorf("rendered PDF is empty")
+	}
+
+	// Header bytes sanity: a PDF starts with "%PDF-".
+	header := make([]byte, 5)
+	f, err := os.Open(dialogPath)
+	if err != nil {
+		t.Fatalf("open PDF: %v", err)
+	}
+	defer f.Close()
+	if _, err := f.Read(header); err != nil {
+		t.Fatalf("read PDF header: %v", err)
+	}
+	if string(header) != "%PDF-" {
+		t.Errorf("PDF header = %q, want '%%PDF-'", string(header))
+	}
+
+	// The job must be in a terminal success state. The /jobs/{id}
+	// page renders the Completion card off this status; the
+	// regression net is the absence of a generic 500 + the
+	// presence of result_path pointing at the dialog path.
+	job, ok := app.jobs.Get(jobID)
+	if !ok {
+		t.Fatalf("job %q not registered", jobID)
+	}
+	if job.Status != "done" {
+		t.Errorf("job status = %q, want 'done' (error=%q)", job.Status, job.Error)
+	}
+	if job.ResultPath != dialogPath {
+		t.Errorf("job.ResultPath = %q, want %q", job.ResultPath, dialogPath)
+	}
+}
+
+// TestArticlePDFFilename_UsesSlugify (issue #533) pins the
+// suggested-filename contract: the handler computes the
+// suggested filename from the article's title + display id +
+// orientation, matching records.SlugifyArticleFilename. The
+// handler must NOT need to pre-render the PDF body just to
+// learn the filename — that would defeat the jobs-flow
+// refactor.
+func TestArticlePDFFilename_UsesSlugify(t *testing.T) {
+	app := newStressApp(t)
+	article, err := app.articles.Create(models.Article{
+		Title:    "Battle of Antietam Excerpt",
+		BodyMD:   "x",
+		DisplayID: "ART-00042",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got := articlePDFFilename(article, "portrait")
+	want := records.SlugifyArticleFilename(*article, "portrait")
+	if got != want {
+		t.Errorf("articlePDFFilename(portrait) = %q, want %q", got, want)
+	}
+	got = articlePDFFilename(article, "landscape")
+	want = records.SlugifyArticleFilename(*article, "landscape")
+	if got != want {
+		t.Errorf("articlePDFFilename(landscape) = %q, want %q", got, want)
+	}
+
+	// Nil safety: a nil article must not panic; the helper
+	// falls back to a generic filename.
+	if got := articlePDFFilename(nil, "portrait"); got == "" {
+		t.Errorf("articlePDFFilename(nil, portrait) = empty, want a non-empty fallback")
 	}
 }
