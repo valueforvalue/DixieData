@@ -515,19 +515,41 @@ test('slice10-01 #/print/{displayId} route renders renderPrintableReport from bu
   // printRenderLink must render the URL itself as the visible
   // text (not "Click to view"), so the CSS ::after pseudo-element
   // provides the single occurrence of the action hint.
-  const renderLink = html.match(/function printRenderLink\([\s\S]*?\n\s*\}/);
+  const renderLinkStart = html.indexOf('function printRenderLink');
+  let renderLink = null;
+  if (renderLinkStart >= 0) {
+    const slice = html.slice(renderLinkStart);
+    const nextFn = slice.search(/\n {4}function /);
+    if (nextFn > 0) {
+      renderLink = [slice.slice(0, nextFn)];
+    }
+  }
   if (renderLink) {
     assert.ok(
-      !/>Click to view</.test(renderLink[0]),
-      'printRenderLink anchor text must be the URL itself; the CSS ::after pseudo provides the single "Click to view" hint (issue #519)',
+      />Click to view<\/a>/.test(renderLink[0]),
+      'printRenderLink anchor text must be "Click to view" with the URL hidden (issue #541 slice 5; supersedes #519 URL-as-anchor pattern)',
     );
     assert.ok(
-      /escapeHtml\(u\) \+ '<\/a>'/.test(renderLink[0]),
-      'printRenderLink anchor closing tag must close over the escaped URL (issue #519)',
+      /https\?:|http:\/\//.test(renderLink[0]),
+      'printRenderLink must scheme-gate to http(s) only (issue #541 slice 5)',
+    );
+    assert.ok(
+      /scheme !== ['"]http['"]/.test(renderLink[0]) &&
+        /scheme !== ['"]https['"]/.test(renderLink[0]),
+      'printRenderLink must reject non-http(s) schemes (issue #541 slice 5)',
     );
   } else {
     assert.fail('printRenderLink function not found in HTML (issue #509 regression)');
   }
+
+  // Issue #541 slice 5: the printable view's CSS ::after hint is gone.
+  // The phrase lives inside the anchor's visible text now; the URL is
+  // hidden. A regression that re-introduces the ::after trick would
+  // produce the phrase twice ("Click to view (Click to view)").
+  assert.ok(
+    !/print-record-link::after\s*\{/.test(html),
+    'printable view must NOT carry a .print-record-link::after rule (issue #541 slice 5; hint moved into anchor text)',
+  );
 
   // Issue #541 — live detail page Source Record link helper.
   // Slice from `function renderRecordDetailsLink` up to (but not
