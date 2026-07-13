@@ -409,7 +409,7 @@ func Generate(options Options) (Summary, error) {
 		// seeding soldiers if they want events/articles.
 		if len(soldierIDs) > 0 {
 			// Event Records + links + sources.
-			eventIDs, err := seedEvents(conn, rng, options.Events, &summary)
+			eventIDs, err := seedEvents(database, conn, rng, options.Events, &summary)
 			if err != nil {
 				return Summary{}, fmt.Errorf("seed events: %w", err)
 			}
@@ -427,7 +427,7 @@ func Generate(options Options) (Summary, error) {
 		// operator wants to exercise the goldmark pipeline even on
 		// a soldier-less archive), then seed refs only when
 		// soldiers exist.
-		articleIDs, err := seedArticles(conn, rng, options.Articles, options.ArticlesFormat, &summary)
+		articleIDs, err := seedArticles(database, conn, rng, options.Articles, options.ArticlesFormat, &summary)
 		if err != nil {
 			return Summary{}, fmt.Errorf("seed articles: %w", err)
 		}
@@ -688,7 +688,13 @@ func seedPersonRecordTags(conn *sql.DB, rng *rand.Rand, soldierIDs, tagIDs []int
 // seedEvents creates N Event Record rows (entry_type='event') and
 // returns their IDs. count == 0 means use the legacy default (~20%
 // of soldier count, min 2). count < 0 is clamped to 0.
-func seedEvents(conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]int64, error) {
+//
+// Issue #537: display_id is minted via db.NextEventID() rather than a
+// hard-coded `EVT-01000N` prefix so additive re-runs against an
+// already-seeded archive don't collide on the unique constraint. The
+// counter is namespace-scoped to EVT- and independent of the per-Person
+// DXD- counter.
+func seedEvents(database *db.DB, conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]int64, error) {
 	n := count
 	if n == 0 {
 		n = summary.Soldiers / 5
@@ -710,7 +716,10 @@ func seedEvents(conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]in
 		if err != nil {
 			return nil, err
 		}
-		displayID := fmt.Sprintf("EVT-%06d", 10000+i)
+		displayID, err := database.NextEventID()
+		if err != nil {
+			return nil, fmt.Errorf("mint event display_id: %w", err)
+		}
 		res, err := conn.Exec(
 			`INSERT INTO soldiers (sync_id, display_id, entry_type, kind, begin_date, end_date, description, created_by_version, created_by_import_path, created_at, updated_at) VALUES (?, ?, 'event', ?, ?, ?, ?, ?, 'seed', ?, ?)`,
 			syncID, displayID, kind, beginDate, endDate, desc, buildinfo.AppVersion, now, now,
@@ -788,7 +797,15 @@ func seedEventSources(conn *sql.DB, rng *rand.Rand, eventIDs []int64, summary *S
 //     records.NewMarkdownRenderer().Render(body_md) so the
 //     fixture round-trips through the same goldmark +
 //     bluemonday pipeline the Wails app uses on save. See #523.
-func seedArticles(conn *sql.DB, rng *rand.Rand, count int, format ArticleBodyFormat, summary *Summary) ([]int64, error) {
+// seedArticles creates N Article rows and returns their IDs. count == 0
+// means use the legacy default of 1-2 articles.
+//
+// Issue #537: display_id is minted via db.NextArticleID() rather than
+// a hard-coded `ART-01000N` prefix so additive re-runs against an
+// already-seeded archive don't collide on the unique constraint. The
+// counter is namespace-scoped to ART- and independent of both the
+// per-Person DXD- counter and the per-Event EVT- counter.
+func seedArticles(database *db.DB, conn *sql.DB, rng *rand.Rand, count int, format ArticleBodyFormat, summary *Summary) ([]int64, error) {
 	n := count
 	if n == 0 {
 		n = 1 + rng.Intn(2) // 1-2 articles
@@ -815,10 +832,13 @@ func seedArticles(conn *sql.DB, rng *rand.Rand, count int, format ArticleBodyFor
 			bodyMD = articleBodies[rng.Intn(len(articleBodies))]
 			bodyHTML = "<p>" + bodyMD + "</p>"
 		}
-		displayID := fmt.Sprintf("ART-%06d", 10000+i)
 		syncID, err := db.NewSyncID()
 		if err != nil {
 			return nil, err
+		}
+		displayID, err := database.NextArticleID()
+		if err != nil {
+			return nil, fmt.Errorf("mint article display_id: %w", err)
 		}
 		res, err := conn.Exec(
 			`INSERT INTO articles (sync_id, display_id, title, subtitle, body_md, body_html, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -3,6 +3,7 @@ package seed
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -270,4 +271,137 @@ func assertCountWhere(t *testing.T, database *db.DB, table, where string, want i
 	if got != want {
 		t.Fatalf("%s WHERE %s count=%d want %d", table, where, got, want)
 	}
+}
+
+// TestSeed_AdditiveReRunDoesNotCollideOnEventOrArticleDisplayID
+// (issue #537) is the regression net for the EVT-01000N / ART-01000N
+// hard-coded prefix bug. Two passes back-to-back:
+//   - Pass 1: --reset + 5 soldiers + 3 events + 2 articles (uses the
+//     legacy default count encoding but with explicit non-zero values
+//     so the test is deterministic).
+//   - Pass 2: --skip-soldiers + 3 events + 1 article, NO --reset. This
+//     is the additive shape that used to fail on
+//     `UNIQUE constraint failed: soldiers.display_id`.
+//
+// Success: pass 2 writes the additional rows without error and the
+// EVT-/ART- display_id sequences advance past their pass-1 values
+// (no collision, no silent overwrite).
+func TestSeed_AdditiveReRunDoesNotCollideOnEventOrArticleDisplayID(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+
+	// Pass 1: full reset, seed the v58-v65 surface.
+	summary1, err := Generate(Options{
+		DataDir:    dataDir,
+		Soldiers:   5,
+		Seed:       7,
+		Reset:      true,
+		Events:     3,
+		Articles:   2,
+	})
+	if err != nil {
+		t.Fatalf("pass 1 Generate: %v", err)
+	}
+	if summary1.Events != 3 || summary1.Articles != 2 {
+		t.Fatalf("pass 1 counts: events=%d articles=%d", summary1.Events, summary1.Articles)
+	}
+
+	// Capture the pass-1 max sequences so pass 2 can assert it advanced.
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	maxEventSeqPass1, err := maxSequenceFor(database, "soldiers", "display_id LIKE 'EVT-%'")
+	if err != nil {
+		t.Fatalf("max event seq pass 1: %v", err)
+	}
+	if maxEventSeqPass1 < 3 {
+		t.Fatalf("pass 1 max EVT sequence=%d, expected >=3", maxEventSeqPass1)
+	}
+	maxArticleSeqPass1, err := maxSequenceFor(database, "articles", "display_id LIKE 'ART-%'")
+	if err != nil {
+		t.Fatalf("max article seq pass 1: %v", err)
+	}
+	if maxArticleSeqPass1 < 2 {
+		t.Fatalf("pass 1 max ART sequence=%d, expected >=2", maxArticleSeqPass1)
+	}
+
+	// Pass 2: skip-soldiers, additive — the call that used to crash
+	// with `UNIQUE constraint failed: soldiers.display_id` on EVT-010000.
+	summary2, err := Generate(Options{
+		DataDir:      dataDir,
+		SkipSoldiers: true,
+		Events:       3,
+		Articles:     1,
+	})
+	if err != nil {
+		t.Fatalf("pass 2 Generate: %v", err)
+	}
+	if summary2.Events != 3 || summary2.Articles != 1 {
+		t.Fatalf("pass 2 counts: events=%d articles=%d", summary2.Events, summary2.Articles)
+	}
+
+	// Confirm the sequences advanced past pass 1 (no overwrite, no
+	// collision). The pass-2 max must be strictly greater than the
+	// pass-1 max for both EVT- and ART- namespaces.
+	maxEventSeqPass2, err := maxSequenceFor(database, "soldiers", "display_id LIKE 'EVT-%'")
+	if err != nil {
+		t.Fatalf("max event seq pass 2: %v", err)
+	}
+	if maxEventSeqPass2 <= maxEventSeqPass1 {
+		t.Fatalf("pass 2 max EVT sequence=%d did not advance past pass 1 max=%d", maxEventSeqPass2, maxEventSeqPass1)
+	}
+	maxArticleSeqPass2, err := maxSequenceFor(database, "articles", "display_id LIKE 'ART-%'")
+	if err != nil {
+		t.Fatalf("max article seq pass 2: %v", err)
+	}
+	if maxArticleSeqPass2 <= maxArticleSeqPass1 {
+		t.Fatalf("pass 2 max ART sequence=%d did not advance past pass 1 max=%d", maxArticleSeqPass2, maxArticleSeqPass1)
+	}
+}
+
+// maxSequenceFor extracts the trailing integer from every display_id
+// in the given table matching the optional where clause, and returns
+// the largest one. Used by the #537 regression test to verify the
+// EVT-/ART- counters advance across additive seed passes.
+func maxSequenceFor(database *db.DB, table, where string) (int, error) {
+	q := "SELECT display_id FROM " + table
+	if where != "" {
+		q += " WHERE " + where
+	}
+	rows, err := database.Conn().Query(q)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	max := 0
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return 0, err
+		}
+		seq := trailingInt(id)
+		if seq > max {
+			max = seq
+		}
+	}
+	return max, rows.Err()
+}
+
+// trailingInt parses the trailing decimal run from a display_id like
+// `EVT-00012` or `ART-00007`. Returns 0 if no trailing run is found.
+func trailingInt(s string) int {
+	i := len(s)
+	for i > 0 && s[i-1] >= '0' && s[i-1] <= '9' {
+		i--
+	}
+	if i == len(s) {
+		return 0
+	}
+	n, err := strconv.Atoi(s[i:])
+	if err != nil {
+		return 0
+	}
+	return n
 }
