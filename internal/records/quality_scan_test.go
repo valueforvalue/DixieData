@@ -1,6 +1,7 @@
 package records
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -97,6 +98,158 @@ func TestRunDataQualityScan_EventRowsDoNotFireIdentityMissing(t *testing.T) {
 	if hasIssue(models.EntryTypeSoldier, "identity-missing") {
 		t.Errorf("named soldier fired identity-missing; the scan is over-eager")
 	}
+}
+
+// TestClassifyMarkupNoise (issue #531) pins the new HTML / markup
+// detection helper added next to hasObviousPlaceholderNoise. The
+// scan has no detection for raw HTML in Notes / Birth Info / etc.;
+// a Memorial JSON import or a copy-paste from a web page can land
+// markup in a freeform text field and the static archive then
+// renders it as live HTML.
+//
+// The classifier escalates by severity (mixed-content-script >
+// raw-html-tags > unescaped-entity) so a field carrying all three
+// surfaces the single most-severe issue rather than three stacked
+// ones on the review-queue card.
+func TestClassifyMarkupNoise(t *testing.T) {
+	cases := []struct {
+		name   string
+		values []string
+		want   string
+	}{
+		// Clean text — no noise.
+		{"clean", []string{"James", "Carter", "born in Madison County", "Oakwood Cemetery"}, ""},
+		{"empty", []string{"", "", "", ""}, ""},
+
+		// raw-html-tags (medium).
+		{"balanced-bold", []string{"", "", "<b>test</b>", ""}, "raw-html-tags"},
+		{"balanced-link", []string{"", "", `<a href="https://example.com">link</a>`, ""}, "raw-html-tags"},
+		{"unbalanced-tag", []string{"", "", "<b>test", ""}, "raw-html-tags"},
+		{"self-closing", []string{"", "", "see <br/> for more", ""}, "raw-html-tags"},
+		{"raw-in-name", []string{"<i>James</i>", "", "", ""}, "raw-html-tags"},
+		{"raw-in-buried-in", []string{"", "", "", "<font color=red>Oakwood</font>"}, "raw-html-tags"},
+
+		// unescaped-entity (medium) — user pasted already-encoded HTML.
+		{"escaped-script", []string{"", "", "&lt;script&gt;alert(1)&lt;/script&gt;", ""}, "unescaped-entity"},
+		{"escaped-amp", []string{"", "", "Tom &amp; Jerry", ""}, "unescaped-entity"},
+
+		// mixed-content-script (high) — security concern.
+		{"script-tag", []string{"", "", "<script>alert(1)</script>", ""}, "mixed-content-script"},
+		{"onerror-attr", []string{"", "", `<img src="x" onerror="alert(1)">`, ""}, "mixed-content-script"},
+		{"onclick-attr", []string{"", "", `<a href="#" onclick="steal()">click</a>`, ""}, "mixed-content-script"},
+
+		// Precedence: a field carrying both raw-html-tags AND
+		// mixed-content-script must report mixed-content-script.
+		{"script-beats-html", []string{"", "", "<b>bold</b><script>x</script>", ""}, "mixed-content-script"},
+		// script-beats-entity: script tag surfaces as mixed-content-script
+		// even when entities are also present in the same value.
+		{"script-beats-entity", []string{"", "", "&lt;x&gt; <script>y</script>", ""}, "mixed-content-script"},
+
+		// Negative: angle brackets that are not HTML (e.g. less-than
+		// in a measurement, a math expression) must NOT trip raw-html.
+		{"math-lt", []string{"", "", "less than 5 < 10 in this region", ""}, ""},
+		// Negative: the word "script" without a tag opener is not
+		// a script tag.
+		{"word-script", []string{"", "", "postscript to the letter", ""}, ""},
+		// Negative: a bare `onclick` word without `=` is not an
+		// event handler attribute.
+		{"word-onclick", []string{"", "", "do not onclick this button", ""}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := classifyMarkupNoise(c.values...); got != c.want {
+				t.Errorf("classifyMarkupNoise(%v) = %q, want %q", c.values, got, c.want)
+			}
+		})
+	}
+}
+
+// TestRunDataQualityScan_RawHTMLInNotesFiresFieldContent (issue #531)
+// is the integration-level regression net: a soldier with raw HTML
+// in the birth_info field must produce a Field Content issue in the
+// scan result, and a clean soldier must not. Combined with the
+// TestClassifyMarkupNoise unit test, this pins the wiring between
+// the helper and the evaluateQualityIssues branch.
+func TestRunDataQualityScan_RawHTMLInNotesFiresFieldContent(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	// Soldier with raw HTML in birth_info — must fire raw-html-tags.
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "Carter",
+		BirthInfo: "<b>test</b>",
+	}); err != nil {
+		t.Fatalf("Create soldier with HTML birth_info: %v", err)
+	}
+	// Soldier with a script tag in birth_info — must fire
+	// mixed-content-script (high severity).
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "Samuel",
+		LastName:  "Walker",
+		BirthInfo: `<img src="x" onerror="alert(1)">`,
+	}); err != nil {
+		t.Fatalf("Create soldier with script birth_info: %v", err)
+	}
+	// Clean soldier — no Field Content issues.
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "Lee",
+		BirthInfo: "born in Madison County",
+	}); err != nil {
+		t.Fatalf("Create clean soldier: %v", err)
+	}
+
+	result, err := svc.RunDataQualityScan(string(DataQualityModeHighConfidence))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan: %v", err)
+	}
+
+	var (
+		rawHTMLCount     int
+		scriptCount      int
+		cleanHTMLCount   int
+		rawHTMLSeverity  []string
+		scriptSeverity   []string
+	)
+	for _, issue := range result.Issues {
+		if issue.Group != "Field Content" {
+			continue
+		}
+		switch issue.Code {
+		case "raw-html-tags":
+			rawHTMLCount++
+			rawHTMLSeverity = append(rawHTMLSeverity, issue.Severity)
+		case "mixed-content-script":
+			scriptCount++
+			scriptSeverity = append(scriptSeverity, issue.Severity)
+		default:
+			cleanHTMLCount++
+		}
+	}
+
+	if rawHTMLCount != 1 {
+		t.Errorf("raw-html-tags count = %d, want 1", rawHTMLCount)
+	}
+	if scriptCount != 1 {
+		t.Errorf("mixed-content-script count = %d, want 1", scriptCount)
+	}
+	if cleanHTMLCount != 0 {
+		t.Errorf("unexpected Field Content issues: %d", cleanHTMLCount)
+	}
+	// The summary/detail on the script issue should mention
+	// "security" or "static archive" so the user understands the
+	// why behind the high severity.
+	for _, issue := range result.Issues {
+		if issue.Code == "mixed-content-script" {
+			if !strings.Contains(strings.ToLower(issue.Summary), "script") &&
+				!strings.Contains(strings.ToLower(issue.Detail), "static archive") {
+				t.Errorf("script issue summary/detail should mention script or static archive: %q / %q", issue.Summary, issue.Detail)
+			}
+		}
+	}
+	_ = rawHTMLSeverity
+	_ = scriptSeverity
 }
 
 // TestIsPersonBearingEntryType (issue #530) pins the helper semantics
