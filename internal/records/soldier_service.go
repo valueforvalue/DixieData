@@ -1828,13 +1828,24 @@ func suggestedResearchTasks(soldier models.Soldier) []ResearchTaskSuggestion {
 	return suggestions
 }
 
+// normalizeResearchEvidenceType cleans a user-submitted
+// research-tasks.evidence_type value.
+//
+// The column is free TEXT (see schema.go: research_tasks.evidence_type
+// TEXT NOT NULL DEFAULT 'general'), so the function must not silently
+// rewrite unknown values to a default — Issue #553 caught a user
+// picking "Local Archive" and finding it persisted as "General"
+// because the previous switch only knew the bare word "archive".
+// The Research & Review form (internal/templates/research_log.templ)
+// emits models.EvidenceTypeLocalArchive ("local_archive"), and any
+// future evidence-type vocabulary must round-trip verbatim.
+//
+// Behaviour:
+//   - whitespace is trimmed and the value is lowercased
+//   - the result is returned as-is; there is no allow-list and no
+//     silent fallback to "general"
 func normalizeResearchEvidenceType(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "service", "pension", "burial", "vital", "family", "archive":
-		return strings.ToLower(strings.TrimSpace(value))
-	default:
-		return "general"
-	}
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func isSoldierEntryType(value string) bool {
