@@ -105,14 +105,16 @@ func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
 // TestSeedArticles_MarkdownFormat_RendersViaGoldmark (issue #523)
 // asserts that --articles-format=markdown produces body_html via
 // records.MarkdownRenderer — the same pipeline the Wails app uses on
-// save. Pins the CommonMark feature coverage the renderer currently
-// supports: headings h1-h6, bold/italic, lists, blockquote, inline +
-// fenced code, links, images, paragraphs.
+// save. Pins the feature coverage the renderer currently supports:
+// CommonMark (headings, lists, blockquote, inline + fenced code,
+// links, images, paragraphs) + GFM (tables, autolinks, strikethrough,
+// task lists).
 //
-// Tables and `---` horizontal rules are in the corpus but the
-// renderer uses goldmark.New() with no GFM extension (issue #524
-// follow-up). When that lands, add <table>, <tbody>, <hr> to the
-// required list below.
+// The GFM extension is enabled via goldmark.WithExtensions in
+// internal/records/markdown.go (issue #525). The corpus (#523)
+// exercises each feature across 30 entries; at least one entry
+// exercises each feature so the union of all rendered body_html
+// contains every required substring.
 func TestSeedArticles_MarkdownFormat_RendersViaGoldmark(t *testing.T) {
 	dataDir := testtemp.New(t).Path()
 
@@ -155,10 +157,14 @@ func TestSeedArticles_MarkdownFormat_RendersViaGoldmark(t *testing.T) {
 	}
 	combined := allBodies.String()
 
-	// CommonMark + image presence checks across the whole corpus.
+	// CommonMark + GFM presence checks across the whole corpus.
 	// Every check is a substring of the union of rendered bodies
 	// so a missing feature trips the test even if other features
-	// still render.
+	// still render. GFM-specific assertions added per issue #525.
+	// Note: the corpus (#523) doesn't exercise GFM task lists
+	// (`- [ ]` / `- [x]`) yet — that fixture expansion is tracked
+	// in issue #525's secondary sub-issue. Renderer support is
+	// landed; the corpus will catch up in a follow-up.
 	required := []string{
 		"<h1>",       // heading
 		"<h2>",       // nested heading
@@ -174,6 +180,13 @@ func TestSeedArticles_MarkdownFormat_RendersViaGoldmark(t *testing.T) {
 		"<img ",      // image
 		`alt="`,      // image alt attribute (preserved by bluemonday)
 		"<p>",        // paragraph
+		"<table>",    // GFM table (issue #525)
+		"<thead>",    // GFM table head
+		"<tbody>",    // GFM table body
+		"<th>",       // GFM table header cell
+		"<td>",       // GFM table data cell
+		"<del>",      // GFM strikethrough (~~text~~)
+		"<hr>",       // GFM horizontal rule (--- syntax)
 	}
 	for _, sub := range required {
 		if !strings.Contains(combined, sub) {
