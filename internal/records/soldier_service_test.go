@@ -2039,3 +2039,98 @@ func TestSoldierService_CountNeedsReview(t *testing.T) {
 		t.Errorf("count = %d, want 3 (only flagged records)", count)
 	}
 }
+
+// Issue #553 — Research Log Evidence Type normalizer.
+//
+// The form at internal/templates/research_log.templ:66-74 submits
+// `local_archive` (EvidenceTypeLocalArchive). The previous switch in
+// normalizeResearchEvidenceType only recognised the bare word
+// `archive`, so any `local_archive` submission fell into `default`
+// and was silently rewritten to `general`. These tests pin the
+// fixed behaviour: every value the form submits must round-trip, and
+// unknown values must pass through (lowercased + trimmed) rather
+// than silently being reclassified.
+func TestNormalizeResearchEvidenceType_LocalArchive(t *testing.T) {
+	if got := normalizeResearchEvidenceType(models.EvidenceTypeLocalArchive); got != models.EvidenceTypeLocalArchive {
+		t.Fatalf("normalizeResearchEvidenceType(%q) = %q, want %q", models.EvidenceTypeLocalArchive, got, models.EvidenceTypeLocalArchive)
+	}
+}
+
+func TestNormalizeResearchEvidenceType_AllFormValues(t *testing.T) {
+	// Every <option value="..."> emitted by the Research Log form
+	// (research_log.templ:66-74). Each one must round-trip verbatim
+	// (modulo trim + lowercase) so the user sees what they picked.
+	formValues := []string{
+		"general",
+		"service",
+		"pension",
+		"burial",
+		"vital",
+		"family",
+		models.EvidenceTypeLocalArchive, // "local_archive"
+	}
+	for _, raw := range formValues {
+		t.Run(raw, func(t *testing.T) {
+			got := normalizeResearchEvidenceType(raw)
+			want := strings.ToLower(strings.TrimSpace(raw))
+			if got != want {
+				t.Fatalf("normalizeResearchEvidenceType(%q) = %q, want %q (no silent reclassification)", raw, got, want)
+			}
+		})
+	}
+}
+
+func TestNormalizeResearchEvidenceType_UnknownPassesThrough(t *testing.T) {
+	// The schema (schema.go) stores evidence_type as free TEXT — no
+	// CHECK constraint. Future evidence types must round-trip. The
+	// old switch's `default: return "general"` silently destroyed
+	// any unknown value; the new behaviour must NOT do that.
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "user-typed custom value", input: "user-typed custom value", want: "user-typed custom value"},
+		{name: "future_archive_variant", input: "national_archive", want: "national_archive"},
+		{name: "whitespace trimmed", input: "  census  ", want: "census"},
+		{name: "uppercase normalised", input: "CENSUS", want: "census"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := normalizeResearchEvidenceType(c.input)
+			if got != c.want {
+				t.Fatalf("normalizeResearchEvidenceType(%q) = %q, want %q (unknown must pass through)", c.input, got, c.want)
+			}
+			if got == "general" {
+				t.Fatalf("normalizeResearchEvidenceType(%q) returned \"general\"; silent reclassification regression", c.input)
+			}
+		})
+	}
+}
+
+func TestNormalizeResearchEvidenceType_KnownValuesPreserved(t *testing.T) {
+	// The case-list values that the old switch accepted must keep
+	// round-tripping — guards against accidentally regressing the
+	// baseline (Issue #553 must not break the 6 known values).
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"service", "service"},
+		{"pension", "pension"},
+		{"burial", "burial"},
+		{"vital", "vital"},
+		{"family", "family"},
+		{"archive", "archive"},
+		{"Service", "service"},
+		{"PENSION", "pension"},
+		{" archive ", "archive"},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			if got := normalizeResearchEvidenceType(c.input); got != c.want {
+				t.Fatalf("normalizeResearchEvidenceType(%q) = %q, want %q", c.input, got, c.want)
+			}
+		})
+	}
+}
