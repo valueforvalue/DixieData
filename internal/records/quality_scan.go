@@ -3,6 +3,7 @@ package records
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -412,6 +413,23 @@ func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64
 		))
 	}
 
+	// Issue #531: detect raw HTML / unescaped markup noise in the
+	// same freeform text fields the placeholder check covers. A
+	// Memorial JSON import or a copy-paste from a web page can
+	// land markup in Notes / Birth Info / etc. that the static
+	// archive then renders as live HTML. Three codes, escalating
+	// severity: raw-html-tags (medium), unescaped-entity (medium),
+	// mixed-content-script (high — the row carries a script tag
+	// or an event-handler attribute, which is a security concern
+	// the moment the row is exported to a downloadable archive).
+	markup := classifyMarkupNoise(firstName, lastName, candidate.BirthInfo, candidate.BuriedIn)
+	if markup != "" {
+		severity, summary, detail := markupIssueShape(markup)
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Field Content", markup, severity, summary, detail,
+		))
+	}
+
 	if mode == DataQualityModeAdvanced && len(lastName) == 1 {
 		issues = append(issues, candidateIssue(candidate,
 			name, entryType, "Identity & Naming", "surname-too-short", "medium",
@@ -472,6 +490,122 @@ func buildIssueName(first, middle, last string) string {
 		return "Unnamed Record"
 	}
 	return strings.Join(strings.Fields(name), " ")
+}
+
+// markupNoisePrecedence lists the markup-noise codes (issue #531)
+// in severity order. mixed-content-script is the highest severity
+// (carries a script tag or an event-handler attribute), then
+// raw-html-tags (carries raw markup), then unescaped-entity
+// (carries literal &lt; &gt; &amp; that will double-escape on
+// re-render). The classifier picks the first match in this order
+// so a single field carrying all three noise types surfaces the
+// most severe single issue rather than three stacked ones.
+var markupNoisePrecedence = []string{
+	"mixed-content-script",
+	"raw-html-tags",
+	"unescaped-entity",
+}
+
+// classifyMarkupNoise (issue #531) inspects the freeform text
+// fields the placeholder check covers and returns the most severe
+// markup-noise code it finds, or "" when the fields are clean.
+// The check is intentionally simple — the false-positive cost of
+// missing a row that contains raw HTML is higher than the cost
+// of catching one that doesn't (per the issue's "simple regex
+// sweep is sufficient" guidance).
+func classifyMarkupNoise(values ...string) string {
+	for _, code := range markupNoisePrecedence {
+		if hasMarkupNoiseCode(code, values...) {
+			return code
+		}
+	}
+	return ""
+}
+
+// hasMarkupNoiseCode returns true when any of the supplied values
+// matches the given markup-noise code's pattern. The patterns are
+// inline here (not pre-compiled) because the scan is run rarely
+// (manual, not in a request hot path) and the regex cache is a
+// micro-optimization that adds a package-level init for no real
+// gain.
+func hasMarkupNoiseCode(code string, values ...string) bool {
+	joined := strings.Join(values, "\x00")
+	if joined == "" {
+		return false
+	}
+	switch code {
+	case "mixed-content-script":
+		// script tag, or any event-handler attribute. The
+		// attribute pattern matches `on...=` (e.g. onclick=,
+		// onerror=) so it catches inline handlers whether they
+		// are real HTML attributes or escaped in a markdown
+		// snippet.
+		return regexpMatch(joined, `(?i)<script\b`) ||
+			regexpMatch(joined, `(?i)\son[a-z]+\s*=`)
+	case "raw-html-tags":
+		// any <tag> or </tag> opener. Self-closing tags are
+		// covered by the same `<...>` shape. Balanced OR
+		// unbalanced markup both trip this — the user's
+		// downstream concern is that the static archive will
+		// render the markup as live HTML, not whether the
+		// markup is well-formed.
+		return regexpMatch(joined, `<[a-zA-Z][a-zA-Z0-9-]*\b`) ||
+			regexpMatch(joined, `</[a-zA-Z][a-zA-Z0-9-]*\b`)
+	case "unescaped-entity":
+		// literal &lt; / &gt; / &amp; that will render as
+		// &lt;script&gt; after the next render pass (double-
+		// encoded HTML).
+		return regexpMatch(joined, `&(lt|gt|amp);`)
+	}
+	return false
+}
+
+// regexpMatch is a thin wrapper around regexp.MatchString that
+// keeps the patterns above readable. Panics on a malformed regex
+// (the patterns are compile-time constants, so a panic here is a
+// developer bug, not a runtime input error).
+func regexpMatch(s, pattern string) bool {
+	matched, err := regexpMatchCompiled(s, pattern)
+	if err != nil {
+		// Patterns are compile-time constants; an error here
+		// means the developer introduced a bad pattern. Surface
+		// the error via a panic rather than silently swallowing
+		// it (the scan would otherwise miss every issue the
+		// broken pattern was supposed to catch).
+		panic(fmt.Sprintf("quality_scan: bad markup-noise regex %q: %v", pattern, err))
+	}
+	return matched
+}
+
+// regexpMatchCompiled is the regexp-backed worker. Exposed via a
+// helper so the per-pattern code path above stays readable as a
+// list of intent statements rather than a chain of compiled
+// regexes.
+var regexpMatchCompiled = func(s, pattern string) (bool, error) {
+	return regexp.MatchString(pattern, s)
+}
+
+// markupIssueShape (issue #531) maps a markup-noise code to the
+// (severity, summary, detail) tuple the issue card surfaces. Kept
+// as a separate function so the classifier stays a pure
+// detector and the user-facing copy can evolve without touching
+// the detection logic.
+func markupIssueShape(code string) (severity, summary, detail string) {
+	switch code {
+	case "mixed-content-script":
+		return "high",
+			"Field carries a script tag or event-handler attribute.",
+			"Detected <script> or an on...= attribute. This is a security concern if the row is exported to a static archive — sanitize the field before sharing."
+	case "raw-html-tags":
+		return "medium",
+			"Field carries raw HTML markup.",
+			"Detected a <tag> pattern. The static archive will render this as live HTML; strip the markup and re-enter the value as plain text."
+	case "unescaped-entity":
+		return "medium",
+			"Field carries unescaped HTML entities.",
+			"Detected &lt; / &gt; / &amp; in a freeform text field. The next render pass will double-escape these — paste the original value (not the rendered HTML) into the field."
+	}
+	return "medium", "Field carries markup noise.", "Detected markup noise in a freeform text field."
 }
 
 // loadEventZeroLinkIssues (issue #320) returns one
