@@ -1508,8 +1508,22 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       }
     }
 
-    @page {
+    // Issue #519: split @page into named-page rules so the
+    // printable report can flip orientation based on a class on
+    // the root element. CSS @page cannot read body classes directly,
+    // but the page: property on .print-root (and .landscape) lets
+    // us route to landscape-page when the user passes ?landscape=1.
+    // Default stays portrait — Export Report toolbar tip already
+    // tells the user to use Cmd+P / Ctrl+P and the typst-mirror
+    // layout reads cleanly at letter portrait for short reports.
+    .print-root { page: portrait-page; }
+    .print-root.landscape { page: landscape-page; }
+    @page portrait-page {
       size: letter;
+      margin: 0.4in 0.63in;
+    }
+    @page landscape-page {
+      size: letter landscape;
       margin: 0.4in 0.63in;
     }
     @media print {
@@ -1960,13 +1974,17 @@ function escapeHtml(value) {
 
     // printRenderLink mirrors templates/common/record_card.typ::
     // render-link. Renders a URL as a 'Click to view' anchor (the
-    // URL itself is the href; the visible text reads 'Click to
-    // view'). Plain text passes through unchanged.
+    // URL itself is the href + visible text. Plain text passes
+    // through unchanged. The " (Click to view)" hint comes from
+    // the .print-record-link::after CSS pseudo-element (defined
+    // near the top of the stylesheet) so the link renders as
+    // "https://example.com (Click to view)" — one occurrence of
+    // the phrase, not two (issue #519).
     function printRenderLink(url) {
       var u = String(url || '').trim();
       if (!u) return '';
       if (!/^https?:\/\//i.test(u)) return escapeHtml(u);
-      return '<a class="print-record-link" href="' + escapeHtml(u) + '" target="_blank" rel="noreferrer noopener">Click to view</a>';
+      return '<a class="print-record-link" href="' + escapeHtml(u) + '" target="_blank" rel="noreferrer noopener">' + escapeHtml(u) + '</a>';
     }
 
     // printFieldRow renders a (label, value) pair as a
@@ -3137,9 +3155,12 @@ function escapeHtml(value) {
       function syncViewFromHash() {
         const route = routeFromHash(window.location.hash);
         // Issue #509: #/print/{displayId} replaces the document
-        // body with a printable report DOM, then auto-fires
-        // window.print() so the user can save to PDF without
-        // clicking through the print dialog manually.
+        // body with a printable report DOM. The user drives the
+        // print step (Cmd+P / Ctrl+P) — see #detail-export-report
+        // toolbar tip; the document must not auto-fire window.print().
+        // Issue #519 dropped the auto-print setTimeout; this comment
+        // is the source-of-truth breadcrumb so future authors don't
+        // re-add it.
         if (route.kind === 'print') {
           var printIdx = findRecordByDisplayId(records, route.id);
           if (printIdx >= 0) {
@@ -3152,8 +3173,6 @@ function escapeHtml(value) {
               footerText: typeof FOOTER_TEXT !== 'undefined' ? FOOTER_TEXT : 'Made with DixieData',
               codename: typeof CODENAME !== 'undefined' ? CODENAME : '',
             }, landscape);
-            // Defer print until after the layout settles.
-            setTimeout(function() { try { window.print(); } catch (e) {} }, 200);
             window.scrollTo(0, 0);
             return;
           }
