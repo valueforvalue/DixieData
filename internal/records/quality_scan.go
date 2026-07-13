@@ -336,12 +336,22 @@ func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64
 	lastName := strings.TrimSpace(candidate.LastName)
 	name := buildIssueName(firstName, middleName, lastName)
 
-	if displayID == "" || (firstName == "" && lastName == "") {
-		issues = append(issues, candidateIssue(candidate,
-			name, entryType, "Identity & Naming", "identity-missing", "high",
-			"Core identity data is missing.",
-			"Record is missing display ID or both first/last name values.",
-		))
+	// Issue #530: gate Identity & Naming / identity-missing to
+	// person-bearing entry types. Event Records (entry_type='event',
+	// issue #320) live in the soldiers table but carry no first_name
+	// or last_name — their identity surface is kind + begin_date +
+	// end_date + linked persons. Without this gate, every event row
+	// in any archive with events produces a false positive that
+	// floods the review queue. Use the shared helper from
+	// internal/models so the entry-type list lives in one place.
+	if models.IsPersonBearingEntryType(entryType) {
+		if displayID == "" || (firstName == "" && lastName == "") {
+			issues = append(issues, candidateIssue(candidate,
+				name, entryType, "Identity & Naming", "identity-missing", "high",
+				"Core identity data is missing.",
+				"Record is missing display ID or both first/last name values.",
+			))
+		}
 	}
 
 	birth, birthErr := dates.ParseCanonical(candidate.BirthDate)

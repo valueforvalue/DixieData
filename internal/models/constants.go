@@ -46,6 +46,26 @@ func IsValidEntryType(s string) bool {
 	return false
 }
 
+// IsPersonBearingEntryType reports whether s is an entry type that
+// carries Person Record identity columns (first_name, last_name,
+// rank, unit, etc.). Event Records (issue #320) live in the soldiers
+// table but use kind + begin_date + end_date as their identity
+// surface — they have no first_name/last_name column values to
+// check, so any scan that fires "identity-missing" on an event row
+// is a false positive. The data-quality scan (issue #530) gates
+// its Identity & Naming checks on this helper.
+//
+// LinkedPerson is included because linked-person rows are short
+// biographical stubs that carry a real first_name/last_name and
+// are subject to the same identity checks as soldiers.
+func IsPersonBearingEntryType(s string) bool {
+	switch s {
+	case EntryTypeSoldier, EntryTypeWife, EntryTypeWidow, EntryTypeLinkedPerson:
+		return true
+	}
+	return false
+}
+
 // Evidence type values for the research_log.evidence_type column. The
 // values mirror the glossary terms in CONTEXT.md so the UI label and
 // the stored value agree.
