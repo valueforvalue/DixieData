@@ -450,3 +450,68 @@ func TestSummaryRendersMemorialImportStats(t *testing.T) {
 		t.Errorf("expected images imported line; got %v", s.DetailLines)
 	}
 }
+
+// TestSummaryZeroStateKindsAreMessageDriven pins down the fix for
+// issue #543: six kinds produce no ResultPath and therefore
+// cannot render the default "Size: 0 B / Duration: 0s" card.
+// The workers (settings / reviews / insights / google handlers)
+// populate j.Message via p.Set(100, "...") before the job
+// transitions to StatusDone, so the summary card must:
+//
+//   - anchor the headline on j.Message so the user sees what
+//     the worker actually did ("Moved 3 image(s) into temp trash.")
+//   - skip the Size: line (no on-disk artifact to size)
+//   - format the duration with sub-second precision so a 800ms
+//     cleanup does not collapse to "Duration: 0s" (the bug-2
+//     symptom called out in the issue triage)
+//
+// These tests were red on the pre-fix code: the kinds fell through
+// to `default`, which formatted Size/Duration even when the
+// ResultPath was empty.
+func TestSummaryZeroStateKindsAreMessageDriven(t *testing.T) {
+	cases := []struct {
+		kind    string
+		message string
+	}{
+		{kind: "image_orphan_cleanup", message: "Moved 3 image(s) into temp trash."},
+		{kind: "duplicate_audit", message: "Scanned 247 records, 12 candidate pairs (4 suppressed)."},
+		{kind: "review_bulk_resolve", message: "Resolved 8 review queue item(s)."},
+		{kind: "review_bulk_delete", message: "Deleted 5 review queue record(s)."},
+		{kind: "google_drive_backup", message: "Uploaded 247 soldiers, 1240 images."},
+		{kind: "google_sheets_export", message: "Google Sheet ready."},
+	}
+	for _, c := range cases {
+		t.Run(c.kind, func(t *testing.T) {
+			j := NewJob("job-"+c.kind, c.kind)
+			j.Status = StatusDone
+			j.Message = c.message
+			// 800ms elapsed — well below the old 1-second round
+			// boundary that collapsed this to "Duration: 0s".
+			j.StartedAt = time.Now().Add(-800 * time.Millisecond)
+			j.FinishedAt = time.Now()
+			// Deliberately no ResultPath: these kinds do not
+			// write an artifact the user can download later.
+			s := j.Summary()
+			body := s.joinDetails()
+			// 1. headline uses the worker's progress message.
+			if !strings.Contains(body, c.message) {
+				t.Errorf("kind=%s summary must contain worker Message %q; got headline=%q details=%v",
+					c.kind, c.message, s.Headline, s.DetailLines)
+			}
+			// 2. no Size line — no artifact to size.
+			if strings.Contains(body, "Size:") {
+				t.Errorf("kind=%s summary must not contain 'Size:' line for no-artifact kind; got details=%v",
+					c.kind, s.DetailLines)
+			}
+			// 3. duration is sub-second-friendly (0.8s, not 0s).
+			if strings.Contains(body, "Duration: 0s") {
+				t.Errorf("kind=%s sub-second duration collapsed to 'Duration: 0s'; got details=%v",
+					c.kind, s.DetailLines)
+			}
+			if !strings.Contains(body, "0.8s") {
+				t.Errorf("kind=%s expected sub-second duration '0.8s'; got details=%v",
+					c.kind, s.DetailLines)
+			}
+		})
+	}
+}
