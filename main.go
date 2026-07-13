@@ -46,6 +46,36 @@ func handleVersionFlag(argv []string) (output string, done bool) {
 	return "", false
 }
 
+// windowTitle is the OS window title for the Wails desktop
+// app. Composed at the call site (issue #542) so the brand +
+// codename boundary uses an em dash, matching the typographic
+// polish issue #462 applied to the per-page <title> + the
+// top-shell brand pill + the footer. The "DixieData —
+// {codename} · {version} · {branch}" shape reads cleanly at
+// the top of the OS window frame on every platform (Windows /
+// macOS / Linux).
+//
+// We use buildinfo.Codename() rather than buildinfo.ReleaseLabel()
+// here because the latter returns "DixieData {codename}" with
+// a literal space — the em-dash polish would require editing
+// the source-of-truth function, which would ripple to every
+// ReleaseLabel() consumer (--version output, footer) and force
+// a coordinated edit of the footer's call site (which composes
+// its own em-dash separator per #462). Composing at the call
+// site keeps the change contained to the OS window title, the
+// surface the user reported.
+//
+// The middle dots (`·`) between codename + version + branch
+// stay as-is — those bind the metadata chain, not the brand /
+// codename boundary (per #462).
+func windowTitle() string {
+	return fmt.Sprintf("DixieData — %s · %s · %s",
+		buildinfo.Codename(),
+		buildinfo.AppVersion,
+		buildinfo.GitBranch,
+	)
+}
+
 // handleHelpFlag scans argv for the explicit help token
 // (help / --help / -h). Returns the formatted help text +
 // requested=true. The no-args case is intentionally NOT
@@ -192,7 +222,7 @@ func main() {
 	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
 
 	err = wails.Run(&options.App{
-		Title:  fmt.Sprintf("%s · %s · %s", buildinfo.ReleaseLabel(), buildinfo.AppVersion, buildinfo.GitBranch),
+		Title:  windowTitle(),
 		Width:  1280,
 		Height: 800,
 		Bind: []interface{}{
