@@ -467,10 +467,73 @@ function labelToRegex(label) {
 }
 
 // pageButtonsFor returns only the manifest entries that should be
-// exercised from a specific page. The smoke harness currently
-// visits /share for every button; future iterations can add
-// /settings, /review-queue, /insights as separate passes with
-// their own scopes.
+// exercised from a specific page. The smoke harness previously
+// visited /share for every button (issue #469 — pre-#284 /
+// #380 drift); the per-button `page` field now drives
+// navigation so each button is exercised from the page that
+// actually renders it. The manifest is grouped so a single
+// iteration can de-dup visits (multiple buttons on the same
+// page share one page.goto).
 export function pageButtonsFor(_pagePath, manifest = discoverShareExportButtons()) {
   return manifest.filter((b) => eligiblePrefixes.some((p) => b.path.startsWith(p)));
+}
+
+// sourceFileToPage maps the templ source file the button was
+// discovered in to the URL of the page that actually renders
+// the button. Issue #284 moved share exports out of /share
+// into /share/exports; #380 reshuffled settings + integrations
+// into /share/sync. Keeping this table explicit (rather than
+// guessing from the button's path) means future page moves
+// stay in scope as long as the originating .templ file is
+// renamed alongside its route registration.
+const sourceFileToPage = {
+  'share.templ': '/share',
+  'share_exports.templ': '/share/exports',
+  'share_imports.templ': '/share/imports',
+  'share_queue.templ': '/share/queue',
+  'share_sync.templ': '/share/sync',
+  'entry_form.templ': '/settings',
+  'tags.templ': '/tags',
+  'tag_detail.templ': '/tags/1',
+  'browse.templ': '/browse',
+};
+
+// pageForManifestEntry derives the page URL for a discovered
+// button from its source file. Unknown source files default
+// to /share so the regression net at least exercises the
+// canonical case (and a SMOKE_DEBUG warning fires so future
+// page relocations surface in the manifest).
+export function pageForManifestEntry(entry) {
+  if (!entry || !entry.source) return '/share';
+  // entry.source is a repo-root-relative path like
+  // 'internal/templates/share_exports.templ' (POSIX) or
+  // 'internal\\templates\\share_exports.templ' (Windows).
+  // Normalize separators before extracting the file name.
+  const normalized = String(entry.source).replace(/\\/g, '/');
+  const m = /internal\/templates\/([^/]+)\.templ$/.exec(normalized);
+  if (!m) return '/share';
+  const templName = m[1] + '.templ';
+  const page = sourceFileToPage[templName];
+  if (!page && process.env.SMOKE_DEBUG) {
+    console.warn(
+      `[discover] no page mapping for ${templName}; defaulting to /share. Add an entry to sourceFileToPage if the button moved.`
+    );
+  }
+  return page || '/share';
+}
+
+// groupManifestByPage returns the manifest entries grouped by
+// their owning page URL, sorted by page. The smoke harness
+// iterates one page at a time so the page.goto cost is paid
+// once per page instead of once per button.
+export function groupManifestByPage(manifest = discoverShareExportButtons()) {
+  const groups = new Map();
+  for (const entry of manifest) {
+    const page = pageForManifestEntry(entry);
+    if (!groups.has(page)) groups.set(page, []);
+    groups.get(page).push(entry);
+  }
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([page, entries]) => ({ page, entries }));
 }
