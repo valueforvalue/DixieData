@@ -14,11 +14,19 @@ import (
 // the 2 foldouts (Research & Review + Share) + the standalone
 // Insights pill collapse into one Share & Review mega-menu
 // (NN/g 2D panel pattern). Two groups: Review & Research
-// (Review Queue with badge + Timeline + Research Log +
-// Collections + Insights) + Share (Landing + Export + Import
-// + Share Queue + Sync). The Review Queue menuitem keeps the
-// data-research-review-has-count flag echo logic from the
-// pre-#380 foldout (issue #460).
+// (Review Queue with badge + Archive Inventory + Timeline +
+// Research Log + Collections + Insights) + Share (Landing +
+// Export + Import + Share Queue + Sync). The Review Queue
+// menuitem keeps the data-research-review-has-count flag
+// echo logic from the pre-#380 foldout (issue #460).
+//
+// Issue #549: the "Change Person…" menuitem (which linked
+// to /research, the picker landing itself) is REMOVED. Every
+// soldier-scoped R&R sub-page already picks the person from
+// the URL or its own browse/recents affordance; /research IS
+// the picker landing, so the menuitem added no affordance
+// the sub-pages did not already have. The RED assertion
+// below pins that data-research-menu-change-person is gone.
 //
 // Slice 3 also retires the 2 old foldout UIIDs (LayoutShareMenu
 // + LayoutResearchMenu) and the 2 foldout UIID constant
@@ -67,7 +75,6 @@ func TestLayoutRendersShareReviewMegaMenu(t *testing.T) {
 		// Review & Research group.
 		`href="/review-queue"`,
 		`href="/research-collections"`,
-		`href="/research"`,
 		`href="/insights"`,
 		// Share group — /share is the NEW first item (was a
 		// footgun before #380 — no nav path from /jobs/{id}
@@ -83,6 +90,19 @@ func TestLayoutRendersShareReviewMegaMenu(t *testing.T) {
 		if !strings.Contains(content, needle) {
 			t.Errorf("Share & Review mega-menu should contain item with %q", needle)
 		}
+	}
+
+	// Issue #549: "Change Person…" menuitem is REMOVED. Every
+	// soldier-scoped R&R sub-page already picks the person from
+	// the URL or its own browse/recents affordance, and /research
+	// itself IS the picker landing, so the mega-menu item added
+	// no affordance the sub-pages did not already have. The
+	// redundant <li> with data-research-menu-change-person
+	// must be gone from the rendered HTML so the audit probe's
+	// expectedLabels regression net (smoke_mega_menu_nav.mjs)
+	// does not see the label.
+	if strings.Contains(content, `data-research-menu-change-person`) {
+		t.Errorf("Share & Review mega-menu must not render the 'Change Person…' item (issue #549); data-research-menu-change-person marker should be gone")
 	}
 
 	// (5) The OLD foldout panels must be GONE — both

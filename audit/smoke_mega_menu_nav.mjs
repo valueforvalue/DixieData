@@ -42,7 +42,7 @@
 //     data-foldout-panel → data-mega-menu-panel
 //   - trigger id: layout.share.menu → layout.share-review.menu
 //   - expected menuitem count: 4 → 11 → 12 (issue #491 Archive
-//     Inventory bump)
+//     Inventory bump) → 11 (issue #549 Change Person removal)
 //   - expected panel tag: UL → DIV (mega-menu panel is div-rooted)
 //   - expected menuitem labels:Export|Import|Share Queue|Sync → 11 names
 //     spread across Review & Research + Share sections
@@ -140,7 +140,7 @@ try {
   }, PANEL_SELECTOR);
   record("panel-hidden-initially", panel && panel.hidden === true, panel);
   record("panel-is-div-with-role-menu", panel && panel.tag === "DIV" && panel.role === "menu", { tag: panel && panel.tag, role: panel && panel.role });
-  record("panel-has-12-menuitems", panel && panel.itemCount === 12, { itemCount: panel && panel.itemCount });
+  record("panel-has-11-menuitems", panel && panel.itemCount === 11, { itemCount: panel && panel.itemCount });
   record("menuitems-are-anchors", panel && panel.items.every((i) => i.tag === "A"), { items: panel && panel.items.map((i) => i.tag) });
   record("menuitems-have-distinct-hrefs", panel && new Set(panel.items.map((i) => i.href)).size === panel.items.length, { hrefs: panel && panel.items.map((i) => i.href) });
   // 7 review-and-research items (issue #491 added "Archive Inventory"
@@ -156,7 +156,6 @@ try {
     "Open Timeline",
     "Open Research Log",
     "Research Collections",
-    "Change Person\u2026",
     "Insights",
     "Share landing",
     "Export",

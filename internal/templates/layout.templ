@@ -193,7 +193,12 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=timeline" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a></li>`),
 								templ.Raw(`<li role="none"><a href="` + routebuilder.ResearchPicker() + `?next=research-log" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-log>Open Research Log</a></li>`),
 								templ.Raw(`<li role="none"><a href="/research-collections" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-research-collections>Research Collections</a></li>`),
-								templ.Raw(`<li role="none"><a href="/research" role="menuitem" class="mega-menu-item pill-link justify-start w-full" data-research-menu-change-person>Change Person…</a></li>`),
+								// Issue #549: "Change Person…" mega-menu item
+								// removed. Every soldier-scoped R&R sub-page
+								// already picks the person from the URL or its
+								// own browse/recents affordance; /research IS
+								// the picker landing, so linking to it adds no
+								// affordance the sub-pages don't already have.
 								templ.Raw(`<li role="none"><a href="/insights" role="menuitem" class="mega-menu-item pill-link justify-start w-full">Insights</a></li>`),
 							},
 						},
