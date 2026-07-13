@@ -24,6 +24,8 @@ func main() {
 	flag.BoolVar(&options.SkipSoldiers, "skip-soldiers", false, "Skip the soldier creation loop; use when the target archive already has soldiers and you only want to seed the v58-v65 entity surface (Tags / Events / Articles)")
 	flag.IntVar(&options.Tags, "tags", 0, "Number of tags to seed from the vocabulary (0 = full vocabulary, currently 30)")
 	flag.IntVar(&options.Articles, "articles", 0, "Number of Article rows to seed (0 = legacy default of 1-2 random)")
+	articlesFormat := (*articlesFormatFlag)(&options.ArticlesFormat)
+	flag.Var(articlesFormat, "articles-format", "Article body format: plain (legacy <p>-wrapped prose) | markdown (goldmark-rendered kitchen sink)")
 	flag.IntVar(&options.Events, "events", 0, "Number of Event Record rows to seed (0 = legacy default of ~20% of soldier count)")
 	flag.Parse()
 
@@ -40,6 +42,29 @@ func main() {
 		fmt.Printf("v58-v65 surface: %d tags, %d events, %d articles\n", summary.Tags, summary.Events, summary.Articles)
 		fmt.Printf("  junctions: %d person_record_tags, %d event_person_links, %d event_sources, %d article_refs\n",
 			summary.PersonRecordTags, summary.EventLinks, summary.EventSources, summary.ArticleRefs)
+	}
+}
+
+// articlesFormatFlag adapts seed.ArticleBodyFormat to the flag.Value
+// interface so --articles-format accepts "plain" or "markdown" and
+// rejects anything else. The zero value of seed.ArticleBodyFormat
+// (ArticleBodyPlain) matches the legacy #447 default.
+type articlesFormatFlag seed.ArticleBodyFormat
+
+func (a *articlesFormatFlag) String() string {
+	return (*seed.ArticleBodyFormat)(a).String()
+}
+
+func (a *articlesFormatFlag) Set(value string) error {
+	switch value {
+	case "plain":
+		*a = articlesFormatFlag(seed.ArticleBodyPlain)
+		return nil
+	case "markdown":
+		*a = articlesFormatFlag(seed.ArticleBodyMarkdown)
+		return nil
+	default:
+		return fmt.Errorf("invalid --articles-format %q (want plain | markdown)", value)
 	}
 }
 

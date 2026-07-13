@@ -46,6 +46,12 @@ import (
 // case -- it strips ALL HTML, including the markdown render.
 // The custom policy below is the right balance for the
 // Article Records use case.
+//
+// Exported as part of issue #523 so the seed-data CLI can
+// reuse the same goldmark pipeline the Wails app uses on
+// save. Callers that need a wrapper around markdown render
+// (e.g. the static archive exporter, future email templates)
+// can import records.NewMarkdownRenderer directly.
 type MarkdownRenderer struct {
 	md       goldmark.Markdown
 	sanitizer *bluemonday.Policy
