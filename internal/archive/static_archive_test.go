@@ -492,6 +492,33 @@ func TestStaticArchiveIndex_LegacyHashAliasesStillResolve(t *testing.T) {
 	}
 }
 
+// TestStaticArchiveIndex_HashRouterAcceptsDashedPageNames (issue #521)
+// pins the routeFromHash page-route regex against the historical
+// failure mode: the segment matcher's character class was [a-z]+,
+// which silently swallowed 'calendar-items' (the dash broke the
+// class) and the dispatcher fell through to the Calendar fallback.
+// The Calendar landing page kept rendering as if nothing happened.
+// Fix: the class now accepts dashes so any future dashed route
+// (calendar-items, person-records, source-list, ...) resolves
+// before the allowlist decides whether the name is a valid page.
+// Regression net: rebuild the static archive and assert the
+// inner HTML carries the dashed-name-aware character class.
+func TestStaticArchiveIndex_HashRouterAcceptsDashedPageNames(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// Look for the page-route regex in the bundled JS. The literal
+	// form is /^\/([a-z-]+)(\?.*)?$/ after the fix; the historical
+	// broken form was /^\/([a-z]+)/ which had no dash in the class.
+	if !strings.Contains(html, "[a-z-]+") {
+		t.Errorf("rendered index.html missing dashed-character-class [a-z-]+ in routeFromHash page-route regex (issue #521: 'calendar-items' previously fell through to the Calendar fallback)")
+	}
+	// Negative: the older, broken character class must not survive.
+	// If a future refactor reintroduces it, this check fails loudly.
+	if strings.Contains(html, "var pageMatch = path.match(/^\\/([a-z]+)\\/?/") {
+		t.Errorf("rendered index.html carries the broken [a-z]+ page-route regex (issue #521)")
+	}
+}
+
 // TestStaticArchiveIndex_BrowsePageRendersFiltersAndSearch (issue #498
 // slice 3) asserts the Browse page renders the spec filter UI:
 // search input + 5 filter chips (entry_type, pension_state, unit,
