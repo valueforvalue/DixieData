@@ -464,7 +464,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
 		}
-		if err := r.RenderSingle(ctx, *soldier, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderSingle(ctx, *soldier, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{soldier.ID}
@@ -487,7 +491,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
 		}
-		if err := r.RenderEventSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderEventSingle(ctx, rf.recordID, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{rf.recordID}
@@ -510,7 +518,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   false,
 		}
-		if err := r.RenderArticleSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderArticleSingle(ctx, rf.recordID, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{rf.recordID}
@@ -541,7 +553,10 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			settings.SingleRecordTemplate = rf.template
 			settings.BulkTemplate = ""
 		}
-		f := mustCreate(rf.out)
+		f, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
 		errs, err := r.RenderBulk(ctx, settings, f)
 		f.Close()
 		if err != nil {
@@ -605,14 +620,17 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 	return nil
 }
 
-// mustCreate creates the file at path and returns it as io.WriteCloser.
-// Errors on create failure.
-func mustCreate(path string) io.WriteCloser {
+// createOutFile creates the file at path and returns it as
+// io.WriteCloser. Returns the error from os.Create so callers
+// can surface a clean `error: ...` line instead of panicking.
+// Renamed from `mustCreate` (issue #516 slice B3) so the name
+// matches the semantics.
+func createOutFile(path string) (io.WriteCloser, error) {
 	f, err := os.Create(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return f
+	return f, nil
 }
 
 // doAnniversary renders the monthly anniversary report for one
@@ -664,7 +682,11 @@ func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir strin
 		Orientation:     *orientation,
 		PrinterFriendly: *printer,
 	}
-	if err := r.RenderAnniversary(context.Background(), *month, opts, mustCreate(*out)); err != nil {
+	outFile, err := createOutFile(*out)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", *out, err)
+	}
+	if err := r.RenderAnniversary(context.Background(), *month, opts, outFile); err != nil {
 		os.Remove(*out)
 		return err
 	}
@@ -728,7 +750,11 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 		Orientation:     *orientation,
 		PrinterFriendly: *printer,
 	}
-	if err := r.RenderInsights(context.Background(), opts, mustCreate(*out)); err != nil {
+	outFile, err := createOutFile(*out)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", *out, err)
+	}
+	if err := r.RenderInsights(context.Background(), opts, outFile); err != nil {
 		os.Remove(*out)
 		return err
 	}
