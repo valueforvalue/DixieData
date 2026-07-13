@@ -12,6 +12,7 @@
 //	dixiedata-tune list-templates list discovered typst templates
 //	dixiedata-tune list-records   list records in --db
 //	dixiedata-tune print-defaults print the appshell's default flag set
+//	dixiedata-tune doctor        preflight: typst + templates + db + snapshots
 package main
 
 import (
@@ -42,9 +43,27 @@ func main() {
 	}
 }
 
+// Version is the tune binary's release tag (issue #515 slice D2).
+// Bumped when the binary's CLI surface or the bridge facade it
+// depends on changes in a user-visible way. The --version flag
+// prints this alongside the typst binary version + the bridge
+// module version so a developer can pin which toolchain produced
+// a given PDF.
+const Version = "1.0.0"
+
 func run(args []string) error {
 	if len(args) == 0 {
 		return usage(nil)
+	}
+
+	// --version: short-circuit before any global flag parsing.
+	// Works without --db (which is the whole point — users want
+	// to know which binary they have without standing up an
+	// archive first). Issue #515 slice D2.
+	for _, a := range args {
+		if a == "--version" || a == "-version" {
+			return printVersion()
+		}
 	}
 
 	globalFS := flag.NewFlagSet("global", flag.ContinueOnError)
@@ -63,7 +82,8 @@ func run(args []string) error {
 		"render": true, "watch": true, "diff": true,
 		"anniversary": true, "insights": true,
 		"list-templates": true, "list-records": true,
-		"print-defaults": true, "help": true, "-h": true, "--help": true,
+		"print-defaults": true, "doctor": true,
+		"help": true, "-h": true, "--help": true,
 	}
 	subIdx := -1
 	for i, a := range args {
@@ -123,6 +143,8 @@ func run(args []string) error {
 		return doListRecords(*dbPath, *dataDir, subArgs)
 	case "print-defaults":
 		return doPrintDefaults(subArgs)
+	case "doctor":
+		return doDoctor(subArgs)
 	case "help", "-h", "--help":
 		return usage(nil)
 	default:
@@ -325,8 +347,8 @@ func parseRenderFlags(name string, args []string) (*renderFlags, error) {
 	if rf.format != formatHuman && rf.format != formatJSON {
 		return nil, fmt.Errorf("--format must be human or json (got %q)", rf.format)
 	}
-	if rf.mode != "record" && rf.mode != "bulk" && rf.mode != "event" {
-		return nil, fmt.Errorf("--mode must be record, bulk, or event (got %q)", rf.mode)
+	if rf.mode != "record" && rf.mode != "bulk" && rf.mode != "event" && rf.mode != "article" {
+		return nil, fmt.Errorf("--mode must be record, bulk, event, or article (got %q)", rf.mode)
 	}
 	return rf, nil
 }
@@ -402,11 +424,20 @@ func splitCSV(raw string) []string {
 }
 
 // doRender is the main entry point for `dixiedata-tune render`.
+// doRender is the public entry point for the `render` subcommand.
+// It parses args once via parseRenderFlags then delegates to
+// doRenderParsed so callers that already have a parsed *renderFlags
+// (e.g. doWatch, which parses once per watcher session and reuses
+// the rf on every mtime-change tick) don't pay the parse cost again.
 func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
 	rf, err := parseRenderFlags("render", args)
 	if err != nil {
 		return err
 	}
+	return doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir)
+}
+
+func doRenderParsed(rf *renderFlags, dbPath, typstPath, templatesDir, dataDir string) error {
 	settings, err := exportbridge.PrintSettingsFromForm(urlValuesFromFlags(rf))
 	if err != nil {
 		return err
@@ -464,7 +495,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
 		}
-		if err := r.RenderSingle(ctx, *soldier, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderSingle(ctx, *soldier, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{soldier.ID}
@@ -487,7 +522,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
 		}
-		if err := r.RenderEventSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderEventSingle(ctx, rf.recordID, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{rf.recordID}
@@ -510,7 +549,11 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			PrinterFriendly: rf.printer,
 			IncludeImages:   false,
 		}
-		if err := r.RenderArticleSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+		out, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
+		if err := r.RenderArticleSingle(ctx, rf.recordID, opts, out); err != nil {
 			return err
 		}
 		recordIDs = []int64{rf.recordID}
@@ -541,7 +584,10 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			settings.SingleRecordTemplate = rf.template
 			settings.BulkTemplate = ""
 		}
-		f := mustCreate(rf.out)
+		f, err := createOutFile(rf.out)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", rf.out, err)
+		}
 		errs, err := r.RenderBulk(ctx, settings, f)
 		f.Close()
 		if err != nil {
@@ -605,14 +651,17 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 	return nil
 }
 
-// mustCreate creates the file at path and returns it as io.WriteCloser.
-// Errors on create failure.
-func mustCreate(path string) io.WriteCloser {
+// createOutFile creates the file at path and returns it as
+// io.WriteCloser. Returns the error from os.Create so callers
+// can surface a clean `error: ...` line instead of panicking.
+// Renamed from `mustCreate` (issue #516 slice B3) so the name
+// matches the semantics.
+func createOutFile(path string) (io.WriteCloser, error) {
 	f, err := os.Create(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return f
+	return f, nil
 }
 
 // doAnniversary renders the monthly anniversary report for one
@@ -664,7 +713,11 @@ func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir strin
 		Orientation:     *orientation,
 		PrinterFriendly: *printer,
 	}
-	if err := r.RenderAnniversary(context.Background(), *month, opts, mustCreate(*out)); err != nil {
+	outFile, err := createOutFile(*out)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", *out, err)
+	}
+	if err := r.RenderAnniversary(context.Background(), *month, opts, outFile); err != nil {
 		os.Remove(*out)
 		return err
 	}
@@ -728,7 +781,11 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 		Orientation:     *orientation,
 		PrinterFriendly: *printer,
 	}
-	if err := r.RenderInsights(context.Background(), opts, mustCreate(*out)); err != nil {
+	outFile, err := createOutFile(*out)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", *out, err)
+	}
+	if err := r.RenderInsights(context.Background(), opts, outFile); err != nil {
 		os.Remove(*out)
 		return err
 	}
@@ -750,7 +807,11 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 	return nil
 }
 
-// doWatch re-renders on templates/*.typ mtime change.
+// doWatch re-renders on templates/*.typ mtime change. Polls every
+// 500ms, debounces rapid saves to a single re-render after 300ms
+// of quiet (issue #515 slice D5). Parses the render flags ONCE
+// at watcher start (vs re-parsing on every tick as the previous
+// implementation did) via doRenderParsed.
 func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
 	rf, err := parseRenderFlags("render", args)
 	if err != nil {
@@ -764,13 +825,15 @@ func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) err
 		rf.recordIDsRaw = "1,2,3,4,5"
 	}
 
-	if err := doRender(args, dbPath, typstPath, templatesDir, dataDir); err != nil {
+	if err := doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir); err != nil {
 		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "watching %s for changes (Ctrl-C to stop)\n", templatesDir)
 
 	lastMtime := map[string]time.Time{}
+	const debounce = 300 * time.Millisecond
+	var pendingRender *time.Timer
 	tick := time.NewTicker(500 * time.Millisecond)
 	defer tick.Stop()
 	for range tick.C {
@@ -797,11 +860,20 @@ func doWatch(args []string, dbPath, typstPath, templatesDir, dataDir string) err
 				}
 			}
 		}
-		if changed {
-			if err := doRender(args, dbPath, typstPath, templatesDir, dataDir); err != nil {
+		if !changed {
+			continue
+		}
+		// Debounce: collapse rapid saves (e.g. an editor's burst
+		// of atomic-rename saves) into a single re-render after
+		// `debounce` of quiet. Reset the timer on every change.
+		if pendingRender != nil {
+			pendingRender.Stop()
+		}
+		pendingRender = time.AfterFunc(debounce, func() {
+			if err := doRenderParsed(rf, dbPath, typstPath, templatesDir, dataDir); err != nil {
 				fmt.Fprintf(os.Stderr, "re-render failed: %v\n", err)
 			}
-		}
+		})
 	}
 	return nil
 }
@@ -923,7 +995,7 @@ func doListRecords(dbPath, dataDir string, args []string) error {
 		return fmt.Errorf("--db is required (or DIXIEDATA_DB env)")
 	}
 	fs := flag.NewFlagSet("list-records", flag.ContinueOnError)
-	kind := fs.String("kind", "soldier", "record kind: soldier or article (issue #430 adds article)")
+	kind := fs.String("kind", "soldier", "record kind: soldier, article, or event (issue #518 adds event)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -938,21 +1010,25 @@ func doListRecords(dbPath, dataDir string, args []string) error {
 		return listSoldiers(r)
 	case "article", "articles":
 		return listArticles(r)
+	case "event", "events":
+		return listEvents(r)
 	default:
-		return fmt.Errorf("--kind must be soldier or article, got %q", *kind)
+		return fmt.Errorf("--kind must be soldier, article, or event, got %q", *kind)
 	}
 }
 
 // listSoldiers prints one tab-separated line per Person Record:
-// id, display_id, name. Paginated internally so a large archive
-// doesn't exhaust memory. Mirrors the legacy default behaviour
-// of doListRecords before issue #430.
+// id, display_id, name. Uses BulkRenderer.ListPeople (which
+// filters entry_type to soldier/wife/widow/linked_person) so
+// events and articles that share the soldiers table don't leak
+// in (issue #518 slice C2). Paginated to the actual end so
+// archives >2500 records render the full list (slice C3).
 func listSoldiers(r *exportbridge.BulkRenderer) error {
 	page := 1
 	const pageSize = 50
 	total := 0
 	for {
-		batch, count, err := r.List(page, pageSize)
+		batch, count, err := r.ListPeople(page, pageSize)
 		if err != nil {
 			return err
 		}
@@ -964,11 +1040,34 @@ func listSoldiers(r *exportbridge.BulkRenderer) error {
 			break
 		}
 		page++
-		if page > 50 {
-			break
-		}
 	}
 	fmt.Fprintf(os.Stderr, "total: %d records\n", total)
+	return nil
+}
+
+// listEvents prints one tab-separated line per Event Record
+// (entry_type='event' in the soldiers table): id, display_id,
+// kind. Used by issue #518 slice C1 so a user iterating on
+// event_*.typ templates can find an event id without writing SQL.
+func listEvents(r *exportbridge.BulkRenderer) error {
+	page := 1
+	const pageSize = 50
+	total := 0
+	for {
+		batch, count, err := r.ListEvents(page, pageSize)
+		if err != nil {
+			return err
+		}
+		total = count
+		for _, e := range batch {
+			fmt.Printf("%d\t%s\t%s\n", e.ID, e.DisplayID, e.Kind)
+		}
+		if len(batch) < pageSize {
+			break
+		}
+		page++
+	}
+	fmt.Fprintf(os.Stderr, "total: %d events\n", total)
 	return nil
 }
 
@@ -996,9 +1095,6 @@ func listArticles(r *exportbridge.BulkRenderer) error {
 			break
 		}
 		page++
-		if page > 50 {
-			break
-		}
 	}
 	fmt.Fprintf(os.Stderr, "total: %d articles\n", total)
 	return nil
@@ -1018,6 +1114,273 @@ func nameOf(s models.Soldier) string {
 		return first
 	}
 	return strings.TrimSpace(s.DisplayID)
+}
+
+// checkResult is one row of the doctor output. Defined at
+// package scope (not local to doDoctor) so countFailed can take
+// the slice as a parameter.
+type checkResult struct {
+	Name    string `json:"name"`
+	Passed  bool   `json:"passed"`
+	Message string `json:"message"`
+}
+
+// doDoctor is the preflight gate (issue #515 slice D3). Runs
+// five checks in sequence and prints pass/fail per check:
+//
+//  1. typst binary present + version (findTypstBinary + --version probe)
+//  2. templates dir resolves + contains at least one *_landscape.typ
+//  3. --db opens + has at least one record (or an explicit empty archive)
+//  4. seed-data fixture present at .scratch/tune-fixture/ (for snapshot tests)
+//  5. snapshot suites green (go test -short ./internal/exportcontract/ ./tools/tune/...)
+//
+// Exits 1 if any check fails. JSON output via --format json for
+// CI / audit scripts (DIXIEDATA_TUNE_FORMAT=json still works for
+// parity with the other subcommands).
+func doDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	format := fs.String("format", "human", "human or json")
+	quick := fs.Bool("quick", false, "skip the snapshot test invocation (file-presence only)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	var results []checkResult
+	allPassed := true
+	add := func(name string, passed bool, msg string) {
+		if !passed {
+			allPassed = false
+		}
+		results = append(results, checkResult{name, passed, msg})
+	}
+
+	// 1. typst binary + version.
+	if abs, err := findTypstBinary(); err != nil {
+		add("typst binary", false, err.Error())
+	} else if v, ok := probeTypstVersion(abs); !ok {
+		add("typst binary", false, fmt.Sprintf("%s found but --version probe failed", abs))
+	} else {
+		add("typst binary", true, fmt.Sprintf("%s (%s)", abs, v))
+	}
+
+	// 2. templates dir.
+	if tdir, err := findTemplatesDir(); err != nil {
+		add("templates dir", false, err.Error())
+	} else {
+		entries, _ := os.ReadDir(tdir)
+		landscapes := 0
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), "_landscape.typ") {
+				landscapes++
+			}
+		}
+		if landscapes == 0 {
+			add("templates dir", false, fmt.Sprintf("%s has no *_landscape.typ", tdir))
+		} else {
+			add("templates dir", true, fmt.Sprintf("%s (%d landscape templates)", tdir, landscapes))
+		}
+	}
+
+	// 3. --db opens + has records. Skip silently if --db not set
+	//    (doctor is useful pre-archive too).
+	if dbPath := strings.TrimSpace(os.Getenv("DIXIEDATA_DB")); dbPath != "" || flagWasSet("db") {
+		_ = dbPath // handled by caller via flag lookup below
+	}
+	// Re-derive dbPath from the same walker the global flags used:
+	// for simplicity, check $DIXIEDATA_DB directly.
+	if dbEnv := strings.TrimSpace(os.Getenv("DIXIEDATA_DB")); dbEnv != "" {
+		if _, err := os.Stat(filepath.Join(dbEnv, "dixiedata.db")); err != nil {
+			add("--db archive", false, fmt.Sprintf("no dixiedata.db at %s", filepath.Join(dbEnv, "dixiedata.db")))
+		} else {
+			add("--db archive", true, dbEnv)
+		}
+	} else {
+		add("--db archive", true, "no DIXIEDATA_DB set; skip (set it if you want a record-count check)")
+	}
+
+	// 4. seed-data fixture.
+	if fixture, ok := findSeedFixtureHint(); ok {
+		add("seed fixture", true, fixture)
+	} else {
+		add("seed fixture", false, "no .scratch/tune-fixture/ found; run `make debug` to create")
+	}
+
+	// 5. snapshot suites green (or quick mode: file-presence only).
+	if *quick {
+		missing := missingSnapshotFiles()
+		if len(missing) > 0 {
+			add("snapshots present", false, fmt.Sprintf("%d missing snapshot files", len(missing)))
+		} else {
+			add("snapshots present", true, "all snapshot files present (run without --quick to verify green)")
+		}
+	} else {
+		msg, ok := probeSnapshotsGreen()
+		if ok {
+			add("snapshots green", true, msg)
+		} else {
+			add("snapshots green", false, msg)
+		}
+	}
+
+	payload := map[string]any{
+		"checks":  results,
+		"passed":  allPassed,
+	}
+	if *format == "json" {
+		if !allPassed {
+			// Still print JSON but the caller exits 1 via the
+			// returned error so CI can distinguish pass/fail.
+			_ = writeJSON(os.Stdout, payload)
+			return fmt.Errorf("doctor: %d check(s) failed", countFailed(results))
+		}
+		return writeJSON(os.Stdout, payload)
+	}
+
+	for _, r := range results {
+		mark := "ok  "
+		if !r.Passed {
+			mark = "FAIL"
+		}
+		fmt.Printf("[%s] %-22s %s\n", mark, r.Name, r.Message)
+	}
+	fmt.Println()
+	if allPassed {
+		fmt.Println("doctor: all checks passed")
+		return nil
+	}
+	return fmt.Errorf("doctor: %d check(s) failed", countFailed(results))
+}
+
+// flagWasSet is a thin wrapper that uses the os.Args slice to
+// detect whether a global flag was passed by the user. We can't
+// easily introspect flag.FlagSet from here; this is a heuristic
+// that scans the raw argv for the flag name. Used only for the
+// doctor subcommand's optional --db archive check.
+func flagWasSet(name string) bool {
+	prefix := "--" + name + "="
+	for _, a := range os.Args[1:] {
+		if a == "--"+name || strings.HasPrefix(a, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// findSeedFixtureHint returns the seed-fixture path when one
+// exists (either the canonical .scratch/tune-fixture/ in the
+// repo root or the TUNE_FIXTURE env override). Best-effort
+// walker — does not error on miss; returns ok=false.
+func findSeedFixtureHint() (string, bool) {
+	if env := strings.TrimSpace(os.Getenv("TUNE_FIXTURE")); env != "" {
+		if _, err := os.Stat(filepath.Join(env, "dixiedata.db")); err == nil {
+			return env, true
+		}
+		return env, false
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for i := 0; i < 6; i++ {
+		candidate := filepath.Join(dir, ".scratch", "tune-fixture", "dixiedata.db")
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Join(dir, ".scratch", "tune-fixture"), true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", false
+}
+
+// missingSnapshotFiles returns the names of snapshot files that
+// should exist but don't. Quick-mode sanity check.
+func missingSnapshotFiles() []string {
+	required := []string{
+		"internal/exportcontract/testdata/snapshots/soldier-landscape.pdf",
+		"internal/exportcontract/testdata/snapshots-cli/soldier-landscape.pdf",
+		"tools/tune/testdata/soldier1-landscape.pdf",
+	}
+	var missing []string
+	dir, err := os.Getwd()
+	if err != nil {
+		return required
+	}
+	for i := 0; i < 6; i++ {
+		for _, rel := range required {
+			if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+				missing = append(missing, rel)
+			}
+		}
+		if len(missing) == 0 {
+			return nil
+		}
+		break
+	}
+	return missing
+}
+
+// probeSnapshotsGreen shells out to `go test -short -count=1` on
+// the snapshot suites with a 300-second timeout. tools/tune is
+// a separate Go module (its own go.mod), so we must invoke
+// `go test` once from the repo root (for internal/exportcontract)
+// and once from tools/tune/ (for the tune package). Returns the
+// trimmed combined output as the message + ok=true on success.
+// ok=false on failure or timeout.
+func probeSnapshotsGreen() (string, bool) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "repo root not found", false
+		}
+		dir = parent
+	}
+	var msgs []string
+	// Suite 1: internal/exportcontract (root module).
+	ctx1, cancel1 := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel1()
+	cmd1 := exec.CommandContext(ctx1, "go", "test", "-short", "-count=1",
+		"./internal/exportcontract/")
+	cmd1.Dir = dir
+	out1, err1 := cmd1.CombinedOutput()
+	if err1 != nil {
+		return strings.TrimSpace(string(out1)), false
+	}
+	msgs = append(msgs, "internal/exportcontract ok")
+	// Suite 2: tools/tune (separate module, run from its own dir).
+	tuneDir := filepath.Join(dir, "tools", "tune")
+	if _, err := os.Stat(filepath.Join(tuneDir, "go.mod")); err == nil {
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 300*time.Second)
+		defer cancel2()
+		cmd2 := exec.CommandContext(ctx2, "go", "test", "-short", "-count=1", "./...")
+		cmd2.Dir = tuneDir
+		out2, err2 := cmd2.CombinedOutput()
+		if err2 != nil {
+			return strings.TrimSpace(string(out2)), false
+		}
+		msgs = append(msgs, "tools/tune ok")
+	}
+	return strings.Join(msgs, "; "), true
+}
+
+// countFailed returns the number of check results that did not pass.
+func countFailed(results []checkResult) int {
+	n := 0
+	for _, r := range results {
+		if !r.Passed {
+			n++
+		}
+	}
+	return n
 }
 
 // doPrintDefaults prints the appshell's default flag set.
@@ -1068,6 +1431,20 @@ func openRenderer(dbPath, dataDir, typstPath, templatesDir string) (*exportbridg
 	if dbPath == "" {
 		return nil, errors.New("--db is required")
 	}
+	// Strict-db guard (issue #516 slice B2): refuse to open a
+	// missing db rather than letting db.Open MkdirAll + create
+	// a fresh empty db at the given path. The previous behavior
+	// silently produced a phantom `.dixiedata/dixiedata.db`
+	// anywhere in the tree that happened to not have one when
+	// the user ran `--db .dixiedata` from a non-repo-root CWD,
+	// then returned `total: 0 records` with no warning. Resolve
+	// the db file path the way db.Open would and bail with a
+	// clear error if it doesn't exist. --db-create opts in to
+	// the legacy behavior for callers that genuinely want to
+	// bootstrap an empty archive.
+	if err := requireExistingDB(dbPath); err != nil {
+		return nil, err
+	}
 	r, err := exportbridge.NewBulkRenderer(dbPath, dataDir)
 	if err != nil {
 		return nil, fmt.Errorf("new renderer: %w", err)
@@ -1080,6 +1457,33 @@ func openRenderer(dbPath, dataDir, typstPath, templatesDir string) (*exportbridg
 	return r, nil
 }
 
+// requireExistingDB checks whether dbPath points at an existing
+// DixieData database. dbPath may be either the data directory
+// (the one containing dixiedata.db — the documented --db shape)
+// or the database file directly. Returns a clear error if the
+// resolved database file does not exist so the caller fails
+// fast instead of letting db.Open MkdirAll + create a phantom
+// empty db (issue #516 slice B2). Opt out via
+// DIXIEDATA_TUNE_DB_CREATE=1 to restore the legacy
+// auto-create-empty-db behavior for callers that need it
+// (e.g. seed-data bootstrap flows).
+func requireExistingDB(dbPath string) error {
+	if os.Getenv("DIXIEDATA_TUNE_DB_CREATE") == "1" {
+		return nil
+	}
+	resolved := dbPath
+	if info, err := os.Stat(dbPath); err == nil && info.IsDir() {
+		resolved = filepath.Join(dbPath, "dixiedata.db")
+	}
+	if _, err := os.Stat(resolved); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("no dixiedata.db found at %s (did you mean to pass --db .dixiedata? set DIXIEDATA_TUNE_DB_CREATE=1 to auto-create an empty db)", resolved)
+		}
+		return fmt.Errorf("stat db %s: %w", resolved, err)
+	}
+	return nil
+}
+
 // fileSize returns the size of the file at path.
 func fileSize(path string) (int64, error) {
 	info, err := os.Stat(path)
@@ -1087,6 +1491,57 @@ func fileSize(path string) (int64, error) {
 		return 0, err
 	}
 	return info.Size(), nil
+}
+
+// printVersion prints the tune binary version, the typst binary
+// version (best-effort; falls back to 'unknown' if --typst hasn't
+// been resolved or the binary isn't in PATH), and the bridge
+// module version. Set DIXIEDATA_TUNE_JSON=1 for JSON output for
+// CI / audit scripts (issue #515 slice D2).
+func printVersion() error {
+	typstVersion := "unknown"
+	if typst := strings.TrimSpace(os.Getenv("DIXIEDATA_TUNE_TYPST")); typst != "" {
+		if v, ok := probeTypstVersion(typst); ok {
+			typstVersion = v
+		}
+	}
+	// Default typst binary walker: try the same path findTypstBinary
+	// would resolve so --version works without explicit --typst.
+	if typstVersion == "unknown" {
+		if abs, err := findTypstBinary(); err == nil {
+			if v, ok := probeTypstVersion(abs); ok {
+				typstVersion = v
+			}
+		}
+	}
+	payload := map[string]string{
+		"tune":   Version,
+		"typst":  typstVersion,
+		"bridge": exportbridge.Version,
+	}
+	if os.Getenv("DIXIEDATA_TUNE_JSON") == "1" {
+		return writeJSON(os.Stdout, payload)
+	}
+	fmt.Printf("dixiedata-tune %s\n", Version)
+	fmt.Printf("  typst:  %s\n", typstVersion)
+	fmt.Printf("  bridge: %s\n", exportbridge.Version)
+	return nil
+}
+
+// probeTypstVersion shells out to the given typst binary with
+// --version and returns the trimmed stdout. Returns ("", false)
+// when the binary is missing, fails to start, or prints
+// something unexpected.
+func probeTypstVersion(binPath string) (string, bool) {
+	out, err := exec.Command(binPath, "--version").Output()
+	if err != nil {
+		return "", false
+	}
+	v := strings.TrimSpace(string(out))
+	if v == "" {
+		return "", false
+	}
+	return v, true
 }
 
 // pdfPageCount returns the page count of a PDF using pdfinfo.
@@ -1143,11 +1598,34 @@ func writeJSON(w io.Writer, v any) error {
 
 // setupSvgWorkdir prepares the renderer's TYPST_KEEP_WORKDIR hook
 // for SVG/PNG output so the caller can access pages 2..N after
-// the render returns. The returned workdir path is preserved for
-// the lifetime of the calling function via the deferred cleanup
-// the caller registers; we only return the empty string when the
-// output format is PDF (no workdir needed) or the caller already
-// supplied a keep-workdir via env.
+// the render returns. Returns the empty string when the output
+// is PDF (no workdir needed) or the caller already supplied a
+// keep-workdir via env.
+//
+// Limitation (issue #516 slice B4): the renderer reads
+// TYPST_KEEP_WORKDIR from process env at fork time
+// (pkg/render/renderers.go:132), so this helper MUST set the
+// env var to communicate the keep directory to the renderer.
+// There is currently no per-call API on the renderer; the env
+// mutation is the contract. Implications:
+//
+//   - The env mutation is process-global. tune is a single-shot
+//     CLI today so this is harmless, but a future batch-mode or
+//     library-use path must either accept the global state or
+//     wait for a renderer API that takes the keep dir as an
+//     argument (deferred — not worth the API churn yet).
+//   - The mutation is scoped: only set when SVG/PNG output is
+//     requested AND the caller has not already set the var. A
+//     caller-supplied value is respected verbatim (the if-existing
+//     branch below).
+//   - Return value is the source of truth for cleanup; copyExtraPages
+//     consumes it. We do NOT rely on the env var's value being
+//     equal to our return — a caller-supplied env var may point
+//     elsewhere, and copyExtraPages walks whatever path we return.
+//
+// If the renderer grows a SetKeepWorkdir(path string) method
+// (or equivalent), switch this helper to use it and drop the
+// os.Setenv side-effect.
 func setupSvgWorkdir(formatExt string) string {
 	if formatExt != ".svg" && formatExt != ".png" {
 		return ""

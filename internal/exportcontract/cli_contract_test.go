@@ -94,6 +94,36 @@ func TestCLIContractSnapshots(t *testing.T) {
 			if err != nil {
 				t.Fatalf("read output: %v", err)
 			}
+
+			// Determinism self-check (issue #517 slice A4):
+			// re-run the CLI with the same args to a second
+			// output path and assert byte-equality. Catches
+			// non-determinism regressions in the CLI layer
+			// (e.g. time.Now() leaking into the typst data
+			// payload through a CLI-side helper) that the
+			// in-process archive test wouldn't surface.
+			// Failing this is a regression — do NOT just
+			// regen the golden, fix the determinism bug.
+			detOut := filepath.Join(t.TempDir(), c.name+"-det.pdf")
+			detArgs := append([]string{}, args...)
+			for i, a := range detArgs {
+				if a == "--out" {
+					detArgs[i+1] = detOut
+				}
+			}
+			detCmd := exec.Command(binPath, detArgs...)
+			detCmd.Dir = repoRootFromT(t)
+			if detOutBytes, detErr := detCmd.CombinedOutput(); detErr != nil {
+				t.Fatalf("dixiedata-tune %s determinism re-run failed: %v\n%s", c.name, detErr, detOutBytes)
+			}
+			gotDet, err := os.ReadFile(detOut)
+			if err != nil {
+				t.Fatalf("read determinism output: %v", err)
+			}
+			if !bytes.Equal(got, gotDet) {
+				t.Fatalf("determinism self-check failed for CLI %s: two consecutive CLI invocations differ (first=%d bytes, second=%d bytes). Non-determinism in the CLI surface. Do NOT regen the golden — fix the determinism bug first.", c.name, len(got), len(gotDet))
+			}
+
 			snapPath := filepath.Join("testdata", "snapshots-cli", c.name+".pdf")
 			if os.Getenv("UPDATE_SNAPSHOTS") == "1" {
 				if err := os.WriteFile(snapPath, got, 0o644); err != nil {

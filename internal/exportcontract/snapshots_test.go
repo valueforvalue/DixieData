@@ -263,9 +263,21 @@ func TestArchiveContractSnapshots(t *testing.T) {
 
 	for _, c := range snapshotCases(t) {
 		t.Run(c.name, func(t *testing.T) {
-			got := runSnapshotCase(t, fixtureDir, typstPath, templatesDir, c)
+			// Determinism self-check (issue #517 slice A4):
+			// render the case twice and assert byte-equality.
+			// This catches a non-determinism regression even
+			// when the golden happens to match. A failure here
+			// means a future refactor embedded something
+			// non-deterministic (e.g. time.Now() without the
+			// SOURCE_DATE_EPOCH guard) and the contract is
+			// broken — do NOT just regen the golden.
+			first := runSnapshotCase(t, fixtureDir, typstPath, templatesDir, c)
+			second := runSnapshotCase(t, fixtureDir, typstPath, templatesDir, c)
+			if !bytes.Equal(first, second) {
+				t.Fatalf("determinism self-check failed for %s: two consecutive renders differ (first=%d bytes, second=%d bytes). This indicates a non-deterministic element in the render pipeline (time, UUID, map iteration order, etc.). Do NOT regen the golden — fix the determinism bug first.", c.name, len(first), len(second))
+			}
 			snapshotPath := filepath.Join("testdata", "snapshots", c.name+".pdf")
-			compareOrUpdate(t, snapshotPath, got)
+			compareOrUpdate(t, snapshotPath, first)
 		})
 	}
 }

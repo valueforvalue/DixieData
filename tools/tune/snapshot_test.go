@@ -36,9 +36,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -300,6 +302,27 @@ func TestTuneRecordLandscapeSnapshot(t *testing.T) {
 		t.Fatalf("rendered file is not a PDF (got %d bytes, header %q)", len(got), headerFor(got))
 	}
 
+	// Determinism self-check (issue #517 slice A4):
+	// re-invoke tune with identical args to a second temp
+	// path and assert byte-equality. Catches a non-determinism
+	// regression in the CLI surface (time.Now() leak through
+	// a bridge helper, map-iteration order in a typst data
+	// projection, etc.) even when the golden happens to match.
+	// A failure here is a regression — do NOT just regen the
+	// golden, fix the determinism bug first.
+	detPath := filepath.Join(tmpDir, "soldier1-landscape-det.pdf")
+	if err := runTuneInvoke(t, dataDir, typstPath, detPath); err != nil {
+		t.Fatalf("tune determinism re-invoke failed: %v", err)
+	}
+	gotDet, err := os.ReadFile(detPath)
+	if err != nil {
+		t.Fatalf("read determinism pdf: %v", err)
+	}
+	if !bytes.Equal(got, gotDet) {
+		t.Fatalf("determinism self-check failed for %s: two consecutive tune invocations differ (first=%d bytes, second=%d bytes). Non-determinism in the CLI surface. Do NOT regen the golden — fix the determinism bug first.",
+			t.Name(), len(got), len(gotDet))
+	}
+
 	goldenPath := filepath.Join(testdataDir(), "soldier1-landscape.pdf")
 	if os.Getenv("UPDATE_SNAPSHOTS") == "1" {
 		if err := os.MkdirAll(testdataDir(), 0o755); err != nil {
@@ -329,12 +352,13 @@ func headerFor(b []byte) string {
 }
 
 // TestTuneListRecordsKindFilter pins the --kind flag on the
-// list-records subcommand (issue #430). Defaults to soldier
-// (matches the legacy default); --kind article switches to
-// the article list. The seed-data fixture doesn't seed
-// articles, so the article count is 0; the soldier count
-// matches whatever the fixture seeded. Both must print a
-// `total: N` line on stderr and exit 0.
+// list-records subcommand (issue #430 + #518). Defaults to
+// soldier; --kind article switches to the article list;
+// --kind event (issue #518 slice C1) switches to the event
+// list. The seed-data fixture seeds 10 Person Records
+// (DXD-*), 2 Events (EVT-*) — --kind soldier must filter
+// out the events (issue #518 slice C2) so it shows 10 not 12.
+// Both must print a `total: N` line on stderr and exit 0.
 func TestTuneListRecordsKindFilter(t *testing.T) {
 	if findTypstBin(t) == "" {
 		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
@@ -353,12 +377,13 @@ func TestTuneListRecordsKindFilter(t *testing.T) {
 		name       string
 		kind       string
 		wantTotal  string
-		wantErrSub string // substring expected in the `total:` line; "" = no check
+		wantErrSub string // substring expected in the error; "" = no check
 	}{
 		{"default is soldier", "", "total: 10 records", ""},
-		{"--kind soldier", "soldier", "total: 10 records", ""},
-		{"--kind article (empty archive)", "article", "total: 0 articles", ""},
-		{"--kind bad value", "bogus", "", `--kind must be soldier or article`},
+		{"--kind soldier (filters events)", "soldier", "total: 10 records", ""},
+		{"--kind article", "article", "total: 2 articles", ""},
+		{"--kind event (issue #518 C1)", "event", "total: 2 events", ""},
+		{"--kind bad value", "bogus", "", `--kind must be soldier, article, or event`},
 	}
 
 	for _, tc := range cases {
@@ -392,5 +417,312 @@ func TestTuneListRecordsKindFilter(t *testing.T) {
 				t.Fatalf("expected output to contain %q; got:\n%s", tc.wantTotal, out)
 			}
 		})
+	}
+}
+
+// TestTuneModeArticleValidator (issue #516 slice B1) pins the
+// --mode article path. Before the fix, parseRenderFlags rejected
+// --mode article even though the switch rf.mode has a case
+// "article" and the README documents the flag — anyone following
+// the README hit `--mode must be record, bulk, or event (got
+// "article")`. The fix adds "article" to the allowed set so the
+// documented path actually works. This test invokes the binary
+// with --mode article + --record N against the seed fixture and
+// asserts a non-empty PDF is written and exit code is 0.
+// Skips silently if typst or the fixture is unavailable (matching
+// the convention used by TestTuneRecordLandscapeSnapshot).
+func TestTuneModeArticleValidator(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	dataDir := ensureSeedFixture(t)
+	if dataDir == "" {
+		t.Skip("seed fixture unavailable; build cmd/seed-data via `make debug`")
+	}
+	typstPath := findTypstBin(t)
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+
+	out := filepath.Join(t.TempDir(), "article.pdf")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin,
+		"--db", dataDir,
+		"--typst", typstPath,
+		"--templates", templatesAbs(t),
+		"render",
+		"--mode", "article",
+		"--record", "1",
+		"--template", "article_landscape",
+		"--orientation", "L",
+		"--out", out,
+	)
+	cmd.Dir = t.TempDir()
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("--mode article rejected: %v\n%s", err, outBytes)
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read article pdf: %v", err)
+	}
+	if !bytes.HasPrefix(got, []byte("%PDF-")) {
+		t.Fatalf("--mode article produced non-PDF output (%d bytes, header %q)", len(got), headerFor(got))
+	}
+	if len(got) < 1000 {
+		t.Fatalf("--mode article produced suspiciously small PDF (%d bytes) — likely an empty render", len(got))
+	}
+}
+
+// TestTuneDBStrictRefusesMissingDB (issue #516 slice B2) pins the
+// phantom-DB footgun fix. Previously, `--db <missing-dir>` would
+// silently MkdirAll + create a fresh empty dixiedata.db there
+// (db.Open does MkdirAll), then return "total: 0 records" with
+// no warning — silently corrupting the user's tree with a 339KB
+// phantom db. The fix in openRenderer requires the db file to
+// already exist; bail with a clear error otherwise. This test:
+// (a) points --db at a path that doesn't exist, asserts the
+// exit is non-zero + the error mentions "no dixiedata.db found"
+// + the directory was NOT created; (b) confirms the opt-out
+// DIXIEDATA_TUNE_DB_CREATE=1 still works for callers that
+// need the legacy auto-create behavior.
+func TestTuneDBStrictRefusesMissingDB(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	typstPath := findTypstBin(t)
+	templatesPath := findUp("templates/soldier_landscape.typ")
+	if templatesPath == "" {
+		t.Skip("templates/ not found; run from repo root")
+	}
+
+	// Use a path under t.TempDir() so the test leaves nothing
+	// behind even on a bug.
+	missing := filepath.Join(t.TempDir(), "definitely-does-not-exist")
+
+	// (a) Strict: missing db fails cleanly without creating the dir.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin,
+		"--db", missing,
+		"--typst", typstPath,
+		"--templates", filepath.Dir(templatesPath),
+		"list-records", "--kind", "soldier",
+	)
+	cmd.Dir = t.TempDir()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for missing db, got success:\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
+	}
+	combined := stdout.String() + stderr.String()
+	if !strings.Contains(combined, "no dixiedata.db found") {
+		t.Fatalf("expected error mentioning 'no dixiedata.db found'; got:\n%s", combined)
+	}
+	if _, statErr := os.Stat(missing); statErr == nil {
+		t.Fatalf("strict-db fix should NOT have created the directory; %s exists", missing)
+	}
+
+	// (b) Opt-out: DIXIEDATA_TUNE_DB_CREATE=1 still creates.
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel2()
+	optout := missing + "-optout"
+	cmd2 := exec.CommandContext(ctx2, tuneBin,
+		"--db", optout,
+		"--typst", typstPath,
+		"--templates", filepath.Dir(templatesPath),
+		"list-records", "--kind", "soldier",
+	)
+	cmd2.Dir = t.TempDir()
+	cmd2.Env = append(os.Environ(), "DIXIEDATA_TUNE_DB_CREATE=1")
+	var stdout2, stderr2 bytes.Buffer
+	cmd2.Stdout = &stdout2
+	cmd2.Stderr = &stderr2
+	// The opt-out path runs through the bridge, which will fail
+	// on a brand-new empty db (no tables). That's fine — the test
+	// only asserts the strict guard was bypassed (i.e. the
+	// directory was created and the bridge got far enough to
+	// attempt the open).
+	if err2 := cmd2.Run(); err2 == nil {
+		// Unexpected success — log so the test isn't silent.
+		t.Logf("opt-out succeeded (rare); output:\n%s", stdout2.String()+stderr2.String())
+	}
+	if _, statErr := os.Stat(filepath.Join(optout, "dixiedata.db")); statErr != nil {
+		t.Fatalf("opt-out should have created the db file; stat %s: %v", filepath.Join(optout, "dixiedata.db"), statErr)
+	}
+}
+
+// TestTuneWatchDebounceAndDedupe (issue #515 slice D5) pins the
+// watcher's structural fixes without spawning a long-running
+// process (which would be flaky in CI). The assertions:
+// (a) the source file defines `doRenderParsed` as a separate
+// function (the dedupe seam);
+// (b) `doWatch` calls `doRenderParsed` and not `doRender(args, ...)`
+// (proving the pre-parsed rf is reused on every mtime tick);
+// (c) the watcher's debounce constant is in the 200-500ms range
+// (proves the rapid-save collapse is wired).
+// The actual end-to-end watch behavior is smoke-tested manually
+// (run `dixiedata-tune watch ...`, edit a template, observe
+// one re-render after the quiet period).
+func TestTuneWatchDebounceAndDedupe(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("read main.go: %v", err)
+	}
+	contents := string(src)
+	// (a) doRenderParsed exists as a function definition.
+	if !strings.Contains(contents, "func doRenderParsed(") {
+		t.Fatalf("main.go must define doRenderParsed function (issue #515 slice D5 dedupe)")
+	}
+	// (b) doWatch uses doRenderParsed (not the args-parsing wrapper).
+	// Locate the doWatch function body and assert it references
+	// doRenderParsed at least once.
+	watchStart := strings.Index(contents, "func doWatch(")
+	if watchStart < 0 {
+		t.Fatalf("main.go missing doWatch function (issue #515 slice D5)")
+	}
+	// End of doWatch body = next top-level `func ` declaration.
+	rest := contents[watchStart:]
+	nextFunc := strings.Index(rest[1:], "\nfunc ")
+	watchEnd := len(rest)
+	if nextFunc >= 0 {
+		watchEnd = nextFunc + 1
+	}
+	watchBody := rest[:watchEnd]
+	if !strings.Contains(watchBody, "doRenderParsed(") {
+		t.Fatalf("doWatch must call doRenderParsed (issue #515 slice D5 dedupe); body lacks the call:\n%s", watchBody)
+	}
+	if strings.Contains(watchBody, "doRender(args,") {
+		t.Fatalf("doWatch must not re-call doRender(args,...) on every tick (issue #515 slice D5 dedupe); body still contains the parse-twice path:\n%s", watchBody)
+	}
+	// (c) Debounce constant is in the 200-500ms range. Look for
+	// the literal `debounce = ... * time.Millisecond` line.
+	debounceRe := regexp.MustCompile(`const debounce\s*=\s*(\d+)\s*\*\s*time\.Millisecond`)
+	m := debounceRe.FindStringSubmatch(watchBody)
+	if m == nil {
+		t.Fatalf("doWatch must declare a 'const debounce = N * time.Millisecond' (issue #515 slice D5 debounce); body lacks the constant")
+	}
+	ms := 0
+	if _, err := fmt.Sscanf(m[1], "%d", &ms); err != nil {
+		t.Fatalf("parse debounce ms %q: %v", m[1], err)
+	}
+	if ms < 200 || ms > 500 {
+		t.Fatalf("debounce=%dms is outside the 200-500ms range (issue #515 slice D5); pick a value that collapses rapid saves without making single-save iteration feel laggy", ms)
+	}
+}
+
+// TestTuneDoctorQuick (issue #515 slice D3) pins the doctor
+// preflight gate in --quick mode (skips the snapshot test
+// invocation). Asserts (a) exit 0 when the local repo has
+// the expected moving parts (typst binary + templates dir +
+// seed fixture), (b) human output contains each check name
+// ("typst binary", "templates dir", "seed fixture",
+// "snapshots present"), (c) "doctor: all checks passed"
+// line at the end. The full test invocation mode is not
+// pinned here — it's covered by the snapshot suites themselves
+// (probeSnapshotsGreen runs them) and would add 2-3 minutes
+// to the test suite for marginal value.
+func TestTuneDoctorQuick(t *testing.T) {
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin, "doctor", "--quick")
+	cmd.Dir = findRepoRoot(t)
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("doctor --quick failed: %v\n%s", err, outBytes)
+	}
+	out := string(outBytes)
+	for _, want := range []string{"typst binary", "templates dir", "seed fixture", "snapshots present", "doctor: all checks passed"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected doctor --quick output to contain %q; got:\n%s", want, out)
+		}
+	}
+}
+
+// findRepoRoot walks up from the test's CWD looking for a go.mod
+// whose module line is exactly 'module github.com/valueforvalue/DixieData'
+// (the root module, not tools/tune). Used by TestTuneDoctorQuick
+// so the doctor invocation has the right CWD for findSeedFixtureHint.
+func findRepoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	const want = "module github.com/valueforvalue/DixieData"
+	for i := 0; i < 8; i++ {
+		if data, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil {
+			for _, sep := range []string{"\r\n", "\n"} {
+				if bytes.HasPrefix(data, []byte(want+sep)) {
+					return dir
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	t.Skip("repo root not found; run from inside the DixieData checkout")
+	return ""
+}
+
+// TestTuneVersionFlag (issue #515 slice D2) pins the --version
+// flag. Asserts (a) the flag short-circuits before any global flag
+// parsing — works without --db, --typst, or anything else; (b)
+// the human output contains the tune version, the typst version
+// (resolved via findTypstBinary walker), and the bridge version;
+// (c) the JSON output via DIXIEDATA_TUNE_JSON=1 emits the same
+// three fields as a single-line-pretty JSON object.
+func TestTuneVersionFlag(t *testing.T) {
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+
+	// (a) --version works without --db.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin, "--version")
+	cmd.Dir = t.TempDir()
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("--version failed: %v\n%s", err, outBytes)
+	}
+	out := string(outBytes)
+	for _, want := range []string{"dixiedata-tune ", "  typst:  ", "  bridge: "} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected human --version output to contain %q; got:\n%s", want, out)
+		}
+	}
+
+	// (b) JSON output via DIXIEDATA_TUNE_JSON=1.
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel2()
+	cmd2 := exec.CommandContext(ctx2, tuneBin, "--version")
+	cmd2.Dir = t.TempDir()
+	cmd2.Env = append(os.Environ(), "DIXIEDATA_TUNE_JSON=1")
+	outBytes2, err2 := cmd2.CombinedOutput()
+	if err2 != nil {
+		t.Fatalf("--version (json) failed: %v\n%s", err2, outBytes2)
+	}
+	out2 := string(outBytes2)
+	for _, want := range []string{`"tune":`, `"typst":`, `"bridge":`} {
+		if !strings.Contains(out2, want) {
+			t.Fatalf("expected JSON --version output to contain %q; got:\n%s", want, out2)
+		}
 	}
 }
