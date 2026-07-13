@@ -97,7 +97,14 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 
 	switch request.Scope {
 	case BrowseScopeRecentlyAdded:
-		whereParts = append(whereParts, `created_at IS NOT NULL AND TRIM(created_at) != ''`)
+		// Issue #512: predicate must also enforce a recency window.
+		// Without the datetime cutoff, every non-empty created_at
+		// qualifies — including timestamps preserved on Shared
+		// Archive import (backup_service.go:2499-2510), which
+		// surface under "Recently added" despite being years old.
+		// 7 days is wide enough for an editing session + a recent
+		// archive import, narrow enough to genuinely mean "recent".
+		whereParts = append(whereParts, `created_at IS NOT NULL AND TRIM(created_at) != '' AND datetime(created_at) >= datetime('now', '-7 days')`)
 	case BrowseScopeLastImport:
 		whereParts = append(whereParts, `import_batch_id = (SELECT id FROM import_batches ORDER BY created_at DESC, id DESC LIMIT 1)`)
 	}
