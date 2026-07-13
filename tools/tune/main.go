@@ -1068,6 +1068,20 @@ func openRenderer(dbPath, dataDir, typstPath, templatesDir string) (*exportbridg
 	if dbPath == "" {
 		return nil, errors.New("--db is required")
 	}
+	// Strict-db guard (issue #516 slice B2): refuse to open a
+	// missing db rather than letting db.Open MkdirAll + create
+	// a fresh empty db at the given path. The previous behavior
+	// silently produced a phantom `.dixiedata/dixiedata.db`
+	// anywhere in the tree that happened to not have one when
+	// the user ran `--db .dixiedata` from a non-repo-root CWD,
+	// then returned `total: 0 records` with no warning. Resolve
+	// the db file path the way db.Open would and bail with a
+	// clear error if it doesn't exist. --db-create opts in to
+	// the legacy behavior for callers that genuinely want to
+	// bootstrap an empty archive.
+	if err := requireExistingDB(dbPath); err != nil {
+		return nil, err
+	}
 	r, err := exportbridge.NewBulkRenderer(dbPath, dataDir)
 	if err != nil {
 		return nil, fmt.Errorf("new renderer: %w", err)
@@ -1078,6 +1092,33 @@ func openRenderer(dbPath, dataDir, typstPath, templatesDir string) (*exportbridg
 		r.SetRegistry(reg)
 	}
 	return r, nil
+}
+
+// requireExistingDB checks whether dbPath points at an existing
+// DixieData database. dbPath may be either the data directory
+// (the one containing dixiedata.db — the documented --db shape)
+// or the database file directly. Returns a clear error if the
+// resolved database file does not exist so the caller fails
+// fast instead of letting db.Open MkdirAll + create a phantom
+// empty db (issue #516 slice B2). Opt out via
+// DIXIEDATA_TUNE_DB_CREATE=1 to restore the legacy
+// auto-create-empty-db behavior for callers that need it
+// (e.g. seed-data bootstrap flows).
+func requireExistingDB(dbPath string) error {
+	if os.Getenv("DIXIEDATA_TUNE_DB_CREATE") == "1" {
+		return nil
+	}
+	resolved := dbPath
+	if info, err := os.Stat(dbPath); err == nil && info.IsDir() {
+		resolved = filepath.Join(dbPath, "dixiedata.db")
+	}
+	if _, err := os.Stat(resolved); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("no dixiedata.db found at %s (did you mean to pass --db .dixiedata? set DIXIEDATA_TUNE_DB_CREATE=1 to auto-create an empty db)", resolved)
+		}
+		return fmt.Errorf("stat db %s: %w", resolved, err)
+	}
+	return nil
 }
 
 // fileSize returns the size of the file at path.

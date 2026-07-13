@@ -471,3 +471,87 @@ func TestTuneModeArticleValidator(t *testing.T) {
 		t.Fatalf("--mode article produced suspiciously small PDF (%d bytes) — likely an empty render", len(got))
 	}
 }
+
+// TestTuneDBStrictRefusesMissingDB (issue #516 slice B2) pins the
+// phantom-DB footgun fix. Previously, `--db <missing-dir>` would
+// silently MkdirAll + create a fresh empty dixiedata.db there
+// (db.Open does MkdirAll), then return "total: 0 records" with
+// no warning — silently corrupting the user's tree with a 339KB
+// phantom db. The fix in openRenderer requires the db file to
+// already exist; bail with a clear error otherwise. This test:
+// (a) points --db at a path that doesn't exist, asserts the
+// exit is non-zero + the error mentions "no dixiedata.db found"
+// + the directory was NOT created; (b) confirms the opt-out
+// DIXIEDATA_TUNE_DB_CREATE=1 still works for callers that
+// need the legacy auto-create behavior.
+func TestTuneDBStrictRefusesMissingDB(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	typstPath := findTypstBin(t)
+	templatesPath := findUp("templates/soldier_landscape.typ")
+	if templatesPath == "" {
+		t.Skip("templates/ not found; run from repo root")
+	}
+
+	// Use a path under t.TempDir() so the test leaves nothing
+	// behind even on a bug.
+	missing := filepath.Join(t.TempDir(), "definitely-does-not-exist")
+
+	// (a) Strict: missing db fails cleanly without creating the dir.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin,
+		"--db", missing,
+		"--typst", typstPath,
+		"--templates", filepath.Dir(templatesPath),
+		"list-records", "--kind", "soldier",
+	)
+	cmd.Dir = t.TempDir()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for missing db, got success:\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
+	}
+	combined := stdout.String() + stderr.String()
+	if !strings.Contains(combined, "no dixiedata.db found") {
+		t.Fatalf("expected error mentioning 'no dixiedata.db found'; got:\n%s", combined)
+	}
+	if _, statErr := os.Stat(missing); statErr == nil {
+		t.Fatalf("strict-db fix should NOT have created the directory; %s exists", missing)
+	}
+
+	// (b) Opt-out: DIXIEDATA_TUNE_DB_CREATE=1 still creates.
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel2()
+	optout := missing + "-optout"
+	cmd2 := exec.CommandContext(ctx2, tuneBin,
+		"--db", optout,
+		"--typst", typstPath,
+		"--templates", filepath.Dir(templatesPath),
+		"list-records", "--kind", "soldier",
+	)
+	cmd2.Dir = t.TempDir()
+	cmd2.Env = append(os.Environ(), "DIXIEDATA_TUNE_DB_CREATE=1")
+	var stdout2, stderr2 bytes.Buffer
+	cmd2.Stdout = &stdout2
+	cmd2.Stderr = &stderr2
+	// The opt-out path runs through the bridge, which will fail
+	// on a brand-new empty db (no tables). That's fine — the test
+	// only asserts the strict guard was bypassed (i.e. the
+	// directory was created and the bridge got far enough to
+	// attempt the open).
+	if err2 := cmd2.Run(); err2 == nil {
+		// Unexpected success — log so the test isn't silent.
+		t.Logf("opt-out succeeded (rare); output:\n%s", stdout2.String()+stderr2.String())
+	}
+	if _, statErr := os.Stat(filepath.Join(optout, "dixiedata.db")); statErr != nil {
+		t.Fatalf("opt-out should have created the db file; stat %s: %v", filepath.Join(optout, "dixiedata.db"), statErr)
+	}
+}
