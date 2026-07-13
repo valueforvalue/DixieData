@@ -325,8 +325,8 @@ func parseRenderFlags(name string, args []string) (*renderFlags, error) {
 	if rf.format != formatHuman && rf.format != formatJSON {
 		return nil, fmt.Errorf("--format must be human or json (got %q)", rf.format)
 	}
-	if rf.mode != "record" && rf.mode != "bulk" && rf.mode != "event" {
-		return nil, fmt.Errorf("--mode must be record, bulk, or event (got %q)", rf.mode)
+	if rf.mode != "record" && rf.mode != "bulk" && rf.mode != "event" && rf.mode != "article" {
+		return nil, fmt.Errorf("--mode must be record, bulk, event, or article (got %q)", rf.mode)
 	}
 	return rf, nil
 }

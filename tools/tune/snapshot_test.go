@@ -415,3 +415,59 @@ func TestTuneListRecordsKindFilter(t *testing.T) {
 		})
 	}
 }
+
+// TestTuneModeArticleValidator (issue #516 slice B1) pins the
+// --mode article path. Before the fix, parseRenderFlags rejected
+// --mode article even though the switch rf.mode has a case
+// "article" and the README documents the flag — anyone following
+// the README hit `--mode must be record, bulk, or event (got
+// "article")`. The fix adds "article" to the allowed set so the
+// documented path actually works. This test invokes the binary
+// with --mode article + --record N against the seed fixture and
+// asserts a non-empty PDF is written and exit code is 0.
+// Skips silently if typst or the fixture is unavailable (matching
+// the convention used by TestTuneRecordLandscapeSnapshot).
+func TestTuneModeArticleValidator(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	dataDir := ensureSeedFixture(t)
+	if dataDir == "" {
+		t.Skip("seed fixture unavailable; build cmd/seed-data via `make debug`")
+	}
+	typstPath := findTypstBin(t)
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+
+	out := filepath.Join(t.TempDir(), "article.pdf")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin,
+		"--db", dataDir,
+		"--typst", typstPath,
+		"--templates", templatesAbs(t),
+		"render",
+		"--mode", "article",
+		"--record", "1",
+		"--template", "article_landscape",
+		"--orientation", "L",
+		"--out", out,
+	)
+	cmd.Dir = t.TempDir()
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("--mode article rejected: %v\n%s", err, outBytes)
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read article pdf: %v", err)
+	}
+	if !bytes.HasPrefix(got, []byte("%PDF-")) {
+		t.Fatalf("--mode article produced non-PDF output (%d bytes, header %q)", len(got), headerFor(got))
+	}
+	if len(got) < 1000 {
+		t.Fatalf("--mode article produced suspiciously small PDF (%d bytes) — likely an empty render", len(got))
+	}
+}
