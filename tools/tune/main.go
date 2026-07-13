@@ -949,7 +949,7 @@ func doListRecords(dbPath, dataDir string, args []string) error {
 		return fmt.Errorf("--db is required (or DIXIEDATA_DB env)")
 	}
 	fs := flag.NewFlagSet("list-records", flag.ContinueOnError)
-	kind := fs.String("kind", "soldier", "record kind: soldier or article (issue #430 adds article)")
+	kind := fs.String("kind", "soldier", "record kind: soldier, article, or event (issue #518 adds event)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -964,21 +964,25 @@ func doListRecords(dbPath, dataDir string, args []string) error {
 		return listSoldiers(r)
 	case "article", "articles":
 		return listArticles(r)
+	case "event", "events":
+		return listEvents(r)
 	default:
-		return fmt.Errorf("--kind must be soldier or article, got %q", *kind)
+		return fmt.Errorf("--kind must be soldier, article, or event, got %q", *kind)
 	}
 }
 
 // listSoldiers prints one tab-separated line per Person Record:
-// id, display_id, name. Paginated internally so a large archive
-// doesn't exhaust memory. Mirrors the legacy default behaviour
-// of doListRecords before issue #430.
+// id, display_id, name. Uses BulkRenderer.ListPeople (which
+// filters entry_type to soldier/wife/widow/linked_person) so
+// events and articles that share the soldiers table don't leak
+// in (issue #518 slice C2). Paginated to the actual end so
+// archives >2500 records render the full list (slice C3).
 func listSoldiers(r *exportbridge.BulkRenderer) error {
 	page := 1
 	const pageSize = 50
 	total := 0
 	for {
-		batch, count, err := r.List(page, pageSize)
+		batch, count, err := r.ListPeople(page, pageSize)
 		if err != nil {
 			return err
 		}
@@ -990,11 +994,34 @@ func listSoldiers(r *exportbridge.BulkRenderer) error {
 			break
 		}
 		page++
-		if page > 50 {
-			break
-		}
 	}
 	fmt.Fprintf(os.Stderr, "total: %d records\n", total)
+	return nil
+}
+
+// listEvents prints one tab-separated line per Event Record
+// (entry_type='event' in the soldiers table): id, display_id,
+// kind. Used by issue #518 slice C1 so a user iterating on
+// event_*.typ templates can find an event id without writing SQL.
+func listEvents(r *exportbridge.BulkRenderer) error {
+	page := 1
+	const pageSize = 50
+	total := 0
+	for {
+		batch, count, err := r.ListEvents(page, pageSize)
+		if err != nil {
+			return err
+		}
+		total = count
+		for _, e := range batch {
+			fmt.Printf("%d\t%s\t%s\n", e.ID, e.DisplayID, e.Kind)
+		}
+		if len(batch) < pageSize {
+			break
+		}
+		page++
+	}
+	fmt.Fprintf(os.Stderr, "total: %d events\n", total)
 	return nil
 }
 
@@ -1022,9 +1049,6 @@ func listArticles(r *exportbridge.BulkRenderer) error {
 			break
 		}
 		page++
-		if page > 50 {
-			break
-		}
 	}
 	fmt.Fprintf(os.Stderr, "total: %d articles\n", total)
 	return nil

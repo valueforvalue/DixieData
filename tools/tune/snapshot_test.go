@@ -350,12 +350,13 @@ func headerFor(b []byte) string {
 }
 
 // TestTuneListRecordsKindFilter pins the --kind flag on the
-// list-records subcommand (issue #430). Defaults to soldier
-// (matches the legacy default); --kind article switches to
-// the article list. The seed-data fixture doesn't seed
-// articles, so the article count is 0; the soldier count
-// matches whatever the fixture seeded. Both must print a
-// `total: N` line on stderr and exit 0.
+// list-records subcommand (issue #430 + #518). Defaults to
+// soldier; --kind article switches to the article list;
+// --kind event (issue #518 slice C1) switches to the event
+// list. The seed-data fixture seeds 10 Person Records
+// (DXD-*), 2 Events (EVT-*) — --kind soldier must filter
+// out the events (issue #518 slice C2) so it shows 10 not 12.
+// Both must print a `total: N` line on stderr and exit 0.
 func TestTuneListRecordsKindFilter(t *testing.T) {
 	if findTypstBin(t) == "" {
 		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
@@ -374,12 +375,13 @@ func TestTuneListRecordsKindFilter(t *testing.T) {
 		name       string
 		kind       string
 		wantTotal  string
-		wantErrSub string // substring expected in the `total:` line; "" = no check
+		wantErrSub string // substring expected in the error; "" = no check
 	}{
-		{"default is soldier", "", "total: 12 records", ""},
-		{"--kind soldier", "soldier", "total: 12 records", ""},
-		{"--kind article (non-empty after #447)", "article", "total: 2 articles", ""},
-		{"--kind bad value", "bogus", "", `--kind must be soldier or article`},
+		{"default is soldier", "", "total: 10 records", ""},
+		{"--kind soldier (filters events)", "soldier", "total: 10 records", ""},
+		{"--kind article", "article", "total: 2 articles", ""},
+		{"--kind event (issue #518 C1)", "event", "total: 2 events", ""},
+		{"--kind bad value", "bogus", "", `--kind must be soldier, article, or event`},
 	}
 
 	for _, tc := range cases {
