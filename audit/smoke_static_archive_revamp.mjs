@@ -466,6 +466,45 @@ test('slice10-01 #/print/{displayId} route renders renderPrintableReport from bu
     html.includes('@page'),
     'printable view must include @page rules for letter-size + margins (issue #509)',
   );
+  // --- Issue #519 follow-up pins ---
+  assert.ok(
+    /@page portrait-page/.test(html) && /@page landscape-page/.test(html),
+    'printable view must declare both portrait + landscape named pages so the page: CSS property can flip orientation (issue #519)',
+  );
+  assert.ok(
+    /\.print-root\s*\{\s*page:\s*portrait-page/.test(html),
+    'print-root must route to the portrait named page by default (issue #519)',
+  );
+  assert.ok(
+    /\.print-root\.landscape\s*\{\s*page:\s*landscape-page/.test(html),
+    'print-root.landscape must route to the landscape named page (issue #519)',
+  );
+  // No auto-print on load: the script must NOT schedule
+  // window.print() in a setTimeout for the print route (issue
+  // #519). Filter to the print-branch region (between
+  // "Issue #509" breadcrumb and the next route branch) so a
+  // future window.print call elsewhere doesn't false-positive.
+  const printBranch = html.split('Issue #509')[1] || '';
+  assert.ok(
+    !/setTimeout\([^)]*window\.print/.test(printBranch),
+    'print route must NOT auto-fire window.print() — user drives Cmd+P / Ctrl+P (issue #519)',
+  );
+  // printRenderLink must render the URL itself as the visible
+  // text (not "Click to view"), so the CSS ::after pseudo-element
+  // provides the single occurrence of the action hint.
+  const renderLink = html.match(/function printRenderLink\([\s\S]*?\n\s*\}/);
+  if (renderLink) {
+    assert.ok(
+      !/>Click to view</.test(renderLink[0]),
+      'printRenderLink anchor text must be the URL itself; the CSS ::after pseudo provides the single "Click to view" hint (issue #519)',
+    );
+    assert.ok(
+      /escapeHtml\(u\) \+ '<\/a>'/.test(renderLink[0]),
+      'printRenderLink anchor closing tag must close over the escaped URL (issue #519)',
+    );
+  } else {
+    assert.fail('printRenderLink function not found in HTML (issue #509 regression)');
+  }
 });
 
 // --- Slice 11: Export Report button styling (issue #511) ---
