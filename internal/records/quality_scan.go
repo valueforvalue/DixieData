@@ -605,13 +605,16 @@ func buildIssueName(first, middle, last string) string {
 // markupNoisePrecedence lists the markup-noise codes (issue #531)
 // in severity order. mixed-content-script is the highest severity
 // (carries a script tag or an event-handler attribute), then
+// web-chrome-noise (carries JS source + footer boilerplate that
+// was copy-pasted from a web page — issue #540), then
 // raw-html-tags (carries raw markup), then unescaped-entity
 // (carries literal &lt; &gt; &amp; that will double-escape on
 // re-render). The classifier picks the first match in this order
-// so a single field carrying all three noise types surfaces the
+// so a single field carrying multiple noise types surfaces the
 // most severe single issue rather than three stacked ones.
 var markupNoisePrecedence = []string{
 	"mixed-content-script",
+	"web-chrome-noise",
 	"raw-html-tags",
 	"unescaped-entity",
 }
@@ -666,6 +669,27 @@ func hasMarkupNoiseCode(code string, values ...string) bool {
 		// &lt;script&gt; after the next render pass (double-
 		// encoded HTML).
 		return regexpMatch(joined, `&(lt|gt|amp);`)
+	case "web-chrome-noise":
+		// Issue #540: detect page-chrome / runtime source
+		// that gets copy-pasted into a freeform field when a
+		// user grabs a location (or other value) off a web
+		// page. The four patterns below are the canonical
+		// signal set; the user's repro (FindAGrave page footer
+		// + runtime JS) hits all four. The patterns are
+		// deliberately broad (any of them trips the check)
+		// because the cost of missing a real noise case is
+		// higher than the cost of catching one.
+		//
+		// The user explicitly said "a regression test set to
+		// this data wont do us any good" — the detector
+		// should pin the pattern family, not the literal
+		// FindAGrave footer. Future extensions (e.g. JSON-in-
+		// source, <noscript> body) are filed as separate
+		// issues.
+		return regexpMatch(joined, `\bvar\s+[a-zA-Z_$][\w$]*\s*=`) ||
+			regexpMatch(joined, `\bfunction\s+[a-zA-Z_$][\w$]*\s*\(`) ||
+			regexpMatch(joined, `document\.cookie\s*=`) ||
+			regexpMatch(joined, `Copyright\s+\(C\)\s+\d{4}`)
 	}
 	return false
 }
@@ -714,6 +738,13 @@ func markupIssueShape(code string) (severity, summary, detail string) {
 		return "medium",
 			"Field carries unescaped HTML entities.",
 			"Detected &lt; / &gt; / &amp; in a freeform text field. The next render pass will double-escape these — paste the original value (not the rendered HTML) into the field."
+	case "web-chrome-noise":
+		// Issue #540. Severity = medium (not a security
+		// concern like mixed-content-script, but the row is
+		// clearly broken and the user will want to fix it).
+		return "medium",
+			"Field carries web-page chrome / runtime source.",
+			"Detected JS declarations, cookie writes, or a copyright year footer in a freeform text field — the field was likely copy-pasted from a web page and needs to be edited down to the actual value."
 	}
 	return "medium", "Field carries markup noise.", "Detected markup noise in a freeform text field."
 }

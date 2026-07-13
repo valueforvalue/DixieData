@@ -154,6 +154,49 @@ func TestClassifyMarkupNoise(t *testing.T) {
 		// Negative: a bare `onclick` word without `=` is not an
 		// event handler attribute.
 		{"word-onclick", []string{"", "", "do not onclick this button", ""}, ""},
+
+		// web-chrome-noise (issue #540): the four canonical
+		// patterns that catch web-page runtime + footer
+		// boilerplate copy-pasted into a freeform field.
+		// Each pattern individually must fire web-chrome-noise.
+		{"chrome-js-var", []string{"", "", "var currentLocal = \"en\";", ""}, "web-chrome-noise"},
+		{"chrome-js-fn", []string{"", "", "function setCookie(cname, cvalue) { return cname; }", ""}, "web-chrome-noise"},
+		{"chrome-cookie", []string{"", "", "document.cookie = \"k=v; path=/\"", ""}, "web-chrome-noise"},
+		{"chrome-copyright", []string{"", "", "Copyright (C) 2026 Find a Grave (R)", ""}, "web-chrome-noise"},
+		// Combined shape: a real location + the FindAGrave
+		// footer + JS source. Mirrors the user's live DB
+		// repro (TDM65-00134 / TDM65-00148) without using
+		// the literal text.
+		{"chrome-keller-shape", []string{"", "", "Keller Cemetery, Carter County, Oklahoma, USA var currentLocal = \"en\"; function setCookie(c){ document.cookie = c; } Copyright (C) 2026", ""}, "web-chrome-noise"},
+
+		// Precedence: a field carrying BOTH script tag AND
+		// web-chrome-noise must report mixed-content-script
+		// (script is more severe — security concern).
+		{"script-beats-chrome", []string{"", "", "<script>x</script> var currentLocal = \"en\";", ""}, "mixed-content-script"},
+		// Precedence: web-chrome-noise beats raw-html-tags
+		// (chrome noise is the user's reported bug shape;
+		// raw-html-tags is the older generic catch).
+		{"chrome-beats-html", []string{"", "", "<b>bold</b> var currentLocal = \"en\";", ""}, "web-chrome-noise"},
+
+		// Negative: a sentence with "var" as a word (not a JS
+		// declaration) must NOT trip web-chrome-noise.
+		{"word-var", []string{"", "", "the standard var of the regiment", ""}, ""},
+		// Negative: a function name without a JS declaration
+		// shape (no `function name(` pattern) must NOT trip.
+		{"word-function", []string{"", "", "the function of this committee is unclear", ""}, ""},
+		// Negative: a copyright symbol without the year
+		// signature must NOT trip.
+		{"copyright-no-year", []string{"", "", "Copyright (C) by Acme Press", ""}, ""},
+		// Negative: a `var` declaration with no value (just
+		// the keyword) must NOT trip — the pattern requires
+		// the `=` to disambiguate from English prose.
+		{"var-no-equals", []string{"", "", "var the regiment stood fast", ""}, ""},
+		// Negative: a function call site (no declaration shape)
+		// must NOT trip — the pattern requires `function name(`.
+		{"function-call", []string{"", "", "setCookie(cname, cvalue)", ""}, ""},
+		// Negative: `document.cookie` as a CSS class name or
+		// property name (no `=`) must NOT trip.
+		{"document-cookie-css", []string{"", "", ".document.cookie { color: red; }", ""}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -578,5 +621,61 @@ func insertTestRecord(t *testing.T, svc *SoldierService, personID int64, recordT
 		syncID, personID, recordType, appID, details,
 	); err != nil {
 		t.Fatalf("insertTestRecord(%q): %v", appID, err)
+	}
+}
+
+// TestRunDataQualityScan_DetectsWebChromeNoise (issue #540) is the
+// integration-level regression net for the new web-chrome-noise
+// code. The repro comes from the user's live DB (rows TDM65-00134
+// + TDM65-00148 carry FindAGrave page-chrome + JS source appended
+// to a real cemetery name in buried_in). The test seeds a soldier
+// with a synthetic buried_in value that hits all four patterns
+// (deliberately NOT the literal FindAGrave text, per the user's
+// "a regression test set to this data wont do us any good"
+// guidance) and asserts the high-confidence scan emits exactly
+// one web-chrome-noise issue. A clean buried_in must not fire.
+func TestRunDataQualityScan_DetectsWebChromeNoise(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	// Soldier with the TDM65-00134 shape (synthetic — real
+	// location + var decl + function decl + document.cookie
+	// + Copyright (C) YYYY). NOT the literal FindAGrave
+	// footer text per the user's guidance.
+	chromeSoldier, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "Carter",
+		BuriedIn:  "Keller Cemetery, Carter County, Oklahoma, USA var currentLocal = \"en\"; function setCookie(c){ document.cookie = c; } Copyright (C) 2026",
+	})
+	if err != nil {
+		t.Fatalf("Create chrome soldier: %v", err)
+	}
+	// Clean control.
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "Samuel",
+		LastName:  "Walker",
+		BuriedIn:  "Oakwood Cemetery, Richmond, Virginia, USA",
+	}); err != nil {
+		t.Fatalf("Create clean soldier: %v", err)
+	}
+
+	result, err := svc.RunDataQualityScan(string(DataQualityModeHighConfidence))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan: %v", err)
+	}
+
+	var chromeCount int
+	for _, issue := range result.Issues {
+		if issue.Code != "web-chrome-noise" {
+			continue
+		}
+		// The bug-shape row's display id should be the
+		// chromeSoldier. The clean soldier must not fire.
+		if strings.TrimSpace(issue.DisplayID) == strings.TrimSpace(chromeSoldier.DisplayID) {
+			chromeCount++
+		}
+	}
+	if chromeCount != 1 {
+		t.Errorf("web-chrome-noise count for TDM-shape row = %d, want 1", chromeCount)
 	}
 }
