@@ -1491,11 +1491,14 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       color: #1f2b38;
       text-decoration: underline;
     }
-    .print-record-link::after {
-      content: " (Click to view)";
-      color: #5a4220;
-      font-style: italic;
-    }
+    // The " (Click to view)" hint previously came from a CSS
+    // ::after pseudo-element on .print-record-link so the link
+    // rendered as "https://example.com (Click to view)". Issue
+    // #541 slice 5 moved the phrase into the anchor's visible
+    // text (matching the locked decision + the PDF + Wails + JS
+    // helper renderRecordDetailsLink), so the URL is hidden and
+    // the hint lives inside the <a> tag. The ::after rule is
+    // deleted to prevent the phrase from appearing twice.
 
     @media screen {
       .print-header,
@@ -2020,18 +2023,35 @@ function escapeHtml(value) {
     }
 
     // printRenderLink mirrors templates/common/record_card.typ::
-    // render-link. Renders a URL as a 'Click to view' anchor (the
-    // URL itself is the href + visible text. Plain text passes
-    // through unchanged. The " (Click to view)" hint comes from
-    // the .print-record-link::after CSS pseudo-element (defined
-    // near the top of the stylesheet) so the link renders as
-    // "https://example.com (Click to view)" — one occurrence of
-    // the phrase, not two (issue #519).
+    // render-link and the Go
+    // internal/templates/record_details_support.go + JS
+    // renderRecordDetailsLink helpers (issue #541 slice 5).
+    // Collapses a single http(s) URL Source Record details value
+    // into a "Click to view" anchor with the URL hidden from
+    // visible text. Plain text passes through unchanged.
+    // Trailing punctuation detaches one character. Non-http(s)
+    // schemes + >4000 char URLs fall through to plain text.
+    // (Earlier revisions rendered the URL as anchor text and
+    // relied on a CSS ::after pseudo to add the hint — slice 5
+    // aligns all four surfaces to the locked decision.)
     function printRenderLink(url) {
-      var u = String(url || '').trim();
-      if (!u) return '';
-      if (!/^https?:\/\//i.test(u)) return escapeHtml(u);
-      return '<a class="print-record-link" href="' + escapeHtml(u) + '" target="_blank" rel="noreferrer noopener">' + escapeHtml(u) + '</a>';
+      var raw = String(url || '');
+      if (!raw.trim()) return '';
+      var match = /^\s*(https?:\/\/[^\s<]+)\s*$/.exec(raw);
+      if (!match) return escapeHtml(raw);
+      var captured = String(match[1] || '').trim();
+      if (captured.length === 0 || captured.length > 4000) return escapeHtml(raw);
+      var schemeEnd = captured.indexOf('://');
+      var scheme = captured.substring(0, schemeEnd);
+      if (scheme !== 'http' && scheme !== 'https') return escapeHtml(raw);
+      var trailing = '.,;:!?)]}';
+      var last = captured.charAt(captured.length - 1);
+      var suffix = '';
+      if (trailing.indexOf(last) >= 0) {
+        captured = captured.substring(0, captured.length - 1);
+        suffix = last;
+      }
+      return '<a class="print-record-link" href="' + escapeHtml(captured) + '" target="_blank" rel="noreferrer noopener">Click to view</a>' + escapeHtml(suffix);
     }
 
     // printFieldRow renders a (label, value) pair as a
