@@ -18,6 +18,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/jobs"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
@@ -729,6 +730,28 @@ func sanitiseToastForHeader(message string) string {
 // Issue #132.
 func setInfoToastHeader(w http.ResponseWriter, message string) {
 	setToastHeaderWithType(w, message, "info")
+}
+
+// setPDFRecordsTruncationToast (issue #513) emits a warning toast
+// when the soldier has more Source Records than records.PDFRecordsPerPage.
+// The Typst template (templates/common/record_card.typ::render-records-section)
+// enforces the same cap visually (with a muted footnote inside the
+// PDF body); the toast surfaces the truncation in the UI so the user
+// sees the same signal regardless of which surface they look at.
+//
+// No-op when the soldier fits the cap (the common case — most
+// Person Records have < 12 Source Records). Calls the toast helper
+// directly rather than going through setToastHeaderWithType so the
+// kind stays explicit and the call site reads as a single intent.
+func setPDFRecordsTruncationToast(w http.ResponseWriter, soldier *models.Soldier) {
+	if soldier == nil || len(soldier.Records) <= records.PDFRecordsPerPage {
+		return
+	}
+	omitted := len(soldier.Records) - records.PDFRecordsPerPage
+	setToastHeaderWithType(w, fmt.Sprintf(
+		"PDF includes first %d Source Records; %d additional omitted. Reorder Source Records to choose which are included.",
+		records.PDFRecordsPerPage, omitted,
+	), "warning")
 }
 
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {

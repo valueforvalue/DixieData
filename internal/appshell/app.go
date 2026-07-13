@@ -817,6 +817,14 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		p.Set(20, "Rendering Person Record PDF")
 		return a.export.ExportSoldierPDF(path, *soldier, options)
 	}, path, w)
+	// Issue #513: announce Source Record truncation via toast so the
+	// user sees the cap regardless of whether they look at the PDF
+	// or the UI. Set AFTER enqueueExport writes the redirect header
+	// would be a no-op — the toast must be staged before the response.
+	// (The cap is also enforced in the Typst template at
+	// templates/common/record_card.typ::render-records-section, so
+	// the PDF body itself never spills past PDFRecordsPerPage rows.)
+	setPDFRecordsTruncationToast(w, soldier)
 }
 
 func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -854,6 +862,8 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		p.Set(20, "Rendering text-only PDF")
 		return a.export.ExportSoldierPDFWithoutImages(path, *soldier)
 	}, path, w)
+	// Issue #513: same truncation toast as handleSoldierPDF.
+	setPDFRecordsTruncationToast(w, soldier)
 }
 
 func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64) {
