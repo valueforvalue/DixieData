@@ -101,36 +101,60 @@ func TestSummaryRunningJobReturnsZero(t *testing.T) {
 	}
 }
 
-// TestSummaryDurationRoundedToSecond ensures the duration line
-// reads cleanly ("3s", "1m0s", etc.) instead of "3.000000123s".
-func TestSummaryDurationRoundedToSecond(t *testing.T) {
+// TestSummaryDurationFormat pins down the duration formatter
+// introduced in issue #543. Three buckets per the locked
+// decision:
+//
+//   - elapsed < 60s  ->  one decimal place  ("0.8s", "3.5s")
+//   - elapsed < 60m  ->  whole seconds      ("75s")
+//   - elapsed >= 60m ->  "XmYs"             ("1m5s")
+//
+// Bug 2 in #543: the previous Round(time.Second) collapsed
+// sub-second durations to "0s", making fast cleanup jobs
+// indistinguishable from no-ops.
+func TestSummaryDurationFormat(t *testing.T) {
 	dir := t.TempDir()
 	resultPath := filepath.Join(dir, "blob.bin")
 	if err := os.WriteFile(resultPath, []byte("x"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)
 	}
-	j := NewJob("job-dur", "static_archive")
-	j.Status = StatusDone
-	j.StartedAt = time.Now().Add(-3*time.Second - 500*time.Millisecond)
-	j.FinishedAt = time.Now()
-	j.ResultPath = resultPath
-	s := j.Summary()
-	durLine := ""
-	for _, line := range s.DetailLines {
-		if strings.HasPrefix(line, "Duration:") {
-			durLine = line
-			break
-		}
+	cases := []struct {
+		name    string
+		elapsed time.Duration
+		want    string
+	}{
+		{"sub-second", 800 * time.Millisecond, "0.8s"},
+		{"just over 1s", 1100 * time.Millisecond, "1.1s"},
+		{"multi-second sub-60s", 3*time.Second + 500*time.Millisecond, "3.5s"},
+		{"whole-second near boundary", 59*time.Second + 400*time.Millisecond, "59.4s"},
+		{"whole-minute boundary", 75 * time.Second, "75s"},
+		{"multi-minute still under 60m", 65 * time.Second, "65s"},
+		{"multi-minute still under 60m, mid", 125 * time.Second, "125s"},
+		{"minute + seconds at 60m boundary", 60*time.Minute + 5*time.Second, "60m5s"},
 	}
-	if durLine == "" {
-		t.Fatalf("expected a Duration detail line; got %v", s.DetailLines)
-	}
-	// The line must NOT contain sub-second fractional digits.
-	if strings.Contains(durLine, ".") {
-		t.Errorf("Duration line should be rounded to whole seconds; got %q", durLine)
-	}
-	if !strings.Contains(durLine, "4s") {
-		t.Errorf("expected Duration line to read 'Duration: 4s'; got %q", durLine)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			j := NewJob("job-dur-"+c.name, "static_archive")
+			j.Status = StatusDone
+			j.StartedAt = time.Now().Add(-c.elapsed)
+			j.FinishedAt = time.Now()
+			j.ResultPath = resultPath
+			s := j.Summary()
+			durLine := ""
+			for _, line := range s.DetailLines {
+				if strings.HasPrefix(line, "Duration:") {
+					durLine = line
+					break
+				}
+			}
+			if durLine == "" {
+				t.Fatalf("expected a Duration detail line; got %v", s.DetailLines)
+			}
+			want := "Duration: " + c.want
+			if durLine != want {
+				t.Errorf("elapsed=%v: got %q, want %q", c.elapsed, durLine, want)
+			}
+		})
 	}
 }
 
