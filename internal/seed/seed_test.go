@@ -3,6 +3,7 @@ package seed
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -98,6 +99,139 @@ func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
 	}
 	if filepath.IsAbs(storedPath) {
 		t.Fatalf("image path should be stored relative, got %q", storedPath)
+	}
+}
+
+// TestSeedArticles_MarkdownFormat_RendersViaGoldmark (issue #523)
+// asserts that --articles-format=markdown produces body_html via
+// records.MarkdownRenderer — the same pipeline the Wails app uses on
+// save. Pins the CommonMark feature coverage the renderer currently
+// supports: headings h1-h6, bold/italic, lists, blockquote, inline +
+// fenced code, links, images, paragraphs.
+//
+// Tables and `---` horizontal rules are in the corpus but the
+// renderer uses goldmark.New() with no GFM extension (issue #524
+// follow-up). When that lands, add <table>, <tbody>, <hr> to the
+// required list below.
+func TestSeedArticles_MarkdownFormat_RendersViaGoldmark(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+
+	summary, err := Generate(Options{
+		DataDir:        dataDir,
+		Soldiers:       12,
+		Seed:           42,
+		Reset:          true,
+		SkipSoldiers:   false,
+		Articles:       30, // exercise every corpus entry — at least one will hit each feature
+		ArticlesFormat: ArticleBodyMarkdown,
+	})
+	if err != nil {
+		t.Fatalf("Generate (markdown): %v", err)
+	}
+	if summary.Articles != 30 {
+		t.Fatalf("articles=%d want 30", summary.Articles)
+	}
+
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	rows, err := database.Conn().Query("SELECT body_html FROM articles")
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+
+	var allBodies strings.Builder
+	for rows.Next() {
+		var bodyHTML string
+		if err := rows.Scan(&bodyHTML); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		allBodies.WriteString(bodyHTML)
+		allBodies.WriteString("\n")
+	}
+	combined := allBodies.String()
+
+	// CommonMark + image presence checks across the whole corpus.
+	// Every check is a substring of the union of rendered bodies
+	// so a missing feature trips the test even if other features
+	// still render.
+	required := []string{
+		"<h1>",       // heading
+		"<h2>",       // nested heading
+		"<ul>",       // unordered list
+		"<ol>",       // ordered list
+		"<li>",       // list item
+		"<strong>",   // bold
+		"<em>",       // italic
+		"<blockquote>", // blockquote
+		"<code>",     // inline code
+		"<pre>",      // fenced code block
+		"<a href=",   // markdown link → anchor with href
+		"<img ",      // image
+		`alt="`,      // image alt attribute (preserved by bluemonday)
+		"<p>",        // paragraph
+	}
+	for _, sub := range required {
+		if !strings.Contains(combined, sub) {
+			t.Errorf("union of all 30 markdown body_html missing %q\n--- snippet (first 500 chars) ---\n%s\n--------------------", sub, firstN(combined, 500))
+		}
+	}
+}
+
+// firstN returns the first n bytes of s as a string for test-failure
+// diagnostics. Used to keep the error output bounded.
+func firstN(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
+// TestSeedArticles_PlainFormat_PreservesLegacyPath (issue #523)
+// regression net for the default --articles-format=plain path. The
+// legacy #447 behavior must continue to write body_md as raw prose
+// and body_html wrapped in <p>...</p>. Without this guard, a future
+// refactor that flips the default to markdown would silently change
+// every existing fixture.
+func TestSeedArticles_PlainFormat_PreservesLegacyPath(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+
+	_, err := Generate(Options{
+		DataDir:      dataDir,
+		Soldiers:     12,
+		Seed:         42,
+		Reset:        true,
+		SkipSoldiers: false,
+		Articles:     1,
+		// ArticlesFormat zero value = ArticleBodyPlain (legacy default).
+	})
+	if err != nil {
+		t.Fatalf("Generate (plain): %v", err)
+	}
+
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	var bodyMD, bodyHTML string
+	if err := database.Conn().QueryRow("SELECT body_md, body_html FROM articles LIMIT 1").Scan(&bodyMD, &bodyHTML); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+
+	if !strings.Contains(bodyHTML, "<p>") || !strings.HasSuffix(strings.TrimSpace(bodyHTML), "</p>") {
+		t.Errorf("body_html should be <p>-wrapped for plain format, got %q", bodyHTML)
+	}
+	if strings.Contains(bodyHTML, "<table>") || strings.Contains(bodyHTML, "<h1>") {
+		t.Errorf("plain format body_html should not contain markdown-rendered tags, got %q", bodyHTML)
+	}
+	if bodyMD != bodyHTML[strings.Index(bodyHTML, ">")+1:strings.LastIndex(bodyHTML, "<")] {
+		t.Errorf("plain format body_md should equal prose between <p> and </p>: md=%q html=%q", bodyMD, bodyHTML)
 	}
 }
 
