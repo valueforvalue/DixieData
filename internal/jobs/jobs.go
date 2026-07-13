@@ -159,6 +159,24 @@ type JobResult struct {
 	// secondary action. Distinct from Path so the primary
 	// artifact keeps a single download link.
 	LogPath string
+
+	// Issue #552: Google Drive / Google Sheets uploads complete
+	// with a service-side result the worker was discarding before
+	// this fix. RemoteURL captures the user-facing link (the
+	// WebViewLink the Drive API returns, with a Sheets-flavoured
+	// fallback synthesised by googleDriveUploadResult when Drive
+	// omits it for spreadsheet files), RemoteName is the
+	// user-visible file name on the remote, and RemoteKind picks
+	// the button label rendered on the summary card ("Open in
+	// Drive" vs "Open in Sheets"). RemoteKind is a free-form
+	// string ("drive" / "sheets") rather than a typed enum so
+	// future integration shapes don't need a code change to land;
+	// Job.Summary() is the single switch that maps the value to
+	// a UI label. All three are omitempty so pre-#552 entries in
+	// the JSONL log parse cleanly into the zero JobResult.
+	RemoteURL  string `json:"remote_url,omitempty"`
+	RemoteName string `json:"remote_name,omitempty"`
+	RemoteKind string `json:"remote_kind,omitempty"`
 }
 
 // StaticArchiveResult is the per-kind export snapshot for the
@@ -897,6 +915,20 @@ type JobSummary struct {
 	SizeBytes   int64
 	Duration    time.Duration
 	ResultPath  string
+
+	// Issue #552: remote-link affordance for jobs whose
+	// side-effect lives on a third-party service (Google
+	// Drive, Google Sheets). RemoteURL is the user-facing
+	// link the worker captured from the upload's service-side
+	// result; RemoteLabel is the button text the summary
+	// card renders ("Open in Drive" / "Open in Sheets").
+	// Both empty means no remote link — the template skips
+	// the button. Kept on JobSummary rather than DetailLines
+	// so the template can render an <a> anchor (matching the
+	// Download log + Copy path patterns) instead of a
+	// detect-and-rewritten magic string.
+	RemoteURL   string
+	RemoteLabel string
 }
 
 // Summary returns a JobSummary describing the job's terminal
@@ -1040,6 +1072,15 @@ func (j Job) Summary() JobSummary {
 	// j.Message via p.Set(100, "...") inside the worker; the
 	// summary card surfaces that message as the headline so the
 	// user sees what the job actually did.
+	//
+	// Issue #552: Google Drive / Google Sheets uploads now also
+	// populate JobResult.RemoteURL + RemoteKind so the summary
+	// card can render an "Open in Drive" / "Open in Sheets"
+	// button that takes the user to the uploaded artifact.
+	// RemoteURL is empty for legacy log entries (those predate
+	// the fix and the worker discarded the upload result), so
+	// the button is conditionally rendered — see
+	// jobs.templ::jobSummaryCard.
 	case "image_orphan_cleanup", "duplicate_audit", "review_bulk_resolve", "review_bulk_delete", "google_drive_backup", "google_sheets_export":
 		if j.Message != "" {
 			s.Headline = j.Message
@@ -1050,6 +1091,15 @@ func (j Job) Summary() JobSummary {
 			// usable rather than rendering an empty headline.
 			s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
+		}
+		if j.Result.RemoteURL != "" {
+			label := "Open in Drive"
+			switch j.Result.RemoteKind {
+			case "sheets":
+				label = "Open in Sheets"
+			}
+			s.RemoteURL = j.Result.RemoteURL
+			s.RemoteLabel = label
 		}
 	default:
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))

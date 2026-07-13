@@ -70,8 +70,19 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// Issue #552: capture the upload's WebViewLink / Name so the
+		// /jobs/{id} summary card can offer an "Open in Drive" button.
+		// UploadBackup never returns a populated WebViewLink for files
+		// created via Files.Create without explicit permission grants
+		// beyond drive.DriveFileScope, but the synthesized Sheets /
+		// Drive URL fallback in googleDriveUploadResult covers the
+		// common cases (see integrations/google_service.go).
+		a.jobs.SetResult(jobID, jobs.JobResult{
+			RemoteURL:  uploaded.WebViewLink,
+			RemoteName: uploaded.Name,
+			RemoteKind: "drive",
+		})
 		p.Set(100, fmt.Sprintf("Uploaded %d soldiers, %d images.", manifest.Soldiers, manifest.Images))
-		_ = uploaded
 		return nil
 	})
 	setInfoToastHeader(w, "Google Drive upload started…")
@@ -107,8 +118,19 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// Issue #552: capture the upload's WebViewLink / Name so the
+		// /jobs/{id} summary card can offer an "Open in Sheets"
+		// button. Mirrors the Drive flow in handleGoogleBackup; the
+		// two uploads share the same googleDriveUploadResult
+		// helper in google_service.go, which synthesises a Sheets
+		// fallback URL when Drive omits WebViewLink for
+		// application/vnd.google-apps.spreadsheet MIME types.
+		a.jobs.SetResult(jobID, jobs.JobResult{
+			RemoteURL:  uploaded.WebViewLink,
+			RemoteName: uploaded.Name,
+			RemoteKind: "sheets",
+		})
 		p.Set(100, "Google Sheet ready.")
-		_ = uploaded
 		return nil
 	})
 	setInfoToastHeader(w, "Google Sheets export started…")
