@@ -430,7 +430,16 @@ func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64
 		))
 	}
 
-	if mode == DataQualityModeAdvanced && len(lastName) == 1 {
+	// Issue #538: gate the surname-too-short sibling check to
+	// person-bearing entry types, mirroring the #530 fix. Events
+	// (entry_type='event') have no first_name/last_name column
+	// values to check, so the check is meaningless for them
+	// today — but the gate ensures the Identity & Naming group
+	// stays internally consistent (every check in the group
+	// applies to the same set of entry types). Widows / wives /
+	// linked persons DO carry name columns, so the check still
+	// fires for them.
+	if mode == DataQualityModeAdvanced && models.IsPersonBearingEntryType(entryType) && len(lastName) == 1 {
 		issues = append(issues, candidateIssue(candidate,
 			name, entryType, "Identity & Naming", "surname-too-short", "medium",
 			"Last name looks unusually short.",

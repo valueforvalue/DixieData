@@ -275,3 +275,152 @@ func TestIsPersonBearingEntryType(t *testing.T) {
 		}
 	}
 }
+
+// TestRunDataQualityScan_SurnameTooShortGatedToPersonBearing (issue #538)
+// is the regression net for the surname-too-short sibling check.
+// Mirrors TestRunDataQualityScan_EventRowsDoNotFireIdentityMissing
+// (the #530 test) — the gate must:
+//   - still fire for person-bearing rows with a single-character
+//     last_name (soldier, wife, widow, linked_person) — the check
+//     is meaningful for them
+//   - NOT fire for non-person-bearing rows (event) — the check is
+//     meaningless for them because they carry no first_name/
+//     last_name column values
+// A regression that drops the gate re-introduces the inconsistency
+// (the #530 fix gated identity-missing but left surname-too-short
+// unguarded); a regression that over-fires the gate breaks the
+// soldier / widow positive case.
+func TestRunDataQualityScan_SurnameTooShortGatedToPersonBearing(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+	events := NewEventService(svc)
+
+	// Control: a soldier with a single-character last_name.
+	// Must fire surname-too-short in advanced mode.
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "X",
+	}); err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	// Person-bearing but unrelated: a soldier with a normal
+	// last_name. Must NOT fire surname-too-short (control on the
+	// length check itself).
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "Samuel",
+		LastName:  "Carter",
+	}); err != nil {
+		t.Fatalf("Create soldier (normal): %v", err)
+	}
+
+	// Person-bearing: a widow with a single-character last_name.
+	// Must still fire surname-too-short — widow IS a
+	// person-bearing entry type and the check is meaningful.
+	husband, err := svc.Create(models.Soldier{
+		FirstName: "Thomas",
+		LastName:  "Walker",
+	})
+	if err != nil {
+		t.Fatalf("Create husband: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		EntryType:       models.EntryTypeWidow,
+		SpouseSoldierID: husband.ID,
+		FirstName:       "Martha",
+		LastName:        "Q",
+	}); err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	// Non-person-bearing: an event record (no first_name /
+	// last_name columns populated by design). Must NOT fire
+	// surname-too-short — the check is meaningless for events.
+	if _, err := events.CreateEvent(models.Soldier{
+		EntryType: models.EntryTypeEvent,
+		Kind:      "Battle",
+		BeginDate: "07/01/1862",
+		EndDate:   "07/03/1862",
+	}); err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	// Run the advanced scan (surname-too-short is advanced-mode only).
+	result, err := svc.RunDataQualityScan(string(DataQualityModeAdvanced))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan: %v", err)
+	}
+
+	hasIssue := func(entryType, code string) bool {
+		for _, issue := range result.Issues {
+			if issue.EntryType == entryType && issue.Code == code {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Positive: soldier with last_name length 1 must fire.
+	if !hasIssue(models.EntryTypeSoldier, "surname-too-short") {
+		t.Errorf("soldier with last_name='X' did not fire surname-too-short")
+	}
+	// Positive: widow with last_name length 1 must fire.
+	if !hasIssue(models.EntryTypeWidow, "surname-too-short") {
+		t.Errorf("widow with last_name='Q' did not fire surname-too-short")
+	}
+	// Bug-shape: event row must NOT fire surname-too-short.
+	if hasIssue(models.EntryTypeEvent, "surname-too-short") {
+		t.Errorf("event row fired surname-too-short; the #538 gate regressed")
+		for _, issue := range result.Issues {
+			if issue.EntryType == models.EntryTypeEvent && issue.Code == "surname-too-short" {
+				t.Logf("  regression: %s (%s)", issue.DisplayID, issue.Name)
+			}
+		}
+	}
+	// Sanity: a soldier with a normal last_name does not fire
+	// (defends the underlying length check).
+	if hasIssue(models.EntryTypeSoldier, "surname-too-short") {
+		// Note: this branch is only meaningful if we count the
+		// number of soldier surname-too-short issues. We have
+		// one soldier (James X) that SHOULD fire; the other
+		// (Samuel Carter) should NOT. Count and assert.
+		count := 0
+		for _, issue := range result.Issues {
+			if issue.EntryType == models.EntryTypeSoldier && issue.Code == "surname-too-short" {
+				count++
+			}
+		}
+		if count > 1 {
+			t.Errorf("soldier surname-too-short count = %d, want exactly 1 (only 'X' should fire)", count)
+		}
+	}
+}
+
+// TestRunDataQualityScan_SurnameTooShortAdvancedModeOnly pins the
+// mode contract: surname-too-short is an advanced-mode check, so
+// the high-confidence scan must NOT fire it regardless of the
+// person's last_name length. (This is the #538 contract; the
+// #530 test was high-confidence only because identity-missing is
+// a high-confidence check, but surname-too-short is the opposite
+// — advanced only.)
+func TestRunDataQualityScan_SurnameTooShortAdvancedModeOnly(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "X",
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	highConf, err := svc.RunDataQualityScan(string(DataQualityModeHighConfidence))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan (high-confidence): %v", err)
+	}
+	for _, issue := range highConf.Issues {
+		if issue.Code == "surname-too-short" {
+			t.Errorf("high-confidence scan fired surname-too-short; the check is advanced-mode only")
+		}
+	}
+}
