@@ -558,6 +558,67 @@ func TestTuneDBStrictRefusesMissingDB(t *testing.T) {
 	}
 }
 
+// TestTuneDoctorQuick (issue #515 slice D3) pins the doctor
+// preflight gate in --quick mode (skips the snapshot test
+// invocation). Asserts (a) exit 0 when the local repo has
+// the expected moving parts (typst binary + templates dir +
+// seed fixture), (b) human output contains each check name
+// ("typst binary", "templates dir", "seed fixture",
+// "snapshots present"), (c) "doctor: all checks passed"
+// line at the end. The full test invocation mode is not
+// pinned here — it's covered by the snapshot suites themselves
+// (probeSnapshotsGreen runs them) and would add 2-3 minutes
+// to the test suite for marginal value.
+func TestTuneDoctorQuick(t *testing.T) {
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin, "doctor", "--quick")
+	cmd.Dir = findRepoRoot(t)
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("doctor --quick failed: %v\n%s", err, outBytes)
+	}
+	out := string(outBytes)
+	for _, want := range []string{"typst binary", "templates dir", "seed fixture", "snapshots present", "doctor: all checks passed"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected doctor --quick output to contain %q; got:\n%s", want, out)
+		}
+	}
+}
+
+// findRepoRoot walks up from the test's CWD looking for a go.mod
+// whose module line is exactly 'module github.com/valueforvalue/DixieData'
+// (the root module, not tools/tune). Used by TestTuneDoctorQuick
+// so the doctor invocation has the right CWD for findSeedFixtureHint.
+func findRepoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	const want = "module github.com/valueforvalue/DixieData"
+	for i := 0; i < 8; i++ {
+		if data, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil {
+			for _, sep := range []string{"\r\n", "\n"} {
+				if bytes.HasPrefix(data, []byte(want+sep)) {
+					return dir
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	t.Skip("repo root not found; run from inside the DixieData checkout")
+	return ""
+}
+
 // TestTuneVersionFlag (issue #515 slice D2) pins the --version
 // flag. Asserts (a) the flag short-circuits before any global flag
 // parsing — works without --db, --typst, or anything else; (b)

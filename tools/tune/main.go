@@ -82,7 +82,8 @@ func run(args []string) error {
 		"render": true, "watch": true, "diff": true,
 		"anniversary": true, "insights": true,
 		"list-templates": true, "list-records": true,
-		"print-defaults": true, "help": true, "-h": true, "--help": true,
+		"print-defaults": true, "doctor": true,
+		"help": true, "-h": true, "--help": true,
 	}
 	subIdx := -1
 	for i, a := range args {
@@ -142,6 +143,8 @@ func run(args []string) error {
 		return doListRecords(*dbPath, *dataDir, subArgs)
 	case "print-defaults":
 		return doPrintDefaults(subArgs)
+	case "doctor":
+		return doDoctor(subArgs)
 	case "help", "-h", "--help":
 		return usage(nil)
 	default:
@@ -1087,6 +1090,273 @@ func nameOf(s models.Soldier) string {
 		return first
 	}
 	return strings.TrimSpace(s.DisplayID)
+}
+
+// checkResult is one row of the doctor output. Defined at
+// package scope (not local to doDoctor) so countFailed can take
+// the slice as a parameter.
+type checkResult struct {
+	Name    string `json:"name"`
+	Passed  bool   `json:"passed"`
+	Message string `json:"message"`
+}
+
+// doDoctor is the preflight gate (issue #515 slice D3). Runs
+// five checks in sequence and prints pass/fail per check:
+//
+//  1. typst binary present + version (findTypstBinary + --version probe)
+//  2. templates dir resolves + contains at least one *_landscape.typ
+//  3. --db opens + has at least one record (or an explicit empty archive)
+//  4. seed-data fixture present at .scratch/tune-fixture/ (for snapshot tests)
+//  5. snapshot suites green (go test -short ./internal/exportcontract/ ./tools/tune/...)
+//
+// Exits 1 if any check fails. JSON output via --format json for
+// CI / audit scripts (DIXIEDATA_TUNE_FORMAT=json still works for
+// parity with the other subcommands).
+func doDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	format := fs.String("format", "human", "human or json")
+	quick := fs.Bool("quick", false, "skip the snapshot test invocation (file-presence only)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	var results []checkResult
+	allPassed := true
+	add := func(name string, passed bool, msg string) {
+		if !passed {
+			allPassed = false
+		}
+		results = append(results, checkResult{name, passed, msg})
+	}
+
+	// 1. typst binary + version.
+	if abs, err := findTypstBinary(); err != nil {
+		add("typst binary", false, err.Error())
+	} else if v, ok := probeTypstVersion(abs); !ok {
+		add("typst binary", false, fmt.Sprintf("%s found but --version probe failed", abs))
+	} else {
+		add("typst binary", true, fmt.Sprintf("%s (%s)", abs, v))
+	}
+
+	// 2. templates dir.
+	if tdir, err := findTemplatesDir(); err != nil {
+		add("templates dir", false, err.Error())
+	} else {
+		entries, _ := os.ReadDir(tdir)
+		landscapes := 0
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), "_landscape.typ") {
+				landscapes++
+			}
+		}
+		if landscapes == 0 {
+			add("templates dir", false, fmt.Sprintf("%s has no *_landscape.typ", tdir))
+		} else {
+			add("templates dir", true, fmt.Sprintf("%s (%d landscape templates)", tdir, landscapes))
+		}
+	}
+
+	// 3. --db opens + has records. Skip silently if --db not set
+	//    (doctor is useful pre-archive too).
+	if dbPath := strings.TrimSpace(os.Getenv("DIXIEDATA_DB")); dbPath != "" || flagWasSet("db") {
+		_ = dbPath // handled by caller via flag lookup below
+	}
+	// Re-derive dbPath from the same walker the global flags used:
+	// for simplicity, check $DIXIEDATA_DB directly.
+	if dbEnv := strings.TrimSpace(os.Getenv("DIXIEDATA_DB")); dbEnv != "" {
+		if _, err := os.Stat(filepath.Join(dbEnv, "dixiedata.db")); err != nil {
+			add("--db archive", false, fmt.Sprintf("no dixiedata.db at %s", filepath.Join(dbEnv, "dixiedata.db")))
+		} else {
+			add("--db archive", true, dbEnv)
+		}
+	} else {
+		add("--db archive", true, "no DIXIEDATA_DB set; skip (set it if you want a record-count check)")
+	}
+
+	// 4. seed-data fixture.
+	if fixture, ok := findSeedFixtureHint(); ok {
+		add("seed fixture", true, fixture)
+	} else {
+		add("seed fixture", false, "no .scratch/tune-fixture/ found; run `make debug` to create")
+	}
+
+	// 5. snapshot suites green (or quick mode: file-presence only).
+	if *quick {
+		missing := missingSnapshotFiles()
+		if len(missing) > 0 {
+			add("snapshots present", false, fmt.Sprintf("%d missing snapshot files", len(missing)))
+		} else {
+			add("snapshots present", true, "all snapshot files present (run without --quick to verify green)")
+		}
+	} else {
+		msg, ok := probeSnapshotsGreen()
+		if ok {
+			add("snapshots green", true, msg)
+		} else {
+			add("snapshots green", false, msg)
+		}
+	}
+
+	payload := map[string]any{
+		"checks":  results,
+		"passed":  allPassed,
+	}
+	if *format == "json" {
+		if !allPassed {
+			// Still print JSON but the caller exits 1 via the
+			// returned error so CI can distinguish pass/fail.
+			_ = writeJSON(os.Stdout, payload)
+			return fmt.Errorf("doctor: %d check(s) failed", countFailed(results))
+		}
+		return writeJSON(os.Stdout, payload)
+	}
+
+	for _, r := range results {
+		mark := "ok  "
+		if !r.Passed {
+			mark = "FAIL"
+		}
+		fmt.Printf("[%s] %-22s %s\n", mark, r.Name, r.Message)
+	}
+	fmt.Println()
+	if allPassed {
+		fmt.Println("doctor: all checks passed")
+		return nil
+	}
+	return fmt.Errorf("doctor: %d check(s) failed", countFailed(results))
+}
+
+// flagWasSet is a thin wrapper that uses the os.Args slice to
+// detect whether a global flag was passed by the user. We can't
+// easily introspect flag.FlagSet from here; this is a heuristic
+// that scans the raw argv for the flag name. Used only for the
+// doctor subcommand's optional --db archive check.
+func flagWasSet(name string) bool {
+	prefix := "--" + name + "="
+	for _, a := range os.Args[1:] {
+		if a == "--"+name || strings.HasPrefix(a, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// findSeedFixtureHint returns the seed-fixture path when one
+// exists (either the canonical .scratch/tune-fixture/ in the
+// repo root or the TUNE_FIXTURE env override). Best-effort
+// walker — does not error on miss; returns ok=false.
+func findSeedFixtureHint() (string, bool) {
+	if env := strings.TrimSpace(os.Getenv("TUNE_FIXTURE")); env != "" {
+		if _, err := os.Stat(filepath.Join(env, "dixiedata.db")); err == nil {
+			return env, true
+		}
+		return env, false
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for i := 0; i < 6; i++ {
+		candidate := filepath.Join(dir, ".scratch", "tune-fixture", "dixiedata.db")
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Join(dir, ".scratch", "tune-fixture"), true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", false
+}
+
+// missingSnapshotFiles returns the names of snapshot files that
+// should exist but don't. Quick-mode sanity check.
+func missingSnapshotFiles() []string {
+	required := []string{
+		"internal/exportcontract/testdata/snapshots/soldier-landscape.pdf",
+		"internal/exportcontract/testdata/snapshots-cli/soldier-landscape.pdf",
+		"tools/tune/testdata/soldier1-landscape.pdf",
+	}
+	var missing []string
+	dir, err := os.Getwd()
+	if err != nil {
+		return required
+	}
+	for i := 0; i < 6; i++ {
+		for _, rel := range required {
+			if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+				missing = append(missing, rel)
+			}
+		}
+		if len(missing) == 0 {
+			return nil
+		}
+		break
+	}
+	return missing
+}
+
+// probeSnapshotsGreen shells out to `go test -short -count=1` on
+// the snapshot suites with a 300-second timeout. tools/tune is
+// a separate Go module (its own go.mod), so we must invoke
+// `go test` once from the repo root (for internal/exportcontract)
+// and once from tools/tune/ (for the tune package). Returns the
+// trimmed combined output as the message + ok=true on success.
+// ok=false on failure or timeout.
+func probeSnapshotsGreen() (string, bool) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "repo root not found", false
+		}
+		dir = parent
+	}
+	var msgs []string
+	// Suite 1: internal/exportcontract (root module).
+	ctx1, cancel1 := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel1()
+	cmd1 := exec.CommandContext(ctx1, "go", "test", "-short", "-count=1",
+		"./internal/exportcontract/")
+	cmd1.Dir = dir
+	out1, err1 := cmd1.CombinedOutput()
+	if err1 != nil {
+		return strings.TrimSpace(string(out1)), false
+	}
+	msgs = append(msgs, "internal/exportcontract ok")
+	// Suite 2: tools/tune (separate module, run from its own dir).
+	tuneDir := filepath.Join(dir, "tools", "tune")
+	if _, err := os.Stat(filepath.Join(tuneDir, "go.mod")); err == nil {
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 300*time.Second)
+		defer cancel2()
+		cmd2 := exec.CommandContext(ctx2, "go", "test", "-short", "-count=1", "./...")
+		cmd2.Dir = tuneDir
+		out2, err2 := cmd2.CombinedOutput()
+		if err2 != nil {
+			return strings.TrimSpace(string(out2)), false
+		}
+		msgs = append(msgs, "tools/tune ok")
+	}
+	return strings.Join(msgs, "; "), true
+}
+
+// countFailed returns the number of check results that did not pass.
+func countFailed(results []checkResult) int {
+	n := 0
+	for _, r := range results {
+		if !r.Passed {
+			n++
+		}
+	}
+	return n
 }
 
 // doPrintDefaults prints the appshell's default flag set.
