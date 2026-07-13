@@ -25,6 +25,7 @@ import (
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 // MarkdownRenderer renders markdown source to a sanitized
@@ -63,6 +64,15 @@ type MarkdownRenderer struct {
 // is a pointer-type wrapper that maintains internal state,
 // so reusing it is correct (and faster than re-allocating
 // per call).
+//
+// Issue #525: enable the GFM extension so tables, autolinks,
+// strikethrough, and task lists render in the article preview /
+// detail surface (the slice-3.6 editor + /articles/{id} detail
+// + the static archive article page). The custom bluemonday
+// policy below already allow-lists every tag GFM emits
+// (table/thead/tbody/tr/th/td/a/del/hr) plus the attribute
+// rules GFM uses (href on <a>), so no sanitizer changes
+// are needed alongside the extension toggle.
 func NewMarkdownRenderer() *MarkdownRenderer {
 	p := bluemonday.NewPolicy()
 	// Allow goldmark's safe output tags.
@@ -75,8 +85,15 @@ func NewMarkdownRenderer() *MarkdownRenderer {
 	p.AllowAttrs("href").OnElements("a")
 	// Allow src + alt on images (markdown ![alt](src) syntax).
 	p.AllowAttrs("src", "alt").OnElements("img")
+	// Allow task list checkbox rendering. GFM task list
+	// output uses <input type="checkbox" disabled> with no
+	// other attributes; allow type + disabled + checked so
+	// the checkbox state survives sanitization.
+	p.AllowAttrs("type", "disabled", "checked").OnElements("input")
 	return &MarkdownRenderer{
-		md:       goldmark.New(),
+		md: goldmark.New(
+			goldmark.WithExtensions(extension.GFM),
+		),
 		sanitizer: p,
 	}
 }
