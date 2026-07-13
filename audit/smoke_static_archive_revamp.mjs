@@ -528,6 +528,42 @@ test('slice10-01 #/print/{displayId} route renders renderPrintableReport from bu
   } else {
     assert.fail('printRenderLink function not found in HTML (issue #509 regression)');
   }
+
+  // Issue #541 — live detail page Source Record link helper.
+  // Slice from `function renderRecordDetailsLink` up to (but not
+  // including) the next `\n    function ` so the matcher spans
+  // the whole function body — the inner `return ''; }` makes the
+  // naive `/...?\n\s*\}/` non-greedy regex stop early.
+  const detailsStart = html.indexOf('function renderRecordDetailsLink');
+  let renderDetailsLink = null;
+  if (detailsStart >= 0) {
+    const slice = html.slice(detailsStart);
+    const nextFn = slice.search(/\n {4}function /);
+    if (nextFn > 0) {
+      renderDetailsLink = [slice.slice(0, nextFn)];
+    }
+  }
+  if (renderDetailsLink) {
+    assert.ok(
+      />Click to view<\/a>/.test(renderDetailsLink[0]),
+      'renderRecordDetailsLink anchor text must be "Click to view" with the URL hidden (issue #541)',
+    );
+    assert.ok(
+      /target="_blank"\s+rel="noreferrer noopener"/.test(renderDetailsLink[0]),
+      'renderRecordDetailsLink must open in a new tab with rel="noreferrer noopener" (issue #541)',
+    );
+    assert.ok(
+      /https\?:|http:\/\//.test(renderDetailsLink[0]),
+      'renderRecordDetailsLink must scheme-gate to http(s) only (issue #541)',
+    );
+    assert.ok(
+      /scheme !== ['"]http['"]/.test(renderDetailsLink[0]) &&
+        /scheme !== ['"]https['"]/.test(renderDetailsLink[0]),
+      'renderRecordDetailsLink must reject non-http(s) schemes (issue #541)',
+    );
+  } else {
+    assert.fail('renderRecordDetailsLink function not found in static archive HTML (issue #541 regression)');
+  }
 });
 
 // --- Slice 11: Export Report button styling (issue #511) ---

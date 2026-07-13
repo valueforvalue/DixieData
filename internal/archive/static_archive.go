@@ -1744,6 +1744,53 @@ function escapeHtml(value) {
       }).replace(/\n/g, '<br>');
     }
 
+    // renderRecordDetailsLink mirrors the Go
+    // internal/templates/record_details_support.go helper for the
+    // static archive live detail page (issue #541). When a Source
+    // Record's 'details' field is a single http(s) URL, the link
+    // collapses to a "Click to view" anchor with the URL hidden.
+    // Freeform text passes through unchanged. Trailing punctuation
+    // detaches so "https://example.com." renders the period after
+    // the anchor.
+    //
+    // Mirrors:
+    //   - templates/common/record_card.typ::render-link (PDF)
+    //   - internal/templates/record_details_support.go (Wails)
+    //   - printRenderLink (printable export, this file, ~line 1983)
+    //
+    // Anchor text is fixed: "Click to view".
+    function renderRecordDetailsLink(text) {
+      var raw = String(text || '');
+      if (!raw.trim()) return '';
+      var match = /^\s*(https?:\/\/[^\s<]+)\s*$/.exec(raw);
+      if (!match) {
+        // Freeform text — pass through escaped; do NOT linkify
+        // (mid-paragraph URLs stay visible-anchored via renderLinkedText
+        // in the printable export path; the live detail page renders
+        // raw freeform here per scope decision).
+        return escapeHtml(raw);
+      }
+      var captured = String(match[1] || '').trim();
+      if (captured.length === 0 || captured.length > 4000) {
+        return escapeHtml(raw);
+      }
+      // Detect scheme strictly: only http(s) accepted.
+      var schemeEnd = captured.indexOf('://');
+      var scheme = captured.substring(0, schemeEnd);
+      if (scheme !== 'http' && scheme !== 'https') {
+        return escapeHtml(raw);
+      }
+      // Strip at most one trailing punctuation char.
+      var trailing = '.,;:!?)]}';
+      var last = captured.charAt(captured.length - 1);
+      var suffix = '';
+      if (trailing.indexOf(last) >= 0) {
+        captured = captured.substring(0, captured.length - 1);
+        suffix = last;
+      }
+      return '<a class="record-link" href="' + escapeHtml(captured) + '" target="_blank" rel="noreferrer noopener">Click to view</a>' + escapeHtml(suffix);
+    }
+
     function relatedFamilyRecords(record, allRecords) {
       return Array.isArray(allRecords) ? allRecords.filter(function(item) {
         return item.displayId !== record.displayId && item.spouseDisplayId && item.spouseDisplayId === record.displayId;
@@ -1848,7 +1895,7 @@ function escapeHtml(value) {
           '<section class="detail-section"><h4>Records</h4><ul>' +
             record.records.map(function(item) {
               const app = item.appId ? ' (' + escapeHtml(item.appId) + ')' : '';
-              const detailsText = item.details ? '<br>' + renderLinkedText(item.details) : '';
+              const detailsText = item.details ? '<br>' + renderRecordDetailsLink(item.details) : '';
               return '<li><strong>' + escapeHtml(item.recordType || 'Record') + '</strong>' + app + detailsText + '</li>';
             }).join('') +
           '</ul></section>'
