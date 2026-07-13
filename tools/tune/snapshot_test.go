@@ -300,6 +300,27 @@ func TestTuneRecordLandscapeSnapshot(t *testing.T) {
 		t.Fatalf("rendered file is not a PDF (got %d bytes, header %q)", len(got), headerFor(got))
 	}
 
+	// Determinism self-check (issue #517 slice A4):
+	// re-invoke tune with identical args to a second temp
+	// path and assert byte-equality. Catches a non-determinism
+	// regression in the CLI surface (time.Now() leak through
+	// a bridge helper, map-iteration order in a typst data
+	// projection, etc.) even when the golden happens to match.
+	// A failure here is a regression — do NOT just regen the
+	// golden, fix the determinism bug first.
+	detPath := filepath.Join(tmpDir, "soldier1-landscape-det.pdf")
+	if err := runTuneInvoke(t, dataDir, typstPath, detPath); err != nil {
+		t.Fatalf("tune determinism re-invoke failed: %v", err)
+	}
+	gotDet, err := os.ReadFile(detPath)
+	if err != nil {
+		t.Fatalf("read determinism pdf: %v", err)
+	}
+	if !bytes.Equal(got, gotDet) {
+		t.Fatalf("determinism self-check failed for %s: two consecutive tune invocations differ (first=%d bytes, second=%d bytes). Non-determinism in the CLI surface. Do NOT regen the golden — fix the determinism bug first.",
+			t.Name(), len(got), len(gotDet))
+	}
+
 	goldenPath := filepath.Join(testdataDir(), "soldier1-landscape.pdf")
 	if os.Getenv("UPDATE_SNAPSHOTS") == "1" {
 		if err := os.MkdirAll(testdataDir(), 0o755); err != nil {
@@ -355,9 +376,9 @@ func TestTuneListRecordsKindFilter(t *testing.T) {
 		wantTotal  string
 		wantErrSub string // substring expected in the `total:` line; "" = no check
 	}{
-		{"default is soldier", "", "total: 10 records", ""},
-		{"--kind soldier", "soldier", "total: 10 records", ""},
-		{"--kind article (empty archive)", "article", "total: 0 articles", ""},
+		{"default is soldier", "", "total: 12 records", ""},
+		{"--kind soldier", "soldier", "total: 12 records", ""},
+		{"--kind article (non-empty after #447)", "article", "total: 2 articles", ""},
 		{"--kind bad value", "bogus", "", `--kind must be soldier or article`},
 	}
 
