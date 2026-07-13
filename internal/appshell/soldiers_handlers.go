@@ -189,6 +189,24 @@ func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseBrowseRequest(values url.Values) records.BrowseRequest {
+	// Issue #520: tags is a multi-valued form key (one entry per
+	// checked pill in the Browse filter UI). values.Get returns
+	// only the first value, so a 2-pill submit was silently
+	// collapsing to a 1-tag filter and the AND-logic SQL in
+	// internal/records/browse.go:151-159 was never reached with
+	// more than one tag. Read every values["tags"] entry and
+	// also split each on commas so the URL-deep-link form
+	// (?tags=foo,bar) keeps working — the Browse filter UI
+	// emits one entry per pill, but the URL form is still
+	// canonical for shareable links.
+	tags := make([]string, 0)
+	for _, raw := range values["tags"] {
+		for _, piece := range strings.Split(raw, ",") {
+			if cleaned := strings.TrimSpace(piece); cleaned != "" {
+				tags = append(tags, cleaned)
+			}
+		}
+	}
 	return records.BrowseRequest{
 		Page:                  parsePage(values.Get("page")),
 		PageSize:              parsePageSize(values.Get("page_size"), 100),
@@ -200,25 +218,8 @@ func parseBrowseRequest(values url.Values) records.BrowseRequest {
 		PensionState:          values.Get("pension_state"),
 		ReviewStatus:          values.Get("review_status"),
 		ConfederateHomeStatus: values.Get("confederate_home_status"),
-		Tags:                  parseTagFilter(values.Get("tags")),
+		Tags:                  tags,
 	}
-}
-
-// parseTagFilter splits a comma-separated tag list (the canonical
-// ?tags=vc-shiloh,unit-4th-al URL form) into a string slice. Empty
-// strings and blank-only entries are dropped; ordering is preserved
-// so deep links round-trip the original display order.
-func parseTagFilter(raw string) []string {
-	parts := strings.Split(raw, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		cleaned := strings.TrimSpace(p)
-		if cleaned == "" {
-			continue
-		}
-		out = append(out, cleaned)
-	}
-	return out
 }
 
 func parsePageSize(raw string, fallback int) int {
