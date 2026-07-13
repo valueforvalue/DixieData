@@ -32,7 +32,7 @@ func newStressDB(t *testing.T) (*db.DB, string) {
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
 	}
-	if _, err := database.ConfigureUserIdentity("Stress", "Harness", "User", 1900); err != nil {
+	if _, err := database.ConfigureUserIdentity("Stress", "Harness", "User", 1900, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	return database, dataDir
@@ -74,7 +74,7 @@ func GenerateGarbageDatabase(dataDir string, records int) (GarbageDatabaseSummar
 		return GarbageDatabaseSummary{}, err
 	}
 	defer database.Close()
-	if _, err := database.ConfigureUserIdentity("Garbage", "Stress", "User", 1900); err != nil {
+	if _, err := database.ConfigureUserIdentity("Garbage", "Stress", "User", 1900, db.IdentityForceOverwrite()); err != nil {
 		return GarbageDatabaseSummary{}, err
 	}
 

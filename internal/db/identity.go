@@ -3,12 +3,29 @@ package db
 import (
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
+
+// ErrIdentityAlreadyComplete is returned by ConfigureUserIdentity
+// when the system_config row user_identity_complete == "1" and
+// the caller did not opt into the explicit-overwrite escape hatch
+// via IdentityForceOverwrite. Issue #495: defense-in-depth against
+// any code path (test helper, future restore, misrouted handler)
+// silently overwriting an already-configured identity — every
+// overwrite changes the node_prefix namespace, which renames every
+// existing soldier's display_id under the old prefix.
+//
+// Callers that legitimately need to write the identity a second
+// time (backup restore on top of a freshly imported archive, the
+// gold-master fixture, the tests/stress helpers) must pass
+// IdentityForceOverwrite explicitly so the overwrite is visible in
+// the call site.
+var ErrIdentityAlreadyComplete = errors.New("identity already configured; pass IdentityForceOverwrite to overwrite")
 
 // SystemConfig returns the system-wide config row (one row per Local Archive).
 func (d *DB) SystemConfig(key string) (string, error) {
@@ -108,8 +125,42 @@ func (d *DB) IdentitySetupRequired() (bool, error) {
 	return soldierCount == 0, nil
 }
 
-// ConfigureUserIdentity persists the per-user identity chosen during setup. Called once at first launch; cannot be changed without an explicit reset.
-func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birthYear int) (models.UserIdentity, error) {
+// IdentityOption configures ConfigureUserIdentity. Variadic so the
+// 100+ existing call sites stay byte-compatible; only the rare
+// force-overwrite case opts in.
+type IdentityOption func(*identityConfig)
+
+type identityConfig struct {
+	forceOverwrite bool
+}
+
+// IdentityForceOverwrite opts into overwriting an already-complete
+// identity. Use sparingly — every overwrite changes the node_prefix
+// namespace, which renames existing soldiers' display_ids under the
+// old prefix. Legitimate callers: backup restore on top of a
+// freshly-imported archive (internal/archive/backup_service.go),
+// the gold-master fixture (cmd/gold-master), tests/stress helpers,
+// and configureTestIdentity (internal/appshell/app_test.go).
+//
+// All other call sites — including the /setup POST handler — must
+// omit this option so the existing !a.setupRequired handler-level
+// guard gets a defense-in-depth companion in the data layer.
+func IdentityForceOverwrite() IdentityOption {
+	return func(c *identityConfig) { c.forceOverwrite = true }
+}
+
+// ConfigureUserIdentity persists the per-user identity chosen
+// during setup. Issue #495: refuses to write if the identity has
+// already been configured (user_identity_complete == "1") unless
+// the caller opts in via IdentityForceOverwrite. The previous
+// implementation accepted any caller and silently overwrote all
+// 7 system_config rows, which is what produced the THU00 leak into
+// the live .dixiedata on 2026-07-12.
+func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birthYear int, opts ...IdentityOption) (models.UserIdentity, error) {
+	cfg := identityConfig{}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	firstName = strings.TrimSpace(firstName)
 	middleName = strings.TrimSpace(middleName)
 	lastName = strings.TrimSpace(lastName)
@@ -122,6 +173,20 @@ func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birth
 		return models.UserIdentity{}, err
 	}
 	defer tx.Rollback()
+
+	// Issue #495 guard. Runs INSIDE the transaction so the read
+	// is consistent with the writes that follow (no TOCTOU window
+	// if a concurrent call slips in between the check and the
+	// insert). SQLite serializes transactions so this is safe.
+	if !cfg.forceOverwrite {
+		var complete string
+		if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = ?`, "user_identity_complete").Scan(&complete); err != nil && err != sql.ErrNoRows {
+			return models.UserIdentity{}, fmt.Errorf("read identity complete flag: %w", err)
+		}
+		if strings.TrimSpace(complete) == "1" {
+			return models.UserIdentity{}, ErrIdentityAlreadyComplete
+		}
+	}
 
 	fullName := strings.TrimSpace(strings.Join([]string{firstName, middleName, lastName}, " "))
 	for key, value := range map[string]string{

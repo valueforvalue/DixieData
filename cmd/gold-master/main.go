@@ -106,7 +106,7 @@ func runOutputAudit(reportDir string) (report, error) {
 		return report{}, err
 	}
 	defer debug.DeferCloseLog(database, "runOutputAudit.database")
-	if _, err := database.ConfigureUserIdentity("Gold", "Master", "Harness", 1890); err != nil {
+	if _, err := database.ConfigureUserIdentity("Gold", "Master", "Harness", 1890, db.IdentityForceOverwrite()); err != nil {
 		return report{}, err
 	}
 
@@ -217,7 +217,7 @@ func runOutputAudit(reportDir string) (report, error) {
 		return report{}, err
 	}
 	defer debug.DeferCloseLog(targetDB, "runOutputAudit.targetDB")
-	if _, err := targetDB.ConfigureUserIdentity("Local", "Merge", "Owner", 1911); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("Local", "Merge", "Owner", 1911, db.IdentityForceOverwrite()); err != nil {
 		return report{}, err
 	}
 	targetSoldierSvc := records.NewSoldierService(targetDB)
@@ -306,7 +306,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 		return report{}, err
 	}
 	defer debug.DeferCloseLog(database, "runBenchmark.database")
-	if _, err := database.ConfigureUserIdentity("Scale", "Stress", "Harness", 1890); err != nil {
+	if _, err := database.ConfigureUserIdentity("Scale", "Stress", "Harness", 1890, db.IdentityForceOverwrite()); err != nil {
 		return report{}, err
 	}
 

@@ -45,7 +45,7 @@ func TestBackupService_ImportSeededArchiveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("db.Open fresh: %v", err)
 	}
-	if _, err := sourceDB.ConfigureUserIdentity("Test", "M", "User", 1990); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Test", "M", "User", 1990, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	sourceSoldierSvc := NewSoldierService(sourceDB)

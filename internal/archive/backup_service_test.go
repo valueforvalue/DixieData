@@ -23,7 +23,7 @@ func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	backupSvc := NewBackupService(d, soldierSvc)
-	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 
@@ -109,7 +109,7 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	backupSvc := NewBackupService(d, soldierSvc)
-	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	if err := d.SetSystemConfig("node_id", "source-node-1"); err != nil {
@@ -449,7 +449,7 @@ func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *tes
 	}
 	sourceSvc := NewSoldierService(sourceDB)
 	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	if err := sourceDB.SetSystemConfig("node_prefix", "TDM65"); err != nil {
@@ -470,7 +470,7 @@ func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *tes
 	localDB := newTestDB(t)
 	localSvc := NewSoldierService(localDB)
 	localBackupSvc := NewBackupService(localDB, localSvc)
-	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
@@ -513,7 +513,7 @@ func TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdent
 	localDB := newTestDB(t)
 	localSvc := NewSoldierService(localDB)
 	localBackupSvc := NewBackupService(localDB, localSvc)
-	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
@@ -607,7 +607,7 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 	sourceDB := newTestDB(t)
 	sourceSvc := NewSoldierService(sourceDB)
 	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
-	if _, err := sourceDB.ConfigureUserIdentity("Terry", "Dale", "Morris", 1965); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Terry", "Dale", "Morris", 1965, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	created, err := sourceSvc.Create(models.Soldier{
@@ -671,7 +671,7 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 	localDB := newTestDB(t)
 	localSvc := NewSoldierService(localDB)
 	localBackupSvc := NewBackupService(localDB, localSvc)
-	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
@@ -785,7 +785,7 @@ func TestBackupService_ExportSharedWithEvents(t *testing.T) {
 	soldierSvc := NewSoldierService(d)
 	eventSvc := records.NewEventService(soldierSvc)
 	backupSvc := NewBackupService(d, soldierSvc)
-	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	if err := d.SetSystemConfig("node_id", "shared-events-source"); err != nil {
@@ -902,7 +902,7 @@ func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
 	sourceSvc := NewSoldierService(sourceDB)
 	sourceEvents := records.NewEventService(sourceSvc)
 	sourceBackup := NewBackupService(sourceDB, sourceSvc)
-	if _, err := sourceDB.ConfigureUserIdentity("Event", "Source", "User", 1900); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Event", "Source", "User", 1900, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	if err := sourceDB.SetSystemConfig("node_id", "events-source-node"); err != nil {
@@ -943,7 +943,7 @@ func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
 	defer targetDB.Close()
 	targetSvc := NewSoldierService(targetDB)
 	targetBackup := NewBackupService(targetDB, targetSvc)
-	if _, err := targetDB.ConfigureUserIdentity("Imported", "Recipient", "User", 1901); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("Imported", "Recipient", "User", 1901, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 
@@ -1105,7 +1105,7 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1117,7 +1117,7 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 		t.Fatalf("db.Open source: %v", err)
 	}
 	defer sourceDB.Close()
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	sourceSvc := NewSoldierService(sourceDB)
@@ -1169,7 +1169,7 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 	defer targetDB.Close()
 	targetSvc := NewSoldierService(targetDB)
 	backupSvc := NewBackupService(targetDB, targetSvc)
-	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 
@@ -1193,10 +1193,10 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 	defer sourceDB.Close()
 	sourceSvc := NewSoldierService(sourceDB)
 	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 
@@ -1375,7 +1375,7 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1403,7 +1403,7 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 		t.Fatalf("db.Open source: %v", err)
 	}
 	defer sourceDB.Close()
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	sourceSvc := NewSoldierService(sourceDB)
@@ -1514,7 +1514,7 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1541,7 +1541,7 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 		t.Fatalf("db.Open source: %v", err)
 	}
 	defer sourceDB.Close()
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	sourceSvc := NewSoldierService(sourceDB)
@@ -1617,7 +1617,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1644,7 +1644,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 		t.Fatalf("db.Open source: %v", err)
 	}
 	defer sourceDB.Close()
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	if err := sourceDB.SetSystemConfig("node_id", "satellite-a"); err != nil {
@@ -1728,7 +1728,7 @@ func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T)
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1755,7 +1755,7 @@ func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T)
 			t.Fatalf("db.Open %s: %v", nodeID, err)
 		}
 		defer sourceDB.Close()
-		if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 			t.Fatalf("ConfigureUserIdentity %s: %v", nodeID, err)
 		}
 		if err := sourceDB.SetSystemConfig("node_id", nodeID); err != nil {
@@ -1835,7 +1835,7 @@ func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testi
 		t.Fatalf("db.Open target: %v", err)
 	}
 	defer targetDB.Close()
-	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 	targetSvc := NewSoldierService(targetDB)
@@ -1867,7 +1867,7 @@ func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testi
 		t.Fatalf("db.Open source: %v", err)
 	}
 	defer sourceDB.Close()
-	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
 	sourceSvc := NewSoldierService(sourceDB)
@@ -2527,7 +2527,7 @@ func TestNormalizeManifestBackwardsCompat(t *testing.T) {
 func TestBackupService_ExportShared_IncludesArticles(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
-	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	backupSvc := NewBackupService(d, soldierSvc)
@@ -2600,7 +2600,7 @@ func TestBackupService_ExportShared_IncludesArticles(t *testing.T) {
 func TestBackupService_ExportBackup_IncludesArticlesCount(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
-	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838, db.IdentityForceOverwrite()); err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 	backupSvc := NewBackupService(d, soldierSvc)
