@@ -251,7 +251,13 @@ try {
       const empty = document.querySelector('[data-article-refs-empty]');
       const rows = document.querySelectorAll('[data-article-refs-row]');
       const unlink = document.querySelector('[data-article-refs-unlink]');
-      const addCta = document.querySelector('[data-article-refs-add]');
+      // Issue #470 cluster 1: the "Add Person Record" CTA inside
+      // the Refs panel is the PersonRecordPickerTrigger component
+      // (components/person_record_picker.templ:35-49), which uses
+      // data-person-record-picker-open. There is no
+      // data-article-refs-add attr; that selector drifted when
+      // the picker trigger was extracted into a component.
+      const addCta = document.querySelector('[data-person-record-picker-open]');
       return {
         panelExists: panel !== null,
         emptyRenders: empty !== null || rows.length > 0,
@@ -326,7 +332,16 @@ try {
     });
     record('snapshot-via-api', snapResp.ok, { status: snapResp.status });
 
-    await page.goto(BASE + '/articles/' + articleId + '/revisions');
+    // Issue #470 cluster 1: the /articles/{id}/revisions subroute
+    // is the htmx-driven fragment endpoint that returns the inner
+    // <ul data-article-revisions-list> for lazy load. The Revisions
+    // TAB SECTION (data-article-revisions-tab + the rows + per-row
+    // restore/delete buttons) only renders on the detail page
+    // (/articles/{id}) via ArticleRevisionsTab in
+    // article_detail.templ:141. Navigate to the detail page so we
+    // can assert the tab shape the smoke originally intended to
+    // pin.
+    await page.goto(BASE + '/articles/' + articleId);
     await wait(800);
     const revState = await page.evaluate(() => {
       const tab = document.querySelector('[data-article-revisions-tab]');
@@ -365,13 +380,18 @@ try {
     const previewModal = document.querySelector('[data-article-preview-modal]');
     const previewTrigger = document.querySelector('[data-article-preview-open]');
     const previewClose = document.querySelector('[data-article-preview-close]');
-    // Issue #375 regression net: the Back button must use
-    // data-history-back (history navigation) rather than
-    // data-dixie-submit + data-action (which coerces GET to
-    // POST and 405s against the list route).
-    const backBtn = Array.from(document.querySelectorAll('button')).find(
-      (b) => (b.textContent || '').includes('Back')
-    );
+    // Issue #470 cluster 1: the Back button on the article form
+    // is rendered by ArticleArticleForm (article_new.templ:33-40)
+    // with type="button" + data-history-back + data-fallback-href.
+    // The JS smart-back helper applySmartBackLabels rewrites the
+    // visible label from "← Back" to "← Back to <fallback label>"
+    // (the rendered label is now "← Back to Articles"), so a
+    // textContent.includes('Back') search still works here, but
+    // is brittle to future label changes. Select by the
+    // data-history-back attr instead so the regression net
+    // survives label rewrites. Scope to the page header so we
+    // don't pick up the floating-nav's history-back button.
+    const backBtn = document.querySelector('button[data-history-back]');
     return {
       draftKeyExists: draftKey !== null,
       persistenceExists: persistence !== null,
@@ -380,7 +400,7 @@ try {
       previewModalInitiallyHidden: previewModal ? previewModal.classList.contains('hidden') : false,
       previewTriggerExists: previewTrigger !== null,
       previewCloseExists: previewClose !== null,
-      backBtnExists: backBtn !== undefined,
+      backBtnExists: backBtn !== null,
       backBtnUsesHistoryBack: backBtn?.hasAttribute('data-history-back') ?? false,
       backBtnHasDispatcherAttrs: backBtn?.hasAttribute('data-dixie-submit') ?? false,
       backBtnHasDataAction: backBtn?.hasAttribute('data-action') ?? false,
@@ -487,23 +507,32 @@ try {
   // ────────────────────────────────────────────────────────────
   if (articleId) {
     console.log('\nStep 7: Cited-in panel on Person Record detail');
-    // Resolve the Person Record we attached earlier (DXD-00091).
-    const soldierList = await fetch(BASE + '/soldiers/search?search_term=DXD-00091');
-    // Simpler: hit the article refs panel + parse the display id.
-    const articleRefsResp = await fetch(BASE + '/articles/' + articleId + '/refs', {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: 'display_id=DXD-00091',
-    });
-    record('attach-person-for-cited-in', articleRefsResp.ok, { status: articleRefsResp.status });
-    // Locate the person row id via the API.
-    const soldierSearch = await fetch(BASE + '/soldiers?search_term=DXD-00091');
-    // Use a stable lookup: hit the soldier list page + parse links.
-    const listResp = await fetch(BASE + '/soldiers');
-    const listBody = await listResp.text();
-    const personIDMatch = listBody.match(/\/soldiers\/(\d+)/);
+    // Issue #470 cluster 2: the probe previously hardcoded
+    // `display_id=DXD-00091`, which silently broke whenever the
+    // scratch seed had fewer than 91 soldiers (the default seed
+    // has 5). Derive the display_id from the first Person Record
+    // the seeded DB actually exposes so the probe is robust to
+    // seed count. The /soldiers landing page is paginated +
+    // filtered; /soldiers/search?q=a is the JSON-style search
+    // endpoint that returns matching rows with stable hrefs.
+    const searchResp = await fetch(BASE + '/soldiers/search?q=a');
+    const searchBody = await searchResp.text();
+    const displayIDMatch = searchBody.match(/DXD-\d+/);
+    const displayID = displayIDMatch ? displayIDMatch[0] : null;
+    const personIDMatch = searchBody.match(/\/soldiers\/(\d+)/);
     const personID = personIDMatch ? personIDMatch[1] : null;
-    record('locate-person-id', personID !== null, { personID });
+    record('locate-person-id', personID !== null && displayID !== null, { personID, displayID });
+
+    if (displayID) {
+      const articleRefsResp = await fetch(BASE + '/articles/' + articleId + '/refs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'display_id=' + encodeURIComponent(displayID),
+      });
+      record('attach-person-for-cited-in', articleRefsResp.ok, { status: articleRefsResp.status, displayID });
+    } else {
+      record('attach-person-for-cited-in', false, { reason: 'no display_id found in /soldiers' });
+    }
 
     if (personID) {
       const soldierDetail = await fetch(BASE + '/soldiers/' + personID);
