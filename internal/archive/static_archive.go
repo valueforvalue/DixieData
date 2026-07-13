@@ -2302,8 +2302,18 @@ function escapeHtml(value) {
       // document body so Cmd+P / Ctrl+P produces a clean PDF.
       var printMatch = path.match(/^\/print\/(.+)$/);
       if (printMatch) return { kind: 'print', id: decodeURIComponent(printMatch[1]) };
-      // Page routes: #/calendar, #/browse?..., #/insights, #/persons, #/events, #/articles.
-      var pageMatch = path.match(/^\/([a-z]+)(\?.*)?$/);
+      // Page routes: #/calendar, #/browse?..., #/insights, #/persons,
+      // #/events, #/articles, #/calendar-items.
+      //
+      // Issue #521: the segment regex previously was /^\/([a-z]+)/,
+      // which silently swallowed 'calendar-items' (the dash broke [a-z]+).
+      // routeFromHash then fell through to the Calendar fallback and the
+      // Calendar landing page kept rendering as if nothing happened. The
+      // regex now accepts dashes so route names like 'calendar-items'
+      // resolve. The allowlist below is still the gate for which names
+      // are *valid* pages -- widening the regex here only makes the
+      // allowlist effective instead of a near-dead branch.
+      var pageMatch = path.match(/^\/([a-z-]+)(\?.*)?$/);
       if (pageMatch) {
         var name = pageMatch[1];
         var query = (pageMatch[2] || '').replace(/^\?/, '');

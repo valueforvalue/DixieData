@@ -196,6 +196,29 @@ test('slice2-5-02 Calendar items page renders with route #/calendar-items', () =
   );
 });
 
+// Issue #521 regression net (RED-first). The routeFromHash() page-route
+// regex previously was `^\/([a-z]+)(\?.*)?$`, which silently fell
+// through for 'calendar-items' (the dash broke [a-z]+); routeFromHash
+// then returned the Calendar fallback and the click did nothing.
+// The probe below runs the actual regex against a real input and
+// asserts it captures the dashed name. If a future refactor reverts
+// the regex to `[a-z]+`, this assertion fires with a clear message.
+test('slice2-5-02b routeFromHash regex accepts dashed page names (issue #521)', () => {
+  // Extract the routeFromHash source and run the page-route regex
+  // in isolation. We don't need the full function — only the regex
+  // character class — so we can assert the contract without
+  // executing the IIFE.
+  const fnMatch = html.match(/function routeFromHash[\s\S]*?\n      var pageMatch = path\.match\((\/[^\n]+\/)\)/);
+  assert.ok(fnMatch, 'static_archive.go must declare routeFromHash with a page-route regex literal');
+  const regexLiteral = fnMatch[1];
+  // Eval the regex literal in a sandbox so /calendar-items tests
+  // the live character class, not a hardcoded answer.
+  const regex = new RegExp(regexLiteral.slice(1, -1));
+  const captured = '/calendar-items'.match(regex);
+  assert.ok(captured, `${regexLiteral} must match '/calendar-items' (issue #521: dashed page names previously fell through to Calendar fallback)`);
+  assert.strictEqual(captured[1], 'calendar-items', 'regex must capture the full dashed page name');
+});
+
 // --- Slice 3: Browse page (filters + sort + pagination) ---
 
 test('slice3-01 Browse renders 5 filter dropdowns per issue #499', () => {
