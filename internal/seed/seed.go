@@ -69,6 +69,31 @@ var (
 		"Letters Home: A Soldier's Correspondence",
 		"After the Surrender: Reconstruction in the South",
 		"The Role of Cavalry in the Western Theater",
+		"Walking the Line at Cemetery Ridge",
+		"The Quartermaster's Ledger: Supplying a Regiment",
+		"Women of the Confederacy: Voices from Home",
+		"The Surgeons in the Field: Medicine Under Fire",
+		"From Farm to Field: The Recruit's Journey",
+		"The Cavalry Raid at Staunton River Bridge",
+		"Blockade Running on the Atlantic Coast",
+		"The Siege of Petersburg: A Soldier's Account",
+		"Through the Wilderness: A Foot Cavalry March",
+		"Desertion and Discipline in the Ranks",
+		"The Freedmen's Bureau and the Aftermath",
+		"Sharpshooters and Skirmishers: The Forgotten War",
+		"Chaplains in Camp: Faith and Fatigue",
+		"The Confederate Navy on the Inland Rivers",
+		"Burial Details and the Dead of Winter",
+		"Music and Morale: The Regimental Bands",
+		"The Vicksburg Campaign: Crossing the Mississippi",
+		"Railroads and Logistics of the Western Theater",
+		"Union Prisoners at Andersonville: Survivor Testimony",
+		"The Surrender at Appomattox: An Eyewitness",
+		"Reconstruction-Era Veterans' Associations",
+		"Mapping the Battle: Cartography in the Field",
+		"Conscription and Class: The 1863 Draft Riots",
+		"Civilians in the Crossfire: The Burning of Chambersburg",
+		"Memory and Monuments: Early Memorial Campaigns",
 	}
 	articleBodies = []string{
 		"In the spring of 1861, the gathering of forces along Bull Run marked the beginning of a long and bitter conflict. Soldiers from both sides arrived with high spirits and little understanding of what lay ahead.",
@@ -76,18 +101,70 @@ var (
 		"My dearest Martha, I take up my pen this evening to tell you that I am well, though the march has been hard. We crossed the river at dawn and made camp in a pine grove.",
 		"The years following the war brought hardship and hope in equal measure. Communities rebuilt, families reunited, and the long process of healing began.",
 		"Mounted units played a decisive role in reconnaissance, screening, and raiding operations throughout the western campaigns. Their mobility often determined the outcome before infantry ever engaged.",
+		"The peach orchard at the southern end of the line had been trampled by artillery the night before, and the smell of bruised fruit and powder hung over the field until midday. Our company held the fence line until the third wave broke against us.",
+		"The quartermaster's ledger told the story of the war in a different voice: bolts of cloth, barrels of salt pork, tin cups issued and replaced, shoes worn out and returned for credit against the next allotment.",
+		"Mothers, wives, and sisters kept the home fires burning and the correspondence flowing. Their letters, diaries, and petitions form a parallel record of the war that historians are only beginning to mine.",
+		"The field hospital at Savage Station was a long tent with a packed-earth floor and straw pallets laid in rows. The surgeons worked through the night, and the orderlies kept the lanterns trimmed until their arms ached.",
+		"He came off the farm in late summer with a homespun jacket, a musket he had never fired, and a letter from his mother sewn into the lining of his coat. He would not see the farm again for three years.",
+		"The raiders approached the bridge at first light under cover of a thin ground fog. The signal was a single pistol shot; the charge was up the embankment and into the wagon yard before the pickets could form a line.",
+		"The blockade runner slipped out of Wilmington on the tide, low in the water and dark-hulled, with a hold full of quinine and Enfield rifles. She made for Bermuda and did not see another Confederate port for two months.",
+		"The trenches before Petersburg grew deeper with every passing week. By the second winter the men lived underground, and the only sound above the line was the picket shovel and the occasional sharpshooter's bullet.",
+		"The march through the Wilderness was a kind of walking nightmare: the underbrush so thick the columns could not see one another, the smoke settling into the canopy and turning the sun to a dull red disc.",
+		"The company records show a curious thing: the men who deserted were not always the cowards. Some had families starving at home. Some had lost faith in the cause. Some simply could not endure the next march.",
+		"The Freedmen's Bureau arrived in the county seat the same week the last of the occupation troops departed. The agents worked out of a single borrowed room and tried to do the work of a government.",
+		"The sharpshooter was a lonely trade. He went out at first light, found a perch in a tree or a chimney, and waited. He did not know the name of the man he might shoot, and the man he might shoot did not know his.",
+		"The chaplain held services under a canvas awning rigged between two wagon tongues. The men sang hymns they remembered from childhood, and the sound carried across the camp and out into the dark.",
+		"The riverboats of the Confederate Navy were improvised, half-armored, and crewed by men who had learned their trade on the inland streams. They fought ironclads with pine logs and plowshares.",
+		"The burial detail worked by lantern light in the long freeze of January 1863. The ground was so hard the picks barely bit, and they sang a hymn to keep their hands moving.",
+		"The regimental band practiced in the early morning when the air was cool and the brass was in tune. They played for dress parade, for funerals, and for the long evenings in camp when the men needed something to listen to other than the wind.",
+		"The crossing at Bruinsburg caught the Union high command by surprise. The men waded ashore in the dark, their cartridge boxes held above their heads, and by dawn they had a foothold on the east bank.",
+		"The railroads of the Western Theater were the arteries of the campaign. A locomotive off the schedule by twelve hours could mean the difference between a supply train and an empty siding.",
+		"The survivor's account, written twenty years after the war, reads like a fever dream: the sun, the lice, the dead stacked along the fence, the single cup of water rationed at dawn.",
+		"He rode to the McLean house on a damp morning with a small escort and a single valise. The terms were read, the signatures affixed, and the war ended in a parlor off the main road.",
+		"The veterans' associations formed in almost every county in the decade after Appomattox. They held annual reunions, kept the muster rolls, and erected the monuments that still stand in courthouse squares.",
+		"The map the colonel carried was hand-drawn by a civilian engineer who had never seen a battle. The lines were elegant. The terrain was wrong. The colonel used it anyway because it was the only map he had.",
+		"The draft lottery was held in the county courthouse on a Saturday in July, and the crowd outside grew restless as the names were drawn. By nightfall the city was in flames and the conscription office was a smoking ruin.",
+		"The civilians of Chambersburg watched the column approach from the west and knew there was no help coming. They gathered what they could carry and fled before the torches were lit.",
+		"The memorial committees formed within a year of the surrender. They raised money by subscription, selected the sites, and contracted the stonecutters. The first monuments were standing before the ink was dry on the treaties.",
 	}
+	// Issue #447 vocabulary. Broad military career taxonomy so the
+	// /tags page exercises a meaningful filter surface. Used as
+	// both the tag inventory and the source for random tag
+	// assignment on Person Records (seedPersonRecordTags).
 	tagNames = []string{
 		"Wounded", "POW", "Deserter", "Promoted", "Transferred",
 		"KIA", "Died of Disease", "Paroled", "Enlisted", "Conscript",
+		"Discharged", "Re-enlisted", "Missing in Action", "Captured",
+		"Hospitalized", "Furloughed", "AWOL", "Court-Martialed",
+		"Disabled", "Retired", "Color Bearer", "Sharpshooter",
+		"Scout", "Courier", "Recruit", "Veteran", "Volunteer",
+		"Substitute", "Mustered Out", "Detailed to Provost", "Survived the War",
 	}
 )
 
 type Options struct {
-	DataDir  string
+	DataDir string
 	Soldiers int
 	Seed     int64
 	Reset    bool
+	// SkipSoldiers suppresses the soldier creation loop entirely.
+	// Useful when the target Local Archive already has soldiers and
+	// the caller wants to seed only the post-v58 entity surfaces
+	// (Tags / Articles / Events). Pair with Tags/Articles/Events > 0
+	// to add a fixture surface without touching existing soldier rows.
+	SkipSoldiers bool
+	// Tags caps how many of the tagNames vocabulary to insert. 0
+	// (the default after normalizeOptions) means use the full
+	// vocabulary length. Negative values are clamped to 0.
+	Tags int
+	// Articles caps how many Article rows the seeder inserts.
+	// 0 (default) means use the existing 1-2 random selection.
+	// Negative values are clamped to 0.
+	Articles int
+	// Events caps how many Event Record rows the seeder inserts.
+	// 0 (default) means use the existing 20%-of-soldier count.
+	// Negative values are clamped to 0.
+	Events int
 }
 
 type Summary struct {
@@ -112,8 +189,8 @@ func Generate(options Options) (Summary, error) {
 	if strings.TrimSpace(options.DataDir) == "" {
 		return Summary{}, errors.New("data directory is required")
 	}
-	if options.Soldiers <= 0 {
-		return Summary{}, errors.New("soldier count must be greater than zero")
+	if !options.SkipSoldiers && options.Soldiers <= 0 {
+		return Summary{}, errors.New("soldier count must be greater than zero (or set SkipSoldiers)")
 	}
 
 	dbPath := filepath.Join(options.DataDir, "dixiedata.db")
@@ -151,8 +228,9 @@ func Generate(options Options) (Summary, error) {
 		ImageDir: imageDir,
 	}
 
-	for i := 0; i < options.Soldiers; i++ {
-		soldier := buildSoldier(rng, i)
+	if !options.SkipSoldiers {
+		for i := 0; i < options.Soldiers; i++ {
+			soldier := buildSoldier(rng, i)
 		// Issue #377 slice 2: stamp the import path so future
 		// "where did this row come from?" investigations can
 		// attribute the row to the bulk seed importer. The
@@ -191,6 +269,7 @@ func Generate(options Options) (Summary, error) {
 			summary.Images++
 		}
 	}
+}
 
 	// Issue #447: seed v58-v65 surface — Event Records, Articles,
 	// Tags, and their junction tables. Gated on schema version so
@@ -206,34 +285,44 @@ func Generate(options Options) (Summary, error) {
 			return Summary{}, fmt.Errorf("load soldier IDs: %w", err)
 		}
 
-		// Tags: create all tags first, then assign to soldiers.
-		tagIDs, err := seedTags(conn, rng, &summary)
+		// Tags: always seed the tag inventory. Person-record links
+		// require at least one soldier to attach to.
+		tagIDs, err := seedTags(conn, rng, options.Tags, &summary)
 		if err != nil {
 			return Summary{}, fmt.Errorf("seed tags: %w", err)
 		}
-		if err := seedPersonRecordTags(conn, rng, soldierIDs, tagIDs, &summary); err != nil {
-			return Summary{}, fmt.Errorf("seed person_record_tags: %w", err)
+		if len(soldierIDs) > 0 {
+			if err := seedPersonRecordTags(conn, rng, soldierIDs, tagIDs, &summary); err != nil {
+				return Summary{}, fmt.Errorf("seed person_record_tags: %w", err)
+			}
 		}
 
-		// Event Records + links + sources.
-		eventIDs, err := seedEvents(conn, rng, &summary)
-		if err != nil {
-			return Summary{}, fmt.Errorf("seed events: %w", err)
-		}
-		if err := seedEventPersonLinks(conn, rng, eventIDs, soldierIDs, &summary); err != nil {
-			return Summary{}, fmt.Errorf("seed event_person_links: %w", err)
-		}
-		if err := seedEventSources(conn, rng, eventIDs, &summary); err != nil {
-			return Summary{}, fmt.Errorf("seed event_sources: %w", err)
-		}
+		// Event Records, links, sources, and Articles require at
+		// least one soldier in the archive for the link tables to
+		// resolve. Skip the v58-v65 entity surface entirely when the
+		// archive has no soldiers — the caller can re-run after
+		// seeding soldiers if they want events/articles.
+		if len(soldierIDs) > 0 {
+			// Event Records + links + sources.
+			eventIDs, err := seedEvents(conn, rng, options.Events, &summary)
+			if err != nil {
+				return Summary{}, fmt.Errorf("seed events: %w", err)
+			}
+			if err := seedEventPersonLinks(conn, rng, eventIDs, soldierIDs, &summary); err != nil {
+				return Summary{}, fmt.Errorf("seed event_person_links: %w", err)
+			}
+			if err := seedEventSources(conn, rng, eventIDs, &summary); err != nil {
+				return Summary{}, fmt.Errorf("seed event_sources: %w", err)
+			}
 
-		// Articles + refs.
-		articleIDs, err := seedArticles(conn, rng, &summary)
-		if err != nil {
-			return Summary{}, fmt.Errorf("seed articles: %w", err)
-		}
-		if err := seedArticleRefs(conn, rng, articleIDs, soldierIDs, &summary); err != nil {
-			return Summary{}, fmt.Errorf("seed article_refs: %w", err)
+			// Articles + refs.
+			articleIDs, err := seedArticles(conn, rng, options.Articles, &summary)
+			if err != nil {
+				return Summary{}, fmt.Errorf("seed articles: %w", err)
+			}
+			if err := seedArticleRefs(conn, rng, articleIDs, soldierIDs, &summary); err != nil {
+				return Summary{}, fmt.Errorf("seed article_refs: %w", err)
+			}
 		}
 	}
 
@@ -241,11 +330,20 @@ func Generate(options Options) (Summary, error) {
 }
 
 func normalizeOptions(options Options) Options {
-	if options.Soldiers == 0 {
+	if !options.SkipSoldiers && options.Soldiers == 0 {
 		options.Soldiers = defaultSoldierCount
 	}
 	if options.Seed == 0 {
 		options.Seed = defaultSeed
+	}
+	if options.Tags < 0 {
+		options.Tags = 0
+	}
+	if options.Articles < 0 {
+		options.Articles = 0
+	}
+	if options.Events < 0 {
+		options.Events = 0
 	}
 	return options
 }
@@ -423,10 +521,15 @@ func loadSoldierIDs(conn *sql.DB) ([]int64, error) {
 	return ids, rows.Err()
 }
 
-// seedTags creates all tagNames rows and returns their IDs.
-func seedTags(conn *sql.DB, rng *rand.Rand, summary *Summary) ([]int64, error) {
+// seedTags inserts up to `count` rows from the tagNames vocabulary
+// and returns their IDs. count <= 0 means insert the full vocabulary.
+// Idempotent via INSERT OR IGNORE on normalized_name UNIQUE.
+func seedTags(conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]int64, error) {
+	if count <= 0 || count > len(tagNames) {
+		count = len(tagNames)
+	}
 	var ids []int64
-	for _, name := range tagNames {
+	for _, name := range tagNames[:count] {
 		res, err := conn.Exec(
 			`INSERT OR IGNORE INTO tags (name, normalized_name) VALUES (?, ?)`,
 			name, strings.ToLower(name),
@@ -471,9 +574,13 @@ func seedPersonRecordTags(conn *sql.DB, rng *rand.Rand, soldierIDs, tagIDs []int
 }
 
 // seedEvents creates N Event Record rows (entry_type='event') and
-// returns their IDs. N = ~20% of the soldier count, min 2.
-func seedEvents(conn *sql.DB, rng *rand.Rand, summary *Summary) ([]int64, error) {
-	n := summary.Soldiers / 5
+// returns their IDs. count == 0 means use the legacy default (~20%
+// of soldier count, min 2). count < 0 is clamped to 0.
+func seedEvents(conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]int64, error) {
+	n := count
+	if n == 0 {
+		n = summary.Soldiers / 5
+	}
 	if n < 2 {
 		n = 2
 	}
@@ -556,9 +663,14 @@ func seedEventSources(conn *sql.DB, rng *rand.Rand, eventIDs []int64, summary *S
 	return nil
 }
 
-// seedArticles creates 1-2 Article rows and returns their IDs.
-func seedArticles(conn *sql.DB, rng *rand.Rand, summary *Summary) ([]int64, error) {
-	n := 1 + rng.Intn(2) // 1-2 articles
+// seedArticles creates N Article rows and returns their IDs.
+// count == 0 means use the legacy default (1-2 random). count < 0
+// is clamped to 0. count > 0 uses that exact count.
+func seedArticles(conn *sql.DB, rng *rand.Rand, count int, summary *Summary) ([]int64, error) {
+	n := count
+	if n == 0 {
+		n = 1 + rng.Intn(2) // 1-2 articles
+	}
 	var ids []int64
 	now := time.Now().UTC().Format("2006-01-02 15:04:05")
 	for i := 0; i < n; i++ {
