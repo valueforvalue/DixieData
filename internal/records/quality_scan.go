@@ -70,6 +70,12 @@ type qualityScanCandidate struct {
 	DeathDate       string
 	BirthInfo       string
 	BuriedIn        string
+	// Issue #539: event description column. Events live in the
+	// soldiers table (entry_type='event', issue #320) and the
+	// description column carries the event's freeform narrative.
+	// Promoted to the candidate shape so the markup classifier
+	// can scan it the same way it scans birth_info / buried_in.
+	Description      string
 	// Issue #377 / #423: row provenance fields carried from
 	// the soldiers table into the scan candidate so every
 	// DataQualityIssue can be stamped with the row's origin
@@ -125,6 +131,20 @@ func (s *SoldierService) RunDataQualityScan(modeRaw string) (DataQualityScanResu
 		}
 		issues = append(issues, advancedIssues...)
 	}
+
+	// Issue #539: scan source records.details for markup noise.
+	// This runs in BOTH modes (no mode gate) because a user who
+	// pastes HTML into a Notes / Details field is exactly the
+	// high-confidence use case the #531 fixship criterion named.
+	// The check is orthogonal to loadAdvancedSourceRecordIssues
+	// (which counts empty records): a record can be non-empty
+	// (has type + app_id + details) AND carry markup noise at
+	// the same time.
+	sourceMarkupIssues, err := s.loadSourceRecordMarkupNoiseIssues()
+	if err != nil {
+		return DataQualityScanResult{}, err
+	}
+	issues = append(issues, sourceMarkupIssues...)
 
 	sort.Slice(issues, func(i, j int) bool {
 		if issues[i].Group != issues[j].Group {
@@ -217,6 +237,7 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 		       COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''),
 		       COALESCE(birth_date, ''), COALESCE(death_date, ''),
 		       COALESCE(birth_info, ''), COALESCE(buried_in, ''),
+		       COALESCE(description, ''),
 		       COALESCE(created_by_import_path, ''), COALESCE(restored_at, '')
 		FROM soldiers`)
 	if err != nil {
@@ -232,6 +253,7 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 			&candidate.FirstName, &candidate.MiddleName, &candidate.LastName,
 			&candidate.BirthDate, &candidate.DeathDate,
 			&candidate.BirthInfo, &candidate.BuriedIn,
+			&candidate.Description,
 			&candidate.ImportPath, &candidate.RestoredAt,
 		); err != nil {
 			return nil, err
@@ -298,6 +320,80 @@ func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, e
 			Severity:   "medium",
 			Summary:    "One or more source records are effectively blank.",
 			Detail:     fmt.Sprintf("%d source record row(s) have empty type, app ID, and details.", incompleteRecord),
+			ImportPath: strings.TrimSpace(importPath),
+			RestoredAt: strings.TrimSpace(restoredAt),
+		})
+	}
+	return issues, rows.Err()
+}
+
+// loadSourceRecordMarkupNoiseIssues (issue #539) runs the
+// classifyMarkupNoise detector over the content of every source
+// record's `details` column and emits a Field Content issue for
+// each row that carries markup / entity / script noise. The
+// check runs in high-confidence mode (no mode gate) because a
+// user who pastes HTML into a Notes / Details field is exactly
+// the high-confidence use case the #531 fixship criterion named.
+//
+// Per the issue's investigation steps, this is a sibling path to
+// loadAdvancedSourceRecordIssues (which only counts empty
+// records). The two are intentionally orthogonal: a record can
+// be "non-empty" (has type + app_id + details) AND carry
+// markup noise at the same time. The per-row detail includes the
+// offending record's record_type + app_id so the user can find
+// the row from the review queue.
+func (s *SoldierService) loadSourceRecordMarkupNoiseIssues() ([]DataQualityIssue, error) {
+	rows, err := s.db.Conn().Query(`
+		SELECT s.id, COALESCE(s.display_id, ''),
+		       COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''),
+		       COALESCE(s.entry_type, 'soldier'),
+		       COALESCE(r.record_type, ''), COALESCE(r.app_id, ''), COALESCE(r.details, ''),
+		       COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
+		FROM records r
+		JOIN soldiers s ON s.id = r.person_record_id
+		WHERE TRIM(COALESCE(r.details, '')) != ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer debug.DeferCloseLog(rows, "loadSourceRecordMarkupNoiseIssues.rows")
+
+	issues := make([]DataQualityIssue, 0)
+	for rows.Next() {
+		var (
+			id          int64
+			displayID   string
+			firstName   string
+			middleName  string
+			lastName    string
+			entryType   string
+			recordType  string
+			appID       string
+			details     string
+			importPath  string
+			restoredAt  string
+		)
+		if err := rows.Scan(&id, &displayID, &firstName, &middleName, &lastName, &entryType,
+			&recordType, &appID, &details, &importPath, &restoredAt); err != nil {
+			return nil, err
+		}
+		code := classifyMarkupNoise(details)
+		if code == "" {
+			continue
+		}
+		severity, summary, detail := markupIssueShape(code)
+		// Per the #539 acceptance criteria: detail must include
+		// record_type + app_id so the user can find the row.
+		detail = fmt.Sprintf("%s Source record: type=%q app_id=%q.", detail, recordType, appID)
+		issues = append(issues, DataQualityIssue{
+			SoldierID:  id,
+			DisplayID:  strings.TrimSpace(displayID),
+			Name:       buildIssueName(firstName, middleName, lastName),
+			EntryType:  normalizeEntryType(entryType),
+			Group:      "Field Content",
+			Code:       code,
+			Severity:   severity,
+			Summary:    summary,
+			Detail:     detail,
 			ImportPath: strings.TrimSpace(importPath),
 			RestoredAt: strings.TrimSpace(restoredAt),
 		})
@@ -422,7 +518,12 @@ func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64
 	// mixed-content-script (high — the row carries a script tag
 	// or an event-handler attribute, which is a security concern
 	// the moment the row is exported to a downloadable archive).
-	markup := classifyMarkupNoise(firstName, lastName, candidate.BirthInfo, candidate.BuriedIn)
+	// Issue #539: include candidate.Description so event records
+	// (which carry the event narrative in the description column
+	// of the soldiers table) get the same markup-noise scan as
+	// person-bearing rows. The helper takes a variadic list, so
+	// adding fields is non-invasive.
+	markup := classifyMarkupNoise(firstName, lastName, candidate.BirthInfo, candidate.BuriedIn, candidate.Description)
 	if markup != "" {
 		severity, summary, detail := markupIssueShape(markup)
 		issues = append(issues, candidateIssue(candidate,
