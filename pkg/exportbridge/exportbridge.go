@@ -26,6 +26,13 @@ import (
 	"github.com/valueforvalue/DixieData/pkg/render"
 )
 
+// Version is the bridge module's release tag, surfaced by the
+// tune binary's --version flag (issue #515 slice D2). Bumped
+// when the bridge's public API changes in a user-visible way
+// (new method, changed signature). Patch-level changes that
+// don't alter the public surface don't require a bump.
+const Version = "1.0.0"
+
 // BulkRenderer is the entry point used by both the appshell and
 // external tools. Construct one via NewBulkRenderer and drive the
 // render methods.
@@ -108,6 +115,31 @@ func (b *BulkRenderer) List(page, pageSize int) ([]models.Soldier, int, error) {
 // article templates can find an article id without writing SQL.
 func (b *BulkRenderer) ListArticles(page, pageSize int) ([]models.Article, int, error) {
 	return b.article.List(page, pageSize)
+}
+
+// ListPeople returns a page of Person Records filtered by the
+// canonical person entry_types: soldier, wife, widow,
+// linked_person. Excludes events (entry_type='event') and
+// articles (entry_type='article') which also live in the
+// soldiers table but are first-class record kinds with their
+// own templates + iterators. Used by tools/tune's
+// list-records --kind soldier (issue #518 slice C2) so the
+// output reflects the Person Record kind the user is iterating
+// on, not a mixed bag of every soldiers-table row.
+func (b *BulkRenderer) ListPeople(page, pageSize int) ([]models.Soldier, int, error) {
+	return b.soldier.ListByEntryTypes(
+		[]string{"soldier", "wife", "widow", "linked_person"},
+		page, pageSize,
+	)
+}
+
+// ListEvents returns a page of Event Records (entry_type='event'
+// in the soldiers table). Mirrors the event view the live
+// /events page uses. Used by tools/tune's list-records --kind
+// event (issue #518 slice C1) so a user iterating on
+// event_*.typ templates can find an event id without writing SQL.
+func (b *BulkRenderer) ListEvents(page, pageSize int) ([]models.Soldier, int, error) {
+	return b.soldier.ListByEntryTypes([]string{"event"}, page, pageSize)
 }
 
 // SetRegistry wires the typst-backed Registry into the underlying
