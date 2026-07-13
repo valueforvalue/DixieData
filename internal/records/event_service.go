@@ -786,8 +786,8 @@ type eventRenderPDFOptions struct {
 
 // slugifyEventFilename builds the suggested filename:
 // "Event-EVT-NNNNN-<kind-slug>-<orientation>.pdf". Mirrors
-// slugifyArticleFilename so the dialog default reads naturally
-// for both Event and Article exports.
+// records.SlugifyArticleFilename so the dialog default reads
+// naturally for both Event and Article exports.
 func slugifyEventFilename(event models.Soldier, orientation string) string {
 	short := "landscape"
 	if normalizeOrientation(orientation) == "P" {

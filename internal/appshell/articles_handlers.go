@@ -24,6 +24,7 @@
 package appshell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -33,6 +34,7 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -646,18 +648,34 @@ func (a *App) handleArticlePreview(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(rendered))
 }
 
-// handleArticlePDF serves POST /articles/{id}/pdf. Pre-renders
-// the article's PDF body via ArticleService.RenderPDF, opens
-// a guarded SaveFileDialog (per docs/agents/dialog-guard.md),
-// then writes the bytes to the user's chosen path. The
-// orientation form field (portrait|landscape, defaults to
-// landscape) selects the per-export template.
+// handleArticlePDF serves POST /articles/{id}/pdf. Routes the
+// export through the jobs flow (issue #533) so every PDF export
+// surface lands the user on /jobs/{id} with a terminal Completion
+// card, instead of bypassing the job with an inline render +
+// 200 OK + X-DixieData-Toast.
 //
-// The handler runs the pre-render synchronously on the request
-// goroutine because ArticleRecord PDFs are small (< 100 KB
-// typically) -- no job-enqueue overhead. Snapshot targets are
-// rejected with 409 (matching the slice-2.5 contract); unknown
-// id returns 404; render failures return 500.
+// The orientation form field (portrait|landscape, defaults to
+// portrait) selects the per-export template. The user-pasted
+// path is captured BEFORE the worker enqueues (same UX as
+// handleSoldierPDF / handleCalendarPDF — the user sees the
+// native SaveFileDialog, then lands on /jobs/{id} to watch the
+// render complete).
+//
+// Snapshot targets are rejected with 409 (matching the slice-2.5
+// contract); unknown id returns 404; render failures bubble up
+// through the worker (return error from the work closure).
+
+// articlePDFFilename wraps records.SlugifyArticleFilename so the
+// handler can compute the suggested filename before opening the
+// native SaveFileDialog (issue #533 — the dialog shows the user a
+// sensible default BEFORE the worker runs the actual render).
+func articlePDFFilename(article *models.Article, orientation string) string {
+	if article == nil {
+		return "article.pdf"
+	}
+	return records.SlugifyArticleFilename(*article, orientation)
+}
+
 func (a *App) handleArticlePDF(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -673,23 +691,24 @@ func (a *App) handleArticlePDF(w http.ResponseWriter, r *http.Request) {
 		orientation = "portrait"
 	}
 
-	result, err := a.articles.RenderPDF(id, orientation)
+	article, err := a.articles.GetByID(id)
 	if err != nil {
-		if errors.Is(err, records.ErrArticleNotFound) {
-			respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
-			return
-		}
-		respondInternal(w, r, fmt.Sprintf("Could not render article %d PDF.", id), err)
+		respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
 		return
 	}
 
+	// Suggested filename is the article's slugified title + the
+	// DisplayID (mirrors the soldier_pdf naming convention). The
+	// filename must be derivable BEFORE the worker runs so the
+	// native dialog shows the user a sensible default.
+	defaultFilename := articlePDFFilename(article, orientation)
 	opts := runtime.SaveDialogOptions{
-		DefaultFilename: result.Filename,
+		DefaultFilename: defaultFilename,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
 	}
-	dupKey := fmt.Sprintf("article-pdf|%d|%s|%s", id, orientation, result.Filename)
+	dupKey := fmt.Sprintf("article_pdf|%d|%s|%s", id, orientation, defaultFilename)
 	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
 	switch outcome {
 	case SaveOutcomeDuplicated:
@@ -699,13 +718,39 @@ func (a *App) handleArticlePDF(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Article PDF export cancelled.", nil)
 		return
 	}
-	if err := os.WriteFile(path, result.Bytes, 0o644); err != nil {
-		respondInternal(w, r, fmt.Sprintf("Could not write PDF to %q.", path), err)
-		return
-	}
+
+	// Issue #533: stage the success toast on the OUTER response
+	// BEFORE enqueueExport writes the redirect header. The
+	// dispatcher (frontend/app.js::dispatchDixieDataForm) reads
+	// BOTH X-DixieData-Toast and X-DixieData-Redirect from the
+	// same response — the toast is the immediate save-confirmation
+	// signal, the redirect is the follow-up navigation. Setting
+	// the toast after enqueueExport would be a no-op because
+	// writeExportRedirect calls w.WriteHeader(200) and Go's
+	// ResponseWriter stops accepting new headers after WriteHeader.
 	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Article PDF saved to %s.", filepath.Base(path)))
 	w.Header().Set("X-DixieData-Toast-Type", "success")
-	w.WriteHeader(http.StatusOK)
+
+	// Snapshot rejection must run in the worker because the
+	// pre-enqueue path can't predict whether the user picked a
+	// snapshot target until the dialog returns. The worker
+	// surfaces the rejection as a job error so /jobs/{id} shows
+	// it on the terminal Error card.
+	work := func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(20, "Rendering Article PDF")
+		result, err := a.articles.RenderPDF(id, orientation)
+		if err != nil {
+			if errors.Is(err, records.ErrArticleNotFound) {
+				return fmt.Errorf("article %d not found: %w", id, err)
+			}
+			return fmt.Errorf("render article %d PDF: %w", id, err)
+		}
+		if err := os.WriteFile(path, result.Bytes, 0o644); err != nil {
+			return fmt.Errorf("write article %d PDF to %q: %w", id, path, err)
+		}
+		return nil
+	}
+	a.enqueueExport(dupKey, "article_pdf", work, path, w)
 }
 
 // handleArticleRaw serves GET /articles/{id}/raw. Returns the

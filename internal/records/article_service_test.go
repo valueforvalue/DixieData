@@ -962,9 +962,9 @@ func TestSlugifyArticleFilename(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := slugifyArticleFilename(c.article, c.orient)
+			got := SlugifyArticleFilename(c.article, c.orient)
 			if got != c.expected {
-				t.Errorf("slugifyArticleFilename = %q, want %q", got, c.expected)
+				t.Errorf("SlugifyArticleFilename = %q, want %q", got, c.expected)
 			}
 		})
 	}

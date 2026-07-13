@@ -1212,7 +1212,7 @@ func (a *ArticleService) RenderPDF(articleID int64, orientation string) (*PDFRes
 	}
 	return &PDFResult{
 		Bytes:    buf.Bytes(),
-		Filename: slugifyArticleFilename(*article, orientation),
+		Filename: SlugifyArticleFilename(*article, orientation),
 	}, nil
 }
 
@@ -1237,13 +1237,18 @@ func renderDefaultPDFOptions(orientation string) articlePDFOptions {
 	}
 }
 
-// slugifyArticleFilename builds the suggested filename:
+// SlugifyArticleFilename builds the suggested filename:
 // "Article-ART-NNNNN-<title-slug>-<orientation>.pdf". The
 // title slug is lowercased, stripped of non-alphanumerics,
 // and truncated to 60 characters so the filename stays
 // readable in a Windows file dialog. Falls back to the
 // DisplayID alone when the title is blank.
-func slugifyArticleFilename(article models.Article, orientation string) string {
+//
+// Exported (issue #533) so the appshell handler can compute
+// the suggested filename BEFORE the worker runs (so the
+// native SaveFileDialog shows a sensible default) without
+// doing a pre-render of the PDF body.
+func SlugifyArticleFilename(article models.Article, orientation string) string {
 	short := "landscape"
 	if normalizeOrientation(orientation) == "P" {
 		short = "portrait"
