@@ -21,9 +21,13 @@
 #                     Valid values:
 #                       single-soldier-landscape, single-soldier-portrait,
 #                       single-widow-landscape,  single-widow-portrait,
+#                       single-event-landscape, single-event-portrait,
+#                       single-article-landscape, single-article-portrait,
 #                       bulk-sorted, bulk-grouped-pension-state,
 #                       bulk-grouped-burial-location,
 #                       anniversary, insights
+#                     single-event-* + single-article-* added in
+#                     issue #515 slice D4.
 # -RecordIDs <list>   comma-separated IDs for bulk renders. Skips
 #                     bulk surfaces entirely when set to the empty
 #                     string (default). The script auto-skips bulk
@@ -38,6 +42,12 @@
 #                     anniversary, and insights surfaces, which use
 #                     their own ID list via -RecordIDs or render
 #                     the full archive.
+# -RecordEvent <id>   override the event record ID (default 1) used
+#                     for the single-event-* surfaces. Issue #515
+#                     slice D4.
+# -RecordArticle <id> override the article record ID (default 1)
+#                     used for the single-article-* surfaces.
+#                     Issue #515 slice D4.
 # -KeepRounds <N>     keep the most recent N rounds of artifacts
 #                     (PDF + SVG + PNG) before rendering the new one.
 #                     Default 1: the previous round only. Set to 0
@@ -48,6 +58,8 @@ param(
     [string]$Only = "",
     [string]$RecordIDs = "",
     [int64]$Record = 0,
+    [int64]$RecordEvent = 0,
+    [int64]$RecordArticle = 0,
     [int]$KeepRounds = 1
 )
 
@@ -75,6 +87,8 @@ if ($Record -gt 0) {
     $soldierID = 1
     $widowID = 61
 }
+$eventID = if ($RecordEvent -gt 0) { $RecordEvent } else { 1 }
+$articleID = if ($RecordArticle -gt 0) { $RecordArticle } else { 1 }
 
 # Output filename for this round.
 $outName = if ($Round -eq 1) { "pre-iteration.pdf" } else { "round-$Round.pdf" }
@@ -96,6 +110,64 @@ function Render-Record {
         "render",
         "--template", $Template,
         "--mode", "record",
+        "--record", $RecordID,
+        "--orientation", $Orientation,
+        "--out", $out
+    )
+    Write-Host "  $Surface -> $out"
+    & $tune @args | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "tune failed for $Surface" }
+}
+
+# Render-Event renders one Event Record via --mode event (issue #358).
+# Added in issue #515 slice D4 so the iteration loop covers every
+# template family.
+function Render-Event {
+    param(
+        [string]$Surface,
+        [string]$Template,
+        [string]$Orientation,
+        [int64]$RecordID
+    )
+    $dir = Join-Path $repoRoot "docs/renderings/$Surface"
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $out = Join-Path $dir $outName
+    $args = @(
+        "--db", $db,
+        "--typst", $typst,
+        "--templates", $templates,
+        "render",
+        "--template", $Template,
+        "--mode", "event",
+        "--record", $RecordID,
+        "--orientation", $Orientation,
+        "--out", $out
+    )
+    Write-Host "  $Surface -> $out"
+    & $tune @args | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "tune failed for $Surface" }
+}
+
+# Render-Article renders one Article Record via --mode article (issue #430).
+# Added in issue #515 slice D4 so the iteration loop covers every
+# template family.
+function Render-Article {
+    param(
+        [string]$Surface,
+        [string]$Template,
+        [string]$Orientation,
+        [int64]$RecordID
+    )
+    $dir = Join-Path $repoRoot "docs/renderings/$Surface"
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $out = Join-Path $dir $outName
+    $args = @(
+        "--db", $db,
+        "--typst", $typst,
+        "--templates", $templates,
+        "render",
+        "--template", $Template,
+        "--mode", "article",
         "--record", $RecordID,
         "--orientation", $Orientation,
         "--out", $out
@@ -191,6 +263,8 @@ if ($KeepRounds -gt 0 -and $Round -gt 1) {
     $surfaces = @(
         "single-soldier-landscape", "single-soldier-portrait",
         "single-widow-landscape", "single-widow-portrait",
+        "single-event-landscape", "single-event-portrait",
+        "single-article-landscape", "single-article-portrait",
         "bulk-sorted", "bulk-grouped-pension-state",
         "bulk-grouped-burial-location",
         "anniversary", "insights"
@@ -234,6 +308,22 @@ if (Should-Render "single-widow-landscape") {
 }
 if (Should-Render "single-widow-portrait") {
     Render-Record -Surface "single-widow-portrait"    -Template "widow_portrait"    -Orientation "P" -RecordID $widowID
+}
+
+# Issue #515 slice D4: event + article surfaces added so the
+# iteration loop covers every template family. Mirrors the
+# single-soldier- / single-widow- pattern.
+if (Should-Render "single-event-landscape") {
+    Render-Event -Surface "single-event-landscape"   -Template "event_landscape"   -Orientation "L" -RecordID $eventID
+}
+if (Should-Render "single-event-portrait") {
+    Render-Event -Surface "single-event-portrait"    -Template "event_portrait"    -Orientation "P" -RecordID $eventID
+}
+if (Should-Render "single-article-landscape") {
+    Render-Article -Surface "single-article-landscape" -Template "article_landscape" -Orientation "L" -RecordID $articleID
+}
+if (Should-Render "single-article-portrait") {
+    Render-Article -Surface "single-article-portrait"  -Template "article_portrait"  -Orientation "P" -RecordID $articleID
 }
 
 if (Should-Render "bulk-sorted") {
