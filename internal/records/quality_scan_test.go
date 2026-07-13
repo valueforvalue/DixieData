@@ -424,3 +424,159 @@ func TestRunDataQualityScan_SurnameTooShortAdvancedModeOnly(t *testing.T) {
 		}
 	}
 }
+
+// TestRunDataQualityScan_DetectsMarkupInSourceRecordDetails (issue #539)
+// is the integration-level regression net for extending the
+// Field Content detection to records.details. A source record
+// with raw HTML in its details column must produce a Field Content
+// issue in the scan result, and a clean details must not.
+//
+// The check is orthogonal to the existing candidate-level markup
+// detection (first_name / last_name / birth_info / buried_in /
+// events.description) because records is a child table — the
+// same soldier row can carry 0+ records, and the details of
+// each is its own freeform text surface.
+func TestRunDataQualityScan_DetectsMarkupInSourceRecordDetails(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	// Seed two soldiers with source records; one with HTML
+	// in details, one with clean prose.
+	htmlSoldier, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "Carter",
+	})
+	if err != nil {
+		t.Fatalf("Create htmlSoldier: %v", err)
+	}
+	cleanSoldier, err := svc.Create(models.Soldier{
+		FirstName: "Samuel",
+		LastName:  "Walker",
+	})
+	if err != nil {
+		t.Fatalf("Create cleanSoldier: %v", err)
+	}
+
+	// Add a source record carrying <script>alert(1)</script>
+	// in details — must fire mixed-content-script.
+	insertTestRecord(t, svc, htmlSoldier.ID, "Pension Application", "PA-001", `<img src="x" onerror="alert(1)">`)
+	// Add a source record carrying raw HTML tags in details
+	// — must fire raw-html-tags.
+	insertTestRecord(t, svc, htmlSoldier.ID, "Service Record", "SR-002", "<b>service summary</b>")
+	// Add a clean source record on a different soldier —
+	// must NOT fire.
+	insertTestRecord(t, svc, cleanSoldier.ID, "Hospital Ledger", "HL-001", "Admitted June 12 1862 with fever; discharged July 4 1862.")
+
+	result, err := svc.RunDataQualityScan(string(DataQualityModeHighConfidence))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan: %v", err)
+	}
+
+	var (
+		rawHTMLCount   int
+		scriptCount    int
+		sourceGroupHit int
+	)
+	for _, issue := range result.Issues {
+		if issue.Group != "Field Content" {
+			continue
+		}
+		// Filter to source-record rows by checking the detail
+		// includes the record-type / app-id marker
+		// (loadSourceRecordMarkupNoiseIssues appends
+		// "Source record: type=... app_id=...").
+		if !strings.Contains(issue.Detail, "Source record:") {
+			continue
+		}
+		sourceGroupHit++
+		switch issue.Code {
+		case "raw-html-tags":
+			rawHTMLCount++
+		case "mixed-content-script":
+			scriptCount++
+		}
+	}
+
+	if scriptCount != 1 {
+		t.Errorf("mixed-content-script count = %d, want 1", scriptCount)
+	}
+	if rawHTMLCount != 1 {
+		t.Errorf("raw-html-tags count = %d, want 1", rawHTMLCount)
+	}
+	if sourceGroupHit != 2 {
+		t.Errorf("Field Content source-record issues = %d, want 2 (one script, one bold)", sourceGroupHit)
+	}
+}
+
+// TestRunDataQualityScan_DetectsMarkupInEventDescription (issue #539)
+// is the integration-level regression net for extending the
+// Field Content detection to events.description. An event
+// record (entry_type='event') with raw HTML in its description
+// must produce a Field Content issue stamped with the event's
+// kind + begin_date so the user can find the row from the
+// review queue.
+func TestRunDataQualityScan_DetectsMarkupInEventDescription(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+	events := NewEventService(svc)
+
+	// Create a clean event as a control.
+	if _, err := events.CreateEvent(models.Soldier{
+		EntryType:   models.EntryTypeEvent,
+		Kind:        "Skirmish",
+		BeginDate:   "06/15/1862",
+		EndDate:     "06/16/1862",
+		Description: "A small-scale action near the county seat.",
+	}); err != nil {
+		t.Fatalf("CreateEvent (clean): %v", err)
+	}
+
+	// Create an event with raw HTML in description.
+	if _, err := events.CreateEvent(models.Soldier{
+		EntryType:   models.EntryTypeEvent,
+		Kind:        "Battle",
+		BeginDate:   "07/01/1862",
+		EndDate:     "07/03/1862",
+		Description: "<b>engagement report</b>",
+	}); err != nil {
+		t.Fatalf("CreateEvent (HTML): %v", err)
+	}
+
+	result, err := svc.RunDataQualityScan(string(DataQualityModeHighConfidence))
+	if err != nil {
+		t.Fatalf("RunDataQualityScan: %v", err)
+	}
+
+	var eventHTMLCount int
+	for _, issue := range result.Issues {
+		if issue.Group != "Field Content" {
+			continue
+		}
+		if issue.Code != "raw-html-tags" {
+			continue
+		}
+		if issue.EntryType != models.EntryTypeEvent {
+			continue
+		}
+		eventHTMLCount++
+	}
+	if eventHTMLCount != 1 {
+		t.Errorf("event raw-html-tags count = %d, want 1 (the <b> row); clean event should not fire", eventHTMLCount)
+	}
+}
+
+// insertTestRecord is a small test helper used by the #539
+// integration tests to seed a source record via direct SQL.
+// Mirrors the production shape used in internal/seed/seed.go so
+// the test is hermetic (no dependency on a CreateRecord service
+// method that may not exist on the SoldierService surface).
+func insertTestRecord(t *testing.T, svc *SoldierService, personID int64, recordType, appID, details string) {
+	t.Helper()
+	syncID := "test-record-" + appID
+	if _, err := svc.db.Conn().Exec(
+		`INSERT INTO records (sync_id, person_record_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?)`,
+		syncID, personID, recordType, appID, details,
+	); err != nil {
+		t.Fatalf("insertTestRecord(%q): %v", appID, err)
+	}
+}
