@@ -1210,11 +1210,34 @@ func writeJSON(w io.Writer, v any) error {
 
 // setupSvgWorkdir prepares the renderer's TYPST_KEEP_WORKDIR hook
 // for SVG/PNG output so the caller can access pages 2..N after
-// the render returns. The returned workdir path is preserved for
-// the lifetime of the calling function via the deferred cleanup
-// the caller registers; we only return the empty string when the
-// output format is PDF (no workdir needed) or the caller already
-// supplied a keep-workdir via env.
+// the render returns. Returns the empty string when the output
+// is PDF (no workdir needed) or the caller already supplied a
+// keep-workdir via env.
+//
+// Limitation (issue #516 slice B4): the renderer reads
+// TYPST_KEEP_WORKDIR from process env at fork time
+// (pkg/render/renderers.go:132), so this helper MUST set the
+// env var to communicate the keep directory to the renderer.
+// There is currently no per-call API on the renderer; the env
+// mutation is the contract. Implications:
+//
+//   - The env mutation is process-global. tune is a single-shot
+//     CLI today so this is harmless, but a future batch-mode or
+//     library-use path must either accept the global state or
+//     wait for a renderer API that takes the keep dir as an
+//     argument (deferred — not worth the API churn yet).
+//   - The mutation is scoped: only set when SVG/PNG output is
+//     requested AND the caller has not already set the var. A
+//     caller-supplied value is respected verbatim (the if-existing
+//     branch below).
+//   - Return value is the source of truth for cleanup; copyExtraPages
+//     consumes it. We do NOT rely on the env var's value being
+//     equal to our return — a caller-supplied env var may point
+//     elsewhere, and copyExtraPages walks whatever path we return.
+//
+// If the renderer grows a SetKeepWorkdir(path string) method
+// (or equivalent), switch this helper to use it and drop the
+// os.Setenv side-effect.
 func setupSvgWorkdir(formatExt string) string {
 	if formatExt != ".svg" && formatExt != ".png" {
 		return ""
