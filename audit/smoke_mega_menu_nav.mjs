@@ -13,8 +13,10 @@
 //   2. The panel is hidden initially with role="menu" and is a <div>
 //      (post-#380 mega-menus are <div>-rooted so the layout columns
 //      can render inside, vs the pre-#380 foldout which was a <ul>).
-//   3. Panel contains 11 menuitems organized in 2 sections
-//      (Review & Research: 6 items, Share: 5 items).
+//   3. Panel contains 12 menuitems organized in 2 sections
+//      (Review & Research: 7 items, Share: 5 items). Issue #491
+//      added "Archive Inventory" to the Review column (between
+//      Open Review Queue and Open Timeline).
 //   4. Each menuitem is a real <a href> (not a div with click handler).
 //   5. Clicking the trigger opens the panel, sets aria-expanded="true",
 //      and moves focus to the first menuitem.
@@ -39,7 +41,8 @@
 //   - selectors: data-foldout-trigger → data-mega-menu-trigger,
 //     data-foldout-panel → data-mega-menu-panel
 //   - trigger id: layout.share.menu → layout.share-review.menu
-//   - expected menuitem count: 4 → 11
+//   - expected menuitem count: 4 → 11 → 12 (issue #491 Archive
+//     Inventory bump)
 //   - expected panel tag: UL → DIV (mega-menu panel is div-rooted)
 //   - expected menuitem labels:Export|Import|Share Queue|Sync → 11 names
 //     spread across Review & Research + Share sections
@@ -137,11 +140,19 @@ try {
   }, PANEL_SELECTOR);
   record("panel-hidden-initially", panel && panel.hidden === true, panel);
   record("panel-is-div-with-role-menu", panel && panel.tag === "DIV" && panel.role === "menu", { tag: panel && panel.tag, role: panel && panel.role });
-  record("panel-has-11-menuitems", panel && panel.itemCount === 11, { itemCount: panel && panel.itemCount });
+  record("panel-has-12-menuitems", panel && panel.itemCount === 12, { itemCount: panel && panel.itemCount });
   record("menuitems-are-anchors", panel && panel.items.every((i) => i.tag === "A"), { items: panel && panel.items.map((i) => i.tag) });
   record("menuitems-have-distinct-hrefs", panel && new Set(panel.items.map((i) => i.href)).size === panel.items.length, { hrefs: panel && panel.items.map((i) => i.href) });
+  // 7 review-and-research items (issue #491 added "Archive Inventory"
+  // to the column; the post-#380 R&R foldout had 6) + 5 share items
+  // (issue #380 slice 3 added "Share landing" as the new first item
+  // of the Share column to close the /share vs /share/exports
+  // asymmetry footgun) = 12 total. The previous expected list of
+  // 11 missed Archive Inventory AND predated the Share landing
+  // rename; both stale items were caught in the 2026-07-13 CI run.
   const expectedLabels = [
     "Open Review Queue",
+    "Archive Inventory",
     "Open Timeline",
     "Open Research Log",
     "Research Collections",
@@ -213,23 +224,27 @@ try {
   await wait(800);
   await page.evaluate((sel) => document.querySelector(sel)?.click(), TRIGGER_SELECTOR);
   await wait(200);
-  // Click the Share landing item (first in the Share column = 7th overall).
+  // Click the Share landing item (first in the Share column = 7th
+  // overall now that Archive Inventory added an item to the
+  // Review & Research column; was 6th before issue #491).
   await page.evaluate((sel) => {
     const items = document.querySelectorAll(`${sel} [role='menuitem']`);
-    if (items[6] instanceof HTMLElement) items[6].click();
+    if (items[7] instanceof HTMLElement) items[7].click();
   }, PANEL_SELECTOR);
   await page.waitForURL(/\/share$/, { timeout: 5000 }).catch(() => null);
   const shareUrl = page.url();
   record("share-landing-menuitem-navigates-to-share", /\/share$/.test(shareUrl), { url: shareUrl });
 
-  // Import item — second in Share column = 9th overall (Review[6] + Share landing + Export + Import).
+  // Import item — third in Share column = 9th overall
+  // (Review[7] + Share landing + Export + Import). Was 8th before
+  // issue #491 added Archive Inventory to the Review column.
   await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(800);
   await page.evaluate((sel) => document.querySelector(sel)?.click(), TRIGGER_SELECTOR);
   await wait(200);
   await page.evaluate((sel) => {
     const items = document.querySelectorAll(`${sel} [role='menuitem']`);
-    if (items[8] instanceof HTMLElement) items[8].click();
+    if (items[9] instanceof HTMLElement) items[9].click();
   }, PANEL_SELECTOR);
   await page.waitForURL(/\/share\/imports$/, { timeout: 5000 }).catch(() => null);
   const importUrl = page.url();

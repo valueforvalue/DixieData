@@ -2697,8 +2697,21 @@ function serializeDraftFields(form) {
     /** @type {number | null} */
     let busyTimer = null;
 
+    // The closures below (requestRender + the input handler) lose
+    // the `instanceof` narrowing from the top of the function once
+    // they close over `body` / `source` — TypeScript's control flow
+    // narrowing doesn't carry into nested function bodies (see the
+    // `updateTextContextMenuState` refactor in the strictNullChecks
+    // slice 5b changelog for the canonical example). Re-narrow
+    // inside the closures so the subsequent `.innerHTML` / `.value`
+    // reads type-check. Without this, the strictNullChecks tsc step
+    // in CI fails with TS18047 / TS2339.
+    /** @type {HTMLElement} */
+    const previewBody = body;
+    /** @type {HTMLTextAreaElement} */
+    const previewSource = source;
     async function requestRender() {
-      const value = source.value || "";
+      const value = previewSource.value || "";
       const params = new URLSearchParams();
       params.append("body", value);
       /** @type {RequestInit} */
@@ -2717,13 +2730,13 @@ function serializeDraftFields(form) {
       try {
         const resp = await fetch("/articles/preview", opts);
         if (!resp.ok) {
-          body.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed (" + resp.status + ").</p>";
+          previewBody.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed (" + resp.status + ").</p>";
           return;
         }
         const html = await resp.text();
-        body.innerHTML = html || "<p class=\"text-sm text-slate-500\">Type Markdown in the editor and click Preview to see it rendered here.</p>";
+        previewBody.innerHTML = html || "<p class=\"text-sm text-slate-500\">Type Markdown in the editor and click Preview to see it rendered here.</p>";
       } catch (err) {
-        body.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed.</p>";
+        previewBody.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed.</p>";
       }
     }
 
@@ -2733,7 +2746,7 @@ function serializeDraftFields(form) {
         event.preventDefault();
         showOverlayModal(modal);
         if (busyTimer) clearTimeout(busyTimer);
-        body.innerHTML = "<p class=\"text-sm text-slate-500\">Rendering preview\u2026</p>";
+        previewBody.innerHTML = "<p class=\"text-sm text-slate-500\">Rendering preview\u2026</p>";
         busyTimer = setTimeout(() => {
           requestRender();
         }, 50);
