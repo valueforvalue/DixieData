@@ -126,7 +126,7 @@ Per the prior spec (2026-07-04 draft). User signed off implicitly via "use the p
 | 4 | Display ID namespace | **`ART-NNNNN`** | v180 discipline. Sibling to `EVT-NNNNN` for #320. `NextArticleID` mirrors `NextEventID` at `internal/db/csaid.go`. |
 | 5 | Reference syntax | **`[Display Text](#person/D-00123)`** | Markdown link with custom scheme. Picker inserts; renderer resolves. |
 | 6 | Reference resolution | **Strict Display ID lookup, fail-loud** | Unresolved token renders `⚠ [Unknown: D-00123]` on PDF/HTML. |
-| 7 | Editor | **Markdown source + sanitized HTML live preview** (no WYSIWYG in v1) | Matches repo Tailwind/htmx aesthetic; `bluemonday` sanitizer; avoids contenteditable WYSIWYG bugs (the modal-invoker failure mode #1 in `tdd.md:41`). |
+| 7 | Editor | **Markdown source + sanitized HTML preview on demand** (no WYSIWYG in v1) — full-width editor + Preview button opens an overlay (issue #526) | Matches repo Tailwind/htmx aesthetic; `bluemonday` sanitizer; avoids contenteditable WYSIWYG bugs (the modal-invoker failure mode #1 in `tdd.md:41`). Live preview was relaxed from auto-render-on-keystroke to click-to-render because (a) the side-by-side preview stole editor width and (b) auto-render had a Wails desktop FormData-strip bug (the asset server drops multipart bodies). |
 | 8 | PDF pipeline | **Typst, new `templates/article.typ`** | Reuses Typst tooling; refactor `render-person-card(s)` from `record_card.typ` for single-sourced rendering. |
 | 9 | Export formats v1 | **PDF, Static HTML, raw `.md`** | Three deliverables. No Shared Archive toggle in v1 — Articles ride existing bundle. |
 | 10 | Static archive shape | **`window.DIXIE_DATA.articles: Article[]`** | Sibling to `records` (same pattern as #320 #335 for `events[]`). |

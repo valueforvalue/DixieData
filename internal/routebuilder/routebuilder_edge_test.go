@@ -24,3 +24,17 @@ func TestJobStatusEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// TestArticlePreviewURL pins the URL shape for the editor's
+// preview endpoint (issue #526). The endpoint is hardcoded
+// in frontend/app.js:initializeArticlePreview — if the URL
+// drifts, the JS still works but the templ form-action
+// attribute that the routebuilder.ArticleEdit/ArticleNew
+// targets stops matching the dispatcher's requestUrl and
+// the preview silently breaks. The shape is stable:
+// "/articles/preview" with no path parameters.
+func TestArticlePreviewURL(t *testing.T) {
+	if got := ArticlePreview(); got != "/articles/preview" {
+		t.Fatalf("ArticlePreview() = %q, want %q", got, "/articles/preview")
+	}
+}

@@ -362,7 +362,9 @@ try {
     const draftKey = document.querySelector('form[data-draft-key="new-article"]');
     const persistence = document.querySelector('[data-record-persistence]');
     const source = document.querySelector('[data-article-editor-source]');
-    const preview = document.querySelector('[data-article-editor-preview]');
+    const previewModal = document.querySelector('[data-article-preview-modal]');
+    const previewTrigger = document.querySelector('[data-article-preview-open]');
+    const previewClose = document.querySelector('[data-article-preview-close]');
     // Issue #375 regression net: the Back button must use
     // data-history-back (history navigation) rather than
     // data-dixie-submit + data-action (which coerces GET to
@@ -374,7 +376,10 @@ try {
       draftKeyExists: draftKey !== null,
       persistenceExists: persistence !== null,
       sourceExists: source !== null,
-      previewExists: preview !== null,
+      previewModalExists: previewModal !== null,
+      previewModalInitiallyHidden: previewModal ? previewModal.classList.contains('hidden') : false,
+      previewTriggerExists: previewTrigger !== null,
+      previewCloseExists: previewClose !== null,
       backBtnExists: backBtn !== undefined,
       backBtnUsesHistoryBack: backBtn?.hasAttribute('data-history-back') ?? false,
       backBtnHasDispatcherAttrs: backBtn?.hasAttribute('data-dixie-submit') ?? false,
@@ -388,19 +393,31 @@ try {
   record('editor-back-btn-no-dispatcher-attrs', !editorState.backBtnHasDispatcherAttrs, editorState);
   record('editor-back-btn-no-data-action', !editorState.backBtnHasDataAction, editorState);
   record('editor-source-textarea', editorState.sourceExists, editorState);
-  record('editor-preview-pane', editorState.previewExists, editorState);
+  record('editor-preview-modal-renders', editorState.previewModalExists, editorState);
+  record('editor-preview-modal-initially-hidden', editorState.previewModalInitiallyHidden, editorState);
+  record('editor-preview-trigger-renders', editorState.previewTriggerExists, editorState);
+  record('editor-preview-close-renders', editorState.previewCloseExists, editorState);
 
-  // Type into the source textarea; assert the preview pane
-  // updates with rendered HTML (via /articles/preview).
-  if (editorState.sourceExists && editorState.previewExists) {
+  // Type into the source textarea; click Preview; assert the
+  // modal opens with rendered HTML (via /articles/preview).
+  // Issue #526 regression net: in Wails desktop the previous
+  // side-by-side preview never rendered because the fetch
+  // bypassed dispatchDixieDataForm and the multipart body was
+  // stripped. The new flow POSTs URLSearchParams (Wails-safe)
+  // and shows the result in an overlay.
+  if (editorState.sourceExists && editorState.previewTriggerExists) {
     await page.fill('[data-article-editor-source]', '# Hello from smoke\n\nThis is **bold**.');
+    await page.click('[data-article-preview-open]');
     await wait(800);
     const previewState = await page.evaluate(() => {
-      const preview = document.querySelector('[data-article-editor-preview]');
+      const modal = document.querySelector('[data-article-preview-modal]');
+      const body = document.querySelector('[data-article-preview-body]');
       return {
-        innerHTML: preview ? preview.innerHTML : '',
+        modalOpen: modal ? !modal.classList.contains('hidden') : false,
+        innerHTML: body ? body.innerHTML : '',
       };
     });
+    record('editor-preview-button-opens-modal', previewState.modalOpen, { modalOpen: previewState.modalOpen });
     record(
       'editor-preview-renders-heading',
       previewState.innerHTML.includes('<h1>'),
@@ -411,6 +428,13 @@ try {
       previewState.innerHTML.includes('<strong>'),
       { length: previewState.innerHTML.length },
     );
+    await page.click('[data-article-preview-close]');
+    await wait(200);
+    const closedState = await page.evaluate(() => {
+      const modal = document.querySelector('[data-article-preview-modal]');
+      return { modalClosed: modal ? modal.classList.contains('hidden') : false };
+    });
+    record('editor-preview-close-closes-modal', closedState.modalClosed, closedState);
   }
 
   // /articles/preview endpoint sanitizes raw HTML.
@@ -438,21 +462,24 @@ try {
     const editState = await page.evaluate(() => {
       const form = document.querySelector(`form[data-draft-key^="edit-article-"]`);
       const source = document.querySelector('[data-article-editor-source]');
-      const preview = document.querySelector('[data-article-editor-preview]');
+      const previewTrigger = document.querySelector('[data-article-preview-open]');
+      const previewModal = document.querySelector('[data-article-preview-modal]');
       return {
         formExists: form !== null,
         draftKey: form?.getAttribute('data-draft-key'),
         kind: form?.getAttribute('data-record-persistence-kind'),
         sourceExists: source !== null,
         sourcePrefilled: source?.value && source.value.length > 0,
-        previewExists: preview !== null,
+        previewTriggerExists: previewTrigger !== null,
+        previewModalExists: previewModal !== null,
       };
     });
     record('edit-form-renders', editState.formExists, editState);
     record('edit-form-draft-key-is-edit', editState.draftKey && editState.draftKey.startsWith('edit-article-'), editState);
     record('edit-form-kind-is-edit', editState.kind === 'edit', editState);
     record('edit-form-source-prefilled', editState.sourcePrefilled, editState);
-    record('edit-form-preview-renders', editState.previewExists, editState);
+    record('edit-form-preview-trigger-renders', editState.previewTriggerExists, editState);
+    record('edit-form-preview-modal-renders', editState.previewModalExists, editState);
   }
 
   // ────────────────────────────────────────────────────────────

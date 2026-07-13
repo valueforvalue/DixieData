@@ -1,0 +1,51 @@
+package templates
+
+// article_preview_modal.templ — issue #526
+// Renders the Article editor's preview overlay. The editor
+// is no longer side-by-side with the preview (slice 3.6
+// layout); instead the user clicks a "Preview" button next
+// to Save, and the rendered Markdown appears in this modal.
+//
+// The modal matches the overlay vocabulary documented in
+// docs/ui-map/surfaces.md (overlay.* — fixed inset-0, role=
+// dialog, aria-modal="true") so it composes with the JS
+// showOverlayModal / hideOverlayModal helpers in
+// frontend/app.js:4399-4440.
+//
+// The body is filled by JS (initializeArticlePreview in
+// frontend/app.js) — the templ render only ships the
+// empty-state guidance so the modal is never blank on
+// first open.
+templ ArticlePreviewModal() {
+	<div
+		id="article-preview-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="article-preview-modal-heading"
+		data-article-preview-modal
+		class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8"
+	>
+		<div class="relative w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgb(var(--theme-parchment-rgb)/0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Article preview</p>
+					<h3 id="article-preview-modal-heading" class="mt-2 text-xl gold font-bold">Rendered Markdown</h3>
+					<p class="mt-2 text-sm text-slate-600">The exact HTML that will be stored when you save. Raw HTML is stripped at save time for safety.</p>
+				</div>
+				<button
+					type="button"
+					class="secondary-button w-full px-4 sm:w-auto"
+					data-article-preview-close
+				>
+					Close
+				</button>
+			</div>
+			<div
+				data-article-preview-body
+				class="prose prose-sm mt-6 min-h-[12rem] w-full rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-[color:var(--ink)]"
+			>
+				<p class="text-sm text-slate-500">Type Markdown in the editor and click Preview to see it rendered here.</p>
+			</div>
+		</div>
+	</div>
+}

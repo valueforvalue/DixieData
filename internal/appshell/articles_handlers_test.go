@@ -871,6 +871,11 @@ func TestHandleArticlePreviewSanitizesRawHTML(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST preview status = %d, want 200", resp.StatusCode)
 	}
+	// Issue #526: preview endpoint must advertise HTML so the
+	// JS overlay's innerHTML swap is well-defined.
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("preview Content-Type = %q, want text/html prefix", ct)
+	}
 	if !strings.Contains(string(body), "<h1>") {
 		t.Errorf("Heading not rendered in preview: %s", string(body))
 	}
@@ -941,8 +946,13 @@ func TestHandleArticleNewForm_HasDraftKeyAttr(t *testing.T) {
 	if !strings.Contains(string(body), `data-article-editor-source`) {
 		t.Errorf("new-article form missing source textarea data-attr")
 	}
-	if !strings.Contains(string(body), `data-article-editor-preview`) {
-		t.Errorf("new-article form missing preview pane data-attr")
+	// Issue #526: preview moved from side-by-side pane to
+	// on-demand overlay. Assert the new modal + trigger attrs.
+	if !strings.Contains(string(body), `data-article-preview-modal`) {
+		t.Errorf("new-article form missing preview modal data-attr")
+	}
+	if !strings.Contains(string(body), `data-article-preview-open`) {
+		t.Errorf("new-article form missing preview trigger data-attr")
 	}
 }
 
@@ -984,8 +994,13 @@ func TestHandleEditArticle_FormCarriesDraftAttrs(t *testing.T) {
 	if !strings.Contains(string(body), `data-article-editor-source`) {
 		t.Errorf("Edit form missing source textarea data-attr")
 	}
-	if !strings.Contains(string(body), `data-article-editor-preview`) {
-		t.Errorf("Edit form missing preview pane data-attr")
+	// Issue #526: preview moved from side-by-side pane to
+	// on-demand overlay. Assert the new modal + trigger attrs.
+	if !strings.Contains(string(body), `data-article-preview-modal`) {
+		t.Errorf("Edit form missing preview modal data-attr")
+	}
+	if !strings.Contains(string(body), `data-article-preview-open`) {
+		t.Errorf("Edit form missing preview trigger data-attr")
 	}
 }
 

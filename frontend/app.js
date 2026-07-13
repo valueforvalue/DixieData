@@ -2687,33 +2687,75 @@ function serializeDraftFields(form) {
   // with the sanitized HTML response. Empty body renders
   // the guidance message so the preview pane is never
   // blank.
-  function initializeMarkdownPreviews() {
-    document.querySelectorAll("[data-article-editor-preview]").forEach((preview) => {
-      const sourceID = preview.getAttribute("data-article-editor-preview-source-id");
-      if (!sourceID) return;
-      const source = document.getElementById(sourceID);
-      if (!(source instanceof HTMLTextAreaElement)) return;
-      /** @type {number | null} */
-      let timer = null;
-      source.addEventListener("input", () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(async () => {
-          const body = source.value || "";
-          try {
-            const fd = new FormData();
-            fd.append("body", body);
-            const resp = await fetch("/articles/preview", {
-              method: "POST",
-              body: fd,
-            });
-            if (!resp.ok) return;
-            const html = await resp.text();
-            preview.innerHTML = html || "<p class=\"text-sm text-slate-500\">If you write Markdown in the source panel, the rendered preview appears here.</p>";
-          } catch (_) {
-            // Network error: leave the previous preview in place.
-          }
-        }, 250);
+  function initializeArticlePreview() {
+    const modal = document.querySelector("[data-article-preview-modal]");
+    if (!(modal instanceof HTMLElement)) return;
+    const body = modal.querySelector("[data-article-preview-body]");
+    if (!(body instanceof HTMLElement)) return;
+    const source = document.getElementById("article-body");
+    if (!(source instanceof HTMLTextAreaElement)) return;
+    /** @type {number | null} */
+    let busyTimer = null;
+
+    async function requestRender() {
+      const value = source.value || "";
+      const params = new URLSearchParams();
+      params.append("body", value);
+      /** @type {RequestInit} */
+      const opts = {
+        method: "POST",
+        body: params.toString(),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      };
+      // Wails v2.12.0 asset server (wails.localhost) strips
+      // multipart/form-data bodies on POST; the dispatcher
+      // uses URLSearchParams for the same reason (app.js
+      // dispatchDixieDataForm FormData branch). We don't
+      // need the method-override header here because
+      // /articles/preview is POST-only; we just need the
+      // body to survive.
+      try {
+        const resp = await fetch("/articles/preview", opts);
+        if (!resp.ok) {
+          body.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed (" + resp.status + ").</p>";
+          return;
+        }
+        const html = await resp.text();
+        body.innerHTML = html || "<p class=\"text-sm text-slate-500\">Type Markdown in the editor and click Preview to see it rendered here.</p>";
+      } catch (err) {
+        body.innerHTML = "<p class=\"text-sm text-rose-600\">Preview request failed.</p>";
+      }
+    }
+
+    document.querySelectorAll("[data-article-preview-open]").forEach((trigger) => {
+      if (!(trigger instanceof HTMLElement)) return;
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        showOverlayModal(modal);
+        if (busyTimer) clearTimeout(busyTimer);
+        body.innerHTML = "<p class=\"text-sm text-slate-500\">Rendering preview\u2026</p>";
+        busyTimer = setTimeout(() => {
+          requestRender();
+        }, 50);
       });
+    });
+
+    document.querySelectorAll("[data-article-preview-close]").forEach((closer) => {
+      if (!(closer instanceof HTMLElement)) return;
+      closer.addEventListener("click", (event) => {
+        event.preventDefault();
+        hideOverlayModal(modal);
+      });
+    });
+
+    // Escape-to-close: overlayModalKeydown handles Tab trapping;
+    // Escape is handled here because the modal is editor-driven
+    // (not form-driven) so the dispatcher does not see it.
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        hideOverlayModal(modal);
+      }
     });
   }
 
@@ -5951,7 +5993,7 @@ async function refreshShareQueuePresetsPage(panel) {
     applyResponsiveLayout(document);
     initializeTabs();
     initializeDraftForms();
-    initializeMarkdownPreviews();
+    initializeArticlePreview();
     initializeEntryTypeForms();
     initializeLiveCounts(document);
     initializeFloatingNav();

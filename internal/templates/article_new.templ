@@ -85,35 +85,29 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 						value={ article.Subtitle }
 					/>
 				</div>
-				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					<div>
-						<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body (Markdown)</label>
-						<textarea
-							id="article-body"
-							name="body"
-							rows="20"
-							class="field-input mt-1 w-full font-mono text-sm"
-							placeholder="Write your article in Markdown. Use [Name](#person/D-00123) for Person Record references."
-							data-article-editor-source
-						>{ article.BodyMD }</textarea>
-						<p class="mt-1 text-xs text-slate-500">Markdown syntax supported. Raw HTML is stripped at save time for safety.</p>
-					</div>
-					<div>
-						<p class="block text-sm font-semibold text-[color:var(--ink)]">Live preview</p>
-						<div
-							id="article-body-preview"
-							class="prose prose-sm mt-1 min-h-[24rem] w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-[color:var(--ink)]"
-							data-article-editor-preview
-							data-article-editor-preview-source-id="article-body"
-						>If you write Markdown in the source panel, the rendered preview appears here. Updates live (250ms debounce).</div>
-					</div>
+				<div>
+					<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body (Markdown)</label>
+					<textarea
+						id="article-body"
+						name="body"
+						rows="22"
+						class="field-input mt-1 w-full font-mono text-sm"
+						placeholder="Write your article in Markdown. Use [Name](#person/D-00123) for Person Record references."
+						data-article-editor-source
+					>{ article.BodyMD }</textarea>
+					<p class="mt-1 text-xs text-slate-500">Markdown syntax supported. Raw HTML is stripped at save time for safety.</p>
 				</div>
 				<div class="flex flex-wrap justify-end gap-3">
+					@components.Button("Preview", components.ButtonSecondary, "", templ.Attributes{
+						"type":          "button",
+						"data-article-preview-open": "",
+					})
 					@components.Button("Save Article", components.ButtonPrimary, "", templ.Attributes{
 						"type": "submit",
 					})
 				</div>
 			</form>
+			@ArticlePreviewModal()
 		</div>
 	}
 }
