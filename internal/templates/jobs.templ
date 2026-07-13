@@ -354,6 +354,21 @@ templ JobReportView(job jobs.Job) {
 			<section data-job-report-summary>
 				<h2 class="text-base font-semibold">Summary</h2>
 				<p class="mt-2 text-sm font-medium">{ job.Summary().Headline }</p>
+				if job.Summary().RemoteURL != "" {
+					// Issue #552: mirror the summary card's remote-link
+					// affordance on the report page so a researcher
+					// who has saved the report can still reach the
+					// underlying Drive/Sheets artifact.
+					<p class="mt-2">
+						<a
+							href={ templ.SafeURL(job.Summary().RemoteURL) }
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-[var(--theme-accent-strong)] underline"
+							data-job-remote-link-report
+						>{ job.Summary().RemoteLabel }</a>
+					</p>
+				}
 				if len(job.Summary().DetailLines) > 0 {
 					<ul class="mt-2 space-y-1 text-sm text-slate-700">
 						for _, line := range job.Summary().DetailLines {
