@@ -183,12 +183,22 @@ try {
 
   // Two rows, each with a <select name="survivor_id"> + a
   // default placeholder option <option value="" disabled selected>.
+  //
+  // Issue #470 cluster 3: the seed-data default tags from
+  // vocabulary (currently 30 entries) means /tags lists 30+
+  // rows, not just the 2 we created. The original probe
+  // asserted exactly 2 rows and would always fail against the
+  // seed used by audit runs. Filter rowData down to the 2 tags
+  // we created (Source Tag + Survivor Tag) so the rest of the
+  // assertions apply only to the rows we care about.
+  const targetTags = new Set(["Source Tag", "Survivor Tag"]);
   const rowData = await page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll("tr[id^='tag-row-']"));
     return rows.map((row) => {
       const id = row.id.replace("tag-row-", "");
       const select = row.querySelector("select[name='survivor_id']");
       const input = row.querySelector("input[name='survivor_id']");
+      const nameCell = row.querySelectorAll("td")[0];
       const options = select
         ? Array.from(select.querySelectorAll("option")).map((o) => ({
             value: o.getAttribute("value"),
@@ -200,6 +210,7 @@ try {
       const memberCell = row.querySelectorAll("td")[1];
       return {
         tagId: id,
+        tagName: nameCell ? (nameCell.textContent || "").trim() : null,
         hasSelect: !!select,
         hasInput: !!input,
         options,
@@ -207,11 +218,15 @@ try {
       };
     });
   });
-  record("two-tag-rows-rendered", rowData.length === 2, { rows: rowData.map((r) => r.tagId) });
-  record("every-row-has-select", rowData.every((r) => r.hasSelect));
-  record("no-row-has-legacy-input", rowData.every((r) => !r.hasInput));
+  const targetRows = rowData.filter((r) => targetTags.has(r.tagName));
+  record("two-tag-rows-rendered", targetRows.length === 2, {
+    totalRows: rowData.length,
+    targetRows: targetRows.map((r) => ({ id: r.tagId, name: r.tagName })),
+  });
+  record("every-row-has-select", targetRows.every((r) => r.hasSelect));
+  record("no-row-has-legacy-input", targetRows.every((r) => !r.hasInput));
 
-  for (const r of rowData) {
+  for (const r of targetRows) {
     const placeholder = r.options?.find((o) => o.value === "");
     record(
       `placeholder-default-row-${r.tagId}`,
@@ -221,7 +236,7 @@ try {
   }
 
   // Each picker's options exclude the source row's own id.
-  for (const r of rowData) {
+  for (const r of targetRows) {
     const ids = r.options?.map((o) => o.value).filter(Boolean) || [];
     record(
       `picker-excludes-own-id-${r.tagId}`,
@@ -232,9 +247,11 @@ try {
 
   // Source Tag picker includes the Survivor Tag id formatted as
   // `{id} — Survivor Tag (1 members)`.
-  const sourceRow = rowData.find((r) =>
-    r.options?.some((o) => o.text === "Survivor Tag (1 members)" || o.text.includes("Survivor Tag"))
-  ) || (rowData.length ? rowData[0] : null);
+  const sourceRow = targetRows.find((r) => r.tagName === "Source Tag")
+    || targetRows.find((r) =>
+      r.options?.some((o) => o.text === "Survivor Tag (1 members)" || o.text.includes("Survivor Tag"))
+    )
+    || (targetRows.length ? targetRows[0] : null);
   // Pull the survivor option by its text containing "Survivor Tag".
   const survivorOpt = sourceRow?.options?.find((o) => /Survivor Tag/.test(o.text));
   record(
@@ -251,9 +268,10 @@ try {
   // Easier: the survivorOpt.value is the survivor's id; the
   // source row id is the OTHER row's id.
   const survivorId = survivorOpt?.value;
-  const sourceRowId = rowData.find((r) => r.tagId !== survivorId)?.tagId;
+  const survivorRow = targetRows.find((r) => r.tagId === survivorId);
+  const sourceRowId = targetRows.find((r) => r.tagId !== survivorId)?.tagId;
   record("identified-source-and-survivor", !!survivorId && !!sourceRowId, {
-    sourceId: sourceRowId, survivorId,
+    sourceId: sourceRowId, survivorId, survivorTagName: survivorRow?.tagName,
   });
 
   // Pick the survivor value on the source row's select + submit
