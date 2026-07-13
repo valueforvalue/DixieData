@@ -13,7 +13,7 @@
 // Exit code is non-zero when any smoke assertion fails.
 
 import { chromium } from 'playwright';
-import { discoverShareExportButtons } from './discover_export_buttons.mjs';
+import { discoverShareExportButtons, groupManifestByPage } from './discover_export_buttons.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8765';
 
@@ -238,75 +238,100 @@ async function main() {
   // curation. See the discovery module header for the eligibility
   // rules and the override tables (builderPrefixOverrides +
   // literalPathOverrides) that govern which buttons qualify.
-  const shareButtons = discoverShareExportButtons().map((b) => ({
-    label: b.label,
-    path: b.path,
-  }));
+  //
+  // Issue #469 fix: the previous harness navigated to /share for
+  // every button regardless of which page actually renders it. After
+  // #284 (split /share into sub-pages) + #380 (mega-menu reshape),
+  // most discovered buttons live on /share/exports or
+  // /share/sync — not /share. Group the manifest by the per-button
+  // page (derived from the source .templ file via
+  // groupManifestByPage in discover_export_buttons.mjs) so each
+  // button is exercised from the page that actually renders it.
+  const pageGroups = groupManifestByPage();
 
-  for (const btn of shareButtons) {
-    await page.goto(`${BASE}/share`, { waitUntil: 'domcontentloaded' });
+  for (const { page: pagePath, entries } of pageGroups) {
+    await page.goto(`${BASE}${pagePath}`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
-    const loc = page.locator('button', { hasText: btn.label }).first();
-    const exists = await loc.count();
-    // Click + wait for any navigation to settle. Option C's dispatcher
-    // calls window.location.assign() which triggers a navigation;
-    // subsequent page.goto calls would conflict with an in-flight nav.
-    let req = null;
-    if (exists > 0) {
-      const reqPromise = page.waitForRequest(
-        (r) => r.url().includes(btn.path) && r.method() === 'POST',
-        { timeout: 4000 }
-      ).catch(() => null);
-      try {
-        await loc.click({ timeout: 1500 });
-      } catch (e) { /* button may be hidden by modal */ }
-      req = await reqPromise;
-      // Wait for any navigation triggered by the dispatcher.
-      await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
-      await page.waitForTimeout(200);
-    }
-    record(`share-${btn.path}-button-exists`, exists > 0);
-    record(`share-${btn.path}-fires-request`, !!req, {
-      method: req?.method(),
-      url: req?.url(),
-    });
-    // Option C: dispatcher reads 303 Location OR 200 X-DixieData-Redirect,
-    // navigates via window.location.assign. The user-visible contract is
-    // landing on /jobs/{id} (or returning to /share on dedup). Don't assert
-    // a specific status code — assert the page actually navigated.
-    const expectsRedirect = !btn.path.startsWith('/export/static-archive');
-    if (expectsRedirect) {
-      await page.waitForTimeout(200); // give the redirect a moment to settle
-      const urlAfter = page.url();
-      // All exports (except the carve-outs below) now route through
-      // enqueueExport -> X-DixieData-Redirect, which
-      // dispatchDixieDataForm reads and navigates to. The smoke that
-      // accepted /share as success was masking a real bug: the web-mode
-      // binary never installed SetSaveFileDialogOverride, so every save-
-      // dialog-backed export landed in the dedup branch and bounced the
-      // user back to /share. With the override wired in
-      // cmd/dixiedata-web, every export should land on /jobs/{id}.
-      //
-      // Two carve-outs:
-      //   - /export/static-archive: uses a plain <form method="post">
-      //     and the browser follows 303 + Location natively, so the
-      //     dispatcher never fires and the URL stays on /share.
-      //   - /export/feedback-log (issue #137): now routes through
-      //     enqueueExport when a feedback log exists (lands on /jobs/{id}),
-      //     but the no-feedback-yet branch returns 200 + X-DixieData-Toast
-      //     and stays on /share. Both outcomes are acceptable.
-      const isExemptFromJobRedirect =
-        btn.path.startsWith('/export/static-archive') ||
-        btn.path === '/export/feedback-log';
-      const navigated = isExemptFromJobRedirect
-        ? urlAfter.endsWith('/share') || urlAfter.includes('/jobs/')
-        : urlAfter.includes('/jobs/');
-      record(`share-${btn.path}-navigates-to-jobs`, navigated, {
-        urlAfter,
-        expected: isExemptFromJobRedirect
-          ? '/share or /jobs/{id} (plain-form / no-data carve-out)'
-          : '/jobs/{id} (dispatcher must read X-DixieData-Redirect)',
+
+    for (const btn of entries) {
+      const loc = page.locator('button', { hasText: btn.label }).first();
+      const exists = await loc.count();
+      // Click + wait for any navigation to settle. Option C's
+      // dispatcher calls window.location.assign() which triggers a
+      // navigation; subsequent page.goto calls would conflict with
+      // an in-flight nav.
+      let req = null;
+      if (exists > 0) {
+        const reqPromise = page.waitForRequest(
+          (r) => r.url().includes(btn.path) && r.method() === 'POST',
+          { timeout: 4000 }
+        ).catch(() => null);
+        try {
+          await loc.click({ timeout: 1500 });
+        } catch (e) { /* button may be hidden by modal */ }
+        req = await reqPromise;
+        // Wait for any navigation triggered by the dispatcher.
+        await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+      record(`share-${btn.path}-button-exists`, exists > 0, { page: pagePath });
+      record(`share-${btn.path}-fires-request`, !!req, {
+        method: req?.method(),
+        url: req?.url(),
+        page: pagePath,
       });
+      // Option C: dispatcher reads 303 Location OR 200 X-DixieData-Redirect,
+      // navigates via window.location.assign. The user-visible contract is
+      // landing on /jobs/{id} (or returning to /share on dedup). Don't assert
+      // a specific status code — assert the page actually navigated.
+      const expectsRedirect = !btn.path.startsWith('/export/static-archive');
+      if (expectsRedirect) {
+        await page.waitForTimeout(200); // give the redirect a moment to settle
+        const urlAfter = page.url();
+        // All exports (except the carve-outs below) now route through
+        // enqueueExport -> X-DixieData-Redirect, which
+        // dispatchDixieDataForm reads and navigates to. The smoke that
+        // accepted /share as success was masking a real bug: the web-mode
+        // binary never installed SetSaveFileDialogOverride, so every save-
+        // dialog-backed export landed in the dedup branch and bounced the
+        // user back to /share. With the override wired in
+        // cmd/dixiedata-web, every export should land on /jobs/{id}.
+        //
+        // Two carve-outs:
+        //   - /export/static-archive: uses a plain <form method="post">
+        //     and the browser follows 303 + Location natively, so the
+        //     dispatcher never fires and the URL stays on /share.
+        //   - /export/feedback-log (issue #137): now routes through
+        //     enqueueExport when a feedback log exists (lands on /jobs/{id}),
+        //     but the no-feedback-yet branch returns 200 + X-DixieData-Toast
+        //     and stays on /share. Both outcomes are acceptable.
+        const isExemptFromJobRedirect =
+          btn.path.startsWith('/export/static-archive') ||
+          btn.path === '/export/feedback-log';
+        // For non-/share buttons, the source page is the natural
+        // landing surface after a redirect that bounces back (e.g.
+        // /settings after a no-op export). Allow landing on the
+        // source page in addition to /share + /jobs/{id}.
+        const navigated = isExemptFromJobRedirect
+          ? urlAfter.endsWith('/share') || urlAfter.includes('/jobs/') || urlAfter.endsWith(pagePath)
+          : urlAfter.includes('/jobs/');
+        record(`share-${btn.path}-navigates-to-jobs`, navigated, {
+          urlAfter,
+          expected: isExemptFromJobRedirect
+            ? `/jobs/{id} or ${pagePath} (plain-form / no-data carve-out)`
+            : '/jobs/{id} (dispatcher must read X-DixieData-Redirect)',
+          page: pagePath,
+        });
+        // After a successful click the dispatcher often navigates
+        // to /jobs/{id} (issue #469); subsequent buttons on the
+        // same source page would no longer be in the DOM. Navigate
+        // back so the next iteration in the same page group still
+        // has a live button to click. Done AFTER the navigates-to
+        // assertion so we capture the post-click URL before
+        // re-loading the source page.
+        await page.goto(`${BASE}${pagePath}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForTimeout(300);
+      }
     }
   }
   // Printable PDF modal: same /jobs/{id} landing surface as the buttons above.
