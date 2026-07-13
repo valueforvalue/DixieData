@@ -557,3 +557,50 @@ func TestTuneDBStrictRefusesMissingDB(t *testing.T) {
 		t.Fatalf("opt-out should have created the db file; stat %s: %v", filepath.Join(optout, "dixiedata.db"), statErr)
 	}
 }
+
+// TestTuneVersionFlag (issue #515 slice D2) pins the --version
+// flag. Asserts (a) the flag short-circuits before any global flag
+// parsing — works without --db, --typst, or anything else; (b)
+// the human output contains the tune version, the typst version
+// (resolved via findTypstBinary walker), and the bridge version;
+// (c) the JSON output via DIXIEDATA_TUNE_JSON=1 emits the same
+// three fields as a single-line-pretty JSON object.
+func TestTuneVersionFlag(t *testing.T) {
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+
+	// (a) --version works without --db.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, tuneBin, "--version")
+	cmd.Dir = t.TempDir()
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("--version failed: %v\n%s", err, outBytes)
+	}
+	out := string(outBytes)
+	for _, want := range []string{"dixiedata-tune ", "  typst:  ", "  bridge: "} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected human --version output to contain %q; got:\n%s", want, out)
+		}
+	}
+
+	// (b) JSON output via DIXIEDATA_TUNE_JSON=1.
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel2()
+	cmd2 := exec.CommandContext(ctx2, tuneBin, "--version")
+	cmd2.Dir = t.TempDir()
+	cmd2.Env = append(os.Environ(), "DIXIEDATA_TUNE_JSON=1")
+	outBytes2, err2 := cmd2.CombinedOutput()
+	if err2 != nil {
+		t.Fatalf("--version (json) failed: %v\n%s", err2, outBytes2)
+	}
+	out2 := string(outBytes2)
+	for _, want := range []string{`"tune":`, `"typst":`, `"bridge":`} {
+		if !strings.Contains(out2, want) {
+			t.Fatalf("expected JSON --version output to contain %q; got:\n%s", want, out2)
+		}
+	}
+}

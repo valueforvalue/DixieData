@@ -26,6 +26,13 @@ import (
 	"github.com/valueforvalue/DixieData/pkg/render"
 )
 
+// Version is the bridge module's release tag, surfaced by the
+// tune binary's --version flag (issue #515 slice D2). Bumped
+// when the bridge's public API changes in a user-visible way
+// (new method, changed signature). Patch-level changes that
+// don't alter the public surface don't require a bump.
+const Version = "1.0.0"
+
 // BulkRenderer is the entry point used by both the appshell and
 // external tools. Construct one via NewBulkRenderer and drive the
 // render methods.

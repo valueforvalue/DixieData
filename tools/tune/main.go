@@ -12,6 +12,7 @@
 //	dixiedata-tune list-templates list discovered typst templates
 //	dixiedata-tune list-records   list records in --db
 //	dixiedata-tune print-defaults print the appshell's default flag set
+//	dixiedata-tune doctor        preflight: typst + templates + db + snapshots
 package main
 
 import (
@@ -42,9 +43,27 @@ func main() {
 	}
 }
 
+// Version is the tune binary's release tag (issue #515 slice D2).
+// Bumped when the binary's CLI surface or the bridge facade it
+// depends on changes in a user-visible way. The --version flag
+// prints this alongside the typst binary version + the bridge
+// module version so a developer can pin which toolchain produced
+// a given PDF.
+const Version = "1.0.0"
+
 func run(args []string) error {
 	if len(args) == 0 {
 		return usage(nil)
+	}
+
+	// --version: short-circuit before any global flag parsing.
+	// Works without --db (which is the whole point — users want
+	// to know which binary they have without standing up an
+	// archive first). Issue #515 slice D2.
+	for _, a := range args {
+		if a == "--version" || a == "-version" {
+			return printVersion()
+		}
 	}
 
 	globalFS := flag.NewFlagSet("global", flag.ContinueOnError)
@@ -1178,6 +1197,57 @@ func fileSize(path string) (int64, error) {
 		return 0, err
 	}
 	return info.Size(), nil
+}
+
+// printVersion prints the tune binary version, the typst binary
+// version (best-effort; falls back to 'unknown' if --typst hasn't
+// been resolved or the binary isn't in PATH), and the bridge
+// module version. Set DIXIEDATA_TUNE_JSON=1 for JSON output for
+// CI / audit scripts (issue #515 slice D2).
+func printVersion() error {
+	typstVersion := "unknown"
+	if typst := strings.TrimSpace(os.Getenv("DIXIEDATA_TUNE_TYPST")); typst != "" {
+		if v, ok := probeTypstVersion(typst); ok {
+			typstVersion = v
+		}
+	}
+	// Default typst binary walker: try the same path findTypstBinary
+	// would resolve so --version works without explicit --typst.
+	if typstVersion == "unknown" {
+		if abs, err := findTypstBinary(); err == nil {
+			if v, ok := probeTypstVersion(abs); ok {
+				typstVersion = v
+			}
+		}
+	}
+	payload := map[string]string{
+		"tune":   Version,
+		"typst":  typstVersion,
+		"bridge": exportbridge.Version,
+	}
+	if os.Getenv("DIXIEDATA_TUNE_JSON") == "1" {
+		return writeJSON(os.Stdout, payload)
+	}
+	fmt.Printf("dixiedata-tune %s\n", Version)
+	fmt.Printf("  typst:  %s\n", typstVersion)
+	fmt.Printf("  bridge: %s\n", exportbridge.Version)
+	return nil
+}
+
+// probeTypstVersion shells out to the given typst binary with
+// --version and returns the trimmed stdout. Returns ("", false)
+// when the binary is missing, fails to start, or prints
+// something unexpected.
+func probeTypstVersion(binPath string) (string, bool) {
+	out, err := exec.Command(binPath, "--version").Output()
+	if err != nil {
+		return "", false
+	}
+	v := strings.TrimSpace(string(out))
+	if v == "" {
+		return "", false
+	}
+	return v, true
 }
 
 // pdfPageCount returns the page count of a PDF using pdfinfo.
