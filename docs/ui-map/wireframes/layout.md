@@ -78,7 +78,6 @@ Two columns.
 | Open Timeline | `routebuilder.ResearchPicker() + "?next=timeline"` | `data-research-menu-timeline` |
 | Open Research Log | `routebuilder.ResearchPicker() + "?next=research-log"` | `data-research-menu-research-log` |
 | Research Collections | `/research-collections` | `data-research-menu-research-collections` |
-| Change Person… | `/research` | `data-research-menu-change-person` |
 | Insights | `/insights` | — |
 
 **Column 2: Share** (5 items; `/share` landing is the NEW first item)
