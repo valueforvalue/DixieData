@@ -42,7 +42,7 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 		"/insights/drilldown?scope=buried_in&amp;value=Oak+Hill+Cemetery",
 		"Top Cemeteries",
 		"Oak Hill Cemetery",
-		"Confederate Home Census",
+		"Status Breakdown",
 		"Pension Distribution",
 		"1st Texas Infantry",
 		"Birth and Death Decades",

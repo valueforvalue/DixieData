@@ -119,7 +119,6 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					
 					<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-ink-deep-rgb)/0.06)] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Advanced Search Active</p>
-						<p class="mt-2 text-sm text-[var(--theme-text-primary)]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-display_id">Display ID</label>
@@ -432,7 +431,6 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							if soldierHasCamaraderie(s) {
 								<div class="rounded-2xl border border-research-border bg-research-bg/80 p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Unit Camaraderie</p>
-									<p class="mt-2 text-sm text-slate-700">Open this person's recorded unit on Insights to browse all person records sharing it.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/insights/drilldown?scope=unit&value=%s", url.QueryEscape(s.Unit))) } class="secondary-button">Open Unit on Insights</a>
 									</div>
@@ -441,7 +439,6 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							if soldierHasTimeline(s) {
 								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-accent-strong)]">Service Timeline</p>
-									<p class="mt-2 text-sm text-slate-700">Build a chronology from profile dates plus dated source record details like muster, parole, pension, and memorial notes.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/timeline", s.ID)) } class="secondary-button">Open Timeline</a>
 									</div>
@@ -449,7 +446,6 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							}
 							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Log</p>
-								<p class="mt-2 text-sm text-slate-700">Track missing evidence, attach follow-up tasks, and keep resolved research leads visible instead of burying them in freeform notes.</p>
 								<div class="mt-4 flex flex-wrap gap-3">
 									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-log", s.ID)) } class="secondary-button">Open Research Log</a>
 								</div>
@@ -463,7 +459,6 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 							// already live on Insights).
 							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Collections</p>
-								<p class="mt-2 text-sm text-slate-700">Save this person record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p>
 								<div class="mt-4 flex flex-wrap gap-3">
 									<a href={ templ.SafeURL(fmt.Sprintf("/research-collections?from=%d", s.ID)) } class="secondary-button">Manage Collections</a>
 								</div>
@@ -553,7 +548,6 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				</div>
 				<div class="mt-5 rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.42)] bg-[rgb(var(--theme-review-red-rgb)/0.08)] p-4">
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-review-red)]">Danger Zone</p>
-					<p class="mt-2 text-sm text-[var(--theme-review-red)]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
 						@components.Button("Delete Person Record", components.ButtonDanger, "", templ.Attributes{
 							"data-action": fmt.Sprintf("/soldiers/%d", s.ID),
