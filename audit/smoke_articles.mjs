@@ -521,6 +521,31 @@ try {
       };
     });
     record('editor-cheatsheet-escape-closes', cheatsheetDismissedState.ariaExpanded === 'false' && cheatsheetDismissedState.panelHidden, cheatsheetDismissedState);
+
+    // Issue #576: reopen the cheatsheet, click a Copy
+    // button, assert the value lands on the clipboard and a
+    // confirmation toast appears. Playwright grants
+    // clipboard-read/write by default for the page context;
+    // the assertion reads back through navigator.clipboard.
+    await page.click('[data-foldout-trigger="panel.article.markdown-cheatsheet"]');
+    await wait(200);
+    const copyState = await page.evaluate(async () => {
+      const button = document.querySelector('[data-md-cheatsheet-copy-key="heading"]');
+      const expected = button ? button.getAttribute('data-md-cheatsheet-copy-value') : null;
+      button.click();
+      let clipboardValue = null;
+      try {
+        clipboardValue = await navigator.clipboard.readText();
+      } catch (error) {
+        clipboardValue = "__clipboard_read_denied__";
+      }
+      // Wait a tick for showToast to append the toast card.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const toast = document.querySelector('[data-toast-kind]')?.textContent || '';
+      return { expected, clipboardValue, toast };
+    });
+    record('editor-cheatsheet-row-copy-value', copyState.clipboardValue === copyState.expected, copyState);
+    record('editor-cheatsheet-row-copy-toast', /Copied/.test(copyState.toast), copyState);
   }
 
   // /articles/preview endpoint sanitizes raw HTML.

@@ -43,6 +43,13 @@ interface DixieDataWindow {
   // args so re-mounts keep using the latest values.
   __dixieDebounce?: <F extends (...args: any[]) => any>(fn: F, ms: number) => ((...args: Parameters<F>) => void) & { cancel: () => void; schedule: () => void };
   __dixieBrowseFilterDebounce?: (form: HTMLFormElement, url: string, target: string) => void;
+  // Issue #576: shared clipboard helper attached by
+  // frontend/_lib/clipboard.js (loaded via a <script defer>
+  // in index.html). Returns a Promise that resolves after
+  // the write succeeds or the legacy fallback completes.
+  // Both [data-copy-path] and the Markdown cheatsheet per-row
+  // copy buttons route through this helper.
+  __dixieCopyText?: (text: string) => Promise<void>;
   __dixieDebug?: {
     openFolder?: () => void | Promise<void>;
     copyEntries?: () => void | Promise<void>;
@@ -101,10 +108,15 @@ declare global {
     // querySelectorAll loop's per-element read/write is
     // type-safe under strictNullChecks.
     __pickerClearBound?: boolean;
+    // Issue #576: initializeMarkdownCheatsheet binds once per
+    // cheatsheet per-row copy button via this guard. Mirrors
+    // the __copyPathBound / __pickerClearBound pattern.
+    __cheatsheetCopyBound?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;
     __pickerClearBound?: boolean;
+    __cheatsheetCopyBound?: boolean;
   }
 }
 

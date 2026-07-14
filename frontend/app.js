@@ -3668,6 +3668,7 @@ function serializeDraftFields(form) {
     applyCalendarAnniversaryDensity();
     initializeCopyPathButtons();
     initializePersonRecordPicker();
+    initializeMarkdownCheatsheet();
     // installFoldouts is idempotent (guarded by
     // window.__foldoutDocHandlerBound) so calling it here on
     // every htmx:load is safe. The per-trigger loop inside
@@ -3706,19 +3707,13 @@ function serializeDraftFields(form) {
           return;
         }
         try {
-          if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(path);
-          } else {
-            // Fallback for browsers without the async clipboard API.
-            const tmp = document.createElement("textarea");
-            tmp.value = path;
-            tmp.style.position = "fixed";
-            tmp.style.opacity = "0";
-            document.body.appendChild(tmp);
-            tmp.select();
-            document.execCommand("copy");
-            document.body.removeChild(tmp);
-          }
+          // Issue #576: route through the shared clipboard
+          // helper (window.__dixieCopyText) so the cheatsheet
+          // per-row copy uses the same code path. Same
+          // secure-context fallback as the legacy impl.
+          const copyText = window.__dixieCopyText;
+          if (!copyText) return;
+          await copyText(path);
           showToast("Path copied.", "success");
         } catch (error) {
           showToast("Could not copy the path. Long-press to select.", "error");
@@ -4763,6 +4758,48 @@ function onPrintRecordsFragmentReady(modal) {
         }
         if (cursor instanceof HTMLElement) {
           cursor.innerHTML = "";
+        }
+      });
+    });
+  }
+
+  // initializeMarkdownCheatsheet wires the per-row Copy
+  // buttons on the Article editor's Markdown syntax
+  // cheatsheet (issue #565 / #576). The data attrs are
+  // already shipped by the templ component
+  // (`data-md-cheatsheet-copy-key` for the row id,
+  // `data-md-cheatsheet-copy-value` for the example source);
+  // the JS hookup was missing, so the buttons did nothing.
+  // The wire-up goes through the shared clipboard helper
+  // (window.__dixieCopyText) so the cheatsheet + the
+  // [data-copy-path] copy-path buttons share one code
+  // path (DRY §1.1). Idempotent via the per-element guard
+  // matching the rest of the initializer family.
+  function initializeMarkdownCheatsheet() {
+    document.querySelectorAll("[data-md-cheatsheet-copy-key]").forEach((button) => {
+      if (button.__cheatsheetCopyBound) {
+        return;
+      }
+      button.__cheatsheetCopyBound = true;
+      button.addEventListener("click", async () => {
+        const value = button.getAttribute("data-md-cheatsheet-copy-value") || "";
+        if (!value) {
+          showToast("Nothing to copy.", "error");
+          return;
+        }
+        const copyText = window.__dixieCopyText;
+        if (!copyText) {
+          showToast("Clipboard helper unavailable.", "error");
+          return;
+        }
+        try {
+          await copyText(value);
+          // Truncate the toast text for long examples so the
+          // toast card doesn't grow a long paragraph per click.
+          const preview = value.length > 40 ? value.slice(0, 40) + "…" : value;
+          showToast("Copied: " + preview, "success");
+        } catch (error) {
+          showToast("Could not copy. Long-press to select.", "error");
         }
       });
     });
