@@ -34,7 +34,15 @@ interface DixieDataWindow {
   // installFloatingNavPanel read/write sites in app.js.
   __floatingNavInstallN?: number;
   __floatingNavBoundTriggers?: WeakSet<HTMLElement>;
-  __dixieBrowseFilterTimer?: ReturnType<typeof setTimeout>;
+  // Issue #573: shared debounce helper + the window-stashed
+  // browse-filter debounce instance that owns the 200ms
+  // trailing-edge filter-refresh timer. The helper attaches
+  // `__dixieDebounce` from a separate <script>; consumers see
+  // it as `(fn, ms) => wrapped`. The browse-filter instance
+  // passes the freshest (form, url, target) as trailing-fire
+  // args so re-mounts keep using the latest values.
+  __dixieDebounce?: <F extends (...args: any[]) => any>(fn: F, ms: number) => ((...args: Parameters<F>) => void) & { cancel: () => void; schedule: () => void };
+  __dixieBrowseFilterDebounce?: (form: HTMLFormElement, url: string, target: string) => void;
   __dixieDebug?: {
     openFolder?: () => void | Promise<void>;
     copyEntries?: () => void | Promise<void>;

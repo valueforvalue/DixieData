@@ -19,6 +19,11 @@
   <title>DixieData</title>
   <link rel="stylesheet" href="/app.css"/>
   <script defer src="/htmx.min.js"></script>
+  <!-- Issue #573: shared frontend utilities. Order matters:
+       debounce.js MUST load before app.js so the latter can
+       reach `window.__dixieDebounce` at module-init time
+       without a race. -->
+  <script defer src="/_lib/debounce.js"></script>
   <script defer src="/app.js"></script>
   <style>
     :root {

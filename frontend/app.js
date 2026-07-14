@@ -2676,8 +2676,17 @@ function serializeDraftFields(form) {
     if (!(body instanceof HTMLElement)) return;
     const source = document.getElementById("article-body");
     if (!(source instanceof HTMLTextAreaElement)) return;
-    /** @type {number | null} */
-    let busyTimer = null;
+    // Issue #573: shared debounce helper replaces the inline
+    // clearTimeout/setTimeout pair on the Preview button (50ms
+    // render-pulse). One debounce instance per modal open so a
+    // second click mid-flight collapses into the trailing fire.
+    // Typed as the helper's return shape (`(...args) => void` &
+    // `{ cancel, schedule }`) so the `busyDebounce.cancel()` /
+    // `busyDebounce()` calls type-check under strictNullChecks.
+    const debounce = window.__dixieDebounce;
+    if (!debounce) return;
+    /** @type {((...args: any[]) => void) & { cancel: () => void; schedule: () => void } | null} */
+    let busyDebounce = null;
 
     // The closures below (requestRender + the input handler) lose
     // the `instanceof` narrowing from the top of the function once
@@ -2727,11 +2736,16 @@ function serializeDraftFields(form) {
       trigger.addEventListener("click", (event) => {
         event.preventDefault();
         showOverlayModal(modal);
-        if (busyTimer) clearTimeout(busyTimer);
+        if (busyDebounce && typeof busyDebounce.cancel === "function") {
+          busyDebounce.cancel();
+        }
         previewBody.innerHTML = "<p class=\"text-sm text-slate-500\">Rendering preview\u2026</p>";
-        busyTimer = setTimeout(() => {
-          requestRender();
-        }, 50);
+        if (!busyDebounce) {
+          busyDebounce = debounce(() => {
+            requestRender();
+          }, 50);
+        }
+        busyDebounce();
       });
     });
 
@@ -5239,8 +5253,6 @@ async function refreshShareQueuePresetsPage(panel) {
   // rapid checkbox toggles collapse to one debounced server fetch.
   // The Refresh Preview button forces an immediate fetch. The server
   // returns an HTML fragment we inject into [data-print-config-preview].
-  /** @type {number | undefined} */
-  let printConfigPreviewDebounceTimer = undefined;
   function installPrintConfigPreview() {
     const modal = printConfigModal();
     if (!(modal instanceof HTMLElement)) {
@@ -5254,18 +5266,22 @@ async function refreshShareQueuePresetsPage(panel) {
       return;
     }
     form.dataset.printConfigPreviewInstalled = "true";
-    const trigger = () => {
-      window.clearTimeout(printConfigPreviewDebounceTimer);
-      printConfigPreviewDebounceTimer = window.setTimeout(() => {
-        refreshPrintConfigPreview();
-      }, 150);
-    };
+    // Issue #573: shared debounce helper. Same trailing-edge
+    // semantics as the inline impl it replaced (collapse rapid
+    // input/change into a single fetch after 150ms of quiet).
+    // The helper is loaded by frontend/_lib/debounce.js via a
+    // <script defer> in index.html that runs ahead of app.js.
+    const debounce = window.__dixieDebounce;
+    if (!debounce) return;
+    const trigger = debounce(() => {
+      refreshPrintConfigPreview();
+    }, 150);
     form.addEventListener("change", trigger);
     form.addEventListener("input", trigger);
     const refreshButton = modal.querySelector("[data-print-config-preview-refresh]");
     if (refreshButton instanceof HTMLElement) {
       refreshButton.addEventListener("click", () => {
-        window.clearTimeout(printConfigPreviewDebounceTimer);
+        trigger.cancel();
         refreshPrintConfigPreview();
       });
     }
@@ -6537,29 +6553,41 @@ async function refreshShareQueuePresetsPage(panel) {
         // to keep the panel refreshed. Debounce 200ms so rapid
         // filter changes (e.g. typing in a select) don't fire a
         // fetch storm; matches the legacy queueRequest delay.
-        const url = form.getAttribute("hx-get") || form.action;
+        // Issue #573: collapse the clearTimeout/setTimeout pair into
+        // the shared debounce helper. Same trailing-edge semantics
+        // (one fetch per 200ms of quiet). The instance is stashed on
+        // `window` so re-mounts of the form keep the same timer and
+        // the freshest URL/selector/form are passed via arguments to
+        // the trailing fire.
+        /** @type {string} */
+        const url = form.getAttribute("hx-get") || form.action || "";
+        /** @type {string} */
         const targetSelector = form.getAttribute("hx-target") || "#browse-results";
         if (!url) { return; }
-        clearTimeout(window.__dixieBrowseFilterTimer);
-        window.__dixieBrowseFilterTimer = window.setTimeout(() => {
-          (async () => {
-            const params = new URLSearchParams(Array.from(new FormData(form).entries(), ([k, v]) => [k, typeof v === "string" ? v : ""]));
-            try {
-              const response = await fetch(`${url}?${params.toString()}`, {
-                method: "GET",
-                headers: { "X-Requested-With": "DixieData" },
-              });
-              const html = await response.text();
-              const target = document.querySelector(targetSelector);
-              if (target instanceof HTMLElement) {
-                target.innerHTML = html;
-                initializeDynamicContent();
+        const debounce = window.__dixieDebounce;
+        if (!debounce) { return; }
+        if (typeof window.__dixieBrowseFilterDebounce !== "function") {
+          window.__dixieBrowseFilterDebounce = debounce((latestForm, latestUrl, latestTarget) => {
+            (async () => {
+              const params = new URLSearchParams(Array.from(new FormData(latestForm).entries(), ([k, v]) => [k, typeof v === "string" ? v : ""]));
+              try {
+                const response = await fetch(`${latestUrl}?${params.toString()}`, {
+                  method: "GET",
+                  headers: { "X-Requested-With": "DixieData" },
+                });
+                const html = await response.text();
+                const target = document.querySelector(latestTarget);
+                if (target instanceof HTMLElement) {
+                  target.innerHTML = html;
+                  initializeDynamicContent();
+                }
+              } catch (error) {
+                showToast("Browse refresh failed.", "error");
               }
-            } catch (error) {
-              showToast("Browse refresh failed.", "error");
-            }
-          })();
-        }, 200);
+            })();
+          }, 200);
+        }
+        window.__dixieBrowseFilterDebounce(form, url, targetSelector);
       }
       return;
     }

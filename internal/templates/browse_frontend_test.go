@@ -33,7 +33,7 @@ func runBrowseFrontendHarness(t *testing.T, script string) {
 func TestBrowseResetClearsSavedStateBeforeRedirect(t *testing.T) {
 	script := `
 const fs = require("fs");
-const vm = require("vm");
+const vm = require("vm"); const path = require("path");
 
 class HTMLElement {
   constructor() {
@@ -119,6 +119,13 @@ global.localStorage = windowMock.localStorage;
 global.sessionStorage = windowMock.sessionStorage;
 global.requestAnimationFrame = windowMock.requestAnimationFrame;
 
+// Issue #573: app.js consumes the shared debounce helper via
+// window.__dixieDebounce. The browser loads the helper via a
+// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// harness has no DOM <script>, so pre-load the helper here to
+// keep behavior parity with the live page.
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
+
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 
 const resetButton = new HTMLButtonElement();
@@ -144,7 +151,7 @@ if (assignedPath !== "/browse") {
 func TestBrowseInitialLoadRestoresDraftFiltersWithoutAutoApplyingThem(t *testing.T) {
 	script := `
 const fs = require("fs");
-const vm = require("vm");
+const vm = require("vm"); const path = require("path");
 
 class HTMLElement {
   constructor() {
@@ -367,6 +374,13 @@ global.localStorage = windowMock.localStorage;
 global.sessionStorage = windowMock.sessionStorage;
 global.requestAnimationFrame = windowMock.requestAnimationFrame;
 
+// Issue #573: app.js consumes the shared debounce helper via
+// window.__dixieDebounce. The browser loads the helper via a
+// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// harness has no DOM <script>, so pre-load the helper here to
+// keep behavior parity with the live page.
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
+
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 
 for (const handler of listeners.DOMContentLoaded || []) {
@@ -391,7 +405,7 @@ func TestBrowseFilterChangeAutoAppliesAndPersistsDraft(t *testing.T) {
 	script := `
 (async () => {
 const fs = require("fs");
-const vm = require("vm");
+const vm = require("vm"); const path = require("path");
 
 class HTMLElement {
   constructor() {
@@ -616,6 +630,13 @@ global.history = windowMock.history;
 global.localStorage = windowMock.localStorage;
 global.sessionStorage = windowMock.sessionStorage;
 global.requestAnimationFrame = windowMock.requestAnimationFrame;
+
+// Issue #573: app.js consumes the shared debounce helper via
+// window.__dixieDebounce. The browser loads the helper via a
+// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// harness has no DOM <script>, so pre-load the helper here to
+// keep behavior parity with the live page.
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
 
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 
