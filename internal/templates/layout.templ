@@ -332,7 +332,8 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
 								"data-feedback-close": "",
 							})
-							@components.Button("Save Feedback", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+							@components.Button("Save Feedback", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "name": "action", "value": "save"})
+							@components.Button("Save & Send to Support", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "name": "action", "value": "send"})
 						</div>
 					</form>
 				</div>

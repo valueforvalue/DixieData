@@ -64,12 +64,19 @@ func UploadFeedback(ctx context.Context, entry any, bundlePath, endpoint string)
 	if endpoint == "" {
 		return "", errors.New("support endpoint URL is empty; configure it in Settings → Support & Diagnostics")
 	}
-	// Fail fast on missing bundle before opening the HTTP
-	// connection -- the file-not-found error names the path
-	// so the caller can surface "bundle not built yet" rather
-	// than a generic upload failure.
-	if _, err := os.Stat(bundlePath); err != nil {
-		return "", fmt.Errorf("bundle file not found (%s): %w", bundlePath, err)
+	// Bundle is OPTIONAL (issue #544 v1 ships the entry-only
+	// path; the bundle path is a follow-up). Empty bundlePath
+	// = skip the bundle part and send metadata only.
+	var bundleName string
+	if bundlePath != "" {
+		if _, err := os.Stat(bundlePath); err != nil {
+			// Fail fast on missing bundle before opening the
+			// HTTP connection -- the file-not-found error names
+			// the path so the caller can surface 'bundle not
+			// built yet' rather than a generic upload failure.
+			return "", fmt.Errorf("bundle file not found (%s): %w", bundlePath, err)
+		}
+		bundleName = filepath.Base(bundlePath)
 	}
 
 	// Build the multipart body in-memory. The bundle is small
@@ -91,10 +98,12 @@ func UploadFeedback(ctx context.Context, entry any, bundlePath, endpoint string)
 
 	// bundle: the bug-report zip as a file part. Filename
 	// preserves the user's on-disk name so the support
-	// endpoint can name the attachment correctly.
-	bundleName := filepath.Base(bundlePath)
-	if err := writeFilePart(writer, "bundle", bundleName, bundlePath); err != nil {
-		return "", fmt.Errorf("write bundle part: %w", err)
+	// endpoint can name the attachment correctly. Empty
+	// bundlePath = entry-only upload (issue #544 v1).
+	if bundlePath != "" {
+		if err := writeFilePart(writer, "bundle", bundleName, bundlePath); err != nil {
+			return "", fmt.Errorf("write bundle part: %w", err)
+		}
 	}
 
 	if err := writer.Close(); err != nil {

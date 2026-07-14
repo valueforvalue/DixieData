@@ -15,6 +15,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
+	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/supportuploader"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -89,9 +91,53 @@ func (a *App) handleFeedbackSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Issue #544: the action field disambiguates the existing
+	// "Save" path (action=save, default) from the new "Send to
+	// support" path (action=send). The local JSONL is ALWAYS
+	// written first (above) so the user has a local copy
+	// regardless of upload success. When action=send, also POST
+	// the entry to the configured support endpoint via the
+	// supportuploader package; the toast carries the parsed
+	// ticket id on success or a user-visible failure message.
+	action := strings.TrimSpace(r.FormValue("action"))
 	w.Header().Set("X-DixieData-Close-Feedback", "true")
+	if action == "send" {
+		endpoint := a.supportEndpoint()
+		if endpoint == "" {
+			setToastHeaderWithType(w, "Support endpoint not configured. Open Settings → Support & Diagnostics to set one.", "info")
+			fmt.Fprint(w, "Feedback saved locally; configure a support endpoint to send to support.")
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
+		defer cancel()
+		ticketID, uploadErr := supportuploader.UploadFeedback(ctx, entry, "", endpoint)
+		if uploadErr != nil {
+			log := debug.FromContext(r.Context())
+			log.Warn("feedback upload to support failed", "error", uploadErr.Error())
+			setToastHeaderWithType(w, fmt.Sprintf("Feedback saved locally; upload failed: %s", uploadErr.Error()), "error")
+			fmt.Fprint(w, "Feedback saved locally; upload failed.")
+			return
+		}
+		setToastHeader(w, fmt.Sprintf("Feedback sent to support (ticket %s). A copy is in the local log.", ticketID))
+		fmt.Fprint(w, "Feedback sent to support.")
+		return
+	}
 	setToastHeader(w, "Feedback saved to the local log.")
 	fmt.Fprint(w, "Thanks. Your feedback was saved to the local log and can be exported from Share.")
+}
+
+// supportEndpoint returns the user's configured support endpoint
+// URL from records.LocalSettings.SupportEndpoint, or "" when the
+// feature is OFF. Cached at startup via lifecycle.go would be a
+// future optimization; the per-request read is cheap (one file
+// read) and keeps the handler correct under /settings updates
+// without an explicit cache-invalidation path.
+func (a *App) supportEndpoint() string {
+	settings, err := records.LoadLocalSettings(a.dataDir)
+	if err != nil {
+		return ""
+	}
+	return settings.SupportEndpoint
 }
 
 func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
