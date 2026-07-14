@@ -6,6 +6,7 @@ package appshell
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -55,7 +56,21 @@ func (a *App) handleClientLogs(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Entries []map[string]any `json:"entries"`
 	}
+	// Issue #557 defense in depth: the frontend self-throttles
+	// to ~32 KB per batch (frontend/debug.js batch limits) so this
+	// only fires on a misbehaving or hostile client, but the cap
+	// keeps a runaway loop from OOMing the server. The Go stdlib's
+	// http.MaxBytesReader returns an error from Decode when the
+	// body exceeds the limit; we surface that as a 413 so the
+	// client knows the request was too large rather than treating
+	// it as a parse error.
+	r.Body = http.MaxBytesReader(w, r.Body, 256*1024)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "client log payload exceeds 256 KB cap", http.StatusRequestEntityTooLarge)
+			return
+		}
 		respondValidation(w, r, "Could not parse client log payload.", err)
 		return
 	}
@@ -151,11 +166,25 @@ func (a *App) handleDebugConsole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	levelFilter := strings.TrimSpace(r.URL.Query().Get("level"))
+	componentFilter := strings.TrimSpace(r.URL.Query().Get("component"))
 	entries := rb.Snapshot()
 	if levelFilter != "" {
 		filtered := entries[:0]
 		for _, e := range entries {
 			if e.Level == levelFilter {
+				filtered = append(filtered, e)
+			}
+		}
+		entries = filtered
+	}
+	// Issue #557: ?component=frontend surfaces only JS-side entries
+	// (handleClientLogs stamps component="frontend" on every entry).
+	// ?component="" (or omitted) shows all components. The filter
+	// composes with ?level= — both are applied independently.
+	if componentFilter != "" {
+		filtered := entries[:0]
+		for _, e := range entries {
+			if e.Component == componentFilter {
 				filtered = append(filtered, e)
 			}
 		}

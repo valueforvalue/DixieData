@@ -10,7 +10,19 @@ import (
 // debug mode is off (caller should check debug.IsDebugMode(ctx) before
 // invoking).
 templ DebugConsole(entries []debug.Entry, total uint64, logPath string) {
-	<div id="debug-console-panel" class="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] overflow-hidden rounded-t-lg border border-slate-300 bg-white shadow-2xl">
+	// Issue #557: poll the panel itself every 2s (rather than wiring
+	// the JSON tail endpoint) so the active filter values are
+	// preserved across refreshes — hx-include reads the live <select>
+	// values on every poll and rebuilds the request URL with them.
+	// hx-include is the standard htmx attribute for "include these
+	// inputs' values in the request query string". For GET, that
+	// places them in the URL — handleDebugConsole already reads
+	// ?level and ?component.
+	<div id="debug-console-panel" class="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] overflow-hidden rounded-t-lg border border-slate-300 bg-white shadow-2xl"
+		hx-get="/debug/console"
+		hx-trigger="every 2s"
+		hx-include="[name=level],[name=component]"
+		hx-swap="outerHTML">
 		<div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
 			<div class="flex items-center gap-2 text-sm">
 				<span class="font-semibold text-slate-700">Debug Console</span>
@@ -27,6 +39,22 @@ templ DebugConsole(entries []debug.Entry, total uint64, logPath string) {
 					<option value="INFO">Info</option>
 					<option value="WARN">Warn</option>
 					<option value="ERROR">Error</option>
+				</select>
+				// Issue #557: JS Console filter. Mirrors the level dropdown's
+				// hx-* wiring; the panel container (line ~10) reads
+				// this value on every 2s poll via hx-include so the
+				// live filter survives the auto-refresh. Only the
+				// most-asked-for value (frontend = JS Console) is
+				// surfaced as a fixed option; Go-side components
+				// use various values (http, debug, etc.) and the
+				// user can pass any value via a query param.
+				<select name="component" class="rounded border border-slate-300 px-2 py-1 text-xs"
+					hx-get="/debug/console"
+					hx-trigger="change"
+					hx-target="#debug-console-panel"
+					hx-swap="outerHTML">
+					<option value="">All</option>
+					<option value="frontend">JS Console</option>
 				</select>
 				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
 					onclick="window.__dixieDebug && navigator.clipboard && navigator.clipboard.writeText(Array.from(document.querySelectorAll('#debug-tail > div')).map(function(d){return d.textContent;}).join('\n'))">

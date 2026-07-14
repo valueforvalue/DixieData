@@ -35,7 +35,11 @@ interface DixieDataWindow {
   __floatingNavInstallN?: number;
   __floatingNavBoundTriggers?: WeakSet<HTMLElement>;
   __dixieBrowseFilterTimer?: ReturnType<typeof setTimeout>;
-  __dixieDebug?: unknown;
+  __dixieDebug?: {
+    openFolder?: () => void | Promise<void>;
+    copyEntries?: () => void | Promise<void>;
+    [key: string]: unknown;
+  };
   __dixieDebugDisabled?: boolean;
   __dixieGoogleSettings?: Record<string, unknown>;
   __dixieLocalSettings?: Record<string, unknown>;
