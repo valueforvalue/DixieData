@@ -145,6 +145,7 @@ a backlog of related issues.
 | `good first issue` | Small enough for a newcomer to pick up. Maintainer-curated. |
 | `help wanted` | Maintainer is actively looking for someone to pick this up. |
 | `invalid` | Not a real issue (test post, spam, off-topic). |
+| `release-counter-exempt` | PRs targeting `stable` that intentionally do not bump `CurrentAppVersionInt` (issue #578). Used rarely — pure-docs releases, dependency update rotations with no new release value. The N-bump CI gate (`release-counter-bumped` step in `.github/workflows/test.yml`) auto-allows PRs carrying this label. Apply with a one-line comment justifying the exception. |
 | `question` | Reporter is asking, not filing. Convert to enhancement/bug if it becomes a real issue. |
 | `wontfix` | Decision to not action. Must include reasoning in a comment. |
 

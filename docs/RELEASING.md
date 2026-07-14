@@ -14,7 +14,7 @@ The local update feature (`internal/appdata/`) downloads release packages and ap
 
 - **App version**: `v{MAJOR}.{U}.{N}` where `MAJOR` is fixed at 1 today (TBD bump policy), `U` is the update-flow version, `N` is the release counter. Initial release is `v1.1.1` (U=1, N=1). Legacy releases (v1.2.52, v1.2.55, ...) parse to **U=1** by default per issue #266 decision 1, so they slot in cleanly alongside the new shape.
 - **U bump semantics**: U mismatch in either direction (release.U > installed.U OR release.U < installed.U) forces the user to reinstall. The installed binary's update-flow shape can't safely apply a release whose flow changed. U bumps are rare — reserve them for changes that genuinely reshape the in-place update mechanism.
-- **N bump semantics**: every release bumps N. Bug-fix-only releases bump N without touching schema or U. The release counter is independent of the data plane.
+- **N bump semantics**: every release bumps N. Bug-fix-only releases bump N without touching schema or U. The release counter is independent of the data plane. The `release-counter-bumped` step in `.github/workflows/test.yml` enforces the bump on every PR targeting `stable` (per ADR 0009). Bypass: add the `release-counter-exempt` label (registered per `docs/agents/triage-labels.md`) for rare cases like a pure-docs release that still needs to advance N for tracking.
 - **Schema bump semantics**: `-BumpSchema` bumps `CurrentSchemaVersion`; requires a paired `docs/migrations/v{N+1}.md` with at least one `- ` bullet.
 - **Bump increment**: always `+1` per release for each counter. `bump-version.ps1` refuses jumps greater than `+1` unless `-Force` is passed.
 - **Migration note**: `docs/migrations/v{N+1}.md` must exist before `-BumpSchema` will run.

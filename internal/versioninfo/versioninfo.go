@@ -63,7 +63,18 @@ func AppRelease() int {
 // binary links. Initial value = 1 (the first release under the
 // new model). Historical releases had N == CurrentSchemaVersion;
 // going forward those two diverge.
-var CurrentAppVersionInt = 1
+//
+// Issue #578 catch-up (2026-07-14): bumped from 1 to 4 to
+// reflect the body of post-#266 release-aimed work on dev
+// branch — the #544 + #566 feedback chain (Formspark wire-up
+// and the slice-1/2/3 set of commits), the #561 microcopy
+// sweep (slices 1-16 across multiple commits), and the #570
+// buildinfo consolidation. The slice-1 regression test
+// (`internal/versioninfo/app_version_int_test.go::TestCurrentAppVersionIntReflectsPostCutoverWork`)
+// pins this value; the slice-2 CI gate at
+// `.github/workflows/test.yml` enforces per-release +1 from
+// here forward.
+var CurrentAppVersionInt = 4
 
 // AppVersionForSchema composes an AppVersion-like string using
 // the historical formula (v1.2.{schema}). Kept for callers

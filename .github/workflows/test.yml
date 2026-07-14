@@ -230,6 +230,50 @@ jobs:
           }
           Write-Host "schema-touching: schema bumped from $currentBase to $currentHead, OK"
 
+      # Release-counter (N) bump detector (issue #578 slice 2).
+      # Issue #266 decoupled the release counter (CurrentAppVersionInt)
+      # from the schema version (CONTEXT.md "Release counter N !=
+      # schema version" law). The discipline ("every release bumps
+      # N") was documented but unenforced; this gate enforces it.
+      #
+      # Scoped to PRs targeting `stable` per ADR 0009's three-branch
+      # model: dev is integration, stable is releasable, the gate
+      # lives where the release happens. Mirroring the schema-
+      # detector literally would fail on every doc-only PR on dev.
+      #
+      # Bypass: a `release-counter-exempt` label (see
+      # docs/agents/triage-labels.md) covers rare cases like a pure-
+      # docs release that still needs to advance N for tracking.
+      - name: Release-counter (N) bump detector
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'stable'
+        shell: pwsh
+        run: |
+          $base = "${{ github.base_ref }}"
+          $labels = "${{ join(github.event.pull_request.labels.*.name, '|') }}"
+          if ($labels -match 'release-counter-exempt') {
+            Write-Host "release-counter: release-counter-exempt label found, allowing PR"
+            exit 0
+          }
+          $regex = 'CurrentAppVersionInt\s*=\s*(\d+)'
+          $currentHead = ([regex]::Match((git show "HEAD:internal/versioninfo/versioninfo.go"), $regex)).Groups[1].Value
+          $currentBase = ([regex]::Match((git show "origin/$($base):internal/versioninfo/versioninfo.go"), $regex)).Groups[1].Value
+          if (-not $currentHead -or -not $currentBase) {
+            Write-Host "release-counter: unable to extract CurrentAppVersionInt from base or head; gate skipped (one of the branches lacks the constant)"
+            exit 0
+          }
+          if ($currentHead -eq $currentBase) {
+            Write-Host ""
+            Write-Host "DRIFT: PR #${{ github.event.pull_request.number }} targets \`stable\` but did not bump CurrentAppVersionInt." -ForegroundColor Red
+            Write-Host "Base value: $currentBase" -ForegroundColor Yellow
+            Write-Host "Head value: $currentHead" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Either:" -ForegroundColor Yellow
+            Write-Host "  1. Run \`pwsh -File scripts/bump-version.ps1 -BumpRelease\` and commit the bump"
+            Write-Host "  2. Add the \`release-counter-exempt\` label to this PR (rare; for docs-only releases advancing N for tracking)"
+            exit 1
+          }
+          Write-Host "release-counter: CurrentAppVersionInt bumped from $currentBase to $currentHead, OK"
+
       # In-place update safety gate (build-protocol.md §5).
       # PRs targeting stable without one of the safety labels
       # get a STERN WARNING comment. The merge is NOT blocked
