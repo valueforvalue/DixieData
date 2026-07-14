@@ -1102,15 +1102,15 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
    palette. Custom CSS (not the typography plugin) so the
    colors tie into the existing design tokens (gold, sepia,
    ink) without overriding the plugin's defaults. Scoped
-   to [data-article-body] so the same elements on other
+   to [data-article-body], [data-article-preview-body] so the same elements on other
    pages (the soldier card, browse table, etc.) keep their
    existing styles. */
-[data-article-body] h1,
-[data-article-body] h2,
-[data-article-body] h3,
-[data-article-body] h4,
-[data-article-body] h5,
-[data-article-body] h6 {
+[data-article-body], [data-article-preview-body] h1,
+[data-article-body], [data-article-preview-body] h2,
+[data-article-body], [data-article-preview-body] h3,
+[data-article-body], [data-article-preview-body] h4,
+[data-article-body], [data-article-preview-body] h5,
+[data-article-body], [data-article-preview-body] h6 {
   font-family: Georgia, "Times New Roman", serif;
   color: var(--ink, #22303d);
   font-weight: 600;
@@ -1118,88 +1118,88 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
-[data-article-body] h1 {
+[data-article-body], [data-article-preview-body] h1 {
   font-size: 1.85rem;
   border-bottom: 1px solid rgba(141, 116, 64, 0.28);
   padding-bottom: 0.35rem;
 }
-[data-article-body] h2 {
+[data-article-body], [data-article-preview-body] h2 {
   font-size: 1.5rem;
   color: #6f2c26;
 }
-[data-article-body] h3 {
+[data-article-body], [data-article-preview-body] h3 {
   font-size: 1.25rem;
 }
-[data-article-body] h4 {
+[data-article-body], [data-article-preview-body] h4 {
   font-size: 1.1rem;
 }
-[data-article-body] h5,
-[data-article-body] h6 {
+[data-article-body], [data-article-preview-body] h5,
+[data-article-body], [data-article-preview-body] h6 {
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(34, 48, 61, 0.78);
 }
-[data-article-body] h1:first-child,
-[data-article-body] h2:first-child,
-[data-article-body] h3:first-child,
-[data-article-body] h4:first-child,
-[data-article-body] h5:first-child,
-[data-article-body] h6:first-child {
+[data-article-body], [data-article-preview-body] h1:first-child,
+[data-article-body], [data-article-preview-body] h2:first-child,
+[data-article-body], [data-article-preview-body] h3:first-child,
+[data-article-body], [data-article-preview-body] h4:first-child,
+[data-article-body], [data-article-preview-body] h5:first-child,
+[data-article-body], [data-article-preview-body] h6:first-child {
   margin-top: 0;
 }
-[data-article-body] p {
+[data-article-body], [data-article-preview-body] p {
   margin-top: 0.65rem;
   margin-bottom: 0.65rem;
 }
-[data-article-body] p:first-child {
+[data-article-body], [data-article-preview-body] p:first-child {
   margin-top: 0;
 }
-[data-article-body] ul,
-[data-article-body] ol {
+[data-article-body], [data-article-preview-body] ul,
+[data-article-body], [data-article-preview-body] ol {
   margin-top: 0.65rem;
   margin-bottom: 0.65rem;
   padding-left: 1.4rem;
 }
-[data-article-body] ul {
+[data-article-body], [data-article-preview-body] ul {
   list-style: disc;
 }
-[data-article-body] ol {
+[data-article-body], [data-article-preview-body] ol {
   list-style: decimal;
 }
-[data-article-body] li {
+[data-article-body], [data-article-preview-body] li {
   margin-top: 0.2rem;
   margin-bottom: 0.2rem;
 }
-[data-article-body] li > p {
+[data-article-body], [data-article-preview-body] li > p {
   margin-top: 0.2rem;
   margin-bottom: 0.2rem;
 }
-[data-article-body] a {
+[data-article-body], [data-article-preview-body] a {
   color: #1d4ed8;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-[data-article-body] a:hover {
+[data-article-body], [data-article-preview-body] a:hover {
   color: #6f2c26;
 }
-[data-article-body] strong {
+[data-article-body], [data-article-preview-body] strong {
   font-weight: 700;
 }
-[data-article-body] em {
+[data-article-body], [data-article-preview-body] em {
   font-style: italic;
 }
-[data-article-body] del {
+[data-article-body], [data-article-preview-body] del {
   color: rgba(34, 48, 61, 0.55);
   text-decoration: line-through;
 }
-[data-article-body] hr {
+[data-article-body], [data-article-preview-body] hr {
   border: 0;
   border-top: 1px solid rgba(141, 116, 64, 0.28);
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
 }
-[data-article-body] blockquote {
+[data-article-body], [data-article-preview-body] blockquote {
   border-left: 3px solid rgba(141, 116, 64, 0.55);
   padding: 0.4rem 0 0.4rem 0.85rem;
   margin: 0.85rem 0;
@@ -1208,13 +1208,13 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   background: rgba(246, 241, 228, 0.45);
   border-radius: 0 0.4rem 0.4rem 0;
 }
-[data-article-body] blockquote > p:first-child {
+[data-article-body], [data-article-preview-body] blockquote > p:first-child {
   margin-top: 0;
 }
-[data-article-body] blockquote > p:last-child {
+[data-article-body], [data-article-preview-body] blockquote > p:last-child {
   margin-bottom: 0;
 }
-[data-article-body] code {
+[data-article-body], [data-article-preview-body] code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.92em;
   background: rgba(36, 48, 61, 0.06);
@@ -1222,7 +1222,7 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   border-radius: 0.25rem;
   color: #1f2b38;
 }
-[data-article-body] pre {
+[data-article-body], [data-article-preview-body] pre {
   background: rgba(21, 29, 38, 0.95);
   color: #fff8e7;
   padding: 0.85rem 1rem;
@@ -1232,40 +1232,79 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   font-size: 0.85rem;
   line-height: 1.5;
 }
-[data-article-body] pre code {
+[data-article-body], [data-article-preview-body] pre code {
   background: transparent;
   color: inherit;
   padding: 0;
   font-size: inherit;
   border-radius: 0;
 }
-[data-article-body] img {
+[data-article-body], [data-article-preview-body] img {
   max-width: 100%;
   height: auto;
   border-radius: 0.4rem;
   margin: 0.5rem 0;
   display: block;
 }
-[data-article-body] table {
+[data-article-body], [data-article-preview-body] table {
   border-collapse: collapse;
   width: 100%;
   margin: 0.85rem 0;
   font-size: 0.92em;
 }
-[data-article-body] thead {
+[data-article-body], [data-article-preview-body] thead {
   background: rgba(141, 116, 64, 0.12);
 }
-[data-article-body] th,
-[data-article-body] td {
+[data-article-body], [data-article-preview-body] th,
+[data-article-body], [data-article-preview-body] td {
   border: 1px solid rgba(141, 116, 64, 0.28);
   padding: 0.4rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
-[data-article-body] th {
+[data-article-body], [data-article-preview-body] th {
   font-weight: 600;
   color: #22303d;
 }
+
+/* Issue #532: GFM task-list items render with a bare
+   <input type="checkbox" disabled> inside the <li>. The
+   default Tailwind preflight hides native checkboxes
+   behind a tight appearance rule; for article body checkboxes
+   we want them visible, vertically centered with the text,
+   and visually distinct from the surrounding flow. The
+   scoped margin-right + align-middle keeps the box from
+   crowding the leading bullet; the disabled state preserves
+   the "this is a static render, not editable" affordance. */
+[data-article-body], [data-article-preview-body] li > input[type="checkbox"],
+[data-article-body], [data-article-preview-body] li > p > input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+  transform: translateY(-1px);
+  cursor: default;
+}
+
+/* Issue #532: markdown ![caption](src) renders as <img>
+   (sometimes wrapped in <figure>/<figcaption> if the renderer
+   emits the figure variant). The bare <img> rule above covers
+   the common case; this rule adds figure/figcaption spacing so
+   a captioned image renders with the caption visually attached
+   and slightly muted, matching the sepia palette. */
+[data-article-body] figure,
+[data-article-preview-body] figure {
+  margin: 0.85rem 0;
+}
+[data-article-body] figcaption,
+[data-article-preview-body] figcaption {
+  font-size: 0.85rem;
+  color: rgba(34, 48, 61, 0.7);
+  text-align: center;
+  margin-top: 0.35rem;
+  font-style: italic;
+}
+
 /* Issue #483 follow-up: the primary-button default rule builds a
    linear-gradient(--theme-accent-light -> --theme-accent-deep) bg
    with color: var(--theme-text-deep). In HC the accent tokens are
@@ -1309,6 +1348,8 @@ html[data-theme="high-contrast"] .pill-link:hover {
    that's a distinct intentional feature surface, not the HC
    theme accent, and is out of scope for this grayscale pass. */
 html[data-theme="high-contrast"] [data-article-body] a,
-html[data-theme="high-contrast"] [data-article-body] a:hover {
+html[data-theme="high-contrast"] [data-article-body] a:hover,
+html[data-theme="high-contrast"] [data-article-preview-body] a,
+html[data-theme="high-contrast"] [data-article-preview-body] a:hover {
   color: var(--theme-text-primary);
 }
