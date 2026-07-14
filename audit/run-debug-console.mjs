@@ -88,6 +88,32 @@ async function main() {
   await page.selectOption('#debug-console-panel select[name="level"]', '');
   await page.waitForTimeout(300);
 
+  // Issue #557: JS Console component filter. Selecting "JS Console"
+  // hits GET /debug/console?component=frontend and re-renders the
+  // panel scoped to JS-side entries. The probe asserts the dropdown
+  // exists, accepts the value, and that the resulting request
+  // includes the ?component=frontend query param.
+  const componentSelect = page.locator('#debug-console-panel select[name="component"]');
+  const componentSelectExists = await componentSelect.count() === 1;
+  record('Component filter dropdown rendered', componentSelectExists);
+  if (componentSelectExists) {
+    const compReq = page.waitForResponse(
+      (resp) => resp.url().includes('/debug/console') && resp.url().includes('component=frontend'),
+      { timeout: 3000 },
+    ).catch(() => null);
+    await componentSelect.selectOption('frontend');
+    const compR = await compReq;
+    record(
+      'Component=frontend hits /debug/console with the filter query param',
+      compR !== null,
+      compR ? `status=${compR.status()}` : 'no response with component=frontend observed',
+    );
+    // Reset to All so subsequent button assertions are not affected
+    // by the now-active filter.
+    await page.selectOption('#debug-console-panel select[name="component"]', '');
+    await page.waitForTimeout(300);
+  }
+
   // 5b. Refresh button.
   await page.locator('#debug-console-panel button:has-text("Refresh")').click();
   await page.waitForTimeout(300);
