@@ -30,7 +30,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -938,183 +937,22 @@ type JobSummary struct {
 }
 
 // Summary returns a JobSummary describing the job's terminal
-// state. Headline + DetailLines are the user-facing copy that
-// the template renders in the summary card. ResultPath is
-// always populated for finished jobs so the card can name the
-// on-disk file even when the artifact is not viewable in the
-// browser (issue #129 + #131). Returns a zero-value summary
-// for jobs that are still running.
+// state. Issue #556 slice 2: dispatch is now via
+// KindRegistry[kind].Summarizer with defaultSummarizer as the
+// safe fallback for unknown kinds. Each per-kind Summarizer
+// preserves the exact copy from the pre-#556 switch so existing
+// tests continue to pass. defaultSummarizer handles the zero-
+// ResultPath case correctly (issue #543 fix: no "Size: 0 B"
+// headline, anchor on j.Message instead) and the unknown-kind
+// case (issue #556 slice 1 fallback: humanizeKind, no raw
+// snake_case).
 func (j Job) Summary() JobSummary {
-	s := JobSummary{
-		Kind:       j.Kind,
-		Label:      j.DisplayLabel(),
-		ResultPath: j.ResultPath,
+	label := j.DisplayLabel()
+	meta, ok := KindRegistry[j.Kind]
+	if ok && meta.Summarizer != nil {
+		return meta.Summarizer(j, label)
 	}
-	if j.Status != StatusDone || j.StartedAt.IsZero() || j.FinishedAt.IsZero() {
-		return s
-	}
-	// Issue #543: keep the raw sub-second precision so
-	// formatDuration can render "0.8s" for fast jobs instead
-	// of collapsing them to "Duration: 0s". The old
-	// .Round(time.Second) made the duration line useless for
-	// cleanup / audit / review-bulk jobs that finish in
-	// hundreds of milliseconds.
-	s.Duration = j.FinishedAt.Sub(j.StartedAt)
-	if j.ResultPath != "" {
-		if info, err := os.Stat(j.ResultPath); err == nil {
-			s.SizeBytes = info.Size()
-		}
-	}
-	switch j.Kind {
-	case "soldier_pdf", "soldier_pdf_no_images":
-		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-	case "soldier_jpg":
-		s.Headline = fmt.Sprintf("Soldier JPG export complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-	case "monthly_pdf":
-		s.Headline = fmt.Sprintf("Monthly calendar PDF complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-	case "backup_archive":
-		s.Headline = fmt.Sprintf("Backup archive complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-			"Use 'Load Backup' on the Share page to restore this archive.",
-		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
-	case "shared_archive":
-		s.Headline = fmt.Sprintf("Shared archive complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-			"Send this .ddshare file to another DixieData user; they can preview it on the Share page.",
-		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
-	case "shared_archive_subset":
-		s.Headline = fmt.Sprintf("Subset shared archive complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-			"Subset of Person Records staged from the Share Queue; send to another DixieData user.",
-		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
-	case "json_export", "excel_export", "icalendar_export":
-		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
-	case "database_pdf":
-		s.Headline = fmt.Sprintf("Printable archive PDF complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-			"The PDF contains every record grouped and sorted per your export settings.",
-		}
-		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
-	case "static_archive":
-		s.Headline = fmt.Sprintf("Static archive complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
-		}
-		// Issue #492: per-kind content counts (Person Records, Events,
-		// Articles, etc.) when the worker populated them. Old jobs
-		// persisted in the JSONL log before this slice show the
-		// static fallback line (D6 decision).
-		if j.Result.StaticArchive != nil {
-			s.DetailLines = appendStaticArchiveStats(s.DetailLines, *j.Result.StaticArchive)
-		} else {
-			s.DetailLines = append(s.DetailLines, "Contents unavailable for this archive — exported before counts were tracked.")
-		}
-	case "insights_pdf", "bug_report":
-		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-	case "image_import":
-		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		}
-	case "backup_import":
-		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		}
-		s.DetailLines = appendBackupRestoreStats(s.DetailLines, j.Result)
-	case "shared_import":
-		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-		if j.Message != "" {
-			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		} else {
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		}
-		s.DetailLines = appendSharedImportStats(s.DetailLines, j.Result)
-	case "memorial_import":
-		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-		s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		s.DetailLines = appendMemorialImportStats(s.DetailLines, j.Result)
-	// Issue #543: zero-state kinds produce no ResultPath, so the
-	// Size line is meaningless (and the default arm's "Size: 0 B"
-	// headline is actively misleading). All six kinds populate
-	// j.Message via p.Set(100, "...") inside the worker; the
-	// summary card surfaces that message as the headline so the
-	// user sees what the job actually did.
-	//
-	// Issue #552: Google Drive / Google Sheets uploads now also
-	// populate JobResult.RemoteURL + RemoteKind so the summary
-	// card can render an "Open in Drive" / "Open in Sheets"
-	// button that takes the user to the uploaded artifact.
-	// RemoteURL is empty for legacy log entries (those predate
-	// the fix and the worker discarded the upload result), so
-	// the button is conditionally rendered — see
-	// jobs.templ::jobSummaryCard.
-	case "image_orphan_cleanup", "duplicate_audit", "review_bulk_resolve", "review_bulk_delete", "google_drive_backup", "google_sheets_export":
-		if j.Message != "" {
-			s.Headline = j.Message
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		} else {
-			// Defensive fallback for an old JSONL log entry that
-			// somehow lost its progress message — keep the card
-			// usable rather than rendering an empty headline.
-			s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
-			s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
-		}
-		if j.Result.RemoteURL != "" {
-			label := "Open in Drive"
-			switch j.Result.RemoteKind {
-			case "sheets":
-				label = "Open in Sheets"
-			}
-			s.RemoteURL = j.Result.RemoteURL
-			s.RemoteLabel = label
-		}
-	default:
-		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", formatDuration(s.Duration)),
-		}
-	}
-	return s
+	return defaultSummarizer(j, label)
 }
 
 // appendExportStats conditionally appends records / images /

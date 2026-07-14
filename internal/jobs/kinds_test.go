@@ -1,8 +1,11 @@
 package jobs
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestDisplayLabelEveryRegisteredKindHasTitleCaseLabel pins the
@@ -238,4 +241,108 @@ func TestJobResultTrashRootFieldExists(t *testing.T) {
 	if zero.TrashRoot != "" {
 		t.Errorf("JobResult{}.TrashRoot = %q; want empty", zero.TrashRoot)
 	}
+}
+
+// TestSummaryDispatchGoesViaSummarizer pins issue #556 slice 2:
+// Summary() reads the kind's Summarizer from the registry, not the
+// legacy switch statement. A future regression that re-introduces
+// the switch would silently skip the registry-driven per-kind
+// Summarizer; this test fails fast by exercising the known Summarizer
+// for a registered kind + the defaultSummarizer path for an
+// unknown kind.
+func TestSummaryDispatchGoesViaSummarizer(t *testing.T) {
+	// Registered kind: must produce a non-empty headline (the
+	// Summarizer was invoked).
+	{
+		dir := t.TempDir()
+		blob := writeArtifact(t, dir, "blob.bin", 1024)
+		j := NewJob("job-soldier", "soldier_pdf")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.ResultPath = blob
+		s := j.Summary()
+		if s.Headline == "" {
+			t.Fatalf("Summary(soldier_pdf) produced empty headline; Summarizer not invoked")
+		}
+		if !strings.Contains(s.Headline, "Soldier PDF") {
+			t.Errorf("Summary(soldier_pdf) headline = %q; want it to contain %q", s.Headline, "Soldier PDF")
+		}
+	}
+	// Unknown kind: falls through to defaultSummarizer which must
+	// still render a non-empty headline (no panic, no empty card).
+	{
+		j := NewJob("job-future", "future_kind_not_in_registry")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		s := j.Summary()
+		if s.Headline == "" {
+			t.Fatalf("Summary(unknown kind) produced empty headline; defaultSummarizer failed")
+		}
+		if strings.Contains(s.Headline, "future_kind_not_in_registry") {
+			t.Errorf("Summary(unknown kind) leaked raw snake_case: %q", s.Headline)
+		}
+		if !strings.Contains(s.Headline, "Future Kind Not In Registry") {
+			t.Errorf("Summary(unknown kind) headline = %q; want it to contain humanized form", s.Headline)
+		}
+	}
+}
+
+// TestSummaryUnknownKindNoSizeLineForZeroResultPath pins the
+// issue #543 fix at the slice-2 defaultSummarizer level: an
+// unknown kind with no ResultPath must NOT render a misleading
+// "Size: 0 B" line — the headline anchors on j.Message (or the
+// humanized kind label as a last resort) and the detail lines
+// show only Duration.
+func TestSummaryUnknownKindNoSizeLineForZeroResultPath(t *testing.T) {
+	j := NewJob("job-unknown", "future_kind_not_in_registry")
+	j.Status = StatusDone
+	j.StartedAt = time.Now().Add(-2 * time.Second)
+	j.FinishedAt = time.Now()
+	j.Message = "scanned 42 records"
+	s := j.Summary()
+	joined := s.Headline + "\n" + strings.Join(s.DetailLines, "\n")
+	if strings.Contains(joined, "Size:") {
+		t.Errorf("unknown kind with no ResultPath must not render a Size: line; got:\n%s", joined)
+	}
+	if !strings.Contains(s.Headline, "scanned 42 records") {
+		t.Errorf("expected j.Message to anchor the headline for unknown kind; got %q", s.Headline)
+	}
+}
+
+// TestSummaryRunningJobStaysEmptyAfterSummarizerMigration pins
+// the running-job early-return for slice 2: even though every
+// Summarizer calls augmentSummarizer (which invokes
+// defaultSummarizer), the running-state guard must propagate
+// through and the summary card must remain empty until the job
+// transitions to StatusDone.
+func TestSummaryRunningJobStaysEmptyAfterSummarizerMigration(t *testing.T) {
+	for _, kind := range []string{"soldier_pdf", "image_orphan_cleanup", "future_kind"} {
+		t.Run(kind, func(t *testing.T) {
+			j := NewJob("job-running-"+kind, kind)
+			j.Status = StatusRunning
+			j.Progress = 50
+			s := j.Summary()
+			if s.Headline != "" {
+				t.Errorf("running %q job must not produce a headline; got %q", kind, s.Headline)
+			}
+			if len(s.DetailLines) != 0 {
+				t.Errorf("running %q job must not produce detail lines; got %v", kind, s.DetailLines)
+			}
+		})
+	}
+}
+
+// writeArtifact is a tiny helper that writes a file with the given
+// size (filled with zeroes) and returns its path. Used by the
+// slice-2 dispatch tests to seed a ResultPath the defaultSummarizer
+// can Stat.
+func writeArtifact(t *testing.T, dir, name string, size int) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, make([]byte, size), 0o644); err != nil {
+		t.Fatalf("writeArtifact %s: %v", path, err)
+	}
+	return path
 }
