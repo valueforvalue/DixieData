@@ -2,6 +2,7 @@
 package buildinfo
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
@@ -216,4 +217,56 @@ func ReleaseLabel() string {
 // Issue #462.
 func Codename() string {
 	return versioninfo.CurrentReleaseName
+}
+
+// Version is the consolidated version snapshot callers can
+// read in one statement rather than three accessor calls.
+// Schema mirrors the SQLite user_version the binary expects;
+// App mirrors AppVersion (the v1.{U}.{N} release string from
+// issue #266). buildinfo is the only consumer of
+// versioninfo in normal code paths; callers never reach for
+// versioninfo directly (the doc-comment marker on
+// versioninfo.go codifies the boundary). Issue #570.
+var Version = struct {
+	Schema int
+	App    string
+}{
+	Schema: versioninfo.CurrentSchemaVersion,
+	App:    versioninfo.AppVersion(),
+}
+
+// FeedbackIdentity returns the three version values the
+// feedback modal's Send-to-support disclosure names AND the
+// feedback JSON payload serialises: app version, build
+// identity ("commit <sha> · <timestamp>"), and schema version
+// ("v" + N). The helper is the single source of truth for
+// the three values, so a future schema bump or build
+// identity change propagates to every surface in lockstep.
+// Issue #570.
+func FeedbackIdentity() (app, build, schema string) {
+	return AppVersion, BuildIdentity(), "v" + fmt.Sprint(SchemaVersion)
+}
+
+// CombinedVersionString is the canonical user-facing version
+// sentence the footer + the window title render. Future
+// disclosure changes should keep all three fields named
+// (app version, schema, build identity); the contract test
+// in codename_test.go guards the trio against silent
+// drift. Issue #570.
+func CombinedVersionString() string {
+	app, build, schema := FeedbackIdentity()
+	return fmt.Sprintf("app %s, build %s, database schema %s", app, build, schema)
+}
+
+// DisclosureSentence is the version-sentence helper the
+// feedback modal's Send-to-support paragraph renders inside
+// parentheses: "(app X, build Y, database schema vN)". It is
+// the slice-2 helper called out in issue #570 (the inline
+// three-call disclosure in layout.templ collapses to one
+// buildinfo call so the canonical version sentence lives in
+// one place). The parens are part of the contract — layout's
+// disclosure copy wraps the version values in parens around
+// the "to a third-party support service" clause.
+func DisclosureSentence() string {
+	return "(" + CombinedVersionString() + ")"
 }
