@@ -1737,44 +1737,17 @@
     }
   }
 
-  /** @param {Element | null} trigger */
-  function scratchpadStatusTarget(trigger) {
-    if (!(trigger instanceof HTMLElement)) {
-      const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
-      return globalTarget instanceof HTMLElement ? globalTarget : null;
-    }
-    const section = trigger.closest("[data-ui-id='panel.soldier.form.scratchpad']");
-    if (section instanceof HTMLElement) {
-      const target = section.querySelector("[data-scratchpad-status]");
-      if (target instanceof HTMLElement) {
-        return target;
-      }
-    }
-    const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
-    return globalTarget instanceof HTMLElement ? globalTarget : null;
-  }
-
-  /**
-   * @param {Element | null} trigger
-   * @param {string} message
-   * @param {boolean} [isError]
-   */
-  function setScratchpadStatus(trigger, message, isError = false) {
-    const target = scratchpadStatusTarget(trigger);
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    target.textContent = message || "";
-    target.classList.toggle("text-red-700", isError);
-    target.classList.toggle("text-slate-500", !isError);
-  }
-
   /** @param {Element} trigger */
   async function openScratchpad(trigger) {
     const form = scratchpadFormFromElement(trigger);
     const displayId = scratchpadDisplayId(form) || pageScratchpadDisplayId();
     if (!displayId) {
-      setScratchpadStatus(trigger, "Open a record with a saved Record ID before launching the scratch pad.", true);
+      // Issue #535: the no-record-open branch now surfaces as
+      // a toast (the prior setScratchpadStatus helper wrote to
+      // a near-invisible bottom-dock <p data-floating-scratchpad-status>
+      // that was hard to spot). Kind: "warning" matches the
+      // existing toast vocabulary for "user can't proceed yet".
+      showToast("Open a record with a saved Record ID before launching the scratch pad.", "warning");
       return;
     }
     const data = form instanceof HTMLFormElement ? new FormData(form) : new FormData();
@@ -1799,9 +1772,18 @@
         body: params.toString(),
       });
       const message = await response.text();
-      setScratchpadStatus(trigger, message || "Scratch pad opened.", !response.ok);
+      // Issue #535: success + failure both toast. The prior
+      // helper wrote to the bottom-dock pill which was easy
+      // to miss; a toast in the same corner as every other
+      // action response is the consistent signal the user
+      // asked for.
+      if (response.ok) {
+        showToast(message || "Scratch pad opened.", "success");
+      } else {
+        showToast(message || "Scratch pad failed to open.", "error");
+      }
     } catch (error) {
-      setScratchpadStatus(trigger, "Scratch pad failed to open.", true);
+      showToast("Scratch pad failed to open.", "error");
     } finally {
       setBusyState(trigger, false);
     }
