@@ -41,13 +41,31 @@
 //       backups, and merge-ready shared archives.` appears twice
 //       (issue #561 finding 53).
 //
+//   R4. Stacked headings.
+//       A short heading-style element (`<h1>`–`<h4>`, or an
+//       `uppercase tracking-` eyebrow `<p>` / `<div>`) whose text
+//       is < 60 chars sitting within 3 lines of ANOTHER heading-
+//       style element with no `<p>` body between them is flagged.
+//       Canonical example: share_exports.templ `Export & Backup`
+//       eyebrow + `Create files to share or preserve` heading
+//       (audit row 52).
+//
+//   R5. Verbose body paragraph directly under a heading.
+//       A `<p>` whose visible text is > 80 chars that sits within
+//       2 lines of a heading-style element (same definition as R4)
+//       is flagged. The verbose paragraph narrates what the
+//       heading already says. Canonical example: entry_form.templ
+//       `Person records stay anchored to a soldier record for
+//       navigation, merge review, and comparisons.` directly under
+//       the `Person Record Link` eyebrow (audit row 37).
+//
 // Why not the other two rules from docs/agents/ux-microcopy.md yet:
 //
-//   R4 (helper copy longer than label) — needs DOM `aria-describedby`
+//   R6 (helper copy longer than label) — needs DOM `aria-describedby`
 //   cross-referencing across files; deferred to a runtime probe
 //   following issue #561's slice plan.
 //
-//   R5 (single-button section needs no heading) — needs to know
+//   R7 (single-button section needs no heading) — needs to know
 //   whether the section is the only thing on the page; deferred
 //   to a runtime probe.
 //
@@ -263,6 +281,78 @@ function findR3(lines, file) {
 	return out;
 }
 
+// ---- R4 + R5: heading-style element + adjacent body paragraph -----------
+
+// A heading-style element is either an `<h1>`–`<h4>` or an
+// eyebrow-style `<p>` / `<div>` (uppercase + tracking-). Return the
+// captured text + the kind, or null.
+function headingMatch(line) {
+	const h = line.match(/<h([1-4])\b[^>]*>(.*?)<\/h\1>/);
+	if (h) return { text: collapse(h[2]), kind: 'h' };
+	const e = line.match(/<(p|div)\b[^>]*\buppercase\b[^>]*\btracking-[^>]*>(.*?)<\/\1>/);
+	if (e) return { text: collapse(e[2]), kind: 'eyebrow' };
+	return null;
+}
+
+// Find a `<p>` body element within `window` lines starting at
+// `startIdx` (exclusive). Returns { line, text } or null.
+function bodyPMatch(lines, startIdx, window) {
+	for (let j = startIdx + 1; j < Math.min(lines.length, startIdx + 1 + window); j++) {
+		const m = lines[j].match(/<p\b[^>]*>(.*?)<\/p>/);
+		if (m) return { line: j, text: collapse(m[1]) };
+	}
+	return null;
+}
+
+function findR4R5(lines, file) {
+	const out = [];
+	for (let i = 0; i < lines.length; i++) {
+		const head = headingMatch(lines[i]);
+		if (!head) continue;
+		// Skip dynamic headings — Go-templ expressions like `{ x }`
+		// mean the heading is data-driven and the chrome concern
+		// (eyebrow + heading pair) doesn't apply. R4 is about
+		// literal-text stacked headings only.
+		const headIsDynamic = /\{[^}]+\}/.test(head.text);
+		if (headIsDynamic) continue;
+		if (head.text.length === 0 || head.text.length >= 60) continue;
+
+		// R4: another heading-style element within 3 lines, no
+		// intervening <p>. Eyebrow + heading pair.
+		for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
+			if (/<p\b/.test(lines[j])) break; // body paragraph broke the pair
+			const next = headingMatch(lines[j]);
+			if (!next) continue;
+			if (/\{[^}]+\}/.test(next.text)) continue; // dynamic heading
+			if (next.text.length === 0 || next.text.length >= 60) continue;
+			out.push({
+				file,
+				line: i + 1,
+				rule: 'R4',
+				text: `${head.text} | ${next.text}`,
+				hint: `stacked headings (eyebrow + heading or two headings); the first one is usually unnecessary chrome`,
+			});
+			break;
+		}
+
+		// R5: <p> immediately adjacent (within 1 line) whose text
+		// is > 80 chars. Window of 1 catches the canonical
+		// eyebrow/body pair shape; a body 2+ lines under a heading
+		// is intentional mid-section prose, not narration.
+		const body = bodyPMatch(lines, i, 1);
+		if (!body) continue;
+		if (body.text.length <= 80) continue;
+		out.push({
+			file,
+			line: body.line + 1,
+			rule: 'R5',
+			text: body.text,
+			hint: `verbose body paragraph directly under heading '${head.text}'; the heading already names the topic — trim or delete`,
+		});
+	}
+	return out;
+}
+
 // ---- main -----------------------------------------------------------------
 
 function main() {
@@ -274,9 +364,10 @@ function main() {
 		findings.push(...findR1(lines, file));
 		findings.push(...findR2(lines, file));
 		findings.push(...findR3(lines, file));
+		findings.push(...findR4R5(lines, file));
 	}
 
-	const byRule = { R1: 0, R2: 0, R3: 0 };
+	const byRule = { R1: 0, R2: 0, R3: 0, R4: 0, R5: 0 };
 	const byFile = new Map();
 	for (const f of findings) {
 		byRule[f.rule] = (byRule[f.rule] || 0) + 1;
@@ -290,9 +381,11 @@ function main() {
 	console.log(`  R1 (eyebrow above self-explanatory block): ${byRule.R1 || 0}`);
 	console.log(`  R2 (heading text = adjacent button text): ${byRule.R2 || 0}`);
 	console.log(`  R3 (string literal duplicated within ~15 lines): ${byRule.R3 || 0}`);
+	console.log(`  R4 (stacked headings within 3 lines): ${byRule.R4 || 0}`);
+	console.log(`  R5 (verbose body >80 chars under heading): ${byRule.R5 || 0}`);
 	if (findings.length === 0) {
 		console.log('');
-		console.log('✓ every .templ file satisfies docs/agents/ux-microcopy.md R1/R2/R3');
+		console.log('✓ every .templ file satisfies docs/agents/ux-microcopy.md R1-R5');
 		process.exit(0);
 	}
 
