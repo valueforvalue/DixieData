@@ -33,7 +33,7 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 	@Layout(articleFormTitle(article, isEdit)) {
 		<div class="relative mx-auto max-w-6xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">{ articleFormTitle(article, isEdit) }</h1>
+				@components.Heading(components.H1, articleFormTitle(article, isEdit), "", nil)
 				@components.Button("← Back", components.ButtonSecondary, "", templ.Attributes{
 					"data-history-back":  "",
 					"data-fallback-href": templ.SafeURL(routebuilder.ArticleList()),

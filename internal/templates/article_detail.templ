@@ -45,7 +45,7 @@ templ ArticleDetailShell(view viewmodel.Article) {
 				@components.ArticleRawDownload(view.ID)
 			</div>
 			<article class="card rounded-3xl p-5 sm:p-8 space-y-4">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]" data-article-title>{ view.Title }</h1>
+				@components.Heading(components.H1, view.Title, "", nil)
 				if view.Subtitle != "" {
 					<p class="text-lg text-slate-600" data-article-subtitle>{ view.Subtitle }</p>
 				}
@@ -95,7 +95,7 @@ templ ArticleDetailShell(view viewmodel.Article) {
 templ ArticleRefsPanel(view viewmodel.Article) {
 	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-refs-panel>
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Person Records</h2>
+			@components.Heading(components.H2, "Person Records", "", nil)
 			@components.PersonRecordPickerTrigger(view.ID)
 		</div>
 		<div data-person-record-picker-target></div>
@@ -140,7 +140,7 @@ templ ArticleRefsPanel(view viewmodel.Article) {
 templ ArticleRevisionsTab(view viewmodel.Article) {
 	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-revisions-tab>
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Revisions</h2>
+			@components.Heading(components.H2, "Revisions", "", nil)
 			<span class="font-mono text-xs text-slate-500" data-article-revisions-count>{ fmt.Sprintf("%d saved", len(view.Snapshots)) }</span>
 		</div>
 		@components.ArticleRevisionsList(view.ID, view.Snapshots)

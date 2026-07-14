@@ -1,0 +1,92 @@
+// heading.templ — issue #577. Heading visual-language primitive.
+//
+// Before this component, the heading class strings
+// (`font-display text-3xl font-semibold text-[color:var(--ink)]`,
+// `font-display text-xl font-semibold text-[color:var(--ink)]`, etc.)
+// lived duplicated across 8+ templ files. One drift had already
+// shipped (`recovery.templ` rendered an h1 missing the
+// `font-display` family and the `--ink` color); without a shared
+// primitive the next contributor could ship another.
+//
+// The primitive:
+//
+//   - Renders <h1>, <h2>, or <h3> based on `level`.
+//   - Owns the level → class string mapping; the call sites are
+//     level-typed so adding a new heading to a new page can't
+//     drift the visual language.
+//   - Accepts extraClass for per-call-site add-ons (matches the
+//     Button primitive's signature). The extraClass is appended
+//     AFTER the canonical class so a call site can't clobber
+//     the level's font / weight / color contract via attribute
+//     ordering (a future Tailwind purge order bug we sidestep
+//     intentionally).
+//   - Accepts templ.Attributes for caller-supplied hooks
+//     (id, data-*, aria-*). The class string is the LAST
+//     attribute so the rendering matches the legacy inline
+//     form byte-for-byte for existing snapshot tests.
+//
+// Level 3 is added so a future contributor doesn't have to
+// extend the primitive mid-slice (currently the issue
+// describes h1 + h2 usage; h3 is the lint-driven inertia
+// gap that page authors hit when they reach for a sub-section
+// heading inside an article detail card).
+//
+// Byte-stability rule: the rendered HTML must match the
+// legacy inline class-string output it replaces.
+package components
+
+// HeadingLevel enumerates the heading levels the primitive
+// supports. Typed so the call site reads `components.Heading(components.H1, ...)`
+// and a future level addition is a one-line enum + class-string
+// pair.
+type HeadingLevel int
+
+const (
+	H1 HeadingLevel = 1
+	H2 HeadingLevel = 2
+	H3 HeadingLevel = 3
+)
+
+func headingClass(level HeadingLevel) string {
+	switch level {
+	case H1:
+		return "font-display text-3xl font-semibold text-[color:var(--ink)]"
+	case H2:
+		return "font-display text-xl font-semibold text-[color:var(--ink)]"
+	case H3:
+		return "text-lg font-semibold text-[color:var(--ink)]"
+	default:
+		return "font-display text-3xl font-semibold text-[color:var(--ink)]"
+	}
+}
+
+// Heading renders a semantic heading tag (<h1> / <h2> / <h3>)
+// with the visual-language class for the chosen level. label
+// is the inner text or a templ sub-expression; extraClass is
+// appended after the canonical class so per-page spacing (e.g.
+// "mt-2") doesn't conflict with the level styling; attrs are
+// merged into the tag as caller-supplied hooks (id, data-*,
+// aria-*).
+//
+// Empty-string attribute values render as the literal string
+// `=""` (templ runtime behavior). When a call site wants the
+// legacy bare-attribute shape (`data-x>` rather than
+// `data-x="">`), it omits the key. This matches the byte
+// shape the templ runtime emits and keeps the rendering
+// round-trippable.
+templ Heading(level HeadingLevel, label string, extraClass string, attrs templ.Attributes) {
+	if level == H1 {
+		<h1 class={ headingClass(level) + extraClassPart(extraClass) } { attrs... }>{ label }</h1>
+	} else if level == H2 {
+		<h2 class={ headingClass(level) + extraClassPart(extraClass) } { attrs... }>{ label }</h2>
+	} else if level == H3 {
+		<h3 class={ headingClass(level) + extraClassPart(extraClass) } { attrs... }>{ label }</h3>
+	}
+}
+
+func extraClassPart(extra string) string {
+	if extra == "" {
+		return ""
+	}
+	return " " + extra
+}

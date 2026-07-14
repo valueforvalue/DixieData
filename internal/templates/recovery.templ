@@ -1,5 +1,7 @@
 package templates
 
+import "github.com/valueforvalue/DixieData/internal/templates/components"
+
 templ UpdateRecoveryPage(createdAt string, sourceVersion string, targetVersion string, failureMessage string, rollbackStarted bool) {
 	<!doctype html>
 	<html lang="en">
@@ -12,7 +14,7 @@ templ UpdateRecoveryPage(createdAt string, sourceVersion string, targetVersion s
 	<body class="min-h-screen bg-[var(--theme-bg-page-top)] text-[#1b2630]">
 		<div class="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-12">
 			<div class="w-full rounded-3xl border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.94)] p-8 text-[var(--theme-accent-glow)] shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
-				<h1 class="text-3xl font-semibold">The last update did not finish a healthy first launch.</h1>
+				@components.Heading(components.H1, "The last update did not finish a healthy first launch.", "", nil)
 				<p class="mt-4 text-sm leading-6 text-[#d8cfbc]">
 					DixieData saved a restore point before applying the update. You can roll back to the previously safe build and Local Archive state from here.
 				</p>

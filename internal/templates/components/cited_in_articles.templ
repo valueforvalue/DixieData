@@ -21,7 +21,7 @@ import (
 templ CitedInArticles(personID int64, citedIn []viewmodel.Article) {
 	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-cited-in-articles-panel data-person-id={ fmt.Sprintf("%d", personID) }>
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Cited in</h2>
+			@Heading(H2, "Cited in", "", nil)
 			<span class="font-mono text-xs text-slate-500" data-cited-in-count>{ fmt.Sprintf("%d article", len(citedIn)) }</span>
 		</div>
 		if len(citedIn) == 1 {

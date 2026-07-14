@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -27,7 +28,7 @@ templ InventoryView(view viewmodel.InventoryView) {
 	@Layout("Archive Inventory") {
 		<div id={ uiids.PageInventory } class="relative mx-auto max-w-5xl space-y-6">
 			<header class="space-y-2">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">What's in your Local Archive</h1>
+				@components.Heading(components.H1, "What's in your Local Archive", "", nil)
 			</header>
 			// Headline numbers — same six cards the Calendar header
 			// surface will eventually mirror (the Calendar header

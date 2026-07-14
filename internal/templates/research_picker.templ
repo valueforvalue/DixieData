@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -59,7 +60,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 	@Layout("Research & Review") {
 		<div id={ uiids.PageResearchPicker } class="relative mx-auto max-w-4xl space-y-6">
 			<header class="space-y-2">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Choose a Person Record</h1>
+				@components.Heading(components.H1, "Choose a Person Record", "", nil)
 			</header>
 			if view.CurrentPerson != nil {
 				<div id={ uiids.PanelResearchPickerContinue } class="card rounded-3xl p-5 space-y-3">

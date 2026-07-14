@@ -18,7 +18,7 @@ templ ArticlesListShell(articles []viewmodel.Article) {
 	@Layout("Articles") {
 		<div class="relative mx-auto max-w-4xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Articles</h1>
+				@components.Heading(components.H1, "Articles", "", nil)
 				<a
 					href={ templ.SafeURL(routebuilder.ArticleNew()) }
 					class="primary-button"
