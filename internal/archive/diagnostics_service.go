@@ -93,7 +93,10 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 		}
 		// Merge logs are app-level diagnostics, not archive data;
 		// they live under .dixiedata-logs/ alongside the data dir.
-		return addBackupImages(zipWriter, appdata.LogsDir(dataDir))
+		// addBackupLogFiles applies the 1000-line truncation policy
+		// to app.log.jsonl so the bundle stays bounded in size
+		// (issue #546); feedback-log.jsonl is bundled in full.
+		return addBackupLogFiles(zipWriter, appdata.LogsDir(dataDir))
 	}); err != nil {
 		return DiagnosticsManifest{}, err
 	}
@@ -191,10 +194,11 @@ func writeDiagnosticsJSON(zipWriter *zip.Writer, name string, value interface{})
 // addBackupLogFiles writes the logs/ directory into the zip with a
 // truncation policy: feedback-log.jsonl is included in full, but
 // app.log.jsonl is capped at the most recent 1000 lines so the
-// bundle stays bounded in size.
+// bundle stays bounded in size. Both entries land under the
+// logs/ prefix in the zip, matching the manifest's LogRoot.
 func addBackupLogFiles(zipWriter *zip.Writer, logsDir string) error {
 	feedbackPath := filepath.Join(logsDir, "feedback-log.jsonl")
-	if err := addBackupImages(zipWriter, feedbackPath); err != nil {
+	if err := addTruncatedLogFile(zipWriter, feedbackPath, "logs/feedback-log.jsonl", 0); err != nil {
 		return err
 	}
 	appLogPath := filepath.Join(logsDir, "app.log.jsonl")
@@ -202,8 +206,10 @@ func addBackupLogFiles(zipWriter *zip.Writer, logsDir string) error {
 }
 
 // addTruncatedLogFile reads up to the last 4 MB of the source log
-// and writes at most maxLines lines to the zip entry. Returns nil
-// silently if the source file does not exist (no log yet).
+// and writes at most maxLines lines to the zip entry. A maxLines
+// value of 0 (or negative) means "no cap" — the file is copied in
+// full. Returns nil silently if the source file does not exist
+// (no log yet).
 func addTruncatedLogFile(zipWriter *zip.Writer, srcPath, entryName string, maxLines int) error {
 	f, err := os.Open(srcPath)
 	if err != nil {
@@ -233,7 +239,7 @@ func addTruncatedLogFile(zipWriter *zip.Writer, srcPath, entryName string, maxLi
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-	if len(lines) > maxLines {
+	if maxLines > 0 && len(lines) > maxLines {
 		lines = lines[len(lines)-maxLines:]
 	}
 
