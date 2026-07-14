@@ -23,13 +23,48 @@ import (
 const diagnosticsFormatName = "dixiedata-diagnostic-bundle"
 
 // diagnosticsBundleVersion tracks the on-disk shape of the bug-report
-// bundle. Bumped to 3 in issue #547: the bundle gains three new
-// entries (state/local_settings.json, logs/recent-errors.csv,
-// ring-snapshot.json) + the manifest gains three new fields
-// (LocalSettingsPath, RecentErrorsCount, RingBufferEntries). Consumer
-// code that branches on the manifest's Version field can rely on
-// this constant as the single source of truth.
-const diagnosticsBundleVersion = 3
+// bundle.
+//
+// v3 (issue #547): bundle gains three new entries
+//   (state/local_settings.json, logs/recent-errors.csv,
+//   ring-snapshot.json) + manifest gains three new fields
+//   (LocalSettingsPath, RecentErrorsCount, RingBufferEntries).
+// v4 (issue #545): manifest gains the ImagePlaceholderMode field;
+//   when the caller passes DiagnosticsExportOptions{IncludeImages:
+//   false}, the `images/` entries in the bundle are placeholder
+//   stubs (text marker per file with archive-relative path +
+//   original size) instead of real bytes. Consumer code that
+//   branches on the manifest's Version field can rely on this
+//   constant as the single source of truth.
+const diagnosticsBundleVersion = 4
+
+// DiagnosticsExportOptions bundles the per-bundle knobs for
+// (DiagnosticsService).Export. The zero value must match the
+// pre-#545 behavior so existing callers that use the legacy
+// 2-arg Export signature (the appshell handler, the in-place
+// update flow) keep working unchanged. Issue #545 slice 2
+// introduces IncludeImages; future slices will add more.
+type DiagnosticsExportOptions struct {
+	// IncludeImages controls whether the `images/` entries in
+	// the bundle are the real PNG/JPEG bytes or placeholder
+	// stubs. Defaults to true (legacy). When false, each image
+	// entry becomes a small text stub of the form
+	// `image-placeholder: path=<archive-relative> original_size=<bytes>`
+	// so a support engineer can correlate the placeholder path
+	// with the images table from the bundled database. Drops
+	// ~100-250 MB on a default-seed archive.
+	IncludeImages bool
+}
+
+// ImagePlaceholderMode is the string value the manifest's
+// ImagePlaceholderMode field carries. Issue #545 slice 2 pins
+// the contract: "none" means real bytes were bundled; "stub"
+// means placeholder stubs. The constant pairs make typos in
+// either direction fail loudly.
+const (
+	imagePlaceholderModeNone = "none"
+	imagePlaceholderModeStub = "stub"
+)
 
 // DiagnosticsManifest is the metadata envelope at the top of the bug-report bundle: the source schema version, the snapshot path inside the zip, and the per-record metadata the support engineer needs to reproduce the user's issue without seeing the live database.
 type DiagnosticsManifest struct {
@@ -63,6 +98,11 @@ type DiagnosticsManifest struct {
 	Executable            string            `json:"executable"`
 	DataDir               string            `json:"data_dir"`
 	Environment           map[string]string `json:"environment"`
+	// Issue #545: "none" when image bytes were bundled (legacy
+	// default); "stub" when placeholder mode dropped the image
+	// bytes. The support engineer reads this to know whether to
+	// ask the user to re-attach a specific image by name.
+	ImagePlaceholderMode string `json:"image_placeholder_mode"`
 }
 
 // DiagnosticsService produces the bug-report bundle the in-place
@@ -82,9 +122,29 @@ func NewDiagnosticsService(database *db.DB, soldier *SoldierService) *Diagnostic
 	return &DiagnosticsService{db: database, soldier: soldier}
 }
 
-// Export produces the bug-report bundle zip at outputPath. Returns the per-file metadata so the UI can show the user what was included before the bundle is uploaded to support.
+// Export produces the bug-report bundle zip at outputPath with the
+// default options (real image bytes bundled, matching the pre-#545
+// behavior). Returns the per-file metadata so the UI can show the
+// user what was included before the bundle is uploaded to support.
+//
+// Issue #545 slice 2 adds the 3-arg Export variant for callers that
+// need to opt into placeholder mode; this 2-arg form is the
+// backward-compat wrapper that defaults IncludeImages=true. Existing
+// callers (the appshell handler, the in-place update flow) keep
+// working unchanged.
 func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsManifest, error) {
-	manifest, err := d.buildManifest(dataDir)
+	return d.ExportWithOptions(outputPath, dataDir, DiagnosticsExportOptions{
+		IncludeImages: true,
+	})
+}
+
+// ExportWithOptions produces the bug-report bundle zip at outputPath
+// honoring the supplied options. Issue #545 slice 2 introduces this
+// signature; slice 3 wires the appshell handler to it. The
+// ImagePlaceholderMode field on the returned manifest reflects the
+// effective mode ("none" for IncludeImages=true, "stub" for false).
+func (d *DiagnosticsService) ExportWithOptions(outputPath, dataDir string, opts DiagnosticsExportOptions) (DiagnosticsManifest, error) {
+	manifest, err := d.buildManifest(dataDir, opts)
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}
@@ -107,9 +167,14 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 		if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
 			return err
 		}
-		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images"), true); err != nil {
+		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images"), opts.IncludeImages); err != nil {
 			return err
 		}
+		// Scratchpad bridge files are small text + JSON; the byte
+		// saving from placeholder-mode-ing them would be
+		// negligible, and the support engineer needs the real
+		// contents to debug user-reported scratchpad bugs. Always
+		// bundle real bytes for scratchpads.
 		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads"), true); err != nil {
 			return err
 		}
@@ -139,7 +204,7 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 	return manifest, nil
 }
 
-func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest, error) {
+func (d *DiagnosticsService) buildManifest(dataDir string, opts DiagnosticsExportOptions) (DiagnosticsManifest, error) {
 	soldiers, records, images, err := countArchiveData(d.soldier)
 	if err != nil {
 		return DiagnosticsManifest{}, err
@@ -188,7 +253,20 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 		Environment: map[string]string{
 			"DIXIEDATA_DATA_DIR": os.Getenv("DIXIEDATA_DATA_DIR"),
 		},
+		ImagePlaceholderMode: imagePlaceholderModeFor(opts),
 	}, nil
+}
+
+// imagePlaceholderModeFor maps a DiagnosticsExportOptions to the
+// string value the manifest's ImagePlaceholderMode field carries.
+// "none" means real bytes were bundled; "stub" means placeholder
+// mode dropped the bytes. Kept as a tiny helper so the manifest
+// builder doesn't grow a switch statement inline.
+func imagePlaceholderModeFor(opts DiagnosticsExportOptions) string {
+	if opts.IncludeImages {
+		return imagePlaceholderModeNone
+	}
+	return imagePlaceholderModeStub
 }
 
 func countArchiveData(soldierSvc *SoldierService) (int, int, int, error) {
