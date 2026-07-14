@@ -298,7 +298,13 @@ CREATE TABLE IF NOT EXISTS archive_meta (
 INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES
     ('shared_archive', 0),
     ('backup_archive', 1),
-    ('static_archive', 0);
+    -- Issue #528: static archive ships with tags included by
+    -- default so the bundled Insights "Tag distribution" card
+    -- + Browse filter dropdown show every tag the user attached
+    -- in the live app (Person Records + Event Records; Articles
+    -- have no tag schema at the moment, see issue #528 body).
+    -- Backup keeps its 1 (full snapshot). Shared keeps 0 (opt-in).
+    ('static_archive', 1);
 
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
@@ -998,7 +1004,10 @@ func ensureArchiveMetaSeed(tx *sql.Tx) error {
 	statements := []string{
 		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('shared_archive', 0)`,
 		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('backup_archive', 1)`,
-		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('static_archive', 0)`,
+		// Issue #528: flipped static_archive default 0 -> 1 so
+		// legacy archives that predate the v58+ seed get the
+		// new default on next archive_meta read.
+		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('static_archive', 1)`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(statement); err != nil {

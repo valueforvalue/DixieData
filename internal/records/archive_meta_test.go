@@ -44,8 +44,15 @@ func TestArchiveMetaService_GetDefaultSeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get(static): %v", err)
 	}
-	if staticKind.IncludeTags {
-		t.Errorf("static_archive include_tags = true, want false")
+	// Issue #528: static_archive ships with include_tags=1 by
+	// default so the bundled Insights tag distribution card
+	// + Browse filter dropdown show every tag the user attached
+	// (Person Records + Event Records). The seed flip from 0
+	// -> 1 lands in this same commit; this test pins the new
+	// expected default so future agents can't silently revert
+	// it.
+	if !staticKind.IncludeTags {
+		t.Errorf("static_archive include_tags = false, want true (issue #528 default-on)")
 	}
 }
 
