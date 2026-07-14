@@ -347,7 +347,7 @@ func TestRenderActiveJobReturnsSlotFragmentForLatest(t *testing.T) {
 	if !strings.Contains(body, "data-jobs-progress-region") {
 		t.Fatalf("slot fragment should target [data-jobs-progress-region]; got:\n%s", body)
 	}
-	if !strings.Contains(body, "json_export") {
+	if !strings.Contains(body, "JSON export") {
 		t.Fatalf("slot fragment should show job label; got:\n%s", body)
 	}
 }

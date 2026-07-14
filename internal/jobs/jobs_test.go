@@ -228,10 +228,15 @@ func TestSetResultBroadcastsSnapshot(t *testing.T) {
 }
 
 func TestDisplayLabelMapsKnownKinds(t *testing.T) {
+	// Issue #556 slice 1: the "unknown_kind" entry used to expect
+	// the raw snake_case (the legacy bug shape). Now unknown kinds
+	// fall through to humanizeKind(), which title-cases
+	// snake_case. The full coverage pin for every registered kind
+	// + the unknown-kind fallback contract lives in kinds_test.go.
 	cases := map[string]string{
 		"static_archive": "Static web archive",
 		"database_pdf":   "Printable archive PDF",
-		"unknown_kind":   "unknown_kind",
+		"unknown_kind":   "Unknown Kind",
 	}
 	for kind, want := range cases {
 		if got := (Job{Kind: kind}).DisplayLabel(); got != want {
