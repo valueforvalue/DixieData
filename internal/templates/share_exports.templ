@@ -31,8 +31,7 @@ templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareInclud
 			</div>
 			<section id={ uiids.PanelShareExports } class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Export & Backup</p>
-					<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
+					<h3 class="text-xl gold font-bold">Create files to share or preserve</h3>
 				</div>
 				<div class="flex flex-col gap-3">
 					@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{

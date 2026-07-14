@@ -18,7 +18,6 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 			}
 			<div>
 				<h2 class="text-2xl gold font-bold">Review Queue</h2>
-				<p class="mt-2 text-sm text-slate-600">Records flagged for duplicate review or follow-up research appear here until they are resolved.</p>
 				// Issue #455 slice 4: Open / Resolved tab strip.
 				// The Resolved tab listing now lives in
 				// ResolvedReviewQueueView (issue #461); this
@@ -346,7 +345,6 @@ templ ResolvedReviewQueueView(findings []viewmodel.ResolvedFindingEntry, conflic
 			}
 			<div>
 				<h2 class="text-2xl gold font-bold">Review Queue <span class="text-slate-400">/</span> Resolved</h2>
-				<p class="mt-2 text-sm text-slate-600">Resolution history: every duplicate-audit match and shared-import merge conflict you have settled, newest first.</p>
 				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
 					<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-[rgb(var(--theme-sepia-rgb)/0.08)]" data-review-queue-tab="open">Open</a>
 					<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-[rgb(var(--theme-sepia-rgb)/0.18)] px-4 py-2 text-[var(--theme-text-primary)]" data-review-queue-tab="resolved">Resolved</a>
