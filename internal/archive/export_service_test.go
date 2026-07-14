@@ -2621,3 +2621,208 @@ func containsString(haystack []string, needle string) bool {
 	}
 	return false
 }
+
+// TestExportService_StaticArchiveEventsIncludeEventTags pins
+// issue #528 slice 3: when archive_meta.include_tags is ON
+// for the static archive, the bundled bundle.events[i].tags
+// must carry every Event Record tag the user attached in the
+// live app. Today the static archive's event builder doesn't
+// set the Tags field at all (newStaticArchiveEventRecord's
+// struct literal omits it); the rendered JSON has no `tags`
+// key on event rows.
+//
+// Companion test TestExportService_StaticArchiveEventsSkipTagsWhenOff
+// pins the off path so a future refactor can't silently start
+// hydrating regardless of toggle.
+func TestExportService_StaticArchiveEventsIncludeEventTags(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	exportSvc := newTestExportServiceWithRegistry(t, database, soldierSvc)
+	configureExportIdentity(t, database)
+
+	// Seed two Event Records via the soldierSvc (Event Records
+	// are soldiers rows with entry_type='event' -- see
+	// models.EntryTypeEvent).
+	eventA, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Battle",
+		LastName:  "Gettysburg",
+		EntryType: models.EntryTypeEvent,
+		Kind:      "battle",
+		BeginDate: "07/01/1863",
+		EndDate:   "07/03/1863",
+	})
+	if err != nil {
+		t.Fatalf("Create event A: %v", err)
+	}
+	eventB, err := soldierSvc.Create(models.Soldier{
+		FirstName: "March",
+		LastName:  "Atlanta",
+		EntryType: models.EntryTypeEvent,
+		Kind:      "campaign",
+		BeginDate: "05/01/1864",
+	})
+	if err != nil {
+		t.Fatalf("Create event B: %v", err)
+	}
+
+	tagSvc := records.NewTagService(database.Conn())
+	tagMajor, err := tagSvc.UpsertByName(context.Background(), "Major")
+	if err != nil {
+		t.Fatalf("UpsertByName Major: %v", err)
+	}
+	tagTurning, err := tagSvc.UpsertByName(context.Background(), "Turning Point")
+	if err != nil {
+		t.Fatalf("UpsertByName Turning Point: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tagMajor.ID, eventA.ID); err != nil {
+		t.Fatalf("Attach Major -> A: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tagTurning.ID, eventA.ID); err != nil {
+		t.Fatalf("Attach Turning Point -> A: %v", err)
+	}
+	// eventB intentionally untagged.
+
+	// Confirm toggle ON.
+	metaSvc := records.NewArchiveMetaService(database.Conn())
+	got, err := metaSvc.Get(context.Background(), records.ArchiveKindStatic)
+	if err != nil {
+		t.Fatalf("Get(static meta): %v", err)
+	}
+	if !got.IncludeTags {
+		t.Fatalf("precondition: static include_tags = false; want true (slice 1 seed flip)")
+	}
+
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-archive-events.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	events := readStaticArchiveBundleEvents(t, outputPath)
+
+	byID := map[string][]string{}
+	for _, ev := range events {
+		byID[ev.DisplayID] = ev.Tags
+	}
+	if tags, ok := byID[eventA.DisplayID]; !ok {
+		t.Fatalf("bundle.events missing DisplayID %q; got %v", eventA.DisplayID, byID)
+	} else if len(tags) != 2 {
+		t.Errorf("eventA tags = %v; want 2 (Major, Turning Point)", tags)
+	} else if !containsString(tags, "Major") || !containsString(tags, "Turning Point") {
+		t.Errorf("eventA tags = %v; want both Major and Turning Point", tags)
+	}
+	if tags, ok := byID[eventB.DisplayID]; !ok {
+		t.Fatalf("bundle.events missing DisplayID %q; got %v", eventB.DisplayID, byID)
+	} else if len(tags) != 0 {
+		t.Errorf("eventB tags = %v; want empty (untagged)", tags)
+	}
+}
+
+// TestExportService_StaticArchiveEventsSkipTagsWhenOff pins the
+// off-path contract for Event Records: when include_tags=0,
+// bundle.events[i].tags must be empty regardless of DB state.
+func TestExportService_StaticArchiveEventsSkipTagsWhenOff(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	exportSvc := newTestExportServiceWithRegistry(t, database, soldierSvc)
+	configureExportIdentity(t, database)
+
+	eventA, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Battle",
+		LastName:  "Gettysburg",
+		EntryType: models.EntryTypeEvent,
+		Kind:      "battle",
+		BeginDate: "07/01/1863",
+	})
+	if err != nil {
+		t.Fatalf("Create event A: %v", err)
+	}
+
+	tagSvc := records.NewTagService(database.Conn())
+	tag, err := tagSvc.UpsertByName(context.Background(), "Major")
+	if err != nil {
+		t.Fatalf("UpsertByName: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tag.ID, eventA.ID); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	// Disable the toggle.
+	metaSvc := records.NewArchiveMetaService(database.Conn())
+	if _, err := metaSvc.SetIncludeTags(context.Background(), records.ArchiveKindStatic, false); err != nil {
+		t.Fatalf("SetIncludeTags(false): %v", err)
+	}
+
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-archive-events-off.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	events := readStaticArchiveBundleEvents(t, outputPath)
+	for _, ev := range events {
+		if len(ev.Tags) > 0 {
+			t.Errorf("event %q tags = %v with toggle OFF; want empty", ev.DisplayID, ev.Tags)
+		}
+	}
+}
+
+// readStaticArchiveBundleEvents extracts the bundle.events slice
+// from a static-archive zip. Mirrors readStaticArchiveBundleRecords
+// but for the events array.
+func readStaticArchiveBundleEvents(t *testing.T, zipPath string) []staticArchiveRecordShape {
+	t.Helper()
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader(%s): %v", zipPath, err)
+	}
+	defer reader.Close()
+	var dataFile *zip.File
+	for _, f := range reader.File {
+		if f.Name == "archive_data.js" {
+			dataFile = f
+			break
+		}
+	}
+	if dataFile == nil {
+		t.Fatalf("zip missing archive_data.js; entries: %d", len(reader.File))
+	}
+	rc, err := dataFile.Open()
+	if err != nil {
+		t.Fatalf("open archive_data.js: %v", err)
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatalf("read archive_data.js: %v", err)
+	}
+	start := bytes.IndexByte(data, '{')
+	if start < 0 {
+		t.Fatalf("archive_data.js missing JSON body")
+	}
+	end := bytes.LastIndexByte(data, ';')
+	if end <= start {
+		t.Fatalf("archive_data.js missing trailing ';'; start=%d end=%d", start, end)
+	}
+	body := data[start:end]
+	if body[len(body)-1] != '}' {
+		t.Fatalf("archive_data.js body last char = %q; want '}'", body[len(body)-1])
+	}
+	var bundle struct {
+		Events []staticArchiveRecordShape `json:"events"`
+	}
+	if err := json.Unmarshal(body, &bundle); err != nil {
+		t.Fatalf("unmarshal bundle: %v\nbody[0..200]: %s", err, body[:min(200, len(body))])
+	}
+	return bundle.Events
+}

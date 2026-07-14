@@ -3775,6 +3775,43 @@ func (e *ExportService) staticArchiveEvents() ([]StaticArchiveRecord, error) {
 		fullEvents = append(fullEvents, fullSoldier)
 		idIndex[fullSoldier.ID] = fullSoldier
 	}
+	// Issue #528 slice 3: hydrate each Event Record's Tags
+	// from person_record_tags via TagService.TagsForSoldiers.
+	// Event Records ARE soldiers rows (entry_type='event')
+	// since v60, so the person_record_tags table covers them
+	// -- same TagsForSoldiers call as Person Records (slice 2).
+	// Without this, newStaticArchiveEventRecord's struct
+	// literal at L3893 omits Tags entirely and the bundled
+	// bundle.events[i].tags is missing from the JSON.
+	if len(fullEvents) > 0 {
+		includeTags, terr := e.staticArchiveMetaIncludeTags()
+		if terr != nil {
+			return nil, fmt.Errorf("read include_tags toggle: %w", terr)
+		}
+		if includeTags {
+			tagSvc := records.NewTagService(e.db.Conn())
+			eventIDs := make([]int64, len(fullEvents))
+			for i, ev := range fullEvents {
+				eventIDs[i] = ev.ID
+			}
+			tagMap, terr := tagSvc.TagsForSoldiers(context.Background(), eventIDs)
+			if terr != nil {
+				return nil, fmt.Errorf("load tags for static archive events: %w", terr)
+			}
+			for i := range fullEvents {
+				tags := tagMap[fullEvents[i].ID]
+				if len(tags) == 0 {
+					continue
+				}
+				names := make([]string, 0, len(tags))
+				for _, t := range tags {
+					names = append(names, t.Name)
+				}
+				fullEvents[i].Tags = names
+				idIndex[fullEvents[i].ID] = fullEvents[i]
+			}
+		}
+	}
 	// Build a person-link index once so per-event linkedDisplayIds
 	// resolution is single-shot. Direct SQL keeps this helper
 	// free of an EventService dependency in ExportService (the
@@ -3956,6 +3993,12 @@ func newStaticArchiveEventRecord(event models.Soldier, linkedDisplayIDs []string
 		LastEditedBy:     strings.TrimSpace(event.LastEditedBy),
 		LastEditedAt:     strings.TrimSpace(event.LastEditedAt),
 		LastEditedFields: strings.TrimSpace(event.LastEditedFields),
+		// Issue #528 slice 3: hydrate Event Record tags from
+		// person_record_tags via the bulk TagsForSoldiers call
+		// in staticArchiveEvents. The omitempty JSON tag on
+		// Tags drops the key entirely when the toggle is OFF
+		// or the event has no tags, so the bundle stays small.
+		Tags: event.Tags,
 	}
 	if record.EntryType == "" {
 		record.EntryType = models.EntryTypeEvent
