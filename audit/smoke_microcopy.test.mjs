@@ -97,11 +97,36 @@ test('probe does NOT flag calendar.templ on current HEAD (slice 2 fix landed)', 
 	);
 });
 
-test('probe flags the share_exports.templ exact-duplicate body sentence (issue #561 finding 53)', () => {
+test('probe flags the share_exports.templ exact-duplicate body sentence on synthetic input (issue #561 finding 53, regression net)', () => {
+	// Slice 3 removed the duplicated body sentence from share_exports.templ,
+	// so the violation no longer exists on HEAD. Pin via synthetic fixture.
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'duplicate.templ'), `package templates
+templ Dedupe() {
+	<div>
+		<h2>Share Exports</h2>
+		<p>Generate portable exports, replacement backups, and merge-ready shared archives.</p>
+		<section>
+			<h3>Create files</h3>
+			<p>Generate portable exports, replacement backups, and merge-ready shared archives.</p>
+		</section>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		assert.ok(
+			/generate portable exports, replacement backups/i.test(r.stdout),
+			`expected exact-duplicate body to be flagged in synthetic fixture\nstdout: ${r.stdout}`,
+		);
+	});
+});
+
+test('probe does NOT flag share_exports.templ exact-duplicate on current HEAD (slice 3 fix landed)', () => {
 	const r = runProbe();
 	assert.ok(
-		/generate portable exports, replacement backups/i.test(r.stdout),
-		`expected exact-duplicate body to be flagged\nstdout: ${r.stdout}`,
+		!/generate portable exports, replacement backups/i.test(r.stdout),
+		`share_exports duplicate should be absent on post-slice-3 HEAD\nstdout: ${r.stdout}`,
 	);
 });
 
