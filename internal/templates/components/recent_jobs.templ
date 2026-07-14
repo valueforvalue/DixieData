@@ -22,18 +22,23 @@ templ RecentJobs(entries []viewmodel.RecentJobEntry) {
 		<div class="flex items-center justify-between gap-3">
 			<div>
 				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Recent activity</p>
-				<h3 class="mt-2 text-xl gold font-bold">Last exports and imports</h3>
+				<h3 class="mt-2 text-xl gold font-bold">Recent activity</h3>
 			</div>
 		</div>
 		if len(entries) == 0 {
-			<p class="text-sm text-slate-500">No exports or imports yet. Try Export JSON or Build Share Archive above to populate this list.</p>
+			<p class="text-sm text-slate-500">No recent activity yet. Try Export JSON or Build Share Archive above to populate this list.</p>
 		} else {
 			<ul class="divide-y divide-[rgba(141,116,64,0.18)]">
 				for _, job := range entries {
 					<li class="py-3 first:pt-0 last:pb-0">
 						<a href={ templ.SafeURL(job.DetailURL) } class="flex items-center justify-between gap-3 text-sm">
 							<span class="flex flex-col">
-								<span class="font-semibold text-[var(--theme-text-primary)]">{ job.KindLabel }</span>
+								<span class="flex items-center gap-2">
+									<span class="font-semibold text-[var(--theme-text-primary)]">{ job.KindLabel }</span>
+									if job.ActivityGroup != "" {
+										<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-slate-600" data-recent-job-group={ job.ActivityGroup }>{ job.ActivityGroup }</span>
+									}
+								</span>
 								if job.Message != "" {
 									<span class="mt-0.5 text-xs text-slate-500">{ job.Message }</span>
 								}

@@ -18,7 +18,7 @@ func TestRecentJobsRendersEmptyState(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "No exports or imports yet") {
+	if !strings.Contains(got, "No recent activity yet") {
 		t.Errorf("expected empty-state copy; got:\n%s", got)
 	}
 	if strings.Contains(got, `<ul class="divide-y`) {

@@ -587,6 +587,20 @@ var knownActivityGroups = map[string]struct{}{
 	"reports":      {},
 }
 
+// ActivityGroupFor returns the registry ActivityGroup for the
+// given kind, or "exports" as the safe default for unknown kinds
+// (matching the historical Recent Activity heading that grouped
+// everything as exports/imports). Slice 5 reads this on the
+// viewmodel layer so the Recent Activity panel can render per-row
+// group badges; the planned slice-6 sub-section layout will group
+// the list itself by ActivityGroup.
+func ActivityGroupFor(kind string) string {
+	if meta, ok := KindRegistry[kind]; ok && meta.ActivityGroup != "" {
+		return meta.ActivityGroup
+	}
+	return "exports"
+}
+
 // kindMetaFor returns the effective KindMeta for the given kind
 // string, resolving any Base inheritance. Returns the zero-value
 // KindMeta (empty DisplayLabel, empty ActivityGroup, etc.) for
