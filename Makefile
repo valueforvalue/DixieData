@@ -446,6 +446,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-migration-columns
 	make lint-htmx-guard
 	make lint-dialog-guard
+	make lint-microcopy
 	make lint-typecheck
 
 lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
@@ -465,6 +466,27 @@ lint-dialog-guard: ## Native-dialog-guard sweep (issue #445); docs/agents/dialog
 
 lint-dialog-guard-strict: ## Native-dialog-guard sweep as CI failure (--strict)
 	@node audit/smoke_dialog_guard.mjs --strict
+
+# Issue #561 — UX microcopy regression net. Static source scan that
+# walks every .templ file under internal/templates/** and asserts
+# the three rules documented in docs/agents/ux-microcopy.md:
+#   R1. Eyebrow (`uppercase tracking-` <p>/<div>) above a single
+#       self-explanatory block (blockquote / table) with no form
+#       controls — the canonical "Rotating Local Archive Quote"
+#       violation.
+#   R2. <h*> text equals adjacent <button> text within ~15 lines.
+#   R3. Same visible user-facing paragraph appears twice within
+#       ~15 lines (CSS class strings, templ component calls, JSON
+#       attribute strings, and Go control-flow lines are stripped).
+# Informational by default; --strict flips to CI failure.
+lint-microcopy: ## UX microcopy sweep (issue #561); docs/agents/ux-microcopy.md
+	@node audit/smoke_microcopy.mjs
+
+lint-microcopy-strict: ## UX microcopy sweep as CI failure (--strict)
+	@node audit/smoke_microcopy.mjs --strict
+
+lint-microcopy-test: ## Run the smoke_microcopy probe test suite
+	@node audit/smoke_microcopy.test.mjs
 
 # Issue #446 — extend the dispatcher-contract coverage. Live-server
 # probe that sends POST + X-HTTP-Method-Override for every PATCH/
