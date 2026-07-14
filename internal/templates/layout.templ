@@ -325,6 +325,18 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							Message
 							<textarea name="message" rows="4" class="field-input mt-2 min-h-32" placeholder="What happened, what you expected, or what feature would help?" required aria-required="true"></textarea>
 						</label>
+						// Issue #566 locked decision 7: PII disclosure
+						// above the Send button so the user knows
+						// what "Send to support" actually does
+						// (the local copy is always saved first
+						// per the issue #544 invariant). The
+						// version sentence is rendered from
+						// buildinfo + versioninfo (the canonical
+						// sources per CONTEXT.md's "Release
+						// counter N != schema version" law) so the
+						// user sees the actual values the binary
+						// sends, not a generic phrase.
+						<p class="text-xs leading-6 text-slate-500"><strong class="text-slate-700">Send to support</strong> transmits this message, your optional name/email, the current page path, the app version (app { buildinfo.AppVersion }, build { buildinfo.BuildIdentity() }, database schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) }), to a third-party support service (Formspark). The local copy is always saved first.</p>
 						<p class="text-xs leading-6 text-slate-500">Use Share → Support &amp; Diagnostics to export the feedback log for email attachments.</p>
 						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
 							@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{

@@ -174,6 +174,47 @@ func TestLayoutDialogsAreLabelledByTheirHeading(t *testing.T) {
 	}
 }
 
+// TestLayoutFeedbackModalDisclosureNamesAllVersionFields pins
+// issue #566 follow-up: the modal's "Send to support" disclosure
+// must name the three version fields actually transmitted (app
+// version, build identity, database schema version) and render
+// them from buildinfo (the canonical source per CONTEXT.md's
+// "Release counter N != schema version" law). A future
+// canonical-source consolidation issue can swap the underlying
+// helper without changing this contract.
+func TestLayoutFeedbackModalDisclosureNamesAllVersionFields(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	// Pull the disclosure paragraph (everything between
+	// <strong class="text-slate-700">Send to support</strong>
+	// and the next </p>).
+	open := `<strong class="text-slate-700">Send to support</strong>`
+	idx := strings.Index(content, open)
+	if idx < 0 {
+		t.Fatalf("feedback modal disclosure copy not found; the disclosure paragraph must name all three version fields")
+	}
+	rest := content[idx+len(open):]
+	end := strings.Index(rest, "</p>")
+	if end < 0 {
+		t.Fatalf("feedback modal disclosure copy has no closing </p>")
+	}
+	disclosure := rest[:end]
+	for _, needle := range []string{
+		"app " + buildinfo.AppVersion,                  // app version
+		"build " + buildinfo.BuildIdentity(),            // build identity
+		"database schema v" + fmt.Sprintf("%d", buildinfo.SchemaVersion), // schema version
+		"Formspark",                                     // third-party disclosure
+		"local copy is always saved first",              // local-first invariant
+	} {
+		if !strings.Contains(disclosure, needle) {
+			t.Errorf("feedback modal disclosure copy missing %q\ndisclosure: %s", needle, disclosure)
+		}
+	}
+}
+
 // TestLayoutFeedbackModalIsOverlayDiv asserts the feedback modal
 // renders as a <div role="dialog" aria-modal="true"> overlay.
 //
