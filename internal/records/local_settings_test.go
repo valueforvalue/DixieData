@@ -177,3 +177,48 @@ func TestResolvedExportSurface(t *testing.T) {
 		}
 	}
 }
+
+// TestLoadLocalSettings_SupportEndpointRoundTrip pins issue
+// #544 slice 2: the per-user support endpoint URL (the
+// destination for "Send to support" uploads) survives a
+// Save -> Load round-trip so a user who configures the
+// endpoint once keeps it across restarts. The field is
+// omitempty so old local_settings.json files load cleanly
+// without the key.
+func TestLoadLocalSettings_SupportEndpointRoundTrip(t *testing.T) {
+	dataDir := t.TempDir()
+	in := LocalSettings{
+		DebugMode:       false,
+		Theme:           ThemeSoft,
+		ExportSurface:   "toast-only",
+		SupportEndpoint: "https://support.example.invalid/upload",
+	}
+	if err := SaveLocalSettings(dataDir, in); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := LoadLocalSettings(dataDir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.SupportEndpoint != "https://support.example.invalid/upload" {
+		t.Errorf("SupportEndpoint round-trip = %q; want %q", got.SupportEndpoint, "https://support.example.invalid/upload")
+	}
+}
+
+// TestLoadLocalSettings_SupportEndpointDefaultEmpty pins the
+// zero-value contract: a fresh install returns
+// SupportEndpoint="", which the UI MUST interpret as "feature
+// off" -- the "Send to support" buttons render but a click
+// surfaces a toast like 'Configure the support endpoint in
+// Settings first' (per issue #544's locked design call).
+// This is the same opt-in pattern as ExportSurface's default
+// + ResolvedExportSurface's "" -> "jobs-page" fallback.
+func TestLoadLocalSettings_SupportEndpointDefaultEmpty(t *testing.T) {
+	got, err := LoadLocalSettings(t.TempDir())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.SupportEndpoint != "" {
+		t.Errorf("zero-value SupportEndpoint = %q; want \"\" (feature off)", got.SupportEndpoint)
+	}
+}
