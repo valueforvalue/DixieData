@@ -41,6 +41,7 @@ all of them; load only the ones that match your task.
 | [`docs/agents/bug-pattern-grep.md`](bug-pattern-grep.md) | Hunting a bug class by grep pattern. |
 | [`docs/agents/manual-audit-playbook.md`](manual-audit-playbook.md) | Manual UI walk. |
 | [`docs/agents/audit-notes-TEMPLATE.md`](audit-notes-TEMPLATE.md) | Template for audit notes. |
+| [`docs/agents/notes/user-action-responses-audit.md`](notes/user-action-responses-audit.md) | Issue #535 audit of every user-triggered action + its response shape (toast / redirect / inline DOM swap / jobs page). Load when designing a new action surface or auditing an "I clicked X and nothing happened" bug report. |
 | [`docs/agents/jobs-artifact-content-disposition-bug.md`](jobs-artifact-content-disposition-bug.md) | Working in the jobs area. |
 | [`docs/agents/probe-clean.md`](probe-clean.md) | Build cleanup — AV / debugger / watcher stragglers after Windows builds. Load when "make probe-clean" fails or when designing the pre-build step. |
 
