@@ -10,6 +10,7 @@ package archive
 
 import (
 	"archive/zip"
+	"context"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -3679,6 +3680,16 @@ func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
 // wives, widows, linked_persons) for the static archive JSON
 // bundle. Event Record rows are filtered out and returned via
 // staticArchiveEvents instead per issue #320 child #335.
+//
+// Issue #528 slice 2: when archive_meta.include_tags is ON
+// for the static archive, hydrate each soldier's Tags slice
+// from person_record_tags via TagService.TagsForSoldiers so
+// the bundled bundle.records[i].tags carries every tag the
+// user attached in the live app. Without this step, the
+// static archive's record builder writes `Tags: soldier.Tags`
+// but `soldier.GetByID` never populates that field (no
+// person_record_tags JOIN in the path), so the Tag
+// distribution card + Browse filter dropdown ship empty.
 func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 	batch, err := exportSoldiers(e.soldier)
 	if err != nil {
@@ -3697,6 +3708,35 @@ func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 		}
 		fullSoldiers = append(fullSoldiers, fullSoldier)
 		idIndex[fullSoldier.ID] = fullSoldier
+	}
+	if len(fullSoldiers) > 0 {
+		includeTags, terr := e.staticArchiveMetaIncludeTags()
+		if terr != nil {
+			return nil, fmt.Errorf("read include_tags toggle: %w", terr)
+		}
+		if includeTags {
+			tagSvc := records.NewTagService(e.db.Conn())
+			soldierIDs := make([]int64, len(fullSoldiers))
+			for i, s := range fullSoldiers {
+				soldierIDs[i] = s.ID
+			}
+			tagMap, terr := tagSvc.TagsForSoldiers(context.Background(), soldierIDs)
+			if terr != nil {
+				return nil, fmt.Errorf("load tags for static archive records: %w", terr)
+			}
+			for i := range fullSoldiers {
+				tags := tagMap[fullSoldiers[i].ID]
+				if len(tags) == 0 {
+					continue
+				}
+				names := make([]string, 0, len(tags))
+				for _, t := range tags {
+					names = append(names, t.Name)
+				}
+				fullSoldiers[i].Tags = names
+				idIndex[fullSoldiers[i].ID] = fullSoldiers[i]
+			}
+		}
 	}
 	records := make([]StaticArchiveRecord, 0, len(fullSoldiers))
 	for _, soldier := range fullSoldiers {

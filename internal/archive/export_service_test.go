@@ -2395,3 +2395,229 @@ func TestExportService_StaticArchiveMetaIncludeTags_OverrideRoundTrip(t *testing
 		t.Errorf("static_archive include_tags = false after SetIncludeTags(true); want true")
 	}
 }
+
+// TestExportService_StaticArchiveRecordsIncludePersonRecordTags
+// pins issue #528 slice 2: when archive_meta.include_tags is
+// ON for the static archive, the bundled bundle.records[i].tags
+// must carry every Person Record tag the user attached in the
+// live app. Today the static archive's record builder writes
+// `Tags: soldier.Tags` but `soldier.GetByID` never populates
+// the field (no person_record_tags JOIN in the path). The bug
+// is silent — the user sees a static archive with a Tag
+// distribution card that lists only tags attached to Person
+// Records in some OTHER surface (the live Wails app walks the
+// junction correctly).
+//
+// Companion test TestExportService_StaticArchiveRecordsSkipTagsWhenOff
+// pins the off path: when the user disables the toggle via
+// /settings, the bundled tags are empty so the bundle stays
+// small.
+func TestExportService_StaticArchiveRecordsIncludePersonRecordTags(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	exportSvc := newTestExportServiceWithRegistry(t, database, soldierSvc)
+	configureExportIdentity(t, database)
+
+	// Seed two Person Records; tag only the first so the
+	// second proves we hydrate per-soldier (not broadcast).
+	soldierA, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "Lee",
+	})
+	if err != nil {
+		t.Fatalf("Create A: %v", err)
+	}
+	soldierB, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Stonewall",
+		LastName:  "Jackson",
+	})
+	if err != nil {
+		t.Fatalf("Create B: %v", err)
+	}
+
+	tagSvc := records.NewTagService(database.Conn())
+	tagLee, err := tagSvc.UpsertByName(context.Background(), "Virginia")
+	if err != nil {
+		t.Fatalf("UpsertByName Virginia: %v", err)
+	}
+	tagCivilWar, err := tagSvc.UpsertByName(context.Background(), "Civil War")
+	if err != nil {
+		t.Fatalf("UpsertByName Civil War: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tagLee.ID, soldierA.ID); err != nil {
+		t.Fatalf("Attach Virginia -> A: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tagCivilWar.ID, soldierA.ID); err != nil {
+		t.Fatalf("Attach Civil War -> A: %v", err)
+	}
+	// soldierB intentionally untagged.
+
+	// Confirm the toggle is ON (slice 1 default).
+	metaSvc := records.NewArchiveMetaService(database.Conn())
+	got, err := metaSvc.Get(context.Background(), records.ArchiveKindStatic)
+	if err != nil {
+		t.Fatalf("Get(static meta): %v", err)
+	}
+	if !got.IncludeTags {
+		t.Fatalf("precondition: static include_tags = false; want true (slice 1 seed flip)")
+	}
+
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-archive.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	records := readStaticArchiveBundleRecords(t, outputPath)
+
+	byID := map[string][]string{}
+	for _, rec := range records {
+		byID[rec.DisplayID] = rec.Tags
+	}
+	if tags, ok := byID[soldierA.DisplayID]; !ok {
+		t.Fatalf("bundle.records missing DisplayID %q; got %v", soldierA.DisplayID, byID)
+	} else if len(tags) != 2 {
+		t.Errorf("soldierA tags = %v; want 2 (Virginia, Civil War)", tags)
+	} else if !containsString(tags, "Virginia") || !containsString(tags, "Civil War") {
+		t.Errorf("soldierA tags = %v; want both Virginia and Civil War", tags)
+	}
+	if tags, ok := byID[soldierB.DisplayID]; !ok {
+		t.Fatalf("bundle.records missing DisplayID %q; got %v", soldierB.DisplayID, byID)
+	} else if len(tags) != 0 {
+		t.Errorf("soldierB tags = %v; want empty (untagged)", tags)
+	}
+}
+
+// TestExportService_StaticArchiveRecordsSkipTagsWhenOff pins
+// the off-path contract: when the user disables the toggle via
+// /settings (slice 1's override mechanism), the static archive
+// must NOT hydrate tags even when rows exist in
+// person_record_tags. The bundle stays small + the JSON
+// omits the `tags` field entirely (per the `omitempty` JSON
+// tag on StaticArchiveRecord.Tags).
+func TestExportService_StaticArchiveRecordsSkipTagsWhenOff(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	exportSvc := newTestExportServiceWithRegistry(t, database, soldierSvc)
+	configureExportIdentity(t, database)
+
+	soldierA, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "Lee",
+	})
+	if err != nil {
+		t.Fatalf("Create A: %v", err)
+	}
+
+	tagSvc := records.NewTagService(database.Conn())
+	tag, err := tagSvc.UpsertByName(context.Background(), "Virginia")
+	if err != nil {
+		t.Fatalf("UpsertByName: %v", err)
+	}
+	if err := tagSvc.Attach(context.Background(), tag.ID, soldierA.ID); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	// Disable the toggle for the static archive.
+	metaSvc := records.NewArchiveMetaService(database.Conn())
+	if _, err := metaSvc.SetIncludeTags(context.Background(), records.ArchiveKindStatic, false); err != nil {
+		t.Fatalf("SetIncludeTags(false): %v", err)
+	}
+
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-archive-off.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	records := readStaticArchiveBundleRecords(t, outputPath)
+	for _, rec := range records {
+		if len(rec.Tags) > 0 {
+			t.Errorf("record %q tags = %v with toggle OFF; want empty", rec.DisplayID, rec.Tags)
+		}
+	}
+}
+
+// readStaticArchiveBundleRecords extracts the bundle.records
+// slice from a static-archive zip. The bundle is at
+// archive_data.js inside the zip (per export_service.go:1751
+// which writes it as a JS-literal-named file).
+func readStaticArchiveBundleRecords(t *testing.T, zipPath string) []staticArchiveRecordShape {
+	t.Helper()
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader(%s): %v", zipPath, err)
+	}
+	defer reader.Close()
+	var dataFile *zip.File
+	for _, f := range reader.File {
+		if f.Name == "archive_data.js" {
+			dataFile = f
+			break
+		}
+	}
+	if dataFile == nil {
+		t.Fatalf("zip missing archive_data.js; entries: %d", len(reader.File))
+	}
+	rc, err := dataFile.Open()
+	if err != nil {
+		t.Fatalf("open archive_data.js: %v", err)
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatalf("read archive_data.js: %v", err)
+	}
+	// The file is `window.DIXIE_DATA = <json>;`; extract the
+	// JSON substring between the first { and the trailing ;.
+	start := bytes.IndexByte(data, '{')
+	if start < 0 {
+		t.Fatalf("archive_data.js missing JSON body")
+	}
+	end := bytes.LastIndexByte(data, ';')
+	if end <= start {
+		t.Fatalf("archive_data.js missing trailing ';'; start=%d end=%d", start, end)
+	}
+	body := data[start:end]
+	// Strip the trailing closing brace before the assignment
+	// terminator. The file is `... = {...};` so the body's
+	// last char must be `}`.
+	if body[len(body)-1] != '}' {
+		t.Fatalf("archive_data.js body last char = %q; want '}'", body[len(body)-1])
+	}
+	var bundle struct {
+		Records []staticArchiveRecordShape `json:"records"`
+	}
+	if err := json.Unmarshal(body, &bundle); err != nil {
+		t.Fatalf("unmarshal bundle: %v\nbody[0..200]: %s", err, body[:min(200, len(body))])
+	}
+	return bundle.Records
+}
+
+// staticArchiveRecordShape is the minimal shape we need to
+// assert tags landed. Mirrors StaticArchiveRecord's JSON tags
+// for DisplayID + Tags so the test doesn't depend on the
+// full struct definition.
+type staticArchiveRecordShape struct {
+	DisplayID string   `json:"displayId"`
+	Tags      []string `json:"tags"`
+}
+
+func containsString(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
+}
