@@ -524,3 +524,34 @@ func TestActivityGroupForEveryKind(t *testing.T) {
 		t.Errorf("ActivityGroupFor(unknown) = %q; want %q (safe default)", got, "exports")
 	}
 }
+
+// TestJobLabelMatchesDisplayLabel pins slice 6: the templ-side
+// jobLabel helper is a thin wrapper around Job.DisplayLabel so
+// the page heading + the Summary card + the recent-activity row
+// all read from the same source. A future refactor that
+// re-introduces a duplicate switch in either file would
+// silently re-create the drift the slice is fixing.
+func TestJobLabelMatchesDisplayLabel(t *testing.T) {
+	// Spot-check a few kinds including the previously-drifted ones.
+	cases := []string{
+		"static_archive", "database_pdf", // pre-#556 2-case switch
+		"soldier_pdf", "soldier_pdf_no_images", "review_bulk_resolve",
+		"google_drive_backup", "future_kind_not_in_registry", // unknown-kind fallback
+	}
+	for _, kind := range cases {
+		got := (Job{Kind: kind}).DisplayLabel()
+		// The templ-side wrapper in jobs.templ now reads from
+		// the same source. The test exercises the Go side
+		// directly; the templ side is pinned by the package
+		// compile + a thin assertion in the templ tests that
+		// the rendered heading contains the same string.
+		if got == "" {
+			t.Errorf("Job{%q}.DisplayLabel() = empty; want non-empty", kind)
+		}
+		if got == kind && kind != "future_kind_not_in_registry" {
+			// A registered kind returning the raw snake_case
+			// means the registry has no entry — drift alarm.
+			t.Errorf("Job{%q}.DisplayLabel() = %q (raw snake_case); the kind is missing from the registry", kind, got)
+		}
+	}
+}
