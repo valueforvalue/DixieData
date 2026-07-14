@@ -86,8 +86,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 				</div>
 			</div>
 			<div class="relative mb-6 rounded-2xl border border-[var(--theme-accent-strong)] bg-[rgb(var(--theme-ink-deep-rgb)/0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">
-				<p class="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--theme-sepia-300)]">Rotating Local Archive Quote</p>
-				<blockquote class="mt-3 max-w-4xl text-2xl leading-relaxed text-[var(--theme-accent-glow)]">"{ quote.Text }"</blockquote>
+				<blockquote class="max-w-4xl text-2xl leading-relaxed text-[var(--theme-accent-glow)]">"{ quote.Text }"</blockquote>
 				<p class="mt-3 text-base font-semibold text-[var(--theme-sepia-300)]">{ quote.Author }</p>
 				<p class="mt-1 text-xs uppercase tracking-[0.18em] text-[#bcae88]">Advances every 3 soldiers added to the local archive</p>
 				if quote.Context != "" {

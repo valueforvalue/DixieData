@@ -66,15 +66,34 @@ test('probe output includes the three-rule summary on current HEAD', () => {
 	assert.ok(r.stdout.includes('R3'), 'missing R3 rule summary line');
 });
 
-test('probe flags the canonical Rotating Local Archive Quote violation (issue #561 finding 1)', () => {
+test('probe flags the canonical Rotating Local Archive Quote violation on synthetic input (issue #561 finding 1, regression net)', () => {
+	// Slice 2 of #561 removed the eyebrow from calendar.templ, so
+	// the canonical violation no longer exists on HEAD. The probe
+	// must still fire when the eyebrow is reintroduced (regression
+	// net for the fix). Pin via synthetic fixture.
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'canonical.templ'), `package templates
+templ QuotePanel() {
+	<div>
+		<p class="text-xs font-semibold uppercase tracking-[0.28em]">Rotating Local Archive Quote</p>
+		<blockquote>"x"</blockquote>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		assert.ok(
+			/rotating local archive quote/i.test(r.stdout),
+			`expected canonical violation in synthetic fixture\nstdout: ${r.stdout}`,
+		);
+	});
+});
+
+test('probe does NOT flag calendar.templ on current HEAD (slice 2 fix landed)', () => {
 	const r = runProbe();
 	assert.ok(
-		/rotating local archive quote/i.test(r.stdout),
-		`expected canonical violation in stdout\nstdout: ${r.stdout}`,
-	);
-	assert.ok(
-		r.stdout.includes('calendar.templ'),
-		`expected calendar.templ in violation list\nstdout: ${r.stdout}`,
+		!/rotating local archive quote/i.test(r.stdout),
+		`canonical violation should be absent on post-slice-2 HEAD\nstdout: ${r.stdout}`,
 	);
 });
 
