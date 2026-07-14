@@ -47,6 +47,8 @@ func TestFailedVerb(t *testing.T) {
 		{"backup_archive", true, "Export cancelled."},
 		{"shared_archive", false, "Export failed."},
 		{"shared_archive", true, "Export cancelled."},
+		{"shared_archive_subset", false, "Export failed."},
+		{"shared_archive_subset", true, "Export cancelled."},
 		{"json_export", false, "Export failed."},
 		{"json_export", true, "Export cancelled."},
 		{"excel_export", false, "Export failed."},
@@ -57,6 +59,28 @@ func TestFailedVerb(t *testing.T) {
 		{"insights_pdf", true, "Export cancelled."},
 		{"bug_report", false, "Export failed."},
 		{"bug_report", true, "Export cancelled."},
+		{"article_pdf", false, "Export failed."},
+		{"article_pdf", true, "Export cancelled."},
+		{"feedback_log", false, "Export failed."},
+		{"feedback_log", true, "Export cancelled."},
+		{"google_sheets_export", false, "Export failed."},
+		{"google_sheets_export", true, "Export cancelled."},
+
+		// Audits (issue #556 slice 4 — previously silent).
+		{"image_orphan_cleanup", false, "Cleanup failed."},
+		{"image_orphan_cleanup", true, "Cleanup cancelled."},
+		{"duplicate_audit", false, "Audit failed."},
+		{"duplicate_audit", true, "Audit cancelled."},
+
+		// Reviews (issue #556 slice 4 — previously silent).
+		{"review_bulk_resolve", false, "Resolve failed."},
+		{"review_bulk_resolve", true, "Resolve cancelled."},
+		{"review_bulk_delete", false, "Delete failed."},
+		{"review_bulk_delete", true, "Delete cancelled."},
+
+		// Integrations (issue #556 slice 4 — previously silent).
+		{"google_drive_backup", false, "Backup failed."},
+		{"google_drive_backup", true, "Backup cancelled."},
 
 		// Unknown kind — fallback to "Operation".
 		{"future_kind", false, "Operation failed."},

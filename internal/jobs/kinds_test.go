@@ -465,3 +465,39 @@ func TestProgressSetResultRoundTrip(t *testing.T) {
 		t.Errorf("TrashRoot not propagated through SetResult; got %q", snap.Result.TrashRoot)
 	}
 }
+
+// TestFailedVerbEveryRegisteredKindHasNonOperationVerb pins the
+// issue #556 slice 4 fix: the pre-#556 jobverbs.go switch covered
+// only 17 of 25 kinds. The other 8 silently rendered "Operation
+// failed." for the user. After slice 4 every registered kind
+// carries a PastTense so FailedVerb returns the accurate verb
+// ("Cleanup failed.", "Resolve failed.", "Backup failed.", etc.).
+// Unknown kinds still fall through to "Operation" (the correct
+// fallback for legacy JSONL log entries).
+func TestFailedVerbEveryRegisteredKindHasNonOperationVerb(t *testing.T) {
+	for kind, meta := range KindRegistry {
+		if meta.PastTense == "" {
+			t.Errorf("KindRegistry[%q].PastTense is empty; FailedVerb will fall through to 'Operation'", kind)
+			continue
+		}
+		if got := FailedVerb(kind, false); !strings.HasPrefix(got, meta.PastTense+" ") {
+			t.Errorf("FailedVerb(%q, false) = %q; want it to start with %q", kind, got, meta.PastTense)
+		}
+		if got := FailedVerb(kind, true); !strings.HasPrefix(got, meta.PastTense+" ") {
+			t.Errorf("FailedVerb(%q, true) = %q; want it to start with %q", kind, got, meta.PastTense)
+		}
+	}
+}
+
+// TestFailedVerbUnknownKindStillOperations pins the unknown-kind
+// fallback for slice 4: a kind not in the registry must still
+// produce "Operation failed." (the safe fallback), not panic or
+// return an empty string.
+func TestFailedVerbUnknownKindStillOperations(t *testing.T) {
+	if got := FailedVerb("future_kind_not_in_registry", false); got != "Operation failed." {
+		t.Errorf("FailedVerb(unknown, false) = %q; want %q", got, "Operation failed.")
+	}
+	if got := FailedVerb("future_kind_not_in_registry", true); got != "Operation cancelled." {
+		t.Errorf("FailedVerb(unknown, true) = %q; want %q", got, "Operation cancelled.")
+	}
+}
