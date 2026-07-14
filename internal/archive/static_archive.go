@@ -3627,6 +3627,32 @@ function escapeHtml(value) {
 </html>
 `
 
+// --- (e *ExportService) staticArchiveMetaIncludeTags ---
+// staticArchiveMetaIncludeTags reads archive_meta.include_tags
+// for the static_archive kind (issue #528). Returns the seeded
+// value (currently 1 — "tags included by default" per the
+// schema.go:298 seed flip in this commit) or false on any read
+// error so the export pipeline never blocks on a stale row.
+//
+// Mirrors the working reference pattern at
+// internal/archive/backup_service.go:archiveMetaIncludeTags but
+// hard-codes archive_kind=static_archive because the static
+// archive pipeline only ships one kind today. If a future kind
+// is added, parameterise over records.ArchiveKind (mirrors
+// the test at TestExportService_StaticArchiveMetaIncludeTags
+// _OverrideRoundTrip which flips the row via ArchiveMetaService).
+func (e *ExportService) staticArchiveMetaIncludeTags() (bool, error) {
+	var include int
+	err := e.db.Conn().QueryRow(
+		`SELECT include_tags FROM archive_meta WHERE archive_kind = ?`,
+		records.ArchiveKindStatic,
+	).Scan(&include)
+	if err != nil {
+		return false, nil
+	}
+	return include != 0, nil
+}
+
 // --- (e *ExportService) staticArchiveOwner ---
 func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
 	identity, err := e.db.UserIdentity()

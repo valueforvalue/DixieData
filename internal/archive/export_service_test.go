@@ -3,6 +3,7 @@ package archive
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -2328,5 +2329,69 @@ func writeSizedPNGFixture(t *testing.T, path string, width, height int) {
 	defer file.Close()
 	if err := png.Encode(file, imageRect); err != nil {
 		t.Fatalf("png.Encode: %v", err)
+	}
+}
+
+// TestExportService_StaticArchiveMetaIncludeTags_DefaultsOn pins
+// issue #528: the static_archive kind's include_tags seed must
+// default to ON (1). The user report shows they expect tag
+// analytics to be on by default for the static archive. Mirrors
+// the working reference pattern in
+// internal/archive/backup_service.go:archiveMetaIncludeTags but
+// parameterized over archive_kind so the helper serves all
+// three kinds (shared / backup / static) without duplicating
+// the SQL.
+func TestExportService_StaticArchiveMetaIncludeTags_DefaultsOn(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+
+	// The seed in schema.go:298 must flip static_archive from
+	// 0 -> 1 (the issue #528 policy decision: static archive
+	// ships with tags included by default; backup stays on;
+	// shared stays off). This test pins the flipped seed so
+	// future agents can't silently revert it.
+	got, err := exportSvc.staticArchiveMetaIncludeTags()
+	if err != nil {
+		t.Fatalf("staticArchiveMetaIncludeTags: %v", err)
+	}
+	if !got {
+		t.Errorf("static_archive include_tags = false; want true (issue #528 default-on)")
+	}
+}
+
+// TestExportService_StaticArchiveMetaIncludeTags_OverrideRoundTrip
+// pins the second contract: a user (or a /settings toggle in a
+// follow-up) must be able to flip the static_archive
+// include_tags value and have ExportService see the new value.
+// Mirrors TestArchiveMetaService_SetIncludeTagsRoundTrip at
+// internal/records/archive_meta_test.go:55 but at the
+// ExportService layer — the helper must read fresh from the DB
+// rather than caching a startup-time value.
+func TestExportService_StaticArchiveMetaIncludeTags_OverrideRoundTrip(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+
+	metaSvc := records.NewArchiveMetaService(d.Conn())
+	if _, err := metaSvc.SetIncludeTags(context.Background(), records.ArchiveKindStatic, false); err != nil {
+		t.Fatalf("SetIncludeTags(static, false): %v", err)
+	}
+	got, err := exportSvc.staticArchiveMetaIncludeTags()
+	if err != nil {
+		t.Fatalf("staticArchiveMetaIncludeTags: %v", err)
+	}
+	if got {
+		t.Errorf("static_archive include_tags = true after SetIncludeTags(false); want false")
+	}
+	if _, err := metaSvc.SetIncludeTags(context.Background(), records.ArchiveKindStatic, true); err != nil {
+		t.Fatalf("SetIncludeTags(static, true): %v", err)
+	}
+	got, err = exportSvc.staticArchiveMetaIncludeTags()
+	if err != nil {
+		t.Fatalf("staticArchiveMetaIncludeTags (after re-set): %v", err)
+	}
+	if !got {
+		t.Errorf("static_archive include_tags = false after SetIncludeTags(true); want true")
 	}
 }
