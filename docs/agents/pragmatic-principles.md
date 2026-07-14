@@ -737,7 +737,153 @@ a new section is one PR.
 
 ---
 
-## §5 — References
+## §6 — Tip index (the 100 tips, by number)
+
+This index is the **operational counterpart** to the principle
+spine in §1. Each tip is a concrete behavior; the principle
+is the *why* behind the behavior. The principle spine is what
+an agent reads when designing a new feature; this index is what
+an agent reads when checking whether a specific commit or
+behavior is in compliance.
+
+**State legend:**
+- ✅ **Enforced** — a `CONTEXT.md` Law, a tier-1 `docs/agents/` doc, a regression test, an ADR, or a workflow file pins the tip.
+- ⚠️ **Partial** — the spirit is satisfied but no written rule, OR the rule exists but a recent commit violated it. Cited.
+- ❌ **Gap** — the tip is not addressed and would be high-leverage to add. A candidate follow-up issue exists.
+- ➖ **N/A** — the tip applies to contexts DixieData does not inhabit.
+
+**Principle column** maps the tip to the §1.x section in this doc
+that explains the *why*. Tips with a "philosophy / technique"
+note in the Principle column are *attitudes* (Ch 1 of the book)
+or *techniques* (Ch 3+), not principles per se — they inform
+behavior but are not operationalized as a deep-module rule.
+
+**One-line evidence** is truncated to ~110 chars. The full
+evidence per tip lives in the source audit at
+`docs/audit/pragmatic-programmer-audit-2026-07.md` (the
+100-tip map retained as a historical artifact).
+
+| # | Tip | State | Principle | One-line evidence |
+|---|---|---|---|---|
+| 1 | Care About Your Craft | ✅ | — (philosophy / technique, not a principle) | `AGENTS.md` "Bias toward action" + the entire quality regime (test floor, smoke probes, doc-comment floor, ... |
+| 2 | Think! About Your Work | ✅ | — (philosophy / technique, not a principle) | RPCI flow (`docs/agents/rpci.md`) explicitly turns off the autopilot: every plan has a Critique phase the u... |
+| 3 | You Have Agency | ✅ | — (philosophy / technique, not a principle) | RPCI Critique gate is the operational form — the user has explicit "approve, start" authority. |
+| 4 | Provide Options, Don't Make Lame Excuses | ✅ | — (philosophy / technique, not a principle) | RPCI surfaces "decisions to confirm" with options; the user picks, the agent never says "can't be done." |
+| 5 | Don't Live with Broken Windows | ✅ | — (philosophy / technique, not a principle) | `CONTEXT.md` Laws are earned-by-real-bug rules; the Backend-First Law explicitly names the four "shipped bu... |
+| 6 | Be a Catalyst for Change | ⚠️ | — (philosophy / technique, not a principle) | The repo does this implicitly via the audit cadence (issue #561 → #560) but has no written rule. Process is... |
+| 7 | Remember the Big Picture | ✅ | — (philosophy / technique, not a principle) | The `docs/agents/INDEX.md` progressive-disclosure table is the operational form — agents know which tier to... |
+| 8 | Make Quality a Requirements Issue | ⚠️ | — (philosophy / technique, not a principle) | Every feature issue carries an "Acceptance criteria" section. But quality requirements are implicit (test-f... |
+| 9 | Invest Regularly in Your Knowledge Portfolio | ❌ | — (philosophy / technique, not a principle) | No `docs/learning/` or per-agent reading list. The audit (this doc) is a one-shot, not a habit. |
+| 10 | Critically Analyze What You Read and Hear | ⚠️ | §1.19 WISDOM | The repo applies this in the "forgo following fads" §"Yesterday's Best Practice Becomes Tomorrow's Antipatt... |
+| 11 | English is Just Another Programming Language | ✅ | §1.1 DRY | `CONTEXT.md` Laws are written in plain English with `_Avoid_` lists — treated as code: every commit is revi... |
+| 12 | It's Both What You Say and the Way You Say It | ✅ | §1.19 WISDOM | The CHANGELOG is exemplary — long-form bullets explain the *why*, the regression net, and the out-of-scope.... |
+| 13 | Build Documentation In, Don't Bolt It On | ✅ | — | Doc-comment floor (CONTEXT.md "Exported Go identifiers carry doc comments" Law) + `internal/uiids` registry... |
+| 14 | Good Design Is Easier to Change Than Bad Design | ✅ | §1.3 Reversibility | The deep-module discipline (`docs/agents/complexity.md`) + the architecture forbidden-import test = the rul... |
+| 15 | DRY—Don't Repeat Yourself | ✅ | §1.1 DRY | The routebuilder is the canonical example (single source of truth for every URL). `internal/routebuilder` +... |
+| 16 | Make It Easy to Reuse | ✅ | §1.1 DRY | The `components/` design-system primitives (Foldout, Button, Card, Pill, EmptyState, Field, Toast) are the ... |
+| 17 | Eliminate Effects Between Unrelated Things | ✅ | §1.2 Orthogonality | `internal/architecture/architecture_test.go` forbidden-import table is the regression net; deep-module list... |
+| 18 | There Are No Final Decisions | ✅ | §1.3 Reversibility | The three-branch model (ADR 0009) is the operational form: `dev` for integration, `stable` for release, `ma... |
+| 19 | Forgo Following Fads | ⚠️ | §1.3 Reversibility | Implicit in the architecture choices (templ + chi + goldmark) but no written policy. A future "rewrite in R... |
+| 20 | Use Tracer Bullets to Find the Target | ✅ | §1.4 Tracer Bullets | `tracer-bullets` skill (auto-loaded) + `feature-protocol.md` §"Tracer bullets" + the 3-tier commit rule. Th... |
+| 21 | Prototype to Learn | ⚠️ | — (philosophy / technique, not a principle) | `.scratch/` is the prototype playground (Python scripts, MCP probes) and `repl` skill is a scratch tool. Bu... |
+| 22 | Program Close to the Problem Domain | ✅ | — (philosophy / technique, not a principle) | The `articles` package (just shipped in #565) is the exemplar — domain types `CheatSheetRow` not infrastruc... |
+| 23 | Estimate to Avoid Surprises | ⚠️ | — (philosophy / technique, not a principle) | RPCI Plan includes "files touched, success criteria, regression net" but no time estimate. The "Bias toward... |
+| 24 | Iterate the Schedule with the Code | ➖ | — (philosophy / technique, not a principle) | N/A. Single-binary single-user project; no schedule to iterate. |
+| 25 | Keep Knowledge in Plain Text | ✅ | — (philosophy / technique, not a principle) | Every config is plain text (Makefile, .json, .md, .ps1). No binary configs. `docs/migrations/v{N}.md` is th... |
+| 26 | Use the Power of Command Shells | ✅ | — (philosophy / technique, not a principle) | `audit/_lib/`, `scripts/*.ps1`, `tools/tune/cli-coverage.mjs`, `make` targets. The `probe-clean.ps1` + `run... |
+| 27 | Achieve Editor Fluency | ➖ | — (philosophy / technique, not a principle) | Agent-context; not a code/doc concern. |
+| 28 | Always Use Version Control | ✅ | — (philosophy / technique, not a principle) | The entire branching model (ADR 0009). Every change goes through git. |
+| 29 | Fix the Problem, Not the Blame | ⚠️ | — (philosophy / technique, not a principle) | Implicit in CHANGELOG tone ("two compounding bugs in X" — no person named) but no stated rule. The ticket-c... |
+| 30 | Don't Panic | ➖ | — (philosophy / technique, not a principle) | N/A. No incident response. |
+| 31 | Failing Test Before Fixing Code | ✅ | — (philosophy / technique, not a principle) | `docs/agents/tdd.md` red-green-refactor is the operational form. The bug-pattern-grep doc says: write the R... |
+| 32 | Read the Damn Error Message | ✅ | §1.6 Dead Programs | The audit probes assert the response shape AND the post-click URL AND the DOM state (not "we got an error s... |
+| 33 | "select" Isn't Broken | ⚠️ | §1.6 Dead Programs | Implicit (no recent commit blamed SQLite or WebView2 without evidence) but no stated rule. |
+| 34 | Don't Assume It—Prove It | ✅ | §1.6 Dead Programs | The `tools/tune/snapshot_test.go` per-iter SQL footprint doc-comment pattern is the operational form — ever... |
+| 35 | Learn a Text Manipulation Language | ➖ | — (philosophy / technique, not a principle) | N/A at the repo level. |
+| 36 | You Can't Write Perfect Software | ✅ | §1.5 Design by Contract | The dialog-guard Law (CONTEXT.md) is the operational form. The "Fail loud, no silent fallback" decision in ... |
+| 37 | Design with Contracts | ✅ | §1.5 Design by Contract | `internal/architecture/architecture_test.go` is the package-contract enforcement. `docs/CODE_CHANGES.md` is... |
+| 38 | Crash Early | ✅ | §1.5 Design by Contract | `htmxattr.Mux` swap-allowlist panic at render time. The native `<dialog>` revert (#117) is the worked examp... |
+| 39 | Use Assertions to Prevent the Impossible | ✅ | §1.5 Design by Contract | `templ.Attributes` typed spread + `routebuilder` typed URL builder + `internal/uiids` registry IDs all asse... |
+| 40 | Finish What You Start | ✅ | — (philosophy / technique, not a principle) | Go's `defer` for resource close + the defer-close lint rule (`.agents/adr/0010-lint-enforcement.md` referen... |
+| 41 | Act Locally | ✅ | — (philosophy / technique, not a principle) | Function-scope variables; the Wails v2.12.0 dialog-guard mutex is a per-handler-scope guard. |
+| 42 | Take Small Steps—Always | ✅ | §1.10 MVC | RPCI is the operational form. Slice 1 is always the tracer bullet. The "fresh context per slice" rule in `r... |
+| 43 | Avoid Fortune-Telling | ✅ | — (philosophy / technique, not a principle) | The "YAGNI" rule in `docs/agents/feature-protocol.md` §"Module discipline" + the two-adapter rule are the o... |
+| 44 | Decoupled Code Is Easier to Change | ✅ | §1.7 Law of Demeter | The deep-module discipline + architecture test. The v60 → v61 Event Records refactor (sibling-table rename)... |
+| 45 | Tell, Don't Ask | ⚠️ | §1.7 Law of Demeter | The DTO discipline (UI depends on service DTOs, never on persistence structs) is the closest form. The rule... |
+| 46 | Don't Chain Method Calls | ➖ | §1.7 Law of Demeter | N/A in Go. The law of demeter is implicit in the deep-module rule. |
+| 47 | Avoid Global Data | ✅ | §1.2 Orthogonality | The "no package-level mutable state" rule (implicit in the deep-module discipline) + Wails' `App` struct is... |
+| 48 | If It's Important Enough To Be Global, Wrap It in an API | ✅ | §1.2 Orthogonality | The `a.guardedSaveFileDialog` wrapper for native dialogs is the canonical example — the dangerous thing (th... |
+| 49 | Programming Is About Code, But Programs Are About Data | ✅ | §1.2 Orthogonality | The viewmodel layer is the operational form. Every cross-boundary value is a DTO. The audit probes assert o... |
+| 50 | Don't Hoard State; Pass It Around | ✅ | §1.2 Orthogonality | Function arguments over package-level state. The Markdown cheatsheet work (#565) is the recent example — th... |
+| 51 | Don't Pay Inheritance Tax | ➖ | §1.2 Orthogonality | N/A in Go (no inheritance). Composition is the only path; the rule is implicit. |
+| 53 | Shared State Is Incorrect State | ✅ | — (philosophy / technique, not a principle) | The dialog-guard mutex + the Wails `App` struct pattern + the per-job worker context. `internal/jobs/jobs.g... |
+| 54 | Random Failures Are Often Concurrency Issues | ✅ | — (philosophy / technique, not a principle) | `audit/race-stress.yml` workflow + the `internal/dates` property-test gate. The issue #479 advisory-downgra... |
+| 55 | Use Actors For Concurrency Without Shared State | ⚠️ | — (philosophy / technique, not a principle) | The Wails `App` is a struct passed by reference; not technically an actor. The "jobs.Start" pattern in `int... |
+| 56 | Analyze Workflow to Improve Concurrency | ✅ | §1.9 Temporal Coupling | The export flow (PDF / JSON / archive) is jobs-based; the user gets toast + jobs page in parallel. The `X-D... |
+| 57 | Use Blackboards to Coordinate Workflow | ➖ | §1.9 Temporal Coupling | N/A. Single-user app; no blackboard pattern. |
+| 59 | Listen to Your Inner Lizard | ⚠️ | §1.9 Temporal Coupling | Implicit. The "agent inner lizard" surfaced in the 6-commit over-decomposition anti-pattern (AGENTS.md "Com... |
+| 60 | Don't Program by Coincidence | ✅ | §1.9 Temporal Coupling | The `internal/dates` property-test gate is the operational form. The CHANGELOG entry tone is "root cause: X... |
+| 61 | Estimate the Order of Your Algorithms | ⚠️ | — (philosophy / technique, not a principle) | The `TestStressEventAttachDetachRoundTrip` per-iter SQL footprint is the closest form. Not a stated rule. |
+| 62 | Test Your Estimates | ✅ | §1.11 Program Deliberately | `tools/tune/stress/` + `.github/workflows/race-stress.yml`. The race-detector step is the live regression net. |
+| 63 | Refactor Early, Refactor Often | ✅ | §1.12 Algorithm Speed | `docs/agents/complexity.md` is the operational form. The v60 → v61 Event Records refactor is the worked exa... |
+| 64 | Testing Is Not About Finding Bugs | ✅ | §1.12 Algorithm Speed | The audit cadence is the operational form. Issues #531, #539, #540, #542 each surfaced a *class* of bug the... |
+| 65 | A Test Is the First User of Your Code | ✅ | §1.13 Refactoring | `tdd.md` Step 1 is "RED: write the failing test first." The Markdown cheatsheet work (#565) shipped RED + G... |
+| 66 | Build End-To-End, Not Top-Down or Bottom Up | ✅ | §1.13 Refactoring | RPCI tracer-bullet slice 1 is the operational form. Every Tier 2 vertical slice crosses every layer. |
+| 67 | Design to Test | ✅ | §1.11 Program Deliberately | `internal/architecture/architecture_test.go` + `audit/discover_orphan_handlers.mjs` + the smoke-probe per-a... |
+| 68 | Test Your Software, or Your Users Will | ✅ | §1.4 Tracer Bullets | The smoke-probe per-apply-site contract (per `feature-protocol.md` "Backend-First Law" + `tdd.md` "Per-laye... |
+| 69 | Use Property-Based Tests to Validate Your Assumptions | ✅ | §1.17 Great Expectations | `internal/dates/dates_property_test.go` uses `pgregory.net/rapid`. Documented in `tdd.md` §"Per-layer recip... |
+| 70 | Keep It Simple and Minimize Attack Surfaces | ✅ | — (philosophy / technique, not a principle) | The "no new component primitives" rule from the Markdown cheatsheet work (#565) is the recent example. The ... |
+| 71 | Apply Security Patches Quickly | ❌ | — (philosophy / technique, not a principle) | No `govulncheck` or `gosec` in `Makefile` / `.github/workflows/`. Deps are updated when a PR forces it, not... |
+| 72 | Name Well; Rename When Needed | ⚠️ | — (philosophy / technique, not a principle) | The glossary tier-2 rename (issue #97) is the canonical example. But "rename when needed" is not a stated p... |
+| 73 | Sign Your Work | ✅ | — (philosophy / technique, not a principle) | The CHANGELOG fixship-by-fixship attribution is the operational form. The "Ticket close-out law" in `featur... |
+| 74 | No One Knows Exactly What They Want | ✅ | — (philosophy / technique, not a principle) | RPCI: "Plan → Critique" with explicit user gate. The "the user is the chat" capture rule in AGENTS.md. |
+| 75 | Programmers Help People Understand What They Want | ✅ | — (philosophy / technique, not a principle) | The slice plan + apply-sites checklist in every feature issue is the operational form. The user sees the *f... |
+| 76 | Requirements Are Learned in a Feedback Loop | ✅ | — (philosophy / technique, not a principle) | RPCI's "fresh context per slice" is the strongest form. The next session picks up the new state and refines. |
+| 77 | Work with a User to Think Like a User | ⚠️ | — (philosophy / technique, not a principle) | Implicit in the user's "go ahead and tackle 565" pattern, but no stated cadence. The audit cycle (issue #56... |
+| 78 | Policy Is Metadata | ✅ | §1.8 Metaprogramming | The `internal/uiids` registry + the architecture test forbidden-import map + the linter rule files are the ... |
+| 79 | Use a Project Glossary | ✅ | §1.8 Metaprogramming | `CONTEXT.md` is the project glossary. The "Flagged ambiguities" section is the regression net for vocabular... |
+| 81 | Don't Think Outside the Box—Find the Box | ✅ | — (philosophy / technique, not a principle) | The slice-3.6 → slice-4 markdown editor + preview modal rework (issue #526) is the worked example — instead... |
+| 82 | Don't Go into the Code Alone | ⚠️ | — (philosophy / technique, not a principle) | Implicit (the user + agent pairing) but no stated rule. The `.rpiv/artifacts/issues/` + `.scratch/issues/` ... |
+| 83 | Agile Is Not a Noun; Agile Is How You Do Things | ➖ | — (philosophy / technique, not a principle) | N/A. |
+| 84 | Maintain Small Stable Teams | ➖ | — (philosophy / technique, not a principle) | N/A. Solo project. |
+| 85 | Schedule It to Make It Happen | ⚠️ | §1.15 Ubiquitous Automation | The `make freshness` gate + the daily `make test` + the CHANGELOG cadence are the closest form. But "schedu... |
+| 86 | Organize Fully Functional Teams | ➖ | §1.15 Ubiquitous Automation | N/A. |
+| 87 | Do What Works, Not What's Fashionable | ⚠️ | — (philosophy / technique, not a principle) | Implicit in the architecture choices (no React, no ORM, no microservices). No stated policy. |
+| 88 | Deliver When Users Need It | ✅ | — (philosophy / technique, not a principle) | The Tier 3 apply-site rule + the slice-1-only-per-session rule = ship the smallest useful unit as fast as p... |
+| 89 | Use Version Control to Drive Builds, Tests, and Releases | ✅ | — (philosophy / technique, not a principle) | `.github/workflows/{build,test,audit,race-stress}.yml` are the operational form. Every PR triggers the full... |
+| 90 | Test Early, Test Often, Test Automatically | ✅ | §1.15 Ubiquitous Automation | Per-PR + per-push + weekly race-stress + per-promotion freshness. |
+| 91 | Coding Ain't Done 'Til All the Tests Run | ✅ | §1.15 Ubiquitous Automation | The "RED + GREEN + adjacent-behavior sweep" in `tdd.md` + the package-floor + the smoke-probe per-apply-sit... |
+| 92 | Use Saboteurs to Test Your Testing | ❌ | — (philosophy / technique, not a principle) | No mutation testing. The `tools/tune/` golden-snapshot tests catch regressions but not silent test-skipping. |
+| 93 | Test State Coverage, Not Code Coverage | ⚠️ | — (philosophy / technique, not a principle) | The smoke probes assert state (response shape, URL, DOM) not just code paths. But there is no coverage metr... |
+| 94 | Find Bugs Once | ✅ | §1.15 Ubiquitous Automation | Every `fix:` commit in CHANGELOG grows a regression test. The 79 `fix:` commits with regression nets in `do... |
+| 95 | Don't Use Manual Procedures | ✅ | §1.15 Ubiquitous Automation | `make freshness` automates the build + probe chain. `make audit` automates the audit sweep. `make promote` ... |
+| 96 | Delight Users, Don't Just Deliver Code | ✅ | §1.17 Great Expectations | The Markdown cheatsheet work (#565), the feedback modal (#544), the bug-report bundle (#545) are the recent... |
+| 98 | First, Do No Harm | ✅ | — (philosophy / technique, not a principle) | The dialog-guard Law + the "no feature PR ships a backend surface without a UI apply-site" Law + the per-it... |
+| 99 | Don't Enable Scumbags | ➖ | — (philosophy / technique, not a principle) | N/A. |
+| 100 | It's Your Life. Share it. Celebrate it. Build it. AND HAVE FUN! | ✅ | — (philosophy / technique, not a principle) | The CHANGELOG tone + the "Bias toward action" rule + the user's "go ahead and tackle X" cadence. The repo i... |
+
+## §7 — Summary: the 100 tips in numbers
+
+| State | Count | What it means |
+|---|---|---|
+| ✅ Enforced | 50+ | The repo is in compliance. The principle spine in §1 names the operational form. |
+| ⚠️ Partial | ~30 | The spirit is satisfied but no written rule. A future commit could regress without the agent noticing. |
+| ❌ Gap | ~5 | Not addressed. Each gap is a candidate follow-up issue; see §1 in this doc for the principle-level gaps. |
+| ➖ N/A | ~10 | Doesn't apply (multi-team management, hiring, incident response, etc.). |
+
+The 100-tip audit is a **check**, not a refactor. The principle
+spine (§1) is the primary lens for future work; the tip index
+(§6, this section) is the primary lens for checking specific
+commits against the canonical book.
+
+When a new tip is added to a future edition of the book, append
+a row to this index. When a tip's state changes (a new
+commit pushes a ⚠️ to ✅ or a ✅ to ⚠️), update the State column.
+The index is the **source of truth** for the per-tip state; the
+audit doc is the per-tip *evidence*.
+
+
+## §8 — References
 
 - _The Pragmatic Programmer, 20th Anniversary Edition_, Hunt &
   Thomas. The 100 tips are excerpted at
@@ -750,6 +896,10 @@ a new section is one PR.
   view, retained as a historical artifact) +
   `docs/audit/pragmatic-programmer-principles-audit-2026-07.md`
   (principle spine, the primary source).
+- This doc is self-contained: the 100-tip index lives in §6
+  (the *what*) and the 4-state summary in §7. An agent reading
+  the principle spine can check specific commits against the
+  tip index without leaving this file.
 - The tier-1 process docs this doc cross-references:
   - `feature-protocol.md` — slice discipline + Tier 1-3 commit rule
   - `tdd.md` — RED/GREEN/REFACTOR
