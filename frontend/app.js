@@ -3667,6 +3667,7 @@ function serializeDraftFields(form) {
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
     initializeCopyPathButtons();
+    initializePersonRecordPicker();
     // installFoldouts is idempotent (guarded by
     // window.__foldoutDocHandlerBound) so calling it here on
     // every htmx:load is safe. The per-trigger loop inside
@@ -4727,6 +4728,44 @@ function onPrintRecordsFragmentReady(modal) {
       return;
     }
     hideOverlayModal(modal);
+  }
+
+  // initializePersonRecordPicker wires every
+  // [data-person-record-picker-clear] button to the same
+  // behavior the inline-onclick at the templ site used to
+  // do: clear the closest [data-person-record-picker-target]
+  // ancestor's innerHTML so the picker shell disappears
+  // from the surrounding article/event page. Replaces
+  // `onclick="document.querySelector(...).innerHTML = ''"`
+  // with the shared data-* + JS-initializer pattern
+  // (issue #574). Idempotent via the per-element flag
+  // matching the initializeCopyPathButtons shape.
+  function initializePersonRecordPicker() {
+    document.querySelectorAll("[data-person-record-picker-clear]").forEach((button) => {
+      if (button.__pickerClearBound) {
+        return;
+      }
+      button.__pickerClearBound = true;
+      button.addEventListener("click", () => {
+        const picker = button.closest("[data-person-record-picker]");
+        const searchRoot = picker instanceof HTMLElement ? picker.parentElement : null;
+        // The picker opens into the page-level
+        // [data-person-record-picker-target] ancestor. Walk
+        // up from the picker's parent looking for it (the
+        // picker shell is inside the target div, which is
+        // inside the consumer form, which is inside the
+        // page). closest() finds the first one above so a
+        // nested consumer (e.g. a future modal wrapper)
+        // still targets the nearest target.
+        let cursor = searchRoot;
+        while (cursor && !(cursor instanceof Element && cursor.matches("[data-person-record-picker-target]"))) {
+          cursor = cursor instanceof Element ? cursor.parentElement : null;
+        }
+        if (cursor instanceof HTMLElement) {
+          cursor.innerHTML = "";
+        }
+      });
+    });
   }
 
   // ----- Dismiss button on /jobs/{id} (issue #249) -----

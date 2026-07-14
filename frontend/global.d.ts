@@ -94,9 +94,17 @@ declare global {
     // every per-element read/write path type-safe without a
     // per-element-type augmentation.
     __copyPathBound?: boolean;
+    // Issue #574: initializePersonRecordPicker binds once per
+    // picker-clear button via this guard. Mirrors the
+    // __copyPathBound pattern (idempotent install on htmx
+    // re-render). Declared on Element so the picker-clear
+    // querySelectorAll loop's per-element read/write is
+    // type-safe under strictNullChecks.
+    __pickerClearBound?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;
+    __pickerClearBound?: boolean;
   }
 }
 
