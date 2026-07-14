@@ -330,6 +330,25 @@ func summarizeMemorialImport(j Job, label string) JobSummary {
 	})
 }
 
+// summarizeOrphanCleanup covers image_orphan_cleanup. Builds on
+// the zero-state shape (anchor on j.Message) + adds a "Trash root:
+// <path>" detail line when the worker populated JobResult.TrashRoot
+// (issue #556 slice 3). The trash root is a temp directory the
+// user can browse to recover a file they moved by mistake.
+func summarizeOrphanCleanup(j Job, label string) JobSummary {
+	return augmentSummarizer(j, label, func(s *JobSummary) {
+		if j.Message != "" {
+			s.Headline = j.Message
+		} else {
+			s.Headline = fmt.Sprintf("%s complete.", label)
+		}
+		s.DetailLines = []string{fmt.Sprintf("Duration: %s", formatDuration(s.Duration))}
+		if j.Result.TrashRoot != "" {
+			s.DetailLines = append(s.DetailLines, fmt.Sprintf("Trash root: %s", j.Result.TrashRoot))
+		}
+	})
+}
+
 // summarizeZeroState covers the six zero-state kinds (issue #543):
 // image_orphan_cleanup, duplicate_audit, review_bulk_resolve,
 // review_bulk_delete, google_drive_backup, google_sheets_export.
@@ -511,7 +530,7 @@ var KindRegistry = map[string]KindMeta{
 		ActivityGroup: "audits",
 		DismissTarget: "/settings#images",
 		PastTense:     "Cleanup",
-		Summarizer:    summarizeZeroState,
+		Summarizer:    summarizeOrphanCleanup,
 	},
 	"duplicate_audit": {
 		DisplayLabel:  "Duplicate audit",

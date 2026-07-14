@@ -166,25 +166,30 @@ func TestSummaryDurationFormat(t *testing.T) {
 }
 
 // TestDismissTargetPathIsKindAware covers issue #131's dismiss
-// routing. Each kind has a sensible default landing page when no
-// referer is saved.
+// routing. Issue #556 slice 3: the routes are now driven by
+// KindRegistry[kind].DismissTarget. The expected values below
+// are pinned to the registry entries (kinds.go) — a future kind
+// registration that omits DismissTarget falls through to /jobs
+// (the safe "back to the job list" target, NOT the pre-#556
+// default of /share that routed review / audit / integration
+// kinds to the wrong page).
 func TestDismissTargetPathIsKindAware(t *testing.T) {
 	cases := []struct {
 		kind string
 		want string
 	}{
-		{"static_archive", "/share"},
-		{"database_pdf", "/share"},
-		{"backup_archive", "/share"},
+		{"static_archive", "/soldiers"},
+		{"database_pdf", "/soldiers"},
+		{"backup_archive", "/settings"},
 		{"shared_archive", "/share"},
-		{"backup_import", "/share"},
+		{"backup_import", "/settings"},
 		{"shared_import", "/share"},
 		{"monthly_pdf", "/calendar"},
 		{"soldier_pdf", "/soldiers"},
 		{"soldier_jpg", "/soldiers"},
 		{"image_import", "/browse"},
 		{"insights_pdf", "/insights"},
-		{"json_export", "/share"},
+		{"json_export", "/export"},
 	}
 	for _, c := range cases {
 		t.Run(c.kind, func(t *testing.T) {
