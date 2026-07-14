@@ -107,10 +107,10 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 		if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
 			return err
 		}
-		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images")); err != nil {
+		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images"), true); err != nil {
 			return err
 		}
-		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads")); err != nil {
+		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads"), true); err != nil {
 			return err
 		}
 		// Merge logs are app-level diagnostics, not archive data;
