@@ -21,8 +21,7 @@ templ RecentJobs(entries []viewmodel.RecentJobEntry) {
 	<div id={ uiids.PanelShareRecent } class="card rounded-3xl p-5 sm:p-8 space-y-3">
 		<div class="flex items-center justify-between gap-3">
 			<div>
-				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Recent activity</p>
-				<h3 class="mt-2 text-xl gold font-bold">Recent activity</h3>
+				<h3 class="text-xl gold font-bold">Recent activity</h3>
 			</div>
 		</div>
 		if len(entries) == 0 {

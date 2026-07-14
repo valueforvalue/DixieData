@@ -38,7 +38,6 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 			</div>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
-				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
 			// Issue #284: Quick Actions are now navigate-to-subpage
 			// links (4 tiles, one per subpage). Pre-#264 the
@@ -69,7 +68,6 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<h3 class="text-xl gold font-bold">Merge Review</h3>
-						<p class="mt-2 text-sm text-slate-500">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
 						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-review-red)]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {

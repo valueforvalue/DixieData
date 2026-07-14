@@ -29,12 +29,10 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 			</nav>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Sync</h2>
-				<p class="mt-2 text-sm text-slate-600">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
 			</div>
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Google Integration</h3>
-					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
 					if status.SharedClientAvailable {
 						<p class="mt-1 text-xs text-slate-500">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p>
 						<p class="mt-1 text-xs text-slate-500">Loaded from: <code>{ status.SharedClientSource }</code></p>

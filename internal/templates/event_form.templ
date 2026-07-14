@@ -113,7 +113,6 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Source Records</p>
-						<p class="mt-2 text-sm text-slate-600">Attach pension notes, roster lines, and source transcripts that should travel with this event record. Saved inline with the event on submit.</p>
 					</div>
 					@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
 						"data-record-add": "",
@@ -163,7 +162,6 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Linked Person Records</p>
-						<p class="mt-2 text-sm text-slate-600">Attach this event to one or more Person Records. Type a Display ID like <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">DXD-00001</code> below to add a new link; use Unlink on a row to remove.</p>
 					</div>
 				</div>
 				@EventLinksListFragment(s.ID, s.LinkedPersons)
@@ -199,7 +197,6 @@ templ EventFormFragment(s viewmodel.EventRecord, isEdit bool, errorMessage strin
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Tags</p>
-						<p class="mt-2 text-sm text-slate-600">Free-text labels grouping this Event with related Person Records. Type a name below to add; use the × on a chip to remove.</p>
 					</div>
 				</div>
 				<div id="data-event-tags-list">

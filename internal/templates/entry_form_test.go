@@ -137,7 +137,6 @@ func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"name=\"biography\"",
-		"Biography is the public-facing narrative",
 		"Advanced PDF Excerpt Override",
 		`name="pdf_excerpt_override"`,
 		"Target 1200 chars",
@@ -206,7 +205,6 @@ func TestShareLandingIsSubOverview(t *testing.T) {
 	// Header + page summary.
 	for _, needle := range []string{
 		"Share Archive",
-		"Export, back up, import, and restore your DixieData local archive",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Errorf("/share landing missing %q", needle)
@@ -684,11 +682,15 @@ func TestSearchResultsCompareButtonDescribedByHelp(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
-	if !strings.Contains(content, `id="search-compare-selection-help"`) {
-		t.Fatalf("Compare Selected status paragraph should have an id for aria-describedby")
+	// Compare Selected button + section heading must both render.
+	// The verbose narration paragraph was removed in issue #561
+	// slice 16 (R5 — verbose body under heading); the button's
+	// visible label + disabled state are the affordance now.
+	if !strings.Contains(content, "Compare Selected") {
+		t.Fatalf("Search results must render Compare Selected button")
 	}
-	if !strings.Contains(content, `aria-describedby="search-compare-selection-help"`) {
-		t.Fatalf("Compare Selected button should be aria-describedby the help text")
+	if !strings.Contains(content, `id="search-compare-selection-status"`) {
+		t.Fatalf("Compare Selected section heading must have an id for aria wiring")
 	}
 }
 

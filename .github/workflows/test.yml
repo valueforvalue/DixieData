@@ -144,6 +144,24 @@ jobs:
           make lint-htmx-guard-test
         timeout-minutes: 5
 
+      # UX microcopy lint (issue #561). Static source scan over
+      # every .templ file under internal/templates/** that catches
+      # the three rule classes documented in
+      # docs/agents/ux-microcopy.md (R1 eyebrow above self-
+      # explanatory block, R2 heading text == adjacent button
+      # text, R3 visible text duplicated within ~15 lines). The
+      # probe is the executor; docs/agents/ux-microcopy.md is the
+      # spec. Slice 5 flipped this gate from informational to
+      # --strict because slices 2-4 brought the probe count to 0;
+      # a future regression that re-introduces a violation now
+      # blocks merge. Same Node 20 toolchain.
+      - name: UX microcopy lint (issue #561, --strict)
+        shell: bash
+        run: |
+          make lint-microcopy-strict
+          make lint-microcopy-test
+        timeout-minutes: 3
+
       # TypeScript type-check on frontend/**/*.js (typecheck-baseline
       # slice 4 — CI gate). The frontend ships raw from disk via
       # internal/appshell/lifecycle.go (no bundler, no emit); the

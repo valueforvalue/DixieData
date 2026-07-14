@@ -120,7 +120,7 @@ func TestInventoryView_PerKindRollup(t *testing.T) {
 	}
 	content := buf.String()
 	// Per-kind rollup section.
-	if !strings.Contains(content, "Event Records by Kind") {
+	if !strings.Contains(content, "Per-kind rollup") {
 		t.Errorf("inventory page missing per-kind rollup section")
 	}
 	for _, kind := range []string{"Battle", "Campaign"} {
