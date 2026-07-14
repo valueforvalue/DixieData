@@ -311,6 +311,15 @@ const (
 	// z-index collision with the recent overlay fix.
 	PanelShareQueuePill = "panel.share-queue.pill"
 
+	// Issue #565: Article editor Markdown syntax cheatsheet
+	// popover. The trigger button is identified by
+	// data-article-md-cheatsheet-open (no separate surface ID;
+	// matches the existing data-article-preview-open pattern).
+	// The popover itself is a Foldout (issue #264 primitive)
+	// with the panel identified by this surface ID for htmx
+	// swap targets + audit probes.
+	PanelArticleMarkdownCheatsheet = "panel.article.markdown-cheatsheet"
+
 	// Issue #380 slice 2: Tags top-nav pill was moved into
 	// the Records mega-menu (People group). LayoutTagsLink is
 	// retired -- the new menuitem lives at
@@ -440,6 +449,7 @@ var Registry = []Surface{
 	{ID: PanelFloatingDock, Kind: "panel", Description: "Persistent bottom dock rendered once in layout.templ (issue #283 / #289 / #313); hosts Scratch Pad + Feedback + Menu buttons. z-40."},
 	{ID: PanelFloatingNavPanel, Kind: "panel", Description: "Slide-out nav panel toggled by the Menu button via data-floating-nav-toggle (issue #283). Duplicates top-nav links + renders the layout-mode picker; positioned bottom-right, z-50."},
 	{ID: PanelShareQueuePill, Kind: "panel", Description: "Persistent Share Queue status pill (issue #182); fixed bottom-center, hidden when the queue is empty. Wraps data-share-queue-pill + data-share-queue-pill-label + data-share-queue-pill-count."},
+	{ID: PanelArticleMarkdownCheatsheet, Kind: "panel", Description: "Article editor Markdown syntax cheatsheet popover (issue #565); Foldout-based panel triggered by the data-article-md-cheatsheet-open button. Lists the goldmark GFM + Person Record ref syntax the article renderer accepts. Anchored top-right of the editor toolbar."},
 }
 
 

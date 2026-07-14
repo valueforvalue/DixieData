@@ -1,0 +1,64 @@
+// markdown_cheatsheet.templ — issue #565
+// Article editor Markdown syntax cheatsheet popover.
+// Reuses the Foldout primitive (issue #264) so the
+// trigger + panel + ARIA menu pattern + CSS show/hide +
+// JS-managed aria-expanded are inherited. The component
+// adds nothing new to the design system; it is a
+// pre-wired Foldout whose children are the rows from
+// internal/articles.Rows().
+//
+// Locked design decisions (from RPCI Critique):
+//   - Trigger label: "Markdown syntax" with ▾ chevron
+//     (matches the Foldout primitive's visual vocabulary).
+//   - Panel: a <ul role="menu"> of <li role="none"> rows.
+//     Each row is a single menuitem carrying the syntax,
+//     effect label, and a Copy example button identified
+//     by data-md-cheatsheet-copy-key. The Copy example
+//     button is the menuitem itself so the user can
+//     press Enter or click to copy the example to the
+//     clipboard — no separate "View" or "Open" target.
+//   - The popover does NOT steal focus from the editor
+//     textarea (matches the issue's "unobtrusive" goal).
+//     The menuitem buttons are reachable via Tab through
+//     the panel; Escape dismisses via the existing
+//     Foldout JS handler.
+//   - The popover does NOT include a "View full
+//     reference" link in v1 — the user manual is the
+//     canonical reference; the popover is the
+//     in-context summary. A "View full reference" link
+//     can ship in a follow-up once we wire a stable
+//     user-manual anchor.
+package components
+
+import (
+	"github.com/valueforvalue/DixieData/internal/articles"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+)
+
+// MarkdownCheatsheet renders the Article editor's
+// Markdown syntax cheatsheet as a Foldout popover. The
+// popover is rendered inline in the editor toolbar and
+// starts hidden; the JS Foldout handler toggles
+// visibility on click + manages aria-expanded.
+templ MarkdownCheatsheet() {
+	@Foldout("Markdown syntax", uiids.PanelArticleMarkdownCheatsheet, nil) {
+		for _, row := range articles.Rows() {
+			<li role="none">
+				<button
+					type="button"
+					role="menuitem"
+					class="foldout-menuitem block w-full px-3 py-2 text-left text-sm text-slate-100 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+					data-md-cheatsheet-copy-key={ row.Key }
+					data-md-cheatsheet-copy-value={ row.Example }
+					aria-label={ "Copy " + row.Effect + " example: " + row.Example }
+				>
+					<div class="flex items-baseline justify-between gap-3">
+						<span class="font-mono text-xs text-[var(--theme-accent-strong)]">{ row.Syntax }</span>
+						<span class="shrink-0 text-[10px] uppercase tracking-wider text-slate-400">{ row.Effect }</span>
+					</div>
+					<div class="mt-1 truncate text-[11px] text-slate-400">{ row.Example }</div>
+				</button>
+			</li>
+		}
+	}
+}
