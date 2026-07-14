@@ -65,6 +65,7 @@ all of them; load only the ones that match your task.
 | [`docs/ui-map/routes.md`](../ui-map/routes.md) | Every route → handler mapping. |
 | [`docs/ui-map/surfaces.md`](../ui-map/surfaces.md) | Canonical DOM IDs. |
 | [`docs/ui-map/wireframes/<screen>.md`](../ui-map/wireframes/) | One wireframe per screen — load only the affected one. |
+| [`docs/agents/ux-microcopy.md`](ux-microcopy.md) | UX microcopy conventions — concise, no self-explanatory headings, no duplication. Load when editing any `.templ` file or adding user-facing strings to `frontend/app.js`. |
 
 ### Schema / database
 
