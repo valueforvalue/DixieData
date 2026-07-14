@@ -585,13 +585,28 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						<div class="font-bold">Export Feedback Log</div>
 						<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
 					}
-					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-						"data-action":       "/export/bug-report",
-						"data-dixie-submit": "true",
-					}) {
-						<div class="font-bold">Export Bug Report Bundle</div>
-						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
-					}
+					// Issue #545 slice 3: the bug-report button is
+					// now a <form> (not a data-action button) so
+					// the "Include images" checkbox can travel in
+					// the POST body. Defaults to checked so users
+					// who don't touch it keep the legacy real-bytes
+					// behavior; unchecking drops ~100-250 MB on a
+					// default-seed archive and writes placeholder
+					// stubs (slice 2) instead.
+					<form action="/export/bug-report" method="post" data-dixie-submit="true" class="flex w-full flex-col items-stretch gap-2 sm:w-auto">
+						<label class="flex items-center gap-2 text-xs text-slate-600">
+							<input
+								type="checkbox"
+								name="include_images"
+								value="true"
+								checked
+								data-include-images-checkbox="true"
+								class="h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"
+							/>
+							<span>Include image bytes <span class="text-slate-400">(uncheck to drop ~100-250 MB; stubs replace real bytes)</span></span>
+						</label>
+						@components.Button("Export Bug Report Bundle", components.ButtonSecondary, "w-full justify-start text-left", templ.Attributes{"type": "submit"})
+					</form>
 				</div>
 				<form action="/settings/support-endpoint" data-dixie-submit="true" class="space-y-3" id="settings-support-endpoint-form">
 					<label class="block text-sm text-slate-700">

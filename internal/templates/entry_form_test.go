@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -500,11 +501,14 @@ func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 	}
 }
 
-// TestSettingsViewIncludesSupportDiagnosticsPanel (issue #255)
-// asserts that the Support & Diagnostics card moved from /share
-// to /settings and renders the same two buttons + descriptions
-// that used to live on /share. The action URLs are unchanged;
-// the handlers stay where they are.
+// TestSettingsViewIncludesSupportDiagnosticsPanel (issue #255 +
+// #545 slice 3) asserts that the Support & Diagnostics card lives
+// on /settings and renders the Export Feedback Log + Export Bug
+// Report Bundle affordances. After #545 slice 3, the bug-report
+// button is wrapped in a <form> carrying the Include-images
+// checkbox (covered by TestSettingsViewIncludesBugReportImageCheckbox);
+// this test pins the section identity + button copy + the two
+// action URLs.
 func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
 	var buf bytes.Buffer
 	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
@@ -517,16 +521,16 @@ func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
 		`id="settings-diagnostics-panel"`,
 		"Support &amp; Diagnostics",
 		"Troubleshooting bundle",
-		// The two buttons + their unique copy
+		// The two button labels
 		"Export Feedback Log",
 		"Export Bug Report Bundle",
-		"Save the append-only feedback log for attaching to an email",
-		"DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting",
-		// The two action URLs (handlers in exports_handlers.go
-		// stay at the same paths; only the templ rendering
-		// moves per the issue body).
+		// The two action URLs. After #545 slice 3, the
+		// bug-report endpoint is reached through a <form
+		// action="/export/bug-report"> (so the checkbox can
+		// travel in the POST body); the feedback-log button
+		// remains a data-action button.
 		`data-action="/export/feedback-log"`,
-		`data-action="/export/bug-report"`,
+		`action="/export/bug-report"`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Errorf("/settings missing Support & Diagnostics card element %q", needle)
@@ -952,5 +956,55 @@ func TestSettingsViewIncludesExportSurfacePanel(t *testing.T) {
 				t.Errorf("settings view missing checked radio for surface %q (issue #534)", surface)
 			}
 		})
+	}
+}
+
+// TestSettingsViewIncludesBugReportImageCheckbox (issue #545 slice 3)
+// pins the new "Include images" checkbox on the Bug Report Bundle
+// form. The checkbox must:
+//   - live inside the bug-report form (not a standalone widget),
+//   - render as an <input type="checkbox" name="include_images" value="true">,
+//   - default to `checked` so users who don't touch it get the
+//     legacy real-bytes behavior,
+//   - carry a `data-include-images-checkbox` data attribute so
+//     audit probes (audit/smoke_settings_diagnostics.mjs) can
+//     pin its presence without depending on the label copy.
+//
+// The bug-report form must also carry a method="post" action so
+// the dispatcher dispatches it through dispatchDixieDataForm
+// (rather than treating it as a `data-action` POST with no body).
+func TestSettingsViewIncludesBugReportImageCheckbox(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+
+	for _, needle := range []string{
+		// Form wraps the bug-report button + checkbox.
+		`<form action="/export/bug-report"`,
+		`name="include_images"`,
+		`value="true"`,
+		`type="checkbox"`,
+		`data-include-images-checkbox`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("/settings Support & Diagnostics card missing bug-report form element %q", needle)
+		}
+	}
+
+	// The checkbox must default to checked (real-bytes legacy).
+	// Look for the include_images input + checked attribute on
+	// the same element. We allow the checked attribute to appear
+	// either before or after the value attribute (templ renders
+	// them in declaration order; either is fine).
+	checkboxRe := regexp.MustCompile(`<input[^>]*name="include_images"[^>]*>`)
+	match := checkboxRe.FindString(content)
+	if match == "" {
+		t.Fatal("could not locate the include_images input via regex")
+	}
+	if !strings.Contains(match, `checked`) {
+		t.Errorf("include_images checkbox missing `checked` attribute; got %q", match)
 	}
 }

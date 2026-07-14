@@ -48,6 +48,12 @@ try {
   record("settings-has-feedback-log-btn", settingsHtml.includes("Export Feedback Log"), {});
   record("settings-has-bug-report-btn", settingsHtml.includes("Export Bug Report Bundle"), {});
   record("settings-has-feedback-log-action", settingsHtml.includes('data-action="/export/feedback-log"'), {});
+  // Issue #545 slice 3: the bug-report endpoint is reached via
+  // a <form action="/export/bug-report"> carrying an
+  // "Include images" checkbox, default checked.
+  record("settings-has-bug-report-form-action", settingsHtml.includes('action="/export/bug-report"'), {});
+  record("settings-has-include-images-checkbox", /name="include_images"[^>]*checked/.test(settingsHtml), {});
+  record("settings-has-include-images-data-attr", settingsHtml.includes('data-include-images-checkbox="true"'), {});
   record("settings-has-bug-report-action", settingsHtml.includes('data-action="/export/bug-report"'), {});
 
   // Step 2: /share no longer renders the card (only the
@@ -58,6 +64,10 @@ try {
   record("share-no-troubleshooting-bundle", !shareHtml.includes("Troubleshooting bundle"), {});
   record("share-no-feedback-log-action", !shareHtml.includes('data-action="/export/feedback-log"'), {});
   record("share-no-bug-report-action", !shareHtml.includes('data-action="/export/bug-report"'), {});
+  // Issue #545 slice 3: the bug-report endpoint is now a
+  // <form action="/export/bug-report">, not a data-action
+  // button. The form must NOT appear on /share either.
+  record("share-no-bug-report-form-action", !shareHtml.includes('action="/export/bug-report"'), {});
 
   // Step 3: the endpoints still serve (not moved in routes.go,
   // just templ rendering moved). Driving them through fetch
