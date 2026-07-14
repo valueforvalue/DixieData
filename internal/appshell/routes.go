@@ -296,6 +296,7 @@ func (a *App) setupRoutes() {
 	r.Get("/export", a.handleLegacyExportRedirect)
 	r.Get("/settings", a.handleSettings)
 	r.Post("/settings/theme", a.handleSettingsTheme)
+	r.Post("/settings/export-surface", a.handleSettingsExportSurface)
 	r.Post("/settings/initialize", a.handleSettingsInitialize)
 	r.Post("/settings/updates/source", a.handleUpdateSource)
 	r.Post("/settings/updates/check", a.handleCheckForUpdates)

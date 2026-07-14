@@ -4407,7 +4407,22 @@ async function dispatchDixieDataForm(button) {
         }
       }
       if (redirectTo) {
-        window.location.assign(redirectTo);
+        // Issue #534: when the user preference is "toast-only",
+        // suppress the post-export navigation to /jobs/{id} but
+        // still fire the toast (the toast header was already
+        // captured at the top of this dispatcher and gets shown
+        // when the form is not the close-feedback-modal path).
+        // The preference is read from the per-page
+        // <html data-export-surface="..."> attribute the
+        // /settings handler sets on every page render, so the
+        // dispatcher consults the same source the UI does.
+        const exportSurface = (document.documentElement && document.documentElement.dataset
+          ? document.documentElement.dataset.exportSurface
+          : "") || "jobs-page";
+        const suppressNav = exportSurface === "toast-only";
+        if (!suppressNav) {
+          window.location.assign(redirectTo);
+        }
       }
       return true;
     } finally {

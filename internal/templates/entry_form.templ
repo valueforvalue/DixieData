@@ -460,11 +460,11 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	</div>
 }
 
-templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme string) {
+templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme, currentExportSurface string) {
 	@Layout("Settings") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
-			@SettingsAppearancePanel(currentTheme)
+			@SettingsAppearancePanel(currentTheme, currentExportSurface)
 			@SettingsUpdatePanel(updateState)
 			@SettingsBuildPanel()
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
@@ -611,7 +611,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 // real palette tokens (CSS custom properties + audit harness
 // updates) and slice 3 ships the soft theme + static archive
 // baked-in default.
-templ SettingsAppearancePanel(currentTheme string) {
+templ SettingsAppearancePanel(currentTheme, currentExportSurface string) {
 	<div id="settings-appearance-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 		<div>
 			<h3 class="text-xl gold font-bold">Appearance</h3>
@@ -647,6 +647,37 @@ templ SettingsAppearancePanel(currentTheme string) {
 			</div>
 			<div class="flex justify-end">
 				@components.Button("Apply Theme", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+			</div>
+		</form>
+		<form action="/settings/export-surface" data-dixie-submit="true" class="space-y-3" id="settings-export-surface-form">
+			<div class="grid gap-3 sm:grid-cols-2" data-export-surface-picker>
+				for _, option := range []struct {
+					value string
+					label string
+					hint  string
+				}{
+					{ "jobs-page", "Jobs page", "Navigate to /jobs/{id} after the export starts (today's behavior)." },
+					{ "toast-only", "Toast only", "Stay on the source page; the export runs and a toast confirms it saved." },
+				} {
+					<label class="theme-option" data-export-surface-option={ option.value }>
+						<input
+							type="radio"
+							name="export_surface"
+							value={ option.value }
+							if option.value == currentExportSurface {
+								checked
+							}
+							class="sr-only"
+						/>
+						<span class="theme-option-body">
+							<span class="theme-option-label">{ option.label }</span>
+							<span class="theme-option-hint">{ option.hint }</span>
+						</span>
+					</label>
+				}
+			</div>
+			<div class="flex justify-end">
+				@components.Button("Apply", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 			</div>
 		</form>
 	</div>

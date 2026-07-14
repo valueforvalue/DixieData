@@ -108,8 +108,20 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		// Issue #494: Soft is the new default for fresh installs.
 		currentTheme = records.ThemeSoft
 	}
+	// Issue #534: load the resolved export-surface preference
+	// so the appearance panel's new radio group renders with
+	// the correct option checked.
+	var currentExportSurface string
+	if v := a.exportSurface.Load(); v != nil {
+		if s, ok := v.(string); ok {
+			currentExportSurface = s
+		}
+	}
+	if currentExportSurface == "" {
+		currentExportSurface = records.ResolvedExportSurface("")
+	}
 	// Issue #384 / Slice 7: wrap Render.
-	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme).Render(r.Context(), w); err != nil {
+	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme, currentExportSurface).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the settings page.", err)
 	}
 }
@@ -174,6 +186,70 @@ func themeDisplayName(value string) string {
 	default:
 		// Issue #494: ThemeClassic is the renamed Default theme.
 		return "Classic"
+	}
+}
+
+// handleSettingsExportSurface is the POST handler for the
+// "After export" radio group in the Settings -> Appearance
+// panel (issue #534). Reads the user's picked surface
+// ("jobs-page" or "toast-only"), validates against the known
+// set, persists via SaveLocalSettings, and updates the
+// in-memory App.exportSurface store so the next request's
+// <html data-export-surface="..."> attribute matches. The
+// form is submitted via the JS dispatcher
+// (data-dixie-submit="true") so the response uses the
+// standard X-DixieData-Redirect back to /settings to
+// re-render the page with the new selection.
+//
+// Validation mirrors the theme picker: unknown values
+// surface a friendly validation error rather than silently
+// falling back to the default (per issue #553's "never
+// silently downgrade user choice" policy).
+func (a *App) handleSettingsExportSurface(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the export surface form.", err)
+		return
+	}
+	picked := strings.TrimSpace(r.FormValue("export_surface"))
+	switch picked {
+	case "jobs-page", "toast-only":
+		// ok
+	default:
+		respondValidation(w, r, "Pick one of: Jobs page, Toast only.", nil)
+		return
+	}
+	settings, err := records.LoadLocalSettings(a.dataDir)
+	if err != nil {
+		respondInternal(w, r, "Could not load local settings.", err)
+		return
+	}
+	settings.ExportSurface = picked
+	if err := records.SaveLocalSettings(a.dataDir, settings); err != nil {
+		respondInternal(w, r, "Could not save local settings.", err)
+		return
+	}
+	a.exportSurface.Store(picked)
+	log := debug.FromContext(r.Context())
+	log.Info("export surface preference changed via settings", "surface", picked)
+	setToastHeader(w, fmt.Sprintf("After export: %s.", exportSurfaceDisplayName(picked)))
+	// Same redirect-back-to-/settings shape as the theme
+	// handler so the user sees the radio update immediately.
+	writeExportRedirect(w, "/settings")
+}
+
+// exportSurfaceDisplayName maps the persisted value to the
+// user-facing label used in toast messages. Keep in sync
+// with the radio options in SettingsAppearancePanel.
+func exportSurfaceDisplayName(value string) string {
+	switch value {
+	case "toast-only":
+		return "Toast only"
+	default:
+		return "Jobs page"
 	}
 }
 

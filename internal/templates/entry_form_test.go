@@ -350,7 +350,7 @@ func TestInitialSetupViewHasSurfaceInventoryID(t *testing.T) {
 
 func TestSettingsViewShowsResponsiveLayoutControls(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("RESET", viewmodel.UpdateSettings{}, "default").Render(context.Background(), &buf)
+	err := SettingsView("RESET", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -456,7 +456,7 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 			Message:   "Download checksum mismatch.",
 			AppliedAt: "2026-05-30T03:00:00Z",
 		},
-	}, "default").Render(context.Background(), &buf)
+	}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -480,7 +480,7 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 
 func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default").Render(context.Background(), &buf)
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -507,7 +507,7 @@ func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 // the handlers stay where they are.
 func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default").Render(context.Background(), &buf)
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -913,5 +913,44 @@ func TestSettingsQualityScanResultsRendersGenerateDisplayIDButton(t *testing.T) 
 	// stable anchor for future test selectors.
 	if !strings.Contains(content, `id="settings-quality-apply"`) {
 		t.Fatalf("Move Selected form must have id=\"settings-quality-apply\"; got: %s", content)
+	}
+}
+
+// TestSettingsViewIncludesExportSurfacePanel (issue #534) pins the
+// new "After export" radio group in the Settings -> Appearance
+// panel. The user picks "Jobs page" or "Toast only"; the chosen
+// value flows through to the dispatcher's post-export navigation
+// decision via <html data-export-surface="...">. This test asserts
+// the panel renders both radio options + the right one is
+// `checked` for each input.
+func TestSettingsViewIncludesExportSurfacePanel(t *testing.T) {
+	for _, surface := range []string{"jobs-page", "toast-only"} {
+		surface := surface
+		t.Run(surface, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", surface).Render(context.Background(), &buf)
+			if err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+			content := buf.String()
+			// Form + action endpoint.
+			if !strings.Contains(content, `action="/settings/export-surface"`) {
+				t.Errorf("settings view missing export-surface form action (issue #534)")
+			}
+			// Both radio options.
+			for _, needle := range []string{
+				`name="export_surface" value="jobs-page"`,
+				`name="export_surface" value="toast-only"`,
+			} {
+				if !strings.Contains(content, needle) {
+					t.Errorf("settings view missing radio option %q (issue #534)", needle)
+				}
+			}
+			// The picked surface carries `checked`; the other doesn't.
+			checkedNeedle := `name="export_surface" value="` + surface + `" checked`
+			if !strings.Contains(content, checkedNeedle) {
+				t.Errorf("settings view missing checked radio for surface %q (issue #534)", surface)
+			}
+		})
 	}
 }

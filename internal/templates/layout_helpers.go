@@ -135,3 +135,44 @@ func layoutTheme(ctx context.Context) string {
 	}
 	return "default"
 }
+
+// layoutExportSurface mirrors layoutTheme for the per-user
+// export.surface preference (issue #534). The dispatcher reads
+// this attribute off <html> to decide whether to suppress the
+// post-export navigation. The appshell tags the resolved value
+// in ServeHTTP so the first paint carries the right preference
+// without a flash of default.
+type layoutExportSurfaceCtxKey struct{}
+
+// WithLayoutExportSurface tags ctx with the resolved export
+// surface preference for the current request. Pair with
+// LayoutExportSurfaceFromContext; the appshell calls this in
+// ServeHTTP before the mux dispatches.
+func WithLayoutExportSurface(ctx context.Context, surface string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, layoutExportSurfaceCtxKey{}, surface)
+}
+
+// LayoutExportSurfaceFromContext reports the surface tagged
+// onto ctx via WithLayoutExportSurface. Returns the empty
+// string when no tag is present (templates rendered before the
+// request hook ran, error pages, etc.).
+func LayoutExportSurfaceFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(layoutExportSurfaceCtxKey{}).(string)
+	return v
+}
+
+// layoutExportSurface is the templ-callable shim. Returns the
+// resolved preference or "jobs-page" as a safe fallback so
+// the attribute never serializes as an empty string.
+func layoutExportSurface(ctx context.Context) string {
+	if s := LayoutExportSurfaceFromContext(ctx); s != "" {
+		return s
+	}
+	return "jobs-page"
+}

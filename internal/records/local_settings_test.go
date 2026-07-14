@@ -117,3 +117,63 @@ func TestLocalSettings_ResolvedTheme(t *testing.T) {
 		}
 	}
 }
+
+// TestLoadLocalSettings_ExportSurfaceRoundTrip pins issue #534:
+// the per-user export.surface preference (jobs-page | toast-only)
+// must survive a Save -> Load round-trip so a user who picks
+// "Toast only" once keeps the preference across restarts. The
+// dispatcher consults this on every export request.
+func TestLoadLocalSettings_ExportSurfaceRoundTrip(t *testing.T) {
+	dataDir := t.TempDir()
+	in := LocalSettings{
+		DebugMode:     true,
+		Theme:         ThemeSoft,
+		ExportSurface: "toast-only",
+	}
+	if err := SaveLocalSettings(dataDir, in); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := LoadLocalSettings(dataDir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.ExportSurface != "toast-only" {
+		t.Errorf("ExportSurface round-trip = %q; want %q", got.ExportSurface, "toast-only")
+	}
+}
+
+// TestLoadLocalSettings_ExportSurfaceDefaultEmpty pins the
+// zero-value contract: a fresh install (no local_settings.json)
+// returns ExportSurface="", which the dispatcher MUST interpret
+// as "jobs-page" (today's behavior). The default-on contract
+// is what keeps the #533 parity fix stable for users who
+// haven't picked the new preference yet.
+func TestLoadLocalSettings_ExportSurfaceDefaultEmpty(t *testing.T) {
+	got, err := LoadLocalSettings(t.TempDir())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.ExportSurface != "" {
+		t.Errorf("zero-value ExportSurface = %q; want \"\" (jobs-page fallback)", got.ExportSurface)
+	}
+}
+
+// TestResolvedExportSurface pins the fallback contract: empty
+// value -> "jobs-page", "toast-only" -> "toast-only", unknown ->
+// "jobs-page" (safe default). Mirrors ResolvedTheme's shape.
+func TestResolvedExportSurface(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"", "jobs-page"},
+		{"jobs-page", "jobs-page"},
+		{"toast-only", "toast-only"},
+		{"unknown-future-value", "jobs-page"},
+	}
+	for _, c := range cases {
+		if got := ResolvedExportSurface(c.in); got != c.want {
+			t.Errorf("ResolvedExportSurface(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

@@ -112,6 +112,19 @@ type App struct {
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
 	theme                   atomic.Value // string; resolved theme name (default/high-contrast/soft). Issue #474.
+	// exportSurface (issue #534) is the per-user preference for
+	// what to do after a successful export: "jobs-page" (the
+	// historical default -- navigate to /jobs/{id} via the
+	// dispatcher's X-DixieData-Redirect header) or "toast-only"
+	// (stay on the source page + show a toast -- the job still
+	// runs, the user just doesn't navigate). Stored as a string
+	// matching records.LocalSettings.ExportSurface so the
+	// dispatcher + the settings page + the per-request
+	// <html data-export-surface> attribute all read the same
+	// value. The default-empty case resolves to "jobs-page"
+	// via records.ResolvedExportSurface so fresh installs keep
+	// today's behavior.
+	exportSurface           atomic.Value
 	pendingLaunchStateClear bool
 	pendingRecovery         *update.RestorePointRecord
 	recoveryFailure         string
