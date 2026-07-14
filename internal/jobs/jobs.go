@@ -75,6 +75,24 @@ func IsSilentKind(kind string) bool {
 	return ok
 }
 
+// KindLabel returns the human-readable display label for an
+// arbitrary job kind string. Canonical entry point for the
+// "kind → label" mapping (issue #575). Both (Job).DisplayLabel
+// and the templ jobLabel wrapper route through here so
+// adding a new registered kind is a one-line edit to
+// KindRegistry (no second switch to keep in sync).
+//
+// Unknown kinds (legacy JSONL log entries, ad-hoc kinds
+// from older builds) fall through to humanizeKind so the
+// UI never surfaces raw snake_case. See the KindRegistry
+// migration in #556 slice 1 for the registry contract.
+func KindLabel(kind string) string {
+	if meta, ok := KindRegistry[kind]; ok && meta.DisplayLabel != "" {
+		return meta.DisplayLabel
+	}
+	return humanizeKind(kind)
+}
+
 // Job is the registry-side view of a background job. Worker code should
 // not write to this struct directly; it should use the Progress receiver
 // passed to the worker function.
@@ -912,18 +930,12 @@ var (
 )
 
 // DisplayLabel returns a friendly display label for the job's Kind.
-// Issue #556 slice 1: reads from KindRegistry. The legacy 2-entry
-// switch (static_archive + database_pdf) is replaced with a full
-// 25-entry registry. Unknown kinds (legacy JSONL log entries that
-// pre-date the registry) get humanizeKind(kind) so the UI never
-// surfaces raw snake_case. See also `FailedVerb` (jobverbs.go)
-// for the kind → error/cancel verb mapping; future slices migrate
-// that helper onto the same registry.
+// Thin wrapper over KindLabel (issue #575): the canonical
+// "kind → label" mapping lives in KindLabel so the templ
+// jobLabel wrapper and this method share one source of truth.
+// See KindRegistry (#556 slice 1) for the registry contract.
 func (j Job) DisplayLabel() string {
-	if meta, ok := KindRegistry[j.Kind]; ok && meta.DisplayLabel != "" {
-		return meta.DisplayLabel
-	}
-	return humanizeKind(j.Kind)
+	return KindLabel(j.Kind)
 }
 
 // JobSummary is the structured payload the /jobs/{id} status page

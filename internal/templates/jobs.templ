@@ -299,15 +299,16 @@ templ JobStatusFragment(job jobs.Job) {
 	@jobStatusBody(job)
 }
 
-// jobLabel is the per-status-page heading copy. Issue #556 slice 6:
-// thin wrapper around jobs.Job.DisplayLabel so the templ + the Go
-// Summary() path read from the same source. Pre-#556 the templ
-// duplicated the same 2-case switch as jobs.DisplayLabel — every
-// future kind needed two edits (one in each file) and the two
-// drifted silently (e.g. soldier_pdf_no_images showed the raw
-// snake_case here but was humanized by the registry in slice 1).
+// jobLabel is the per-status-page heading copy. Issue #575:
+// thin wrapper over jobs.KindLabel so the templ + the Go
+// (Job).DisplayLabel + Summary() paths all read from the
+// same source (KindLabel). Pre-#575 / pre-#556 slice 1 the
+// templ carried its own 2-case switch that drifted silently
+// from jobs.DisplayLabel (soldier_pdf_no_images shipped raw
+// snake_case from one but humanized text from the other).
+// Now both call sites cost one line of KindLabel().
 func jobLabel(kind string) string {
-	return jobs.Job{Kind: kind}.DisplayLabel()
+	return jobs.KindLabel(kind)
 }
 
 // JobReportView renders the /jobs/{id}/report page. Unlike the
