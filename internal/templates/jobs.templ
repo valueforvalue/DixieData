@@ -299,15 +299,15 @@ templ JobStatusFragment(job jobs.Job) {
 	@jobStatusBody(job)
 }
 
+// jobLabel is the per-status-page heading copy. Issue #556 slice 6:
+// thin wrapper around jobs.Job.DisplayLabel so the templ + the Go
+// Summary() path read from the same source. Pre-#556 the templ
+// duplicated the same 2-case switch as jobs.DisplayLabel — every
+// future kind needed two edits (one in each file) and the two
+// drifted silently (e.g. soldier_pdf_no_images showed the raw
+// snake_case here but was humanized by the registry in slice 1).
 func jobLabel(kind string) string {
-	switch kind {
-	case "static_archive":
-		return "Static web archive"
-	case "database_pdf":
-		return "Printable archive PDF"
-	default:
-		return kind
-	}
+	return jobs.Job{Kind: kind}.DisplayLabel()
 }
 
 // JobReportView renders the /jobs/{id}/report page. Unlike the
