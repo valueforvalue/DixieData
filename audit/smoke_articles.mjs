@@ -457,6 +457,72 @@ try {
     record('editor-preview-close-closes-modal', closedState.modalClosed, closedState);
   }
 
+  // ────────────────────────────────────────────────────────────
+  // Step 5b: Markdown syntax cheatsheet (issue #565). The
+  // Foldout (issue #264 primitive) must render in the
+  // editor toolbar with the panel starting hidden; clicking
+  // the trigger opens the panel; Escape closes it; the
+  // Copy example buttons carry the data-attrs the JS
+  // initializer wires for the clipboard handler.
+  // ────────────────────────────────────────────────────────────
+  console.log('\nStep 5b: /articles/new Markdown cheatsheet (issue #565)');
+  const cheatsheetClosedState = await page.evaluate(() => {
+    const trigger = document.querySelector('[data-foldout-trigger="panel.article.markdown-cheatsheet"]');
+    const panel = document.querySelector('[data-foldout-panel="panel.article.markdown-cheatsheet"]');
+    const rows = document.querySelectorAll('[data-md-cheatsheet-copy-key]');
+    return {
+      triggerExists: trigger !== null,
+      triggerLabel: trigger ? trigger.textContent.trim() : '',
+      panelExists: panel !== null,
+      panelHidden: panel ? panel.classList.contains('hidden') : false,
+      rowCount: rows.length,
+      hasHeadingRow: !!document.querySelector('[data-md-cheatsheet-copy-key="heading"]'),
+      hasPersonRecordRow: !!document.querySelector('[data-md-cheatsheet-copy-key="person-record-reference"]'),
+      personRecordValue: document.querySelector('[data-md-cheatsheet-copy-key="person-record-reference"]')?.getAttribute('data-md-cheatsheet-copy-value'),
+    };
+  });
+  record('editor-cheatsheet-trigger-renders', cheatsheetClosedState.triggerExists, cheatsheetClosedState);
+  record('editor-cheatsheet-trigger-label', cheatsheetClosedState.triggerLabel.startsWith('Markdown syntax'), cheatsheetClosedState);
+  record('editor-cheatsheet-panel-renders', cheatsheetClosedState.panelExists, cheatsheetClosedState);
+  record('editor-cheatsheet-panel-initially-hidden', cheatsheetClosedState.panelHidden, cheatsheetClosedState);
+  record('editor-cheatsheet-renders-rows', cheatsheetClosedState.rowCount >= 10, cheatsheetClosedState);
+  record('editor-cheatsheet-has-heading-row', cheatsheetClosedState.hasHeadingRow, cheatsheetClosedState);
+  record('editor-cheatsheet-has-person-record-row', cheatsheetClosedState.hasPersonRecordRow, cheatsheetClosedState);
+  record('editor-cheatsheet-person-record-syntax', cheatsheetClosedState.personRecordValue === '[John Doe](#person/D-00123)', cheatsheetClosedState);
+
+  if (cheatsheetClosedState.triggerExists) {
+    // Click the trigger; the Foldout JS initializer should
+    // toggle aria-expanded and remove the .hidden class.
+    await page.click('[data-foldout-trigger="panel.article.markdown-cheatsheet"]');
+    await wait(200);
+    const cheatsheetOpenState = await page.evaluate(() => {
+      const trigger = document.querySelector('[data-foldout-trigger="panel.article.markdown-cheatsheet"]');
+      const panel = document.querySelector('[data-foldout-panel="panel.article.markdown-cheatsheet"]');
+      return {
+        ariaExpanded: trigger ? trigger.getAttribute('aria-expanded') : null,
+        panelHidden: panel ? panel.classList.contains('hidden') : true,
+      };
+    });
+    record('editor-cheatsheet-opens-on-click', cheatsheetOpenState.ariaExpanded === 'true' && !cheatsheetOpenState.panelHidden, cheatsheetOpenState);
+
+    // Press Escape; the Foldout JS initializer should
+    // dismiss the panel. The cheatsheet is non-modal
+    // (does not steal focus), so we don't need to focus
+    // a specific element — the document-level Escape
+    // handler is the contract.
+    await page.keyboard.press('Escape');
+    await wait(200);
+    const cheatsheetDismissedState = await page.evaluate(() => {
+      const trigger = document.querySelector('[data-foldout-trigger="panel.article.markdown-cheatsheet"]');
+      const panel = document.querySelector('[data-foldout-panel="panel.article.markdown-cheatsheet"]');
+      return {
+        ariaExpanded: trigger ? trigger.getAttribute('aria-expanded') : null,
+        panelHidden: panel ? panel.classList.contains('hidden') : false,
+      };
+    });
+    record('editor-cheatsheet-escape-closes', cheatsheetDismissedState.ariaExpanded === 'false' && cheatsheetDismissedState.panelHidden, cheatsheetDismissedState);
+  }
+
   // /articles/preview endpoint sanitizes raw HTML.
   const previewResp = await fetch(BASE + '/articles/preview', {
     method: 'POST',

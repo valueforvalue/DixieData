@@ -98,6 +98,7 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 					<p class="mt-1 text-xs text-slate-500">Markdown syntax supported. Raw HTML is stripped at save time for safety.</p>
 				</div>
 				<div class="flex flex-wrap justify-end gap-3">
+					@components.MarkdownCheatsheet()
 					@components.Button("Preview", components.ButtonSecondary, "", templ.Attributes{
 						"type":          "button",
 						"data-article-preview-open": "",
