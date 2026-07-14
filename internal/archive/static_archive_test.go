@@ -109,6 +109,63 @@ func renderIndexForTest(t *testing.T) string {
 	return html
 }
 
+// TestStaticArchiveIndex_TagDistributionAndDropdownIncludeEvents
+// (issue #528 slice 4) pins the JS contract that the Browse filter
+// tag dropdown AND the Insights Tag distribution card now read
+// tags from BOTH Person Records AND Event Records. Before slice 4
+// both functions walked bundle.records only -- a tag attached
+// exclusively to an Event Record was invisible in both surfaces.
+//
+// This test source-scans the rendered index.html template for the
+// specific JS fragments that prove the slice-4 fix is in place.
+// Source-scanning (rather than Playwright eval) is the cheapest
+// regression net that pins the source-level contract without
+// needing a browser harness; the audit harness in slice 4's
+// companion commit will exercise the same paths against a live
+// server.
+func TestStaticArchiveIndex_TagDistributionAndDropdownIncludeEvents(t *testing.T) {
+	html := renderIndexForTest(t)
+
+	// Slice 4 contract 1: buildTagsDropdown now takes both
+	// records and events as arguments (signature widened from
+	// `buildTagsDropdown(records)` to `buildTagsDropdown(records,
+	// events)`). The caller in renderBrowsePage passes both.
+	if !strings.Contains(html, "buildTagsDropdown(records, events)") {
+		t.Errorf("rendered index.html missing buildTagsDropdown(records, events) call site (issue #528 slice 4)")
+	}
+
+	// Slice 4 contract 2: buildTagsDropdown body concats events
+	// into the source array via `events` variable. Use a more
+	// permissive substring that catches the concat regardless of
+	// formatting.
+	if !strings.Contains(html, "Array.isArray(events) ? events : []") {
+		t.Errorf("rendered index.html missing events-array safety guard inside buildTagsDropdown (issue #528 slice 4)")
+	}
+
+	// Slice 4 contract 3: renderTagDistributionCard body also
+	// concats events into the source array. Source-scan for the
+	// events guard in renderTagDistributionCard's scope.
+	// Find the renderTagDistributionCard function body and check
+	// for the events concat.
+	idx := strings.Index(html, "function renderTagDistributionCard")
+	if idx < 0 {
+		t.Fatal("rendered index.html missing renderTagDistributionCard function definition")
+	}
+	// Skip past the function header itself (which contains
+	// "function ") so the boundary search finds the NEXT
+	// function declaration (the start of the following fn).
+	end := strings.Index(html[idx+1:], "function ")
+	if end < 0 {
+		end = len(html) - idx - 1
+	} else {
+		end = idx + 1 + end
+	}
+	body := html[idx:end]
+	if !strings.Contains(body, "Array.isArray(bundle.events)") {
+		t.Errorf("renderTagDistributionCard body does not walk bundle.events (issue #528 slice 4)")
+	}
+}
+
 // TestStaticArchiveIndex_RendersEventsAndArticlesTabs (issue #490,
 // re-pinned in #498 slice 2) asserts the rendered index.html carries
 // nav-menu labels for all three entity kinds (Person Records, Events,

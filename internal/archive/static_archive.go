@@ -2594,6 +2594,14 @@ function escapeHtml(value) {
 
     function renderBrowsePage(bundle, query) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
+      // Issue #528 slice 4: the Browse filter dropdown must list
+      // every tag attached to Event Records too, not just Person
+      // Records. The browse rows themselves still render Person
+      // Records only (Browse is Person-Record-only by design;
+      // events live on the Events tab) -- a tag with only event
+      // matches shows in the dropdown but produces 0 filtered
+      // rows, which is the honest behavior the user expects.
+      var events = Array.isArray(bundle.events) ? bundle.events : [];
       return '' +
         '<div class="panel-head"><h2>Filter</h2>' +
         '<span class="browse-count" id="browse-count">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + '</span>' +
@@ -2628,7 +2636,7 @@ function escapeHtml(value) {
           renderFilterDropdown('unit', 'Unit', records, function(r) { return r.unit; }) +
           renderFilterDropdown('buried_in', 'Buried in', records, function(r) { return r.location; }) +
           renderFilterDropdown('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
-          buildTagsDropdown(records) +
+          buildTagsDropdown(records, events) +
         '</div>' +
         '<div class="browse-active-filters" id="browse-active-filters"></div>' +
         '<div class="browse-clear-row"><button type="button" class="image-button" id="browse-clear-filters">Clear filters</button></div>' +
@@ -2665,10 +2673,21 @@ function escapeHtml(value) {
 
     // buildTagsDropdown collects all distinct tag values across
     // records and renders a multi-select dropdown (issue #506).
-    function buildTagsDropdown(records) {
+    function buildTagsDropdown(records, events) {
       var values = {};
-      for (var i = 0; i < records.length; i++) {
-        var tags = Array.isArray(records[i].tags) ? records[i].tags : [];
+      // Issue #528 slice 4: walk Person Records AND Event
+      // Records so the dropdown lists every tag the user
+      // attached in the live app. The filter apply branch
+      // (applyBrowseFilters below) still operates on the
+      // Person Record list because the Browse page is
+      // Person-Record-only by design (events live on the
+      // Events tab); a tag with only event matches will
+      // produce 0 filtered rows but the dropdown still
+      // surfaces the tag so the user knows it exists in the
+      // archive.
+      var allRows = (Array.isArray(records) ? records : []).concat(Array.isArray(events) ? events : []);
+      for (var i = 0; i < allRows.length; i++) {
+        var tags = Array.isArray(allRows[i].tags) ? allRows[i].tags : [];
         for (var j = 0; j < tags.length; j++) {
           var v = String(tags[j] || '').trim();
           if (!v) continue;
@@ -2934,6 +2953,9 @@ function escapeHtml(value) {
         html += renderDecadeCard('Death decade distribution', 'death_decade_distribution', insights.death_decade_distribution);
       }
       // Issue #506: tag distribution computed from bundle.records.
+      // Issue #528 slice 4: extend to bundle.events so event-only
+      // tags are visible on the Insights card (per-row links still
+      // go to #/browse?tags=...; Browse page itself is Person-Record-only).
       html += renderTagDistributionCard(bundle);
       html += '</div>';
       return html;
@@ -3009,9 +3031,19 @@ function escapeHtml(value) {
     // bundle.records and renders an Insights card (issue #506).
     function renderTagDistributionCard(bundle) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
+      // Issue #528 slice 4: include Event Record tags in the
+      // distribution counts so the Insights card surfaces every
+      // tag attached in the live app, not just tags attached to
+      // Person Records. Per-row links still go to #/browse?tags=...
+      // (Browse is Person-Record-only); for an event-only tag the
+      // user sees the count here + the dropdown option in Browse
+      // (see buildTagsDropdown slice 4) and can switch to the
+      // Events tab to find the rows.
+      var events = Array.isArray(bundle.events) ? bundle.events : [];
+      var allRows = records.concat(events);
       var tagCounts = {};
-      for (var i = 0; i < records.length; i++) {
-        var tags = Array.isArray(records[i].tags) ? records[i].tags : [];
+      for (var i = 0; i < allRows.length; i++) {
+        var tags = Array.isArray(allRows[i].tags) ? allRows[i].tags : [];
         for (var j = 0; j < tags.length; j++) {
           var t = String(tags[j] || '').trim();
           if (!t) continue;
