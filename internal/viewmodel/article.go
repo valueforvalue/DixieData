@@ -9,8 +9,33 @@
 package viewmodel
 
 import (
+	"html"
+	"regexp"
+	"strings"
+
 	"github.com/valueforvalue/DixieData/internal/models"
 )
+
+// bodyExcerptCap is the issue #532 slice-2 contract: the
+// list-page preview shows the first ~280 characters of the
+// sanitized body so the user gets a meaningful excerpt of
+// the article's content without the full body overwhelming
+// the row. Tune via this constant; the test pins the intent
+// (a meaningful excerpt + ellipsis suffix) without a brittle
+// exact-length match.
+const bodyExcerptCap = 280
+
+// tagStripper matches HTML tags for the body excerpt
+// computation. Cheap regex is fine -- the input is
+// already-sanitized BodyHTML (post-bluemonday) so there's
+// no script / event-handler risk to worry about; we just
+// want a clean plain-text excerpt.
+var tagStripper = regexp.MustCompile(`<[^>]*>`)
+
+// whitespaceCollider collapses runs of whitespace (including
+// newlines from the markdown source) into a single space so
+// the excerpt reads as prose on the list page.
+var whitespaceCollider = regexp.MustCompile(`\s+`)
 
 // Article is the UI-shaped projection of models.Article. It
 // carries only the fields the slice-1 /articles list + the
@@ -27,6 +52,13 @@ type Article struct {
 	Subtitle       string
 	Body           string // slice-1: verbatim md; slice 2: sanitized HTML
 	BodyMD         string // slice-3.6: the raw markdown source (for the editor's source panel)
+	// Issue #532 slice 2: plain-text excerpt of the body for
+	// the /articles list page row. Computed in ArticleFromModel
+	// by stripping HTML tags + collapsing whitespace +
+	// truncating to bodyExcerptCap runes with a trailing
+	// ellipsis when the body exceeds the cap. Empty when the
+	// article has no body to excerpt.
+	BodyExcerpt    string
 	CreatedAt      string
 	UpdatedAt      string
 	BackLinkURL    string
@@ -86,9 +118,29 @@ func ArticleFromModel(input models.Article) Article {
 		Subtitle:      input.Subtitle,
 		Body:          body,
 		BodyMD:        input.BodyMD,
+		BodyExcerpt:   buildBodyExcerpt(body),
 		CreatedAt:     input.CreatedAt,
 		UpdatedAt:     input.UpdatedAt,
 	}
+}
+
+// buildBodyExcerpt strips HTML tags + collapses whitespace +
+// truncates to bodyExcerptCap runes with a trailing ellipsis
+// when the body exceeds the cap. Empty input returns "".
+// Operates rune-aware so a multi-byte unicode char at the cap
+// boundary isn't split mid-codepoint.
+func buildBodyExcerpt(body string) string {
+	plain := tagStripper.ReplaceAllString(body, "")
+	plain = html.UnescapeString(plain)
+	plain = whitespaceCollider.ReplaceAllString(strings.TrimSpace(plain), " ")
+	if plain == "" {
+		return ""
+	}
+	runes := []rune(plain)
+	if len(runes) <= bodyExcerptCap {
+		return plain
+	}
+	return string(runes[:bodyExcerptCap]) + "\u2026"
 }
 
 // ArticlePtrFromModel maps a *models.Article to a *viewmodel.Article,
