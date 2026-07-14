@@ -14,7 +14,10 @@ When an audit is resolved, the banner names the work that resolved it (commit ha
 ## Current contents
 
 ### Open audits
-None at the moment. The static-web-archive audit (`static-web-archive-audit-2026-06.md`) was resolved by PR #71 (commit c831abf) before the convention was formalized; it lives at the directory root for visibility.
+- `pragmatic-programmer-audit-2026-07.md` — maps each of the 100 tips from _The Pragmatic Programmer, 20th Anniversary Edition_ to the repo (Enforced / Partial / Gap / N/A). 35+ tips are enforced by `CONTEXT.md` Laws + tier-1 process docs; six high-leverage gap candidates (one per follow-up issue) are surfaced at the bottom. Retained as a **historical artifact** after the principle-spine audit below was added. Tracks issue #567.
+- `pragmatic-programmer-principles-audit-2026-07.md` — **primary audit.** Maps the book's *principle spine* (DRY, orthogonality, reversibility, tracer bullets, design by contract, Law of Demeter, MVC, metaprogramming, temporal coupling, program deliberately, algorithm speed, refactoring, code that's easy to test, ubiquitous automation, it's all writing, great expectations, plus the 4 book-end checklists: WISDOM, Architectural Questions, Debugging Checklist, Cutting the Gordian Knot) to the repo. 14 principles ✅ Enforced + 9 ⚠️ Partial + 1 ❌ Gap + 1 ➖ N/A out of 25. Twelve consolidated gap candidates (lowest-effort first) at the bottom. Supersedes the 100-tip view as the primary lens. Tracks issue #567.
+
+The static-web-archive audit (`static-web-archive-audit-2026-06.md`) was resolved by PR #71 (commit c831abf) before the convention was formalized; it lives at the directory root for visibility.
 
 ### Resolved audits (`docs/audit/resolved/`)
 - `layout-and-theming-audit-prompt.md` — the prompt that drove the layout-theming audits.

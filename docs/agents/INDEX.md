@@ -33,6 +33,7 @@ all of them; load only the ones that match your task.
 | Doc | When |
 |---|---|
 | [`docs/agents/complexity.md`](complexity.md) | Designing a new module, debating YAGNI vs broad interface, reviewing for strategic-programming correctness. Cite § numbers in code review. |
+| [`docs/agents/pragmatic-principles.md`](pragmatic-principles.md) | The *why* behind the repo's existing rules. Load when designing a new feature, refactoring, reviewing a PR, or deciding whether a slice is about to violate a principle. Each principle (DRY, orthogonality, Law of Demeter, MVC, metaprogramming, temporal coupling, etc.) has a 'When you might violate' section listing the *known* cases where the repo legitimately breaks the principle. The "warn + cite protocol" is the enforcement mechanism for principles-as-guides — the Plan gets a 'Principle warnings' block, the user signs off, the rationale lands in the commit message + CHANGELOG bullet. |
 
 ### Bug work
 

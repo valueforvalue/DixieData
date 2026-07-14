@@ -305,6 +305,40 @@ surface; see Backend-First Law in `CONTEXT.md`.
 - Slice 2: <one-line shape — what end-to-end capability it adds>
 - Slice 3: <one-line shape>
 - ...
+
+## Principle warnings (when applicable)
+
+If this slice is about to violate a principle documented in
+[`docs/agents/pragmatic-principles.md`](pragmatic-principles.md),
+the slice Plan must include a "Principle warnings" block:
+
+```markdown
+## Principle warnings
+- **Principle:** DRY (§1.1)
+- **Operational form being violated:** the `components/` primitive
+  reuse rule (no new component primitives unless 2+ call sites
+  exist).
+- **Rationale for the temporary violation:** the new surface is
+  a one-off; extracting a primitive would cost more than the
+  future cleanup. Two-adapter rule (§feature-protocol.md) is
+  not met.
+- **Cleanup plan:** file follow-up issue #NNN that lands the
+  primitive extraction once a second call site exists. The
+  slice commit message + CHANGELOG bullet will document the
+  violation by name.
+
+## What assumptions does this PR make?
+- <Assumption 1 — and the test that pins it>
+- <Assumption 2 — and the test that pins it>
+```
+
+The "What assumptions does this PR make?" block is the
+"Test assumptions as well as code" rule (Tip #62 / Program
+Deliberately §1.11). Every assumption the slice makes about
+the runtime environment, the data shape, the third-party
+library contract, etc., gets a test that pins it. A slice
+with no testable assumptions leaves the block empty (and
+says so).
 ```
 
 ### What goes in each section

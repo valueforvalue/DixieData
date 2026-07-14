@@ -472,6 +472,18 @@ works until the code ships.
   weight of the task. A small bug fix may need zero questions; a new
   subsystem deserves a more thorough exploration. Let task complexity
   guide conversation complexity.
+- **Pragmatic principles as guides, not laws.** When a slice is
+  about to violate a principle documented in
+  [`docs/agents/pragmatic-principles.md`](docs/agents/pragmatic-principles.md)
+  (DRY, orthogonality, Law of Demeter, etc.), the agent's job is
+  to **warn + cite** in the slice Plan, not to silently violate
+  or silently refuse. The Plan's "Principle warnings" block names
+  the principle, the operational form, the rationale for the
+  temporary violation, and the cleanup plan. The user signs off
+  as part of the Plan approval gate. An undocumented violation is
+  a bug; a documented violation is a known and intentional
+  exception. See the doc's §"The warn + cite protocol" for the
+  full shape.
 
 ### Capturing decisions
 
