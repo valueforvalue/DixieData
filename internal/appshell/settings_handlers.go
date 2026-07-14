@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/debug"
@@ -120,8 +121,16 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if currentExportSurface == "" {
 		currentExportSurface = records.ResolvedExportSurface("")
 	}
+	// Issue #544: load the user's support endpoint URL so the
+	// Support & Diagnostics card's text input pre-fills with
+	// the current value (and the Save button POSTs back to
+	// /settings/support-endpoint). Empty string = feature off.
+	var currentSupportEndpoint string
+	if ls, lerr := records.LoadLocalSettings(a.dataDir); lerr == nil {
+		currentSupportEndpoint = ls.SupportEndpoint
+	}
 	// Issue #384 / Slice 7: wrap Render.
-	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme, currentExportSurface).Render(r.Context(), w); err != nil {
+	if err := presentation.SettingsView(initializeDataConfirmationWord, settings, currentTheme, currentExportSurface, currentSupportEndpoint).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the settings page.", err)
 	}
 }
@@ -251,6 +260,80 @@ func exportSurfaceDisplayName(value string) string {
 	default:
 		return "Jobs page"
 	}
+}
+
+// isAcceptableSupportEndpointURL pins the validation contract
+// for the support endpoint URL (issue #544 slice 3). https is
+// the production default (the feedback bundle may carry PII);
+// http is allowed ONLY for loopback addresses so the audit
+// probe + dev harnesses can hit a local httptest receiver
+// without standing up a TLS cert.
+func isAcceptableSupportEndpointURL(raw string) bool {
+	if raw == "" {
+		return true // empty = feature off, which is always acceptable
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u == nil {
+		return false
+	}
+	switch u.Scheme {
+	case "https":
+		return true
+	case "http":
+		// Loopback carve-out: 127.0.0.1, ::1, localhost.
+		host := u.Hostname()
+		return host == "127.0.0.1" || host == "localhost" || host == "::1"
+	default:
+		return false
+	}
+}
+
+// handleSettingsSupportEndpoint is the POST handler for the
+// "Support endpoint" text input in the Support & Diagnostics
+// card on /settings (issue #544). It reads the user's URL,
+// validates the scheme (https or http://loopback), persists
+// via SaveLocalSettings, and reflects the new value on the
+// next request. The form is dispatched via the JS dispatcher
+// (data-dixie-submit="true") so the response uses the standard
+// X-DixieData-Redirect back to /settings.
+//
+// An empty input is the documented way to disable the feature
+// (clears the persisted URL so the UI buttons surface a
+// 'configure the endpoint in Settings' toast instead of firing).
+func (a *App) handleSettingsSupportEndpoint(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the support endpoint form.", err)
+		return
+	}
+	picked := strings.TrimSpace(r.FormValue("support_endpoint"))
+	if !isAcceptableSupportEndpointURL(picked) {
+		respondValidation(w, r, "Use an https:// URL, or http:// for 127.0.0.1/localhost during testing.", nil)
+		return
+	}
+	settings, err := records.LoadLocalSettings(a.dataDir)
+	if err != nil {
+		respondInternal(w, r, "Could not load local settings.", err)
+		return
+	}
+	settings.SupportEndpoint = picked
+	if err := records.SaveLocalSettings(a.dataDir, settings); err != nil {
+		respondInternal(w, r, "Could not save local settings.", err)
+		return
+	}
+	log := debug.FromContext(r.Context())
+	log.Info("support endpoint changed via settings", "endpoint_set", picked != "")
+	var toast string
+	if picked == "" {
+		toast = "Support endpoint cleared. The Send-to-support buttons are now disabled."
+	} else {
+		toast = "Support endpoint saved."
+	}
+	setToastHeader(w, toast)
+	writeExportRedirect(w, "/settings")
 }
 
 func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {

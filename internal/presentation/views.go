@@ -156,8 +156,8 @@ func InsightsDrilldownView(title, description string, soldiers []models.Soldier,
 	return templates.InsightsDrilldownView(title, description, viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize, scope, value)
 }
 
-func SettingsView(confirmationWord string, updater update.SettingsState, currentTheme, currentExportSurface string) templ.Component {
-	return templates.SettingsView(confirmationWord, viewmodel.UpdateSettingsFromDomain(updater), currentTheme, currentExportSurface)
+func SettingsView(confirmationWord string, updater update.SettingsState, currentTheme, currentExportSurface, currentSupportEndpoint string) templ.Component {
+	return templates.SettingsView(confirmationWord, viewmodel.UpdateSettingsFromDomain(updater), currentTheme, currentExportSurface, currentSupportEndpoint)
 }
 
 func SettingsUpdatePanel(updater update.SettingsState) templ.Component {

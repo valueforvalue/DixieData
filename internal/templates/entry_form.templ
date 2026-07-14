@@ -460,7 +460,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	</div>
 }
 
-templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme, currentExportSurface string) {
+templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme, currentExportSurface, currentSupportEndpoint string) {
 	@Layout("Settings") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
@@ -593,6 +593,23 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
 					}
 				</div>
+				<form action="/settings/support-endpoint" data-dixie-submit="true" class="space-y-3" id="settings-support-endpoint-form">
+					<label class="block text-sm text-slate-700">
+						Support endpoint URL
+						<input
+							type="url"
+							name="support_endpoint"
+							value={ currentSupportEndpoint }
+							class="field-input mt-2"
+							placeholder="https://support.example.invalid/upload"
+							autocomplete="off"
+						/>
+					</label>
+					<p class="text-xs leading-6 text-slate-500">https URL where the "Send to support" buttons POST the feedback entry + bug-report bundle. http:// is allowed only for 127.0.0.1 / localhost (dev / test). Clear the input to disable the feature.</p>
+					<div class="flex justify-end">
+						@components.Button("Save", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+					</div>
+				</form>
 			</div>
 		</div>
 	}
