@@ -151,15 +151,14 @@ jobs:
       # explanatory block, R2 heading text == adjacent button
       # text, R3 visible text duplicated within ~15 lines). The
       # probe is the executor; docs/agents/ux-microcopy.md is the
-      # spec. Informational by default (exit 0 with finding count
-      # printed); the audit-issue implementation work slices
-      # reduce the count to 0 slice-by-slice, at which point this
-      # gate flips to --strict per slice-1 follow-up. Same Node
-      # 20 toolchain.
-      - name: UX microcopy lint (issue #561)
+      # spec. Slice 5 flipped this gate from informational to
+      # --strict because slices 2-4 brought the probe count to 0;
+      # a future regression that re-introduces a violation now
+      # blocks merge. Same Node 20 toolchain.
+      - name: UX microcopy lint (issue #561, --strict)
         shell: bash
         run: |
-          make lint-microcopy
+          make lint-microcopy-strict
           make lint-microcopy-test
         timeout-minutes: 3
 
