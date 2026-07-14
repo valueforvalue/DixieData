@@ -296,9 +296,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						<input type="hidden" name="page_path" value="" data-feedback-page-path/>
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
-								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Feedback</p>
-								<h3 id="feedback-modal-heading" class="mt-2 text-xl gold font-bold">Send app feedback</h3>
-								<p class="mt-2 text-sm text-slate-600">Save bugs, workflow pain points, or feature ideas to the local feedback log without leaving your current screen.</p>
+								<h3 id="feedback-modal-heading" class="text-xl gold font-bold">Send app feedback</h3>
 							</div>
 							@components.Button("Close", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
 								"data-feedback-close": "",
