@@ -613,20 +613,21 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 // app.go because the conversion only matters for the
 // ShareView call site; if a future handler needs the
 // same shape, lift it into viewmodel.
-func buildRecentJobEntries(jobs []jobs.Job) []viewmodel.RecentJobEntry {
-	out := make([]viewmodel.RecentJobEntry, 0, len(jobs))
-	for _, job := range jobs {
+func buildRecentJobEntries(jobsList []jobs.Job) []viewmodel.RecentJobEntry {
+	out := make([]viewmodel.RecentJobEntry, 0, len(jobsList))
+	for _, job := range jobsList {
 		out = append(out, viewmodel.RecentJobEntry{
-			ID:          job.ID,
-			Kind:        job.Kind,
-			KindLabel:   job.DisplayLabel(),
-			Status:      job.Status,
-			StatusLabel: statusLabelFor(job.Status),
-			Message:     job.Message,
-			ResultPath:  job.ResultPath,
-			StartedAt:   job.StartedAt.UTC().Format(time.RFC3339),
-			FinishedAt:  job.FinishedAt.UTC().Format(time.RFC3339),
-			DetailURL:   "/jobs/" + job.ID,
+			ID:            job.ID,
+			Kind:          job.Kind,
+			KindLabel:     job.DisplayLabel(),
+			ActivityGroup: jobs.ActivityGroupFor(job.Kind),
+			Status:        job.Status,
+			StatusLabel:   statusLabelFor(job.Status),
+			Message:       job.Message,
+			ResultPath:    job.ResultPath,
+			StartedAt:     job.StartedAt.UTC().Format(time.RFC3339),
+			FinishedAt:    job.FinishedAt.UTC().Format(time.RFC3339),
+			DetailURL:     "/jobs/" + job.ID,
 		})
 	}
 	return out

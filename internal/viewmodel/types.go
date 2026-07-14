@@ -827,16 +827,17 @@ type ShareQueueRow struct {
 // string into "2 minutes ago"); the server emits the raw
 // value so the templ stays framework-agnostic.
 type RecentJobEntry struct {
-	ID          string
-	Kind        string
-	KindLabel   string // human label from Job.DisplayLabel()
-	Status      string // jobs.StatusDone, StatusError, StatusCancelled, StatusInterrupted
-	StatusLabel string // human label (Done / Error / Cancelled / Interrupted)
-	Message     string
-	ResultPath  string
-	StartedAt   string // RFC3339
-	FinishedAt  string // RFC3339
-	DetailURL   string // /jobs/{id}
+	ID            string
+	Kind          string
+	KindLabel     string // human label from Job.DisplayLabel()
+	ActivityGroup string // Issue #556 slice 5: KindMeta.ActivityGroup
+	Status        string // jobs.StatusDone, StatusError, StatusCancelled, StatusInterrupted
+	StatusLabel   string // human label (Done / Error / Cancelled / Interrupted)
+	Message       string
+	ResultPath    string
+	StartedAt     string // RFC3339
+	FinishedAt    string // RFC3339
+	DetailURL     string // /jobs/{id}
 }
 
 // ResearchPickerView is the page-level viewmodel for the Research &

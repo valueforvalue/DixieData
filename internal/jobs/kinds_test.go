@@ -501,3 +501,26 @@ func TestFailedVerbUnknownKindStillOperations(t *testing.T) {
 		t.Errorf("FailedVerb(unknown, true) = %q; want %q", got, "Operation cancelled.")
 	}
 }
+
+// TestActivityGroupForEveryKind pins slice 5: every registered
+// kind produces a non-empty ActivityGroup, and unknown kinds
+// fall through to the safe "exports" default. Used by the Recent
+// Activity panel to render per-row group badges.
+func TestActivityGroupForEveryKind(t *testing.T) {
+	for kind, meta := range KindRegistry {
+		if meta.ActivityGroup == "" {
+			t.Errorf("KindRegistry[%q].ActivityGroup is empty", kind)
+			continue
+		}
+		if got := ActivityGroupFor(kind); got != meta.ActivityGroup {
+			t.Errorf("ActivityGroupFor(%q) = %q; want %q", kind, got, meta.ActivityGroup)
+		}
+	}
+	// Unknown kinds fall through to "exports" — matches the
+	// historical Recent Activity heading that grouped
+	// everything as exports/imports. Not the registry's actual
+	// group (which is empty for unknown kinds).
+	if got := ActivityGroupFor("future_kind_not_in_registry"); got != "exports" {
+		t.Errorf("ActivityGroupFor(unknown) = %q; want %q (safe default)", got, "exports")
+	}
+}
