@@ -140,60 +140,47 @@ async function runBrowserProbe() {
       sendButtonAttrs);
 
     // 4. Click the button + wait for the fetch + assert response shape.
-    // Known issue: the form has 2 submit buttons both named "action"
-    // (Save + Send) which causes form.action IDL to return a
-    // RadioNodeList instead of the form's action attribute string in
-    // Chromium — the dispatcher's `requestUrl = form.action || ...`
-    // line then stringifies the RadioNodeList to "[object RadioNodeList]"
-    // and the fetch 404s. The dispatcher must use getAttribute('action')
-    // to defend. Tracked as a separate issue; this probe skips the
-    // click-side assertion until the dispatcher is fixed.
-    // Network probe below still confirms the Formspark endpoint contract.
+    // Regression net for #571: form.action IDL returns a RadioNodeList
+    // in Chromium when the form has any descendant element named
+    // "action" (e.g. the feedback modal's Save + Send submit buttons).
+    // The dispatcher in app.js:4171 uses form.getAttribute('action')
+    // to defend. The probe asserts the dispatch fires the correct URL
+    // and the response shape matches the success contract.
     await page.fill('#feedback-form textarea[name="message"]', 'smoke send-to-support probe');
-    let dispatchReached = false;
-    let requestPostData = '';
-    let sendResp = null;
-    try {
-      const sendRespPromise = page.waitForResponse(
-        (r) => r.url().includes('/feedback/submit') && r.request().method() === 'POST',
-        { timeout: 5000 }
-      );
-      await sendButton.click();
-      sendResp = await sendRespPromise;
-      dispatchReached = true;
-      requestPostData = sendResp.request().postData() || '';
-    } catch (_) {
-      // dispatcher bug — see note above
-    }
-    record('feedback-send-dispatches-fetch', dispatchReached,
-      { note: 'if false, the dispatcher is hitting the form.action IDL RadioNodeList bug; see follow-up issue' });
-    if (dispatchReached && sendResp) {
-      const closeHeader = sendResp.headers()['x-dixiedata-close-feedback'];
-      const toastHeader = sendResp.headers()['x-dixiedata-toast'];
-      record('feedback-send-sends-close-header', closeHeader === 'true', { closeHeader });
-      record('feedback-send-sends-toast-header', !!toastHeader, { toastHeader });
-      record(
-        'feedback-send-success-toast-text',
-        (toastHeader || '').includes('Feedback sent to DixieData support'),
-        { toastHeader }
-      );
-      record('feedback-send-payload-contains-action-send', /(^|&)action=send(&|$)/.test(requestPostData), { requestPostData });
-    }
+    const sendRespPromise = page.waitForResponse(
+      (r) => r.url().includes('/feedback/submit') && r.request().method() === 'POST',
+      { timeout: 5000 }
+    );
+    await sendButton.click();
+    const sendResp = await sendRespPromise;
+    const requestPostData = sendResp.request().postData() || '';
+    const closeHeader = sendResp.headers()['x-dixiedata-close-feedback'];
+    const toastHeader = sendResp.headers()['x-dixiedata-toast'];
+    record('feedback-send-sends-close-header', closeHeader === 'true', { closeHeader });
+    record('feedback-send-sends-toast-header', !!toastHeader, { toastHeader });
+    record(
+      'feedback-send-success-toast-text',
+      (toastHeader || '').includes('Feedback sent to DixieData support'),
+      { toastHeader }
+    );
+    record('feedback-send-payload-contains-action-send',
+      // Multipart body: name="action"\r\n\r\nsend
+      // urlencoded body: (^|&)action=send(&|$)
+      /name="action"\r\n\r\nsend/.test(requestPostData) || /(^|&)action=send(&|$)/.test(requestPostData),
+      { requestPostData: requestPostData.slice(0, 400) });
 
-    // 5. If the dispatcher is healthy, modal hides + form clears.
-    if (dispatchReached) {
-      await page.waitForTimeout(400);
-      const modalHidden = await page.evaluate(() => {
-        const m = document.querySelector('[data-feedback-modal]');
-        return m instanceof HTMLElement && m.classList.contains('hidden');
-      });
-      record('feedback-send-hides-modal', modalHidden);
-      const textareaValue = await page.evaluate(() => {
-        const ta = document.querySelector('#feedback-form textarea[name="message"]');
-        return ta instanceof HTMLTextAreaElement ? ta.value : null;
-      });
-      record('feedback-send-clears-form', textareaValue === '', { textareaValue });
-    }
+    // 5. Modal hides + form clears.
+    await page.waitForTimeout(400);
+    const modalHidden = await page.evaluate(() => {
+      const m = document.querySelector('[data-feedback-modal]');
+      return m instanceof HTMLElement && m.classList.contains('hidden');
+    });
+    record('feedback-send-hides-modal', modalHidden);
+    const textareaValue = await page.evaluate(() => {
+      const ta = document.querySelector('#feedback-form textarea[name="message"]');
+      return ta instanceof HTMLTextAreaElement ? ta.value : null;
+    });
+    record('feedback-send-clears-form', textareaValue === '', { textareaValue });
   } finally {
     await browser.close();
   }

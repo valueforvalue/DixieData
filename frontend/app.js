@@ -4168,7 +4168,15 @@ async function dispatchDixieDataForm(button) {
           fetchOptions.body.append("confirm_empty_name", "1");
         }
       }
-      const requestUrl = form.action || window.location.pathname;
+      // Read the URL from the form's `action` content attribute
+      // (not the `form.action` IDL getter). Chromium returns a
+      // RadioNodeList instead of the action-attribute string when
+      // the form contains any descendant element named "action"
+      // (e.g. the feedback modal's Save + Send submit buttons,
+      // both `name="action"`). `form.getAttribute('action')` reads
+      // the raw attribute and is unaffected by descendant named
+      // controls. Tracked in #571.
+      const requestUrl = form.getAttribute('action') || window.location.pathname;
       // [Wails-PATCH] Wails v2.12.0 strips the body from
       // PATCH/PUT/DELETE requests sent through the
       // wails.localhost custom protocol — confirmed by the
