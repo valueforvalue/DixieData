@@ -46,6 +46,12 @@ templ ArticlesListShell(articles []viewmodel.Article) {
 							if article.Subtitle != "" {
 								<p class="mt-1 text-sm text-slate-600" data-article-row-subtitle>{ article.Subtitle }</p>
 							}
+							if article.BodyExcerpt != "" {
+								<p
+									class="mt-2 text-sm leading-relaxed text-slate-700 line-clamp-3"
+									data-article-preview
+								>{ article.BodyExcerpt }</p>
+							}
 						</a>
 					}
 				</div>
