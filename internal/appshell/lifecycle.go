@@ -170,12 +170,21 @@ func (a *App) startup(ctx context.Context) {
 		// request's Layout() renders <html data-theme="..."> from
 		// the same source. Empty string resolves to ThemeDefault.
 		a.theme.Store(settings.ResolvedTheme())
+		// Issue #534: load the resolved export-surface preference
+		// so every request's Layout() renders
+		// <html data-export-surface="..."> from the same source.
+		// Empty string resolves to "jobs-page" (today's behavior
+		// via ResolvedExportSurface) so fresh installs see the
+		// historical navigate-to-/jobs/{id} flow.
+		a.exportSurface.Store(settings.ResolvedExportSurface())
 	} else {
 		fmt.Printf("warning: could not load local settings: %v\n", err)
 		// Even on a load failure, surface a sane default so the
 		// html data-theme attribute never serializes as "".
 		// Issue #494: Soft is the new default for fresh installs.
 		a.theme.Store(records.ThemeSoft)
+		// Issue #534: same default story for export-surface.
+		a.exportSurface.Store(records.ResolvedExportSurface(""))
 	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
@@ -500,6 +509,22 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		theme = records.ThemeSoft
 	}
 	ctx = templates.WithLayoutTheme(ctx, theme)
+	// Issue #534: tag the resolved export-surface preference
+	// on the request context so Layout() renders
+	// <html data-export-surface="..."> from the same source
+	// the dispatcher consults at request time. The empty-string
+	// case (raw template tests, error pages, etc.) resolves to
+	// "jobs-page" via templates.layoutExportSurface.
+	var exportSurface string
+	if v := a.exportSurface.Load(); v != nil {
+		if s, ok := v.(string); ok {
+			exportSurface = s
+		}
+	}
+	if exportSurface == "" {
+		exportSurface = records.ResolvedExportSurface("")
+	}
+	ctx = templates.WithLayoutExportSurface(ctx, exportSurface)
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

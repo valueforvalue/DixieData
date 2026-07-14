@@ -37,6 +37,38 @@ const (
 type LocalSettings struct {
 	DebugMode bool   `json:"debug_mode"`
 	Theme     string `json:"theme,omitempty"` // "" == ThemeSoft (issue #494)
+	// Issue #534: per-user preference that controls what the
+	// user sees after clicking an export. "" = the historical
+	// behavior (navigate to /jobs/{id} via X-DixieData-Redirect),
+	// "toast-only" = stay on the source page and show a toast
+	// (the /jobs/{id} job still runs, the user just doesn't
+	// navigate). See ResolvedExportSurface for the fallback
+	// contract; the dispatcher (frontend/app.js:4262) reads
+	// this value via the per-page <html data-export-surface>
+	// attribute the /settings handler writes.
+	ExportSurface string `json:"export_surface,omitempty"`
+}
+
+// ResolvedExportSurface returns the user's effective export
+// post-action preference with the empty-string fallback
+// resolved to "jobs-page" (matches today's behavior for
+// every user who hasn't picked a preference yet). Unknown
+// values also fall back to "jobs-page" so a future setting
+// rename doesn't crash old binaries.
+func (s LocalSettings) ResolvedExportSurface() string {
+	return ResolvedExportSurface(s.ExportSurface)
+}
+
+// ResolvedExportSurface is the package-level form so callers
+// who only have the raw string (not a LocalSettings value)
+// can resolve it. Mirrors the value-receiver method above.
+func ResolvedExportSurface(value string) string {
+	switch value {
+	case "jobs-page", "toast-only":
+		return value
+	default:
+		return "jobs-page"
+	}
 }
 
 // ResolvedTheme returns the theme name with the empty-string fallback

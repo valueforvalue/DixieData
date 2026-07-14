@@ -193,7 +193,7 @@ func TestSettingsView_RendersDataThemeAttrOnHtml(t *testing.T) {
 
 	body, _ := io.ReadAll(rec.Body)
 	html := string(body)
-	if !strings.Contains(html, `<html lang="en" data-theme="high-contrast">`) {
+	if !strings.Contains(html, `<html lang="en" data-theme="high-contrast" data-export-surface="jobs-page">`) {
 		t.Errorf("expected <html lang=\"en\" data-theme=\"high-contrast\">; got first 300 chars: %q", firstN(html, 300))
 	}
 }
