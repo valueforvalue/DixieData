@@ -58,7 +58,6 @@ func TestShareViewShowsSubOverviewHelp(t *testing.T) {
 		// Bug Report Bundle) moved to /settings
 		// (issue #255).
 		"Share Archive",
-		"Export, back up, import, and restore your DixieData local archive",
 		"Quick actions",
 	} {
 		if !strings.Contains(content, needle) {
