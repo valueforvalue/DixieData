@@ -137,7 +137,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Identity & Relationship</p>
-						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the person record should behave in the local archive.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div>
@@ -189,7 +188,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.24)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] p-4" data-entry-type-special>
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--theme-accent-strong)]">Person Record Link</p>
-								<p class="mt-1 text-sm text-slate-600">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
 							</div>
 							<div class="responsive-two-col grid gap-4">
 								<div class="responsive-span-2 col-span-2">
@@ -219,7 +217,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Service, Pension & Archive Details</p>
-						<p class="mt-2 text-sm text-slate-600">Keep the military story, pension trail, and Confederate Home data together so related research stays in one place.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div data-soldier-only-field>
@@ -277,7 +274,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section class="rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Life Details & Burial</p>
-						<p class="mt-2 text-sm text-slate-600">These fields answer when the person lived and where they ended their story.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div>
@@ -310,7 +306,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Source Records</p>
-							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
 						</div>
 						@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
 							"data-record-add": "",
@@ -333,7 +328,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					<details>
 						<summary class="mb-4 cursor-pointer list-none">
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Biography & Internal Notes</p>
-							<p class="mt-2 text-sm text-slate-600">Biography is the public-facing narrative for this person record. Internal notes stay available for research context and workflow details.</p>
 						</summary>
 						<div class="space-y-4">
 							<div>
@@ -383,7 +377,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<section class="relative rounded-[1.7rem] border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-white-rgb)/0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Images</p>
-						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
 					</div>
 					<div id={ uiids.PanelSoldierFormImages }>
 						<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
@@ -470,7 +463,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Responsive Layout Mode</h3>
-					<p class="mt-2 text-sm text-slate-600">Switch between the relaxed and split-screen layouts, or leave the app on Auto so it changes around <span data-layout-mode-breakpoint>1000px</span> as the window narrows.</p>
 				</div>
 				<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 					<div class="layout-mode-summary">
@@ -498,7 +490,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Debug Mode</h3>
-					<p class="mt-2 text-sm text-slate-600">Turn on debug logging. Once on, the 🐞 button appears in the footer — click it to open the Debug Console and read the in-memory log tail. The setting persists in <code>local_settings.json</code> across restarts.</p>
 					<p class="mt-1 text-xs text-slate-500">Equivalent to launching the app with <code>DIXIEDATA_DEBUG=1</code> in the environment.</p>
 				</div>
 				<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } data-dixie-submit="true" class="flex items-center gap-3">
@@ -538,7 +529,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Image Maintenance</h3>
-					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
 				<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } data-dixie-submit="true" data-results-target="#settings-orphan-results" class="space-y-4">
 					@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
@@ -548,7 +538,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
-					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
 				<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" data-results-target="#settings-quality-results" class="space-y-4">
 					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
@@ -573,7 +562,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			// same; only the templ rendering moves.
 			<div id="settings-diagnostics-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Support &amp; Diagnostics</p>
 					<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
 					<p class="mt-2 text-sm text-slate-600">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
 				</div>
@@ -647,7 +635,6 @@ templ SettingsAppearancePanel(currentTheme, currentExportSurface string) {
 	<div id="settings-appearance-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 		<div>
 			<h3 class="text-xl gold font-bold">Appearance</h3>
-			<p class="mt-2 text-sm text-slate-600">Pick a theme for the whole app. The choice is per-user and lives in <code>.dixiedata-state/local_settings.json</code>, so it survives <code>.ddbak</code> restore and in-place app updates. It does NOT travel with the archive on Share / Backup / Restore.</p>
 		</div>
 		<form action="/settings/theme" data-dixie-submit="true" class="space-y-3">
 			<div class="grid gap-3 sm:grid-cols-3" data-theme-picker>
@@ -719,7 +706,6 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 	<div id="settings-update-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 		<div class="space-y-2">
 			<h3 class="text-xl gold font-bold">Software Updates</h3>
-			<p class="text-sm text-slate-600">Check the latest DixieData release, save a custom update feed URL, and apply packaged updates in place for installed builds.</p>
 		</div>
 		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 			<div><strong>Current Version:</strong> { state.CurrentVersion }</div>
@@ -986,7 +972,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		if len(soldiers) > 0 {
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-parchment-rgb)/0.78)] px-4 py-3">
 				<div>
-					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Manual Comparison</p>
+					<h3 id="search-compare-selection-status" class="text-xl gold font-bold">Manual Comparison</h3>
 					<p id="search-compare-selection-help" data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
 				</div>
 				@components.Button("Compare Selected", components.ButtonSecondary, "opacity-60 cursor-not-allowed", templ.Attributes{
@@ -1237,8 +1223,7 @@ func previewText(value string, limit int) string {
 // Tracking: issue #98 from the 2026-06-24 audit.
 templ emptyArchiveSetupCard(search viewmodel.PersonRecordSearch) {
 	<section data-empty-archive-setup aria-labelledby="empty-archive-setup-heading" class="rounded-3xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-[rgb(var(--theme-parchment-rgb)/0.85)] p-6 shadow-sm">
-		<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Welcome to DixieData</p>
-		<h2 id="empty-archive-setup-heading" class="mt-2 text-2xl font-bold text-[var(--theme-text-primary)]">Start your Local Archive</h2>
+		<h2 id="empty-archive-setup-heading" class="text-2xl font-bold text-[var(--theme-text-primary)]">Start your Local Archive</h2>
 		<p class="mt-2 text-sm leading-6 text-slate-600">
 			Your Local Archive is empty. Add your first Person Record, load a backup archive, or initialise the app to begin.
 		</p>
@@ -1293,7 +1278,6 @@ templ SettingsBuildPanel() {
 	<div id="settings-build-panel" data-settings-build class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 		<div>
 			<h3 class="text-xl gold font-bold">Build Information</h3>
-			<p class="mt-2 text-sm text-slate-600">The codename, branch, and commit this DixieData binary was built from. Useful for support tickets and bug reports.</p>
 		</div>
 		<dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
 			<dt class="text-slate-500">Codename</dt>

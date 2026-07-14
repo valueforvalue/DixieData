@@ -137,7 +137,6 @@ func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"name=\"biography\"",
-		"Biography is the public-facing narrative",
 		"Advanced PDF Excerpt Override",
 		`name="pdf_excerpt_override"`,
 		"Target 1200 chars",

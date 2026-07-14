@@ -122,11 +122,16 @@ templ Dedupe() {
 	});
 });
 
-test('probe does NOT flag share_exports.templ exact-duplicate on current HEAD (slice 3 fix landed)', () => {
+test('probe does NOT flag share_exports.templ R3 (string literal duplicated) on current HEAD (slice 3 fix landed)', () => {
 	const r = runProbe();
-	assert.ok(
-		!/generate portable exports, replacement backups/i.test(r.stdout),
-		`share_exports duplicate should be absent on post-slice-3 HEAD\nstdout: ${r.stdout}`,
+	// Slice 3 removed the duplicated body sentence, but R5 may still
+	// fire on the surviving page-level body paragraph. Pin the R3
+	// duplication specifically (R5 is the next slice's job).
+	const r3FindingRows = r.stdout.split('\n').filter((l) => /^\s+R3\s+L\d+/.test(l));
+	assert.equal(
+		r3FindingRows.length,
+		0,
+		`share_exports R3 duplicate should be absent on post-slice-3 HEAD\nfinding rows: ${r3FindingRows.join('\n')}`,
 	);
 });
 
@@ -155,11 +160,16 @@ templ SyncDedupe() {
 	});
 });
 
-test('probe does NOT flag share_sync.templ exact-duplicate on current HEAD (slice 4 fix landed)', () => {
+test('probe does NOT flag share_sync.templ R3 (string literal duplicated) on current HEAD (slice 4 fix landed)', () => {
 	const r = runProbe();
-	assert.ok(
-		!/connect a google account to upload backups/i.test(r.stdout),
-		`share_sync duplicate should be absent on post-slice-4 HEAD\nstdout: ${r.stdout}`,
+	// Slice 4 removed the duplicated body sentence, but R5 may still
+	// fire on the surviving page-level body paragraph. Pin the R3
+	// duplication specifically (R5 is the next slice's job).
+	const r3FindingRows = r.stdout.split('\n').filter((l) => /^\s+R3\s+L\d+/.test(l));
+	assert.equal(
+		r3FindingRows.length,
+		0,
+		`share_sync R3 duplicate should be absent on post-slice-4 HEAD\nfinding rows: ${r3FindingRows.join('\n')}`,
 	);
 });
 
@@ -343,6 +353,115 @@ templ GoFlow() {
 		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
 		const r3FindingRows = r.stdout.split('\n').filter((l) => /^\s+R3\s+L\d+/.test(l));
 		assert.equal(r3FindingRows.length, 0, `R3 must not flag pure Go code\nfinding rows: ${r3FindingRows.join('\n')}`);
+	});
+});
+
+// ---- R4 synthetic regression ----
+
+test('R4 flags stacked eyebrow + heading within 3 lines', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r4.templ'), `package templates
+templ Stacked() {
+	<div>
+		<p class="text-xs font-semibold uppercase tracking-[0.26em]">Export & Backup</p>
+		<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		assert.ok(/Export.*Create files/i.test(r.stdout), `expected R4 to flag stacked headings\nstdout: ${r.stdout}`);
+	});
+});
+
+test('R4 does NOT flag dynamic headings (Go expressions like { x })', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r4_dynamic.templ'), `package templates
+templ DynamicHeadings() {
+	<div>
+		<p class="text-xs font-semibold uppercase tracking-[0.22em]">{ entryBadgeLabel(s) }</p>
+		<h3 class="mt-2 text-xl font-semibold">{ detailHeading(s) }</h3>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		const r4FindingRows = r.stdout.split('\n').filter((l) => /^\s+R4\s+L\d+/.test(l));
+		assert.equal(r4FindingRows.length, 0, `R4 must not flag dynamic headings\nfinding rows: ${r4FindingRows.join('\n')}`);
+	});
+});
+
+test('R4 does NOT flag headings separated by a <p> body (the pair is broken)', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r4_broken.templ'), `package templates
+templ Broken() {
+	<div>
+		<h3 class="text-xl gold font-bold">Profile</h3>
+		<p>Short body.</p>
+		<h4 class="text-lg">Details</h4>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		const r4FindingRows = r.stdout.split('\n').filter((l) => /^\s+R4\s+L\d+/.test(l));
+		assert.equal(r4FindingRows.length, 0, `R4 must not flag broken pairs\nfinding rows: ${r4FindingRows.join('\n')}`);
+	});
+});
+
+// ---- R5 synthetic regression ----
+
+test('R5 flags a verbose body paragraph directly under a heading', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r5.templ'), `package templates
+templ VerboseBody() {
+	<div>
+		<p class="text-xs font-semibold uppercase tracking-[0.26em]">Person Record Link</p>
+		<p class="mt-1 text-sm text-slate-600">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		assert.ok(
+			/person records stay anchored/i.test(r.stdout),
+			`expected R5 to flag verbose body\nstdout: ${r.stdout}`,
+		);
+	});
+});
+
+test('R5 does NOT flag a short body paragraph under a heading', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r5_short.templ'), `package templates
+templ ShortBody() {
+	<div>
+		<h3 class="text-xl gold font-bold">Profile</h3>
+		<p class="mt-2 text-sm text-slate-600">Concise summary.</p>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		const r5FindingRows = r.stdout.split('\n').filter((l) => /^\s+R5\s+L\d+/.test(l));
+		assert.equal(r5FindingRows.length, 0, `R5 must not flag short bodies\nfinding rows: ${r5FindingRows.join('\n')}`);
+	});
+});
+
+test('R5 does NOT flag a verbose body that is NOT under a heading (mid-section prose)', () => {
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'r5_no_heading.templ'), `package templates
+templ MidSection() {
+	<div>
+		<h3 class="text-xl gold font-bold">Profile</h3>
+		<dl><dt>Field</dt><dd>Value</dd></dl>
+		<p class="mt-4 text-sm text-slate-600">This is a verbose body paragraph that would otherwise fire R5 if it were directly under the heading, but the dl element breaks the adjacency.</p>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		const r5FindingRows = r.stdout.split('\n').filter((l) => /^\s+R5\s+L\d+/.test(l));
+		assert.equal(r5FindingRows.length, 0, `R5 must not flag prose 3+ lines under a heading\nfinding rows: ${r5FindingRows.join('\n')}`);
 	});
 });
 
