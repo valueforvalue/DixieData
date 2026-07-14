@@ -553,8 +553,13 @@ func TestHandleRecoveryRendersRestorePointPrompt(t *testing.T) {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
+	// Issue #579: the #561 UX microcopy sweep renamed the
+	// recovery page heading. "Update recovery" is no longer
+	// rendered; the new heading is the longer sentence. The
+	// restore button + failure detail + version labels are
+	// unchanged and still assert here.
 	for _, needle := range []string{
-		"Update recovery",
+		"The last update did not finish a healthy first launch.",
 		"Restore previous build and Local Archive",
 		"failed to open database",
 		"v1.2.27",

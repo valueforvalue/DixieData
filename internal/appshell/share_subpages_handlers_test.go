@@ -45,7 +45,7 @@ func TestShareExportsSubpage_Renders(t *testing.T) {
 	mustContain(t, content, []string{
 		`href="/share"`,      // breadcrumb back to /share
 		"Share Exports",      // page header
-		"Export & Backup",    // the section heading
+		"Create files to share or preserve", // section heading (issue #579: was "Export & Backup" pre-#561)
 		"Export JSON",        // the whole-archive export
 		"Export Shared Archive (.ddshare)",
 		"Open Share Queue",   // the navigate-to-queue link (issue #310)
@@ -83,7 +83,7 @@ func TestShareImportsSubpage_Renders(t *testing.T) {
 	mustContain(t, content, []string{
 		`href="/share"`, // breadcrumb
 		"Share Imports",
-		"Import & Restore",
+		"Bring data back into this local archive", // section heading (issue #579: was "Import & Restore" pre-#561)
 		"Collaborative Merge",
 		"Import Shared Archive (.ddshare)",
 		"Memorial JSON Import",
