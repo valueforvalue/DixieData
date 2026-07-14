@@ -2,6 +2,7 @@ package archive
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -2639,4 +2640,157 @@ func TestBackupService_ExportBackup_IncludesArticlesCount(t *testing.T) {
 	if manifest.DataArticleRefsFile != "data/article_refs.json" {
 		t.Errorf("manifest.DataArticleRefsFile = %q, want data/article_refs.json", manifest.DataArticleRefsFile)
 	}
+}
+
+// TestAddBackupImagesIncludeBytesDefault_RealBytes pins the
+// default includeBytes=true path: addBackupImages copies the
+// real image bytes into the zip entry. Covers slice 1 of
+// issue #545 (bug-report bundle image-placeholder mode).
+func TestAddBackupImagesIncludeBytesDefault_RealBytes(t *testing.T) {
+	imageRoot := filepath.Join(testtemp.New(t).Path(), "images")
+	if err := os.MkdirAll(filepath.Join(imageRoot, "pension-1"), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := pngFixture()
+	if err := os.WriteFile(filepath.Join(imageRoot, "pension-1", "portrait.png"), payload, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "images.zip")
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zipWriter := zip.NewWriter(outFile)
+	if err := addBackupImages(zipWriter, imageRoot, true); err != nil {
+		t.Fatalf("addBackupImages(true): %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("zipWriter.Close: %v", err)
+	}
+	if err := outFile.Close(); err != nil {
+		t.Fatalf("outFile.Close: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	if len(reader.File) != 1 {
+		t.Fatalf("zip entries = %d, want 1", len(reader.File))
+	}
+	got, err := readZipEntry(t, reader.File[0])
+	if err != nil {
+		t.Fatalf("read entry: %v", err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("entry bytes = %d, want %d (real bytes)", len(got), len(payload))
+	}
+}
+
+// TestAddBackupImagesIncludeBytesFalse_StubMode pins the
+// placeholder-mode branch: addBackupImages(zipWriter, root, false)
+// writes a small text stub per image recording the archive-relative
+// path + on-disk size, instead of the real bytes. The stub format
+// is plain text so `unzip -l` + `cat` both work for triage.
+// Covers slice 1 of issue #545.
+func TestAddBackupImagesIncludeBytesFalse_StubMode(t *testing.T) {
+	imageRoot := filepath.Join(testtemp.New(t).Path(), "images")
+	if err := os.MkdirAll(filepath.Join(imageRoot, "pension-1"), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := pngFixture()
+	if err := os.WriteFile(filepath.Join(imageRoot, "pension-1", "portrait.png"), payload, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "images.zip")
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zipWriter := zip.NewWriter(outFile)
+	if err := addBackupImages(zipWriter, imageRoot, false); err != nil {
+		t.Fatalf("addBackupImages(false): %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("zipWriter.Close: %v", err)
+	}
+	if err := outFile.Close(); err != nil {
+		t.Fatalf("outFile.Close: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	if len(reader.File) != 1 {
+		t.Fatalf("zip entries = %d, want 1", len(reader.File))
+	}
+	got, err := readZipEntry(t, reader.File[0])
+	if err != nil {
+		t.Fatalf("read entry: %v", err)
+	}
+	stub := string(got)
+	if bytes.Equal(got, payload) {
+		t.Fatalf("stub mode wrote real bytes (%d bytes); want placeholder stub", len(got))
+	}
+	if !strings.Contains(stub, "image-placeholder") {
+		t.Errorf("stub missing 'image-placeholder' marker; got %q", stub)
+	}
+	if !strings.Contains(stub, "images/pension-1/portrait.png") {
+		t.Errorf("stub missing archive-relative path; got %q", stub)
+	}
+	if !strings.Contains(stub, fmt.Sprintf("original_size=%d", len(payload))) {
+		t.Errorf("stub missing original_size=%d; got %q", len(payload), stub)
+	}
+}
+
+// TestAddBackupImagesIncludeBytesFalse_MissingDir_Noop pins the
+// missing-image-dir short-circuit for the new signature. The
+// previous behavior was: if imageRoot doesn't exist, return nil
+// (no error). The refactor must preserve that so the bundle
+// pipeline still works for archives with no images.
+func TestAddBackupImagesIncludeBytesFalse_MissingDir_Noop(t *testing.T) {
+	missing := filepath.Join(testtemp.New(t).Path(), "does-not-exist")
+	outPath := filepath.Join(testtemp.New(t).Path(), "images.zip")
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zipWriter := zip.NewWriter(outFile)
+	if err := addBackupImages(zipWriter, missing, false); err != nil {
+		t.Fatalf("addBackupImages(missing, false): %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("zipWriter.Close: %v", err)
+	}
+	if err := outFile.Close(); err != nil {
+		t.Fatalf("outFile.Close: %v", err)
+	}
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+	if len(reader.File) != 0 {
+		t.Fatalf("zip entries = %d, want 0 for missing image dir", len(reader.File))
+	}
+}
+
+// readZipEntry returns the full payload of a single zip entry as
+// a byte slice. Helper for the addBackupImages tests; mirrors the
+// pattern used by archive_writer_test.go for zip round-trip checks.
+func readZipEntry(t *testing.T, file *zip.File) ([]byte, error) {
+	t.Helper()
+	rc, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	return io.ReadAll(rc)
 }

@@ -607,7 +607,7 @@ func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (
 		if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
 			return err
 		}
-		return addBackupImages(zipWriter, filepath.Join(dataDir, "images"))
+		return addBackupImages(zipWriter, filepath.Join(dataDir, "images"), true)
 	}); err != nil {
 		return BackupManifest{}, err
 	}
@@ -1133,7 +1133,27 @@ func addBackupFile(zipWriter *zip.Writer, entryName, sourcePath string) error {
 	return err
 }
 
-func addBackupImages(zipWriter *zip.Writer, imageRoot string) error {
+// addBackupImages walks imageRoot and writes every file into
+// zipWriter. includeBytes selects between two modes:
+//
+//   - includeBytes=true (legacy / full-fidelity): each entry is
+//     the raw image bytes, identical to the pre-#545 behavior.
+//     Used for `.ddbak` backups where the user expects a
+//     round-trippable snapshot they can restore from.
+//   - includeBytes=false (placeholder mode, issue #545): each
+//     entry is a small text stub of the form
+//     "image-placeholder: path=\"<archive-relative path>\" original_size=<bytes>\n".
+//     The stub is plain text so `unzip -l` and `cat` both work
+//     for triage; the support engineer can correlate the
+//     placeholder path with the corresponding row in the
+//     `images` table from the bundled database. Used by the
+//     bug-report bundle when the user opts out of including
+//     image bytes (drops ~100-250 MB on a default-seed archive).
+//
+// The missing-image-dir short-circuit (return nil on os.IsNotExist)
+// is preserved for both modes so the bundle pipeline works for
+// archives that never had an `images/` directory.
+func addBackupImages(zipWriter *zip.Writer, imageRoot string, includeBytes bool) error {
 	if _, err := os.Stat(imageRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -1154,16 +1174,29 @@ func addBackupImages(zipWriter *zip.Writer, imageRoot string) error {
 			return err
 		}
 		entryName := normalizeBackupPath(relativePath)
+		entry, err := zipWriter.Create(entryName)
+		if err != nil {
+			return err
+		}
+		if !includeBytes {
+			// Issue #545 placeholder mode. The original size
+			// lets a support engineer reconstruct the byte
+			// budget the user saved by opting out; the path
+			// is the archive-relative entry name so it lines
+			// up with `unzip -l` output and the `images` table.
+			stub := fmt.Sprintf("image-placeholder: path=%q original_size=%d\n",
+				entryName, info.Size())
+			if _, err := io.WriteString(entry, stub); err != nil {
+				return err
+			}
+			return nil
+		}
 		source, err := os.Open(path)
 		if err != nil {
 			return err
 		}
 		defer func() { debug.DeferCloseLog(source, "addBackupImages.source")() }()
 
-		entry, err := zipWriter.Create(entryName)
-		if err != nil {
-			return err
-		}
 		_, err = io.Copy(entry, source)
 		return err
 	})

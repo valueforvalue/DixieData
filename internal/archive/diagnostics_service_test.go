@@ -574,9 +574,274 @@ func TestDiagnosticsService_ExportOmitsRingSnapshotWhenNil(t *testing.T) {
 // version field increments. Consumer code that branches on
 // Version can rely on this test to catch accidental
 // rollbacks.
-func TestManifestVersionBumpedToThree(t *testing.T) {
-	if diagnosticsBundleVersion != 3 {
-		t.Fatalf("diagnosticsBundleVersion = %d; want 3 (issue #547)", diagnosticsBundleVersion)
+// TestManifestVersionBumpedToThreeRetired pins the historical
+// version-bump test. The v3 bump (issue #547) is now superseded
+// by v4 (issue #545 slice 2); the new TestManifestVersionBumpedToFour
+// below is the active pinning test. This test is kept as a
+// tombstone with an explicit skip so a reader who lands here
+// learns the version history without hitting a confusing failure
+// during a code archaeology pass.
+func TestManifestVersionBumpedToThreeRetired(t *testing.T) {
+	t.Skip("retired: diagnosticsBundleVersion bumped from 3 to 4 in issue #545 slice 2; see TestManifestVersionBumpedToFour")
+}
+
+// TestDiagnosticsService_ExportWithIncludeImagesFalse_StubMode
+// pins slice 2 of issue #545: when the caller passes
+// DiagnosticsExportOptions{IncludeImages: false}, the bundle's
+// `images/` entries are placeholder stubs (NOT the real PNG/JPEG
+// bytes), the manifest's ImagePlaceholderMode is "stub", and the
+// scratchpads are unaffected (those are text + small, kept real
+// so the support engineer can read them).
+func TestDiagnosticsService_ExportWithIncludeImagesFalse_StubMode(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	diagnosticsSvc := NewDiagnosticsService(d, soldierSvc)
+
+	dataDir := testtemp.New(t).Path()
+	created, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "PENSION-1",
+		FirstName: "Robert",
+		LastName:  "Lee",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	imageDir := filepath.Join(dataDir, "images", "pension-1")
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := pngFixture()
+	if err := os.WriteFile(filepath.Join(imageDir, "portrait.png"), payload, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := soldierSvc.AddImage(created.ID, "portrait.png", `images\pension-1\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	// Real scratchpad file so we can prove the scratchpads branch
+	// is unaffected by the includeImages=false setting.
+	scratchpadDir := filepath.Join(dataDir, "scratchpads")
+	if err := os.MkdirAll(scratchpadDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll scratchpads: %v", err)
+	}
+	scratchpadPayload := []byte("real scratchpad text body")
+	if err := os.WriteFile(filepath.Join(scratchpadDir, "pension-1.txt"), scratchpadPayload, 0o644); err != nil {
+		t.Fatalf("WriteFile scratchpad: %v", err)
+	}
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "bundle.zip")
+	manifest, err := diagnosticsSvc.ExportWithOptions(outPath, dataDir, DiagnosticsExportOptions{IncludeImages: false})
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	if manifest.ImagePlaceholderMode != "stub" {
+		t.Errorf("manifest.ImagePlaceholderMode = %q; want %q", manifest.ImagePlaceholderMode, "stub")
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	var imageEntry, scratchpadEntry *zip.File
+	for _, f := range reader.File {
+		switch {
+		case f.Name == "images/pension-1/portrait.png":
+			imageEntry = f
+		case f.Name == "scratchpads/pension-1.txt":
+			scratchpadEntry = f
+		}
+	}
+	if imageEntry == nil {
+		t.Fatal("image entry missing from bundle")
+	}
+	if scratchpadEntry == nil {
+		t.Fatal("scratchpad entry missing from bundle")
+	}
+
+	imgBytes, err := readZipEntry(t, imageEntry)
+	if err != nil {
+		t.Fatalf("read image entry: %v", err)
+	}
+	if bytes.Equal(imgBytes, payload) {
+		t.Errorf("image entry = real PNG bytes (%d); want placeholder stub", len(imgBytes))
+	}
+	if !strings.Contains(string(imgBytes), "image-placeholder") {
+		t.Errorf("image entry missing placeholder marker; got %q", string(imgBytes))
+	}
+	if !strings.Contains(string(imgBytes), "images/pension-1/portrait.png") {
+		t.Errorf("image stub missing archive-relative path; got %q", string(imgBytes))
+	}
+
+	scratchpadBytes, err := readZipEntry(t, scratchpadEntry)
+	if err != nil {
+		t.Fatalf("read scratchpad entry: %v", err)
+	}
+	if !bytes.Equal(scratchpadBytes, scratchpadPayload) {
+		t.Errorf("scratchpad entry = %q; want real bytes %q (scratchpads unaffected by includeImages=false)", scratchpadBytes, scratchpadPayload)
+	}
+}
+
+// TestDiagnosticsService_ExportWithIncludeImagesTrue_RealBytes
+// pins the default behavior for the new options struct: passing
+// IncludeImages=true keeps the pre-#545 real-bytes path. Catches a
+// future regression that flips the default to false accidentally.
+func TestDiagnosticsService_ExportWithIncludeImagesTrue_RealBytes(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	diagnosticsSvc := NewDiagnosticsService(d, soldierSvc)
+
+	dataDir := testtemp.New(t).Path()
+	created, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "PENSION-2",
+		FirstName: "Stonewall",
+		LastName:  "Jackson",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	imageDir := filepath.Join(dataDir, "images", "pension-2")
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := pngFixture()
+	if err := os.WriteFile(filepath.Join(imageDir, "portrait.png"), payload, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := soldierSvc.AddImage(created.ID, "portrait.png", `images\pension-2\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "bundle.zip")
+	manifest, err := diagnosticsSvc.ExportWithOptions(outPath, dataDir, DiagnosticsExportOptions{IncludeImages: true})
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	if manifest.ImagePlaceholderMode != "none" {
+		t.Errorf("manifest.ImagePlaceholderMode = %q; want %q for IncludeImages=true", manifest.ImagePlaceholderMode, "none")
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	var imageEntry *zip.File
+	for _, f := range reader.File {
+		if f.Name == "images/pension-2/portrait.png" {
+			imageEntry = f
+			break
+		}
+	}
+	if imageEntry == nil {
+		t.Fatal("image entry missing from bundle")
+	}
+	imgBytes, err := readZipEntry(t, imageEntry)
+	if err != nil {
+		t.Fatalf("read image entry: %v", err)
+	}
+	if !bytes.Equal(imgBytes, payload) {
+		t.Errorf("image entry bytes = %d; want real PNG %d bytes", len(imgBytes), len(payload))
+	}
+}
+
+// TestDiagnosticsService_ExportLegacyTwoArgSignature_DefaultsToRealBytes
+// pins the legacy 2-arg Export signature as a thin wrapper that
+// preserves the pre-#545 default (IncludeImages=true, real bytes).
+// Existing callers (the appshell handler, the in-place update
+// flow) keep working untouched through slice 2; slice 3 will
+// switch the appshell handler to the new 3-arg form.
+func TestDiagnosticsService_ExportLegacyTwoArgSignature_DefaultsToRealBytes(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	diagnosticsSvc := NewDiagnosticsService(d, soldierSvc)
+
+	dataDir := testtemp.New(t).Path()
+	created, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "PENSION-3",
+		FirstName: "James",
+		LastName:  "Longstreet",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	imageDir := filepath.Join(dataDir, "images", "pension-3")
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := pngFixture()
+	if err := os.WriteFile(filepath.Join(imageDir, "portrait.png"), payload, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := soldierSvc.AddImage(created.ID, "portrait.png", `images\pension-3\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "bundle.zip")
+	manifest, err := diagnosticsSvc.Export(outPath, dataDir)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if manifest.ImagePlaceholderMode != "none" {
+		t.Errorf("legacy 2-arg Export: manifest.ImagePlaceholderMode = %q; want %q (default must be real bytes)", manifest.ImagePlaceholderMode, "none")
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+	for _, f := range reader.File {
+		if f.Name == "images/pension-3/portrait.png" {
+			imgBytes, err := readZipEntry(t, f)
+			if err != nil {
+				t.Fatalf("read image entry: %v", err)
+			}
+			if !bytes.Equal(imgBytes, payload) {
+				t.Errorf("legacy 2-arg Export wrote placeholder (size=%d); want real PNG bytes (%d)", len(imgBytes), len(payload))
+			}
+			return
+		}
+	}
+	t.Fatal("image entry missing from legacy 2-arg Export bundle")
+}
+
+// TestDiagnosticsService_ExportPlaceholderModeFieldRoundTrip pins
+// the JSON wire-format contract: DiagnosticsManifest.ImagePlaceholderMode
+// round-trips cleanly through marshal/unmarshal so a consumer
+// (or the diagnostic bundle viewer) can rely on the field being
+// "none" or "stub" after parsing.
+func TestDiagnosticsService_ExportPlaceholderModeFieldRoundTrip(t *testing.T) {
+	for _, mode := range []string{"none", "stub"} {
+		mode := mode
+		t.Run(mode, func(t *testing.T) {
+			m := DiagnosticsManifest{ImagePlaceholderMode: mode}
+			encoded, err := json.Marshal(m)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			var decoded DiagnosticsManifest
+			if err := json.Unmarshal(encoded, &decoded); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+			if decoded.ImagePlaceholderMode != mode {
+				t.Errorf("round-trip: mode = %q; want %q", decoded.ImagePlaceholderMode, mode)
+			}
+		})
+	}
+}
+
+// TestManifestVersionBumpedToFour pins the on-disk shape bump
+// that comes with slice 2: the manifest gains a new
+// ImagePlaceholderMode field, so consumers that branch on the
+// Version field see a version increment.
+func TestManifestVersionBumpedToFour(t *testing.T) {
+	if diagnosticsBundleVersion != 4 {
+		t.Fatalf("diagnosticsBundleVersion = %d; want 4 (issue #545 slice 2)", diagnosticsBundleVersion)
 	}
 }
 

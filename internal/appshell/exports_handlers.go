@@ -931,9 +931,48 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Issue #545 slice 3: honor the user's "Include images"
+	// checkbox. Defaults to true (real bytes) so callers that
+	// post without the field keep the pre-#545 behavior.
+	includeImages := parseIncludeImagesFormValue(r)
+
 	a.enqueueExport(dupKey, "bug_report", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(10, "Collecting diagnostics")
-		_, err := a.diagnostics.Export(path, a.dataDir)
+		_, err := a.diagnostics.ExportWithOptions(path, a.dataDir, archive.DiagnosticsExportOptions{
+			IncludeImages: includeImages,
+		})
 		return err
 	}, path, w)
+}
+
+// parseIncludeImagesFormValue reads the bug-report form's
+// `include_images` field and returns the parsed boolean.
+//
+// Contract (issue #545 slice 3):
+//   - `include_images=true`  -> true (user checked the box)
+//   - `include_images=false` -> false (explicit opt-out)
+//   - empty body or missing field -> true (legacy default; real
+//     bytes bundled). This keeps older clients + the CLI smoke
+//     probe working without code changes.
+//   - `include_images=` (empty value, checkbox unchecked with no
+//     value attribute) -> false.
+//   - any other value -> true (unknown defaults to include; the
+//     user can always re-export with the checkbox unchecked).
+//
+// The helper never returns an error: a malformed body is treated
+// as "user did not opt out", which is the safest default.
+func parseIncludeImagesFormValue(r *http.Request) bool {
+	if err := r.ParseForm(); err != nil {
+		return true
+	}
+	raw, ok := r.PostForm["include_images"]
+	if !ok || len(raw) == 0 {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(raw[0])) {
+	case "", "false", "0", "off", "no":
+		return false
+	default:
+		return true
+	}
 }
