@@ -47,14 +47,6 @@ type LocalSettings struct {
 	// this value via the per-page <html data-export-surface>
 	// attribute the /settings handler writes.
 	ExportSurface string `json:"export_surface,omitempty"`
-	// Issue #544: per-user URL the "Send to support" buttons
-	// POST the feedback entry + bug-report bundle to. Empty
-	// means the feature is OFF (the buttons render but a
-	// click surfaces a 'configure the endpoint in Settings'
-	// toast rather than firing the upload). Persisted with
-	// omitempty so old local_settings.json files load cleanly
-	// without the key.
-	SupportEndpoint string `json:"support_endpoint,omitempty"`
 }
 
 // ResolvedExportSurface returns the user's effective export

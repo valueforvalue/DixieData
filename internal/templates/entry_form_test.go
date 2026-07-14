@@ -349,7 +349,7 @@ func TestInitialSetupViewHasSurfaceInventoryID(t *testing.T) {
 
 func TestSettingsViewShowsResponsiveLayoutControls(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("RESET", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	err := SettingsView("RESET", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 			Message:   "Download checksum mismatch.",
 			AppliedAt: "2026-05-30T03:00:00Z",
 		},
-	}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 
 func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -509,7 +509,7 @@ func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 // action URLs.
 func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -533,6 +533,17 @@ func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
 		if !strings.Contains(content, needle) {
 			t.Errorf("/settings missing Support & Diagnostics card element %q", needle)
 		}
+	}
+	// Issue #566 slice 2: the per-user "Support endpoint URL"
+	// form was removed (DixieData owns the Formspark endpoint
+	// and hardcodes it into the desktop binary). The
+	// disclosure copy replaces it so a curious user knows
+	// where the submission actually goes.
+	if strings.Contains(content, `action="/settings/support-endpoint"`) {
+		t.Errorf("/settings still renders the per-user support endpoint form (issue #566 slice 2 removed it)")
+	}
+	if !strings.Contains(content, "Feedback submissions are routed to a third-party support service (Formspark)") {
+		t.Errorf("/settings missing the Formspark disclosure copy (issue #566 locked decision 7)")
 	}
 }
 
@@ -934,7 +945,7 @@ func TestSettingsViewIncludesExportSurfacePanel(t *testing.T) {
 		surface := surface
 		t.Run(surface, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", surface, "").Render(context.Background(), &buf)
+			err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", surface).Render(context.Background(), &buf)
 			if err != nil {
 				t.Fatalf("Render: %v", err)
 			}
@@ -977,7 +988,7 @@ func TestSettingsViewIncludesExportSurfacePanel(t *testing.T) {
 // (rather than treating it as a `data-action` POST with no body).
 func TestSettingsViewIncludesBugReportImageCheckbox(t *testing.T) {
 	var buf bytes.Buffer
-	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page", "").Render(context.Background(), &buf)
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}, "default", "jobs-page").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

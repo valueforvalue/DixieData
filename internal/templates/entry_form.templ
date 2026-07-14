@@ -453,7 +453,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	</div>
 }
 
-templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme, currentExportSurface, currentSupportEndpoint string) {
+templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings, currentTheme, currentExportSurface string) {
 	@Layout("Settings") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
@@ -594,23 +594,13 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						@components.Button("Export Bug Report Bundle", components.ButtonSecondary, "w-full justify-start text-left", templ.Attributes{"type": "submit"})
 					</form>
 				</div>
-				<form action="/settings/support-endpoint" data-dixie-submit="true" class="space-y-3" id="settings-support-endpoint-form">
-					<label class="block text-sm text-slate-700">
-						Support endpoint URL
-						<input
-							type="url"
-							name="support_endpoint"
-							value={ currentSupportEndpoint }
-							class="field-input mt-2"
-							placeholder="https://support.example.invalid/upload"
-							autocomplete="off"
-						/>
-					</label>
-					<p class="text-xs leading-6 text-slate-500">https URL where the "Send to support" buttons POST the feedback entry + bug-report bundle. http:// is allowed only for 127.0.0.1 / localhost (dev / test). Clear the input to disable the feature.</p>
-					<div class="flex justify-end">
-						@components.Button("Save", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
-					</div>
-				</form>
+				// Issue #566: the per-user "Support endpoint URL"
+				// input is gone — DixieData owns the Formspark
+				// endpoint and hardcodes it into the desktop
+				// binary. The disclosure copy is the only thing
+				// left so a curious user knows where "Send to
+				// support" actually goes.
+				<p class="text-xs leading-6 text-slate-500">Feedback submissions are routed to a third-party support service (Formspark). The local copy is always saved first; see the Feedback modal for the full disclosure.</p>
 			</div>
 		</div>
 	}

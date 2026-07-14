@@ -2,14 +2,16 @@ package appshell
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
-	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
@@ -25,61 +27,46 @@ func skipIfWindowsFileLockRace(t *testing.T) {
 	}
 }
 
-// TestSupportEndpoint_ReadsFromLocalSettings pins the slice-4
-// contract that the "Send to support" button reads its
-// destination from records.LocalSettings.SupportEndpoint (the
-// field slice 2 added). This is a pure-file IO test (no
-// database, no app lifecycle) so it runs cleanly on Windows
-// and Linux without the feedback-log file-lock race.
-func TestSupportEndpoint_ReadsFromLocalSettings(t *testing.T) {
-	dataDir := testtemp.New(t).Path()
-	app := NewApp()
-	app.dataDir = dataDir
-
-	// Zero value (no endpoint configured).
-	if got := app.supportEndpoint(); got != "" {
-		t.Errorf("zero-value supportEndpoint = %q; want empty", got)
-	}
-
-	// Seeded value.
-	if err := records.SaveLocalSettings(dataDir, records.LocalSettings{
-		SupportEndpoint: "https://support.example.invalid/upload",
-	}); err != nil {
-		t.Fatalf("seed Save: %v", err)
-	}
-	if got := app.supportEndpoint(); got != "https://support.example.invalid/upload" {
-		t.Errorf("after seed, supportEndpoint = %q; want the seeded URL", got)
-	}
-}
-
-// TestHandleFeedbackSubmit_SendUploadsToEndpoint pins issue
-// #544 slice 4 happy path: clicking the new "Send to support"
+// TestHandleFeedbackSubmit_SendPostsJSONToFormspark pins issue
+// #566 slice 2 happy path: clicking the "Save & Send to Support"
 // button in the floating feedback modal (form action=send)
-// POSTs the feedback entry to the configured support endpoint.
-// The local JSONL is written FIRST so the user always has a
-// local copy even when the upload fails (per the issue's
-// "always write local first" contract).
+// POSTs the feedback entry to the DixieData-owned Formspark
+// endpoint as JSON. The local JSONL is written FIRST so the
+// user always has a local copy even when the upload fails
+// (per the local-first invariant from issue #544).
 //
-// The test wires a httptest receiver that captures the
-// multipart payload + returns a fake ticket id.
-func TestHandleFeedbackSubmit_SendUploadsToEndpoint(t *testing.T) {
+// The test wires an httptest receiver that captures the
+// request + returns 200 (Formspark's actual response shape).
+// The assertion set pins: method, Content-Type, the flattened
+// Formspark field set, the synthesised subject, and the
+// success toast text.
+func TestHandleFeedbackSubmit_SendPostsJSONToFormspark(t *testing.T) {
 	skipIfWindowsFileLockRace(t)
 	var captured struct {
 		Method      string
 		ContentType string
-		Metadata    map[string]any
+		Accept      string
+		Body        []byte
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captured.Method = r.Method
 		captured.ContentType = r.Header.Get("Content-Type")
-		_ = r.ParseMultipartForm(10 << 20)
-		if md := r.MultipartForm.Value["metadata"]; len(md) > 0 {
-			_ = json.Unmarshal([]byte(md[0]), &captured.Metadata)
-		}
+		captured.Accept = r.Header.Get("Accept")
+		captured.Body, _ = io.ReadAll(r.Body)
+		// Formspark echoes the submission as the response body
+		// (the live spike on 2026-07-14 confirmed this); mirror
+		// the shape so the test exercises the real contract.
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"ticket_id": "SUP-001"})
+		_, _ = w.Write(captured.Body)
 	}))
 	defer srv.Close()
+
+	// Override the package-level default endpoint for the
+	// duration of the test so the handler POSTs to the
+	// httptest server, not the production Formspark URL.
+	original := formsparkDefaultEndpointForTest
+	formsparkDefaultEndpointForTest = srv.URL
+	t.Cleanup(func() { formsparkDefaultEndpointForTest = original })
 
 	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
@@ -87,13 +74,6 @@ func TestHandleFeedbackSubmit_SendUploadsToEndpoint(t *testing.T) {
 		t.Fatalf("db.Open: %v", err)
 	}
 	defer database.Close()
-
-	// Seed the support endpoint.
-	if err := records.SaveLocalSettings(dataDir, records.LocalSettings{
-		SupportEndpoint: srv.URL,
-	}); err != nil {
-		t.Fatalf("seed Save: %v", err)
-	}
 
 	app := NewApp()
 	app.dataDir = dataDir
@@ -104,7 +84,7 @@ func TestHandleFeedbackSubmit_SendUploadsToEndpoint(t *testing.T) {
 	configureTestIdentity(t, app)
 	app.setupRoutes()
 
-	body := "category=bug&message=The+export+toast+is+too+small&action=send"
+	body := "category=bug&message=The+export+toast+is+too+small&action=send&page_path=%2Fcalendar&contact_email=tester%40example.invalid"
 	req := httptest.NewRequest(http.MethodPost, "/feedback/submit", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -116,39 +96,64 @@ func TestHandleFeedbackSubmit_SendUploadsToEndpoint(t *testing.T) {
 	if captured.Method != "POST" {
 		t.Errorf("server saw method = %q; want POST", captured.Method)
 	}
-	if !strings.HasPrefix(captured.ContentType, "multipart/form-data") {
-		t.Errorf("Content-Type = %q; want multipart/form-data", captured.ContentType)
+	if !strings.HasPrefix(captured.ContentType, "application/json") {
+		t.Errorf("Content-Type = %q; want application/json (Formspark JSON contract, issue #566 locked decision 3)", captured.ContentType)
 	}
-	if captured.Metadata["category"] != "bug" {
-		t.Errorf("metadata.category = %v; want bug", captured.Metadata["category"])
+	if !strings.HasPrefix(captured.Accept, "application/json") {
+		t.Errorf("Accept = %q; want application/json", captured.Accept)
 	}
-	if captured.Metadata["message"] != "The export toast is too small" {
-		t.Errorf("metadata.message = %v; want 'The export toast is too small'", captured.Metadata["message"])
+
+	var parsed map[string]any
+	if err := json.Unmarshal(captured.Body, &parsed); err != nil {
+		t.Fatalf("request body is not JSON: %v (raw: %q)", err, string(captured.Body))
+	}
+	if parsed["message"] != "The export toast is too small" {
+		t.Errorf("message = %v; want 'The export toast is too small'", parsed["message"])
+	}
+	if parsed["category"] != "bug" {
+		t.Errorf("category = %v; want bug", parsed["category"])
+	}
+	if parsed["page_path"] != "/calendar" {
+		t.Errorf("page_path = %v; want /calendar", parsed["page_path"])
+	}
+	if parsed["contact_email"] != "tester@example.invalid" {
+		t.Errorf("contact_email = %v; want tester@example.invalid", parsed["contact_email"])
+	}
+	// Subject must be synthesised (locked decision 3): the
+	// Formspark email notification uses it as the title.
+	if subj, _ := parsed["subject"].(string); !strings.Contains(subj, "bug") || !strings.Contains(subj, "/calendar") {
+		t.Errorf("subject = %q; want a string containing 'bug' and '/calendar'", subj)
 	}
 
 	// The dispatcher must still close the feedback modal +
-	// show a toast with the ticket id.
+	// show the success toast.
 	if rec.Header().Get("X-DixieData-Close-Feedback") != "true" {
 		t.Errorf("X-DixieData-Close-Feedback missing on send; body=%q", rec.Body.String())
 	}
 	toast := rec.Header().Get("X-DixieData-Toast")
-	if toast == "" {
-		t.Errorf("X-DixieData-Toast missing on send")
-	}
-	if !strings.Contains(toast, "SUP-001") {
-		t.Errorf("toast %q does not include the ticket id", toast)
+	if !strings.Contains(toast, "Feedback sent to DixieData support") {
+		t.Errorf("toast %q does not include the success message", toast)
 	}
 }
 
-// TestHandleFeedbackSubmit_SendWithoutEndpointToastsFeatureOff
-// pins the "feature off" contract: when no support endpoint is
-// configured, clicking "Send to support" still saves the local
-// JSONL but toasts a clear 'configure the endpoint in Settings'
-// message rather than failing silently or attempting an upload
-// to a blank URL (which would error inside supportuploader).
-func TestHandleFeedbackSubmit_SendWithoutEndpointToastsFeatureOff(t *testing.T) {
+// TestHandleFeedbackSubmit_SendFailureSurfacesLocalCopy pins
+// the local-first invariant (issue #544 + #566 locked
+// decision 6): when the support endpoint returns 5xx, the
+// local JSONL is still written (the test inspects the
+// feedback log file after the request) and the user sees a
+// failure toast that mentions the upload failed (NOT a
+// success toast).
+func TestHandleFeedbackSubmit_SendFailureSurfacesLocalCopy(t *testing.T) {
 	skipIfWindowsFileLockRace(t)
-	skipIfWindowsFileLockRace(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "formspark down for maintenance", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	original := formsparkDefaultEndpointForTest
+	formsparkDefaultEndpointForTest = srv.URL
+	t.Cleanup(func() { formsparkDefaultEndpointForTest = original })
+
 	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
@@ -165,7 +170,7 @@ func TestHandleFeedbackSubmit_SendWithoutEndpointToastsFeatureOff(t *testing.T) 
 	configureTestIdentity(t, app)
 	app.setupRoutes()
 
-	body := "category=bug&message=test&action=send"
+	body := "category=bug&message=please+test&action=send"
 	req := httptest.NewRequest(http.MethodPost, "/feedback/submit", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -174,22 +179,29 @@ func TestHandleFeedbackSubmit_SendWithoutEndpointToastsFeatureOff(t *testing.T) 
 	if rec.Code < 200 || rec.Code >= 300 {
 		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
 	}
-	if rec.Header().Get("X-DixieData-Close-Feedback") != "true" {
-		t.Errorf("X-DixieData-Close-Feedback missing; modal should still close on the no-endpoint path")
-	}
+	// The toast must indicate the failure so the user knows
+	// the local copy exists but the remote didn't go through.
 	toast := rec.Header().Get("X-DixieData-Toast")
-	if !strings.Contains(strings.ToLower(toast), "support endpoint") &&
-		!strings.Contains(strings.ToLower(toast), "configure") {
-		t.Errorf("no-endpoint toast %q should mention the support endpoint configuration; want user to know where to enable it", toast)
+	if !strings.Contains(strings.ToLower(toast), "upload failed") {
+		t.Errorf("toast %q should mention the upload failure", toast)
+	}
+	if !strings.Contains(toast, "saved locally") {
+		t.Errorf("toast %q should confirm the local copy is saved", toast)
+	}
+	// And the local JSONL must contain the entry.
+	logPath := appdata.FeedbackLogPath(dataDir)
+	if _, err := readFeedbackLogForTest(logPath); err != nil {
+		t.Errorf("local feedback log missing or unreadable after failed upload: %v", err)
 	}
 }
 
-// TestHandleFeedbackSubmit_SaveStillWritesLocalOnly pins the
-// existing-button contract: action=save (the existing Save
-// button's default) writes the local JSONL and DOES NOT fire
-// the upload. This is the regression pin for the existing
-// "Save" button behavior so the new "Send to support" button
-// doesn't accidentally trigger the upload on Save clicks.
+// TestHandleFeedbackSubmit_SaveStillWritesLocalOnly pins
+// the existing-button contract: action=save (the existing
+// Save button's default) writes the local JSONL and DOES NOT
+// fire the upload. This is the regression pin for the
+// existing "Save" button behavior so the new "Send to
+// support" button doesn't accidentally trigger the upload
+// on Save clicks.
 func TestHandleFeedbackSubmit_SaveStillWritesLocalOnly(t *testing.T) {
 	skipIfWindowsFileLockRace(t)
 	// httptest server that fails the test if hit.
@@ -199,18 +211,16 @@ func TestHandleFeedbackSubmit_SaveStillWritesLocalOnly(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	original := formsparkDefaultEndpointForTest
+	formsparkDefaultEndpointForTest = srv.URL
+	t.Cleanup(func() { formsparkDefaultEndpointForTest = original })
+
 	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
 	}
 	defer database.Close()
-
-	if err := records.SaveLocalSettings(dataDir, records.LocalSettings{
-		SupportEndpoint: srv.URL,
-	}); err != nil {
-		t.Fatalf("seed Save: %v", err)
-	}
 
 	app := NewApp()
 	app.dataDir = dataDir
@@ -247,7 +257,17 @@ func TestHandleFeedbackSubmit_SaveStillWritesLocalOnly(t *testing.T) {
 // action field -- the user-visible behavior is unchanged.
 func TestHandleFeedbackSubmit_MissingActionDefaultsToSave(t *testing.T) {
 	skipIfWindowsFileLockRace(t)
-	skipIfWindowsFileLockRace(t)
+	// httptest server that fails the test if hit.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("no-action submit should not POST to the support endpoint; got %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	original := formsparkDefaultEndpointForTest
+	formsparkDefaultEndpointForTest = srv.URL
+	t.Cleanup(func() { formsparkDefaultEndpointForTest = original })
+
 	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
@@ -276,4 +296,19 @@ func TestHandleFeedbackSubmit_MissingActionDefaultsToSave(t *testing.T) {
 	if rec.Header().Get("X-DixieData-Close-Feedback") != "true" {
 		t.Errorf("X-DixieData-Close-Feedback missing on no-action submit")
 	}
+}
+
+// readFeedbackLogForTest is a tiny helper that reads the
+// feedback log file at the given path and returns nil when
+// the file exists and is non-empty. Failure modes return an
+// error so the test can assert "the local copy was saved".
+func readFeedbackLogForTest(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	if len(data) == 0 {
+		return "", os.ErrNotExist
+	}
+	return string(data), nil
 }
