@@ -130,11 +130,36 @@ test('probe does NOT flag share_exports.templ exact-duplicate on current HEAD (s
 	);
 });
 
-test('probe flags the share_sync.templ exact-duplicate body sentence (issue #561 finding 58)', () => {
+test('probe flags the share_sync.templ exact-duplicate body sentence on synthetic input (issue #561 finding 58, regression net)', () => {
+	// Slice 4 removed the duplicated body sentence from share_sync.templ,
+	// so the violation no longer exists on HEAD. Pin via synthetic fixture.
+	withTempDir((dir) => {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'gdedupe.templ'), `package templates
+templ SyncDedupe() {
+	<div>
+		<h2>Share Sync</h2>
+		<p>Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
+		<section>
+			<h3>Google Integration</h3>
+			<p>Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
+		</section>
+	</div>
+}
+`);
+		const r = runProbe({ MICROCOPY_TEMPL_DIR: dir });
+		assert.ok(
+			/connect a google account to upload backups/i.test(r.stdout),
+			`expected share_sync duplicate body to be flagged in synthetic fixture\nstdout: ${r.stdout}`,
+		);
+	});
+});
+
+test('probe does NOT flag share_sync.templ exact-duplicate on current HEAD (slice 4 fix landed)', () => {
 	const r = runProbe();
 	assert.ok(
-		/connect a google account to upload backups/i.test(r.stdout),
-		`expected share_sync duplicate body to be flagged\nstdout: ${r.stdout}`,
+		!/connect a google account to upload backups/i.test(r.stdout),
+		`share_sync duplicate should be absent on post-slice-4 HEAD\nstdout: ${r.stdout}`,
 	);
 });
 
