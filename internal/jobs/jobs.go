@@ -254,6 +254,28 @@ func (p *Progress) Cancelled() bool {
 	return p.job.cancelled
 }
 
+// SetResult records structured per-kind result data (e.g.
+// JobResult.TrashRoot for image_orphan_cleanup). Issue #556 slice 3:
+// forward-looking seam so per-kind Summarizers can surface free-form
+// data on the summary card without each worker hand-rolling a result
+// path. Workers call this before the terminal p.Set(100, ...) so the
+// summary card renders the result on the StatusDone broadcast.
+func (p *Progress) SetResult(result JobResult) {
+	if p == nil || p.job == nil {
+		return
+	}
+	p.job.mu.Lock()
+	if result.Path != "" {
+		p.job.ResultPath = result.Path
+	}
+	p.job.Result = result
+	snap := cloneJob(p.job)
+	p.job.mu.Unlock()
+	if p.job.registry != nil {
+		p.job.registry.broadcast(p.job.ID, snap)
+	}
+}
+
 // Shimmer animates the progress bar so the user sees continuous
 // motion during long-running exports where the worker doesn't
 // have natural sub-step granularity to report (e.g. a single
@@ -1177,35 +1199,21 @@ func (j Job) IsViewableArtifact() bool {
 }
 
 // DismissTargetPath returns the in-app path the user lands on
-// when they dismiss the /jobs/{id} status page. Most exports
-// were kicked off from the Share page; imports were kicked off
-// from Share too (via the Load Backup / Preview Memorial JSON
-// buttons); single-record exports are routed back to that
-// soldier. Issue #131 prefers the referring page, but the
-// /jobs/{id} status page does not always have the original
-// referer, so the template falls back to this kind-specific
-// path when no referer was saved.
+// when they dismiss the /jobs/{id} status page. Issue #556
+// slice 3: reads from KindRegistry[kind].DismissTarget. The
+// per-kind routes previously maintained by this switch (image
+// imports → /browse, monthly PDFs → /calendar, single-record
+// PDFs → /soldiers, etc.) live in internal/jobs/kinds.go as
+// KindMeta entries. The fallback for unknown kinds (legacy JSONL
+// log entries referencing kinds the registry doesn't know about)
+// is /jobs — the safe "back to the job list" target — NOT the
+// pre-#556 default of /share, which incorrectly routed review
+// bulk jobs, audits, and integrations to the Share page.
 func (j Job) DismissTargetPath() string {
-	switch j.Kind {
-	case "image_import":
-		// Image imports are per-soldier; we don't know the
-		// soldier id from the job alone, so fall back to the
-		// browse page where the user can pick the soldier
-		// again.
-		return "/browse"
-	case "backup_import":
-		return "/share"
-	case "shared_import", "shared_archive":
-		return "/share"
-	case "monthly_pdf":
-		return "/calendar"
-	case "soldier_pdf", "soldier_pdf_no_images", "soldier_jpg":
-		return "/soldiers"
-	case "insights_pdf":
-		return "/insights"
-	default:
-		return "/share"
+	if meta, ok := KindRegistry[j.Kind]; ok && meta.DismissTarget != "" {
+		return meta.DismissTarget
 	}
+	return "/jobs"
 }
 
 // ArtifactFilename returns the base name of the job's ResultPath

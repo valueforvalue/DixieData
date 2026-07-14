@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -345,4 +346,122 @@ func writeArtifact(t *testing.T, dir, name string, size int) string {
 		t.Fatalf("writeArtifact %s: %v", path, err)
 	}
 	return path
+}
+
+// TestDismissTargetPathEveryRegisteredKindHasRoute pins slice 3:
+// DismissTargetPath reads from KindRegistry[kind].DismissTarget. A
+// future kind that lands in the registry without a DismissTarget
+// falls through to /jobs — NOT the pre-#556 default of /share that
+// routed review / audit / integration kinds to the wrong page.
+func TestDismissTargetPathEveryRegisteredKindHasRoute(t *testing.T) {
+	for kind, meta := range KindRegistry {
+		if meta.DismissTarget == "" {
+			t.Errorf("KindRegistry[%q].DismissTarget is empty; the kind's dismiss button will fall through to /jobs", kind)
+			continue
+		}
+		if got := (Job{Kind: kind}).DismissTargetPath(); got != meta.DismissTarget {
+			t.Errorf("Job{%q}.DismissTargetPath() = %q; want %q (registry mismatch)", kind, got, meta.DismissTarget)
+		}
+	}
+}
+
+// TestDismissTargetPathUnknownKindFallsBackToJobs pins the slice-3
+// decision: an unknown kind's dismiss button must go to /jobs
+// (the safe "back to the job list" target), NOT /share (which was
+// the pre-#556 default that silently sent review_bulk_resolve,
+// image_orphan_cleanup, and google_drive_backup jobs to the wrong
+// page).
+func TestDismissTargetPathUnknownKindFallsBackToJobs(t *testing.T) {
+	got := (Job{Kind: "future_kind_not_in_registry"}).DismissTargetPath()
+	if got != "/jobs" {
+		t.Fatalf("unknown kind DismissTargetPath = %q; want %q", got, "/jobs")
+	}
+}
+
+// TestDismissTargetPathPerKindRouteRegressions pins that the
+// specific routes the pre-#556 switch maintained (image_import
+// → /browse, monthly_pdf → /calendar, single-record PDFs → /soldiers,
+// insights_pdf → /insights) all survive the registry migration.
+// The test would catch a kind-meta typo that breaks the dismiss
+// flow for the most common kind groups.
+func TestDismissTargetPathPerKindRouteRegressions(t *testing.T) {
+	cases := map[string]string{
+		"image_import":            "/browse",
+		"monthly_pdf":             "/calendar",
+		"soldier_pdf":             "/soldiers",
+		"soldier_pdf_no_images":   "/soldiers",
+		"soldier_jpg":             "/soldiers",
+		"insights_pdf":            "/insights",
+		"shared_archive":          "/share",
+		"shared_import":           "/share",
+		"backup_import":           "/settings",
+		"image_orphan_cleanup":    "/settings#images",
+	}
+	for kind, want := range cases {
+		if got := (Job{Kind: kind}).DismissTargetPath(); got != want {
+			t.Errorf("DismissTargetPath(%q) = %q; want %q", kind, got, want)
+		}
+	}
+}
+
+// TestSummaryOrphanCleanupIncludesTrashRoot pins slice 3: the
+// image_orphan_cleanup Summarizer surfaces a "Trash root: <path>"
+// detail line when the worker populated JobResult.TrashRoot via
+// p.SetResult(JobResult{TrashRoot: ...}). Pre-#556 the worker
+// discarded the trash root (settings_handlers.go had a
+// `_ = trashRoot` after MoveOrphansToTrash), so the user had no
+// way to find the temp-trash directory and recover a file they
+// moved by mistake.
+func TestSummaryOrphanCleanupIncludesTrashRoot(t *testing.T) {
+	j := NewJob("job-orphan", "image_orphan_cleanup")
+	j.Status = StatusDone
+	j.StartedAt = time.Now().Add(-2 * time.Second)
+	j.FinishedAt = time.Now()
+	j.Message = "Moved 3 image(s) into temp trash."
+	j.Result = JobResult{TrashRoot: "C:\\Users\\value\\AppData\\Local\\Temp\\dixie-trash-1234"}
+	s := j.Summary()
+	if s.Headline != "Moved 3 image(s) into temp trash." {
+		t.Errorf("orphan headline = %q; want %q (anchored on j.Message)", s.Headline, "Moved 3 image(s) into temp trash.")
+	}
+	joined := strings.Join(s.DetailLines, "\n")
+	if !strings.Contains(joined, "Trash root: C:\\Users\\value") {
+		t.Errorf("orphan detail lines missing Trash root line; got:\n%s", joined)
+	}
+}
+
+// TestProgressSetResultRoundTrip pins the Progress.SetResult
+// forward-looking seam added in slice 3. Workers use it to record
+// structured per-kind result data (currently only TrashRoot, but
+// future kinds may add more JobResult fields) so the Summarizer
+// can surface it on the summary card.
+func TestProgressSetResultRoundTrip(t *testing.T) {
+	reg := New()
+	id := reg.Start("image_orphan_cleanup", func(ctx context.Context, p *Progress) error {
+		p.SetResult(JobResult{TrashRoot: "/tmp/trash-xyz"})
+		p.Set(100, "Moved 1 image(s) into temp trash.")
+		return nil
+	})
+	// Drain so the worker finishes.
+	if _, ok := reg.Get(id); !ok {
+		t.Fatalf("job %s not registered", id)
+	}
+	// Wait briefly for the worker to run.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := reg.Get(id)
+		if snap.Status == StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	snap, ok := reg.Get(id)
+	if !ok {
+		t.Fatalf("job %s vanished", id)
+	}
+	if snap.Status != StatusDone {
+		t.Fatalf("job status = %q; want done", snap.Status)
+	}
+	if snap.Result.TrashRoot != "/tmp/trash-xyz" {
+		t.Errorf("TrashRoot not propagated through SetResult; got %q", snap.Result.TrashRoot)
+	}
 }

@@ -267,8 +267,13 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			return err
 		}
+		// Issue #556 slice 3: surface the trash root on the
+		// summary card so the user can find the temp-trash
+		// directory and recover a file they moved by mistake.
+		// The Summarizer reads TrashRoot from JobResult and
+		// renders a "Trash root: <path>" detail line.
+		p.SetResult(jobs.JobResult{TrashRoot: trashRoot})
 		p.Set(100, fmt.Sprintf("Moved %d image(s) into temp trash.", moved))
-		_ = trashRoot
 		return nil
 	})
 	setInfoToastHeader(w, "Orphan cleanup started…")
