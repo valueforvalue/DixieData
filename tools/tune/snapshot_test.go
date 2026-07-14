@@ -222,7 +222,20 @@ func ensureSeedFixture(t *testing.T) string {
 	// expects --data-dir and writes <dir>/dixiedata.db by default.
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, seedBin, "-data-dir", dataDir, "-soldiers", "10")
+	// Issue #559: the seed fixture must include article rows so
+	// TestTuneListRecordsKindFilter --kind article and
+	// TestTuneModeArticleValidator both pass. Without an explicit
+	// -articles N, seed-data picks 1-2 randomly (internal/seed/seed.go
+	// seedArticles: count==0 -> 1 + rng.Intn(2)), which sometimes
+	// yields 1 and always yields no row with id=1 for the article
+	// render path. Pin both the count (2, matching the test
+	// docstring in TestTuneListRecordsKindFilter) so the fixture is
+	// deterministic across runs.
+	cmd := exec.CommandContext(ctx, seedBin,
+		"-data-dir", dataDir,
+		"-soldiers", "10",
+		"-articles", "2",
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -473,6 +486,66 @@ func TestTuneModeArticleValidator(t *testing.T) {
 	}
 	if len(got) < 1000 {
 		t.Fatalf("--mode article produced suspiciously small PDF (%d bytes) — likely an empty render", len(got))
+	}
+}
+
+// TestTuneFixtureHasArticlesAndEvents (issue #559) pins the
+// seed-fixture row counts so a future change that drops the
+// -articles/--events seed flags (or regresses the legacy
+// defaults) fails fast here rather than silently rotting
+// TestTuneListRecordsKindFilter / TestTuneModeArticleValidator
+// with confusing output messages. Asserts:
+//   - 10 Person Records (soldiers)
+//   - 2 Event Records (events; issue #518 slice C1)
+//   - 2 Article Records (issue #430 + #559)
+// Skips silently if typst, the seed binary, or the fixture is
+// unavailable (matching the convention used by every other
+// TestTune* test).
+func TestTuneFixtureHasArticlesAndEvents(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	dataDir := ensureSeedFixture(t)
+	if dataDir == "" {
+		t.Skip("seed fixture unavailable; build cmd/seed-data via `make debug`")
+	}
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	typstPath := findTypstBin(t)
+
+	cases := []struct {
+		kind      string
+		wantTotal string
+	}{
+		{"soldier", "total: 10 records"},
+		{"event", "total: 2 events"},
+		{"article", "total: 2 articles"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.kind, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, tuneBin,
+				"--db", dataDir, "--typst", typstPath,
+				"--templates", templatesAbs(t),
+				"list-records", "--kind", tc.kind,
+			)
+			cmd.Dir = t.TempDir()
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("list-records --kind %s: %v\nstdout: %s\nstderr: %s",
+					tc.kind, err, stdout.String(), stderr.String())
+			}
+			out := stdout.String() + stderr.String()
+			if !strings.Contains(out, tc.wantTotal) {
+				t.Fatalf("fixture drift: --kind %s expected %q; got:\n%s",
+					tc.kind, tc.wantTotal, out)
+			}
+		})
 	}
 }
 
