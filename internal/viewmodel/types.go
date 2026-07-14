@@ -201,11 +201,64 @@ type InventoryKindCount struct {
 // ArticleRefs / TagKinds are the per-kind drilldown rows that
 // surface below the headline strip. The page is intentionally
 // basic — the per-attribute analytics live on /insights.
+//
+// Issue #580 slice 1: Metrics carries the activity rollup
+// derived from the stored creation metadata on primary
+// entries (Person Record subtypes + Event Records + live
+// Articles). Article Snapshots are excluded by the storage
+// query so the activity count matches the Articles card's
+// headline number. When Metrics has no rows the UI renders
+// a single-line empty state instead of an empty section
+// header.
 type InventoryView struct {
 	Counts      ArchiveCounts
 	EventKinds  []InventoryKindCount
 	ArticleRefs []InventoryKindCount
 	TagKinds    []InventoryKindCount
+	Metrics     InventoryMetrics
+}
+
+// InventoryMetrics is the activity rollup the /inventory page's
+// Metrics section renders. EntriesPerDay is the chronological
+// day-bucketed count of primary entries created on each day
+// (Soldiers + Spouse Records + Linked Persons + Event Records +
+// live Articles, Article Snapshots excluded by the storage
+// query). The map keys are ISO date strings ("YYYY-MM-DD") so
+// the templ partial sorts lexicographically and renders
+// readable per-day labels without time-zone math. FirstEntryDate
+// / LatestEntryDate are the ISO-formatted extremes or empty when
+// the archive has no primary entries. ActiveDayCount is the
+// number of distinct keys in EntriesPerDay. TotalsByType
+// cross-checks the headline counts so a render regression where
+// the storage query drops an entry type trips the smoke probe.
+//
+// Issue #580 locked decisions:
+//   - Primary entries only — Soldiers / Spouse Records / Linked
+//     Persons / Event Records / live Articles.
+//   - Article Snapshots excluded (matches the existing inventory
+//     headline number for Articles).
+//   - Stored creation metadata only — no new tracking columns,
+//     no schema migration.
+//   - Inline text representation is the source of truth;
+//     a chart may supplement but never replace it.
+type InventoryMetrics struct {
+	EntriesPerDay  map[string]int
+	FirstEntryDate string
+	LatestEntryDate string
+	ActiveDayCount int
+	TotalsByType   InventoryMetricTotals
+}
+
+// InventoryMetricTotals is the per-type activity breakdown the
+// Metrics summary line renders. The numbers match the headline
+// counts in the InventoryView.Counts.* so a future storage
+// regression that drops an entry type trips the smoke probe.
+type InventoryMetricTotals struct {
+	Soldiers       int
+	SpouseRecords  int
+	LinkedPersons  int
+	EventRecords   int
+	Articles       int
 }
 
 // Quote is the UI-shaped projection of a per-soldier quote — a

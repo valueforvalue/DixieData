@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -54,6 +55,13 @@ func (a *App) handleInventory(w http.ResponseWriter, r *http.Request) {
 	eventKinds := a.inventoryEventKinds(r.Context())
 	articleKinds := a.inventoryArticleKinds(r.Context())
 	tagKinds := a.inventoryTagKinds(r.Context())
+	// Issue #580 slice 1: the activity rollup (entries-per-day +
+	// summary dates). Failures degrade to an empty Metrics struct
+	// so the rest of the page still renders without errors. The
+	// viewmodel type holds the templ-friendly copy; we copy the
+	// records-package shape into it at the handler seam (the
+	// viewmodel and records packages can't import each other).
+	rawMetrics, _ := a.soldiers.ActivityMetrics(r.Context())
 	view := viewmodel.InventoryView{
 		Counts: viewmodel.ArchiveCounts{
 			SoldierCount:       counts.TotalSoldiers,
@@ -66,6 +74,7 @@ func (a *App) handleInventory(w http.ResponseWriter, r *http.Request) {
 		EventKinds:  eventKinds,
 		ArticleRefs: articleKinds,
 		TagKinds:    tagKinds,
+		Metrics:     inventoryMetricsFromRecords(rawMetrics),
 	}
 	// Issue #384-style wrap.
 	if err := presentation.InventoryView(view).Render(r.Context(), w); err != nil {
@@ -149,4 +158,31 @@ func (a *App) inventoryTagKinds(ctx context.Context) []viewmodel.InventoryKindCo
 		})
 	}
 	return out
+}
+
+// inventoryMetricsFromRecords converts the storage-side activity
+// rollup (records.InventoryMetricsRaw) into the viewmodel copy
+// the templ partial reads. Lives at the appshell seam because
+// viewmodel cannot import records (cycle: records -> viewmodel
+// -> records via mappers.go).
+//
+// Issue #580 slice 1.
+func inventoryMetricsFromRecords(raw records.InventoryMetricsRaw) viewmodel.InventoryMetrics {
+	entries := make(map[string]int, len(raw.EntriesPerDay))
+	for k, v := range raw.EntriesPerDay {
+		entries[k] = v
+	}
+	return viewmodel.InventoryMetrics{
+		EntriesPerDay:   entries,
+		FirstEntryDate:  raw.FirstEntryDate,
+		LatestEntryDate: raw.LatestEntryDate,
+		ActiveDayCount:  raw.ActiveDayCount,
+		TotalsByType: viewmodel.InventoryMetricTotals{
+			Soldiers:      raw.TotalsByType.Soldiers,
+			SpouseRecords: raw.TotalsByType.SpouseRecords,
+			LinkedPersons: raw.TotalsByType.LinkedPersons,
+			EventRecords:  raw.TotalsByType.EventRecords,
+			Articles:      raw.TotalsByType.Articles,
+		},
+	}
 }

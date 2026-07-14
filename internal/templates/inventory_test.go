@@ -239,3 +239,141 @@ func TestArchiveCounts_TotalEntities(t *testing.T) {
 		t.Errorf("TotalRecords() = %d; want 665 (Person Record subtypes only)", got)
 	}
 }
+
+// ---- Issue #580: Inventory activity metrics section ----
+
+// TestInventoryView_RendersMetricsSection pins the new
+// activity rollup section. When the Metrics carries at least
+// one active day, the page renders the summary dates + the
+// per-day table. The data-inventory-metrics anchor is the
+// audit hook.
+func TestInventoryView_RendersMetricsSection(t *testing.T) {
+	view := viewmodel.InventoryView{
+		Counts: viewmodel.ArchiveCounts{SoldierCount: 3},
+		Metrics: viewmodel.InventoryMetrics{
+			EntriesPerDay: map[string]int{
+				"2026-07-10": 1,
+				"2026-07-12": 2,
+			},
+			FirstEntryDate:  "2026-07-10",
+			LatestEntryDate: "2026-07-12",
+			ActiveDayCount:  2,
+			TotalsByType: viewmodel.InventoryMetricTotals{
+				Soldiers: 3,
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := InventoryView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-inventory-metrics`,
+		`Activity metrics`,
+		`data-inventory-metrics-first`,
+		"2026-07-10",
+		`data-inventory-metrics-latest`,
+		"2026-07-12",
+		`data-inventory-metrics-active-days`,
+		"2", // active day count
+		`data-inventory-metrics-days`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("inventory page missing %q in metrics render", want)
+		}
+	}
+}
+
+// TestInventoryView_MetricsOmitsTableForSingleDay pins the
+// single-day state: the per-day table is suppressed (the
+// summary dates above already convey the single-day state).
+// Without this suppression a one-row table reads as noise.
+func TestInventoryView_MetricsOmitsTableForSingleDay(t *testing.T) {
+	view := viewmodel.InventoryView{
+		Counts: viewmodel.ArchiveCounts{SoldierCount: 1},
+		Metrics: viewmodel.InventoryMetrics{
+			EntriesPerDay:   map[string]int{"2026-07-14": 1},
+			FirstEntryDate:  "2026-07-14",
+			LatestEntryDate: "2026-07-14",
+			ActiveDayCount:  1,
+			TotalsByType: viewmodel.InventoryMetricTotals{
+				Soldiers: 1,
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := InventoryView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `data-inventory-metrics`) {
+		t.Errorf("inventory page missing metrics section anchor in single-day state")
+	}
+	if strings.Contains(content, `data-inventory-metrics-days`) {
+		t.Errorf("inventory page rendered per-day table for a single-day state; the table should suppress when len(EntriesPerDay) <= 1")
+	}
+}
+
+// TestInventoryView_MetricsOrderIsChronological pins the
+// storage contract: the per-day bucket keys are YYYY-MM-DD
+// strings (lexicographic sort = chronological sort). Verify
+// the render output orders the day rows chronologically.
+func TestInventoryView_MetricsOrderIsChronological(t *testing.T) {
+	view := viewmodel.InventoryView{
+		Counts: viewmodel.ArchiveCounts{SoldierCount: 6},
+		Metrics: viewmodel.InventoryMetrics{
+			EntriesPerDay: map[string]int{
+				"2026-06-15": 1,
+				"2026-05-01": 1,
+				"2026-06-30": 1,
+			},
+			FirstEntryDate:  "2026-05-01",
+			LatestEntryDate: "2026-06-30",
+			ActiveDayCount:  3,
+			TotalsByType: viewmodel.InventoryMetricTotals{
+				Soldiers: 3,
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := InventoryView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	// Slice the content to the per-day table so the summary
+	// dates card (which lists First entry + Latest entry) doesn't
+	// pull the first occurrence out of order.
+	tableStart := strings.Index(content, `data-inventory-metrics-days`)
+	if tableStart < 0 {
+		t.Fatalf("per-day table marker not found in rendered output")
+	}
+	table := content[tableStart:]
+	p05 := strings.Index(table, "2026-05-01")
+	p615 := strings.Index(table, "2026-06-15")
+	p630 := strings.Index(table, "2026-06-30")
+	if p05 < 0 || p615 < 0 || p630 < 0 {
+		t.Fatalf("not all day keys in per-day table: may=%d jun15=%d jun30=%d", p05, p615, p630)
+	}
+	if !(p05 < p615 && p615 < p630) {
+		t.Errorf("day rows not chronological: may=%d jun15=%d jun30=%d", p05, p615, p630)
+	}
+}
+
+// TestInventoryView_EmptyArchiveOmitsMetrics pins the empty
+// archive state: no per-kind drilldowns, no per-day table,
+// just the zero-state card. ActiveDayCount=0 hides the
+// section header per the templ branch.
+func TestInventoryView_EmptyArchiveOmitsMetrics(t *testing.T) {
+	view := viewmodel.InventoryView{
+		Counts: viewmodel.ArchiveCounts{},
+	}
+	var buf bytes.Buffer
+	if err := InventoryView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if strings.Contains(content, `data-inventory-metrics`) {
+		t.Errorf("inventory page rendered the metrics section for an empty archive (ActiveDayCount=0 should suppress it)")
+	}
+}

@@ -16,6 +16,7 @@ package templates
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
@@ -96,6 +97,37 @@ templ InventoryView(view viewmodel.InventoryView) {
 					}
 				</section>
 			}
+			// Issue #580 slice 1: activity rollup below the per-kind
+			// drilldowns. Renders only when the rollup has rows
+			// (an empty archive shows the zero-state section at the
+			// footer instead). The section header lists the four
+			// summary dates; the table below lists every active day
+			// with the row count, in chronological order so the user
+			// sees the activity shape at a glance without needing a
+			// chart. data-inventory-metrics is the audit hook.
+			if view.Metrics.ActiveDayCount > 0 {
+				<section class="card rounded-3xl p-5 sm:p-8 space-y-3" data-inventory-metrics>
+					@components.Heading(components.H2, "Activity metrics", "", nil)
+					<p class="text-sm text-slate-600">
+						Primary entries created per day across Soldiers, Spouse Records, Linked Persons, Event Records, and live Articles (Article Snapshots excluded).
+					</p>
+					<dl class="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">First entry</dt>
+							<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-inventory-metrics-first>{ view.Metrics.FirstEntryDate }</dd>
+						</div>
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Latest entry</dt>
+							<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-inventory-metrics-latest>{ view.Metrics.LatestEntryDate }</dd>
+						</div>
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active days</dt>
+							<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-inventory-metrics-active-days>{ fmt.Sprintf("%d", view.Metrics.ActiveDayCount) }</dd>
+						</div>
+					</dl>
+					@inventoryMetricsDayTable(view.Metrics.EntriesPerDay)
+				</section>
+			}
 			// Empty-state branch: zero entities of any kind.
 			if view.Counts.TotalEntities() == 0 && view.Counts.TagCount == 0 {
 				<section class="card rounded-3xl p-5 sm:p-8 text-center text-sm text-slate-500">
@@ -108,6 +140,49 @@ templ InventoryView(view viewmodel.InventoryView) {
 			</footer>
 		</div>
 	}
+}
+
+// inventoryMetricsDayTable renders the per-day activity table
+// the Metrics section displays below the summary dates. Rows
+// are ordered chronologically (the storage helper returns
+// YYYY-MM-DD keys, so a lexicographic sort is the chronological
+// sort). When the archive has one or zero active days, the
+// table is suppressed (the summary dates above already convey
+// the single-day state without the table chrome).
+templ inventoryMetricsDayTable(entries map[string]int) {
+	if len(entries) > 1 {
+		<ul class="mt-3 divide-y divide-[rgb(var(--theme-sepia-rgb)/0.25)] text-sm" data-inventory-metrics-days>
+			for _, day := range sortedDayKeys(entries) {
+				<li class="flex flex-wrap items-center justify-between gap-3 py-2">
+					<span class="font-mono text-xs text-[var(--theme-text-primary)]">{ day }</span>
+					<span class="font-mono text-sm font-semibold text-[var(--theme-review-red)]" data-inventory-metrics-day-count>{ fmt.Sprintf("%d", entries[day]) } { entriesLabel(entries[day]) }</span>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// sortedDayKeys returns the day-bucket keys in chronological
+// order. Storage delivers the keys as YYYY-MM-DD strings
+// (SQLite's `date(created_at)` result), so a lexicographic
+// sort is the chronological sort the issue requires.
+func sortedDayKeys(entries map[string]int) []string {
+	out := make([]string, 0, len(entries))
+	for k := range entries {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// entriesLabel returns the singular or plural entry label
+// for the per-day row so a single-entry row reads "1 entry"
+// rather than "1 entries".
+func entriesLabel(n int) string {
+	if n == 1 {
+		return "entry"
+	}
+	return "entries"
 }
 
 // inventoryCard is the per-headline-number card the inventory
