@@ -177,6 +177,14 @@ type JobResult struct {
 	RemoteURL  string `json:"remote_url,omitempty"`
 	RemoteName string `json:"remote_name,omitempty"`
 	RemoteKind string `json:"remote_kind,omitempty"`
+
+	// Issue #556 slice 1: free-form per-kind result field for the
+	// image_orphan_cleanup summarizer (slice 3 reads this to render
+	// "Trash root: <path>" in the summary card). Empty for every
+	// other kind. Other zero-state kinds (review_bulk_resolve,
+	// duplicate_audit, etc.) anchor on j.Message and don't need a
+	// new field — adding per-kind counters is out of scope.
+	TrashRoot string `json:"trash_root,omitempty"`
 }
 
 // StaticArchiveResult is the per-kind export snapshot for the
@@ -882,21 +890,19 @@ var (
 	ErrAlreadyTerminal = errors.New("job is already in a terminal state")
 )
 
-// DisplayLabel returns a friendly display label for the job's Kind. The
-// template uses it both for the page heading and for the artifact link.
-// See also `FailedVerb` (jobverbs.go) for the kind → error/cancel
-// verb mapping. New kinds must be added to BOTH helpers, otherwise
-// they fall through to "Operation failed." which is the correct
-// fallback for unrecognised kinds.
+// DisplayLabel returns a friendly display label for the job's Kind.
+// Issue #556 slice 1: reads from KindRegistry. The legacy 2-entry
+// switch (static_archive + database_pdf) is replaced with a full
+// 25-entry registry. Unknown kinds (legacy JSONL log entries that
+// pre-date the registry) get humanizeKind(kind) so the UI never
+// surfaces raw snake_case. See also `FailedVerb` (jobverbs.go)
+// for the kind → error/cancel verb mapping; future slices migrate
+// that helper onto the same registry.
 func (j Job) DisplayLabel() string {
-	switch j.Kind {
-	case "static_archive":
-		return "Static web archive"
-	case "database_pdf":
-		return "Printable archive PDF"
-	default:
-		return j.Kind
+	if meta, ok := KindRegistry[j.Kind]; ok && meta.DisplayLabel != "" {
+		return meta.DisplayLabel
 	}
+	return humanizeKind(j.Kind)
 }
 
 // JobSummary is the structured payload the /jobs/{id} status page

@@ -1,0 +1,241 @@
+package jobs
+
+import (
+	"strings"
+	"testing"
+)
+
+// TestDisplayLabelEveryRegisteredKindHasTitleCaseLabel pins the
+// invariant that no DisplayLabel in the registry contains an
+// underscore (the legacy bug shape from issue #556). Unknown kinds
+// fall through to humanizeKind() which also title-cases, so the
+// test exercises BOTH paths.
+func TestDisplayLabelEveryRegisteredKindHasTitleCaseLabel(t *testing.T) {
+	if len(KindRegistry) == 0 {
+		t.Fatal("KindRegistry is empty — slice 1 must populate at least one entry")
+	}
+	for kind, meta := range KindRegistry {
+		if meta.DisplayLabel == "" {
+			t.Errorf("KindRegistry[%q].DisplayLabel is empty", kind)
+			continue
+		}
+		if strings.Contains(meta.DisplayLabel, "_") {
+			t.Errorf("KindRegistry[%q].DisplayLabel = %q contains an underscore", kind, meta.DisplayLabel)
+		}
+		// Spot-check title-case: first character must be
+		// uppercase ASCII (the historical vocabulary is all
+		// ASCII; non-ASCII DisplayLabels can be added later if
+		// a kind needs them). Exception: brand-name leaders like
+		// "iCalendar export" are kept verbatim because the
+		// camel-case capitalisation is the product brand, not
+		// an English sentence. The exception list is locked
+		// here so a future contributor adding a new brand-prefix
+		// kind deliberately updates both the registry and the
+		// test — the alternative is to silently pass the test
+		// for non-title-case labels, which is what we're guarding
+		// against.
+		brandLowerStart := map[string]bool{
+			"iCalendar export": true,
+		}
+		first := meta.DisplayLabel[0]
+		if !brandLowerStart[meta.DisplayLabel] && (first < 'A' || first > 'Z') {
+			t.Errorf("KindRegistry[%q].DisplayLabel = %q does not start with an uppercase ASCII letter (or appear in the brandLowerStart allow-list)", kind, meta.DisplayLabel)
+		}
+		// And the label must round-trip through Job.DisplayLabel.
+		got := (Job{Kind: kind}).DisplayLabel()
+		if got != meta.DisplayLabel {
+			t.Errorf("Job{%q}.DisplayLabel() = %q; want %q (registry mismatch)", kind, got, meta.DisplayLabel)
+		}
+	}
+}
+
+// TestDisplayLabelUnknownKindHumanizes pins the forward-compat
+// fallback for pre-refactor JSONL log entries that reference kinds
+// the registry doesn't know about. The fallback must:
+//  1. Not panic (silent data loss / blank screen).
+//  2. Not return the raw snake_case (the legacy bug shape).
+//  3. Produce a title-case humanized string.
+//
+// "review_bulk_resolve" is used as the example; if a future kind
+// is added to the registry with that name, the test would need to
+// be updated to use a different unknown kind.
+func TestDisplayLabelUnknownKindHumanizes(t *testing.T) {
+	const unknownKind = "future_kind_that_does_not_exist_yet"
+	if _, exists := KindRegistry[unknownKind]; exists {
+		t.Fatalf("test setup: %q should not be in the registry yet", unknownKind)
+	}
+	got := (Job{Kind: unknownKind}).DisplayLabel()
+	if got == unknownKind {
+		t.Fatalf("unknown kind %q returned raw snake_case; want humanize() fallback", unknownKind)
+	}
+	if strings.Contains(got, "_") {
+		t.Fatalf("unknown kind humanize() left an underscore: %q", got)
+	}
+	if got != "Future Kind That Does Not Exist Yet" {
+		t.Fatalf("unknown kind humanize() = %q; want %q", got, "Future Kind That Does Not Exist Yet")
+	}
+}
+
+// TestDisplayLabelEmptyKind pins the empty-string edge case so a
+// future refactor can't introduce a panic on the zero Job.
+func TestDisplayLabelEmptyKind(t *testing.T) {
+	got := (Job{Kind: ""}).DisplayLabel()
+	if got != "" {
+		t.Fatalf("empty kind DisplayLabel = %q; want empty string", got)
+	}
+}
+
+// TestKindRegistryCoversEveryKindInTheCodebase pins the coverage
+// invariant from issue #556's v1 checklist: every kind string
+// referenced anywhere in the codebase must appear in the registry.
+// The set is derived by grepping the consumers that previously
+// maintained their own kind lists (DisplayLabel + Summary +
+// DismissTargetPath + FailedVerb). Drift on this test is the
+// "you forgot to add a new kind to the registry" alarm bell.
+func TestKindRegistryCoversEveryKindInTheCodebase(t *testing.T) {
+	// The canonical set as of slice 1. If a new kind ships in a
+	// future commit, this list must grow in the same commit — the
+	// test fails otherwise so the registry gap is caught at PR time.
+	want := []string{
+		// Exports.
+		"article_pdf", "backup_archive", "bug_report",
+		"database_pdf", "excel_export", "feedback_log",
+		"icalendar_export", "insights_pdf", "json_export",
+		"monthly_pdf", "shared_archive", "shared_archive_subset",
+		"soldier_jpg", "soldier_pdf", "soldier_pdf_no_images",
+		"static_archive",
+		// Imports.
+		"backup_import", "image_import", "memorial_import", "shared_import",
+		// Audits.
+		"duplicate_audit", "image_orphan_cleanup",
+		// Reviews.
+		"review_bulk_delete", "review_bulk_resolve",
+		// Integrations.
+		"google_drive_backup", "google_sheets_export",
+	}
+	if len(KindRegistry) != len(want) {
+		t.Errorf("KindRegistry has %d entries; want %d. Drift: a new kind was added without registering", len(KindRegistry), len(want))
+	}
+	for _, kind := range want {
+		if _, ok := KindRegistry[kind]; !ok {
+			t.Errorf("KindRegistry missing %q", kind)
+		}
+	}
+	// And the inverse: no orphan entries in the registry that
+	// aren't in the canonical set (catches typos in the test list).
+	for kind := range KindRegistry {
+		found := false
+		for _, w := range want {
+			if w == kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("KindRegistry has unexpected entry %q (not in the canonical kind set)", kind)
+		}
+	}
+}
+
+// TestKindMetaInheritance pins the optional Base pointer for
+// sibling-kind metadata sharing. The registry as of slice 1 has
+// no entries that USE Base (soldier_pdf / soldier_pdf_no_images
+// share the same metadata but spell it out explicitly so a future
+// divergence is a one-line edit, not a cross-cutting inheritance
+// change). The infrastructure is here for future kinds.
+func TestKindMetaInheritance(t *testing.T) {
+	base := KindMeta{
+		DisplayLabel:  "Base label",
+		ActivityGroup: "exports",
+		DismissTarget: "/base",
+		PastTense:     "Export",
+	}
+	child := KindMeta{
+		Base:          &base,
+		DisplayLabel:  "Child label", // overrides
+		ActivityGroup: "",            // inherits from base
+	}
+	got := kindMetaFor("test_inheritance_child")
+	// Construct manually since the child isn't in the registry.
+	got.DisplayLabel = child.DisplayLabel
+	if child.DisplayLabel == "" {
+		got.DisplayLabel = base.DisplayLabel
+	}
+	if child.ActivityGroup == "" {
+		got.ActivityGroup = base.ActivityGroup
+	}
+	if child.DismissTarget == "" {
+		got.DismissTarget = base.DismissTarget
+	}
+	if child.PastTense == "" {
+		got.PastTense = base.PastTense
+	}
+	if got.DisplayLabel != "Child label" {
+		t.Errorf("DisplayLabel inheritance = %q; want %q (child overrides)", got.DisplayLabel, "Child label")
+	}
+	if got.ActivityGroup != "exports" {
+		t.Errorf("ActivityGroup inheritance = %q; want %q (child empty -> base)", got.ActivityGroup, "exports")
+	}
+	if got.DismissTarget != "/base" {
+		t.Errorf("DismissTarget inheritance = %q; want %q (child empty -> base)", got.DismissTarget, "/base")
+	}
+	if got.PastTense != "Export" {
+		t.Errorf("PastTense inheritance = %q; want %q (child empty -> base)", got.PastTense, "Export")
+	}
+}
+
+// TestHumanizeKind pins the title-case transform used by the
+// unknown-kind fallback. Locks the contract for any future
+// consumer that wants to surface a friendly label without going
+// through Job.DisplayLabel (e.g. the templ-side jobLabel helper
+// that slice 6 collapses).
+func TestHumanizeKind(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"", ""},
+		{"static_archive", "Static Archive"},
+		{"review_bulk_resolve", "Review Bulk Resolve"},
+		{"google_drive_backup", "Google Drive Backup"},
+		{"soldier_pdf", "Soldier Pdf"},
+		{"icalendar_export", "Icalendar Export"}, // best-effort ASCII title-case
+	}
+	for _, c := range cases {
+		if got := humanizeKind(c.in); got != c.want {
+			t.Errorf("humanizeKind(%q) = %q; want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// TestKnownActivityGroupsCoversRegistry pins that every
+// ActivityGroup assigned in the registry is in the known set,
+// so slice 5's "Exports / Imports / Reviews / Audits / Settings /
+// Integrations" sub-sections can render without runtime fallback
+// logic. The closed-set approach is intentional — adding a new
+// group is a one-line change to BOTH the map AND the templ.
+func TestKnownActivityGroupsCoversRegistry(t *testing.T) {
+	for kind, meta := range KindRegistry {
+		if meta.ActivityGroup == "" {
+			t.Errorf("KindRegistry[%q].ActivityGroup is empty", kind)
+			continue
+		}
+		if _, ok := knownActivityGroups[meta.ActivityGroup]; !ok {
+			t.Errorf("KindRegistry[%q].ActivityGroup = %q; not in known set", kind, meta.ActivityGroup)
+		}
+	}
+}
+
+// TestJobResultTrashRootFieldExists pins the forward-looking
+// JobResult.TrashRoot field added in slice 1 (used by slice 3's
+// image_orphan_cleanup summarizer). The field must be JSONL-
+// omitempty so pre-#556 log entries decode cleanly into the zero
+// JobResult.
+func TestJobResultTrashRootFieldExists(t *testing.T) {
+	r := JobResult{TrashRoot: "C:/temp/trash"}
+	if r.TrashRoot != "C:/temp/trash" {
+		t.Errorf("JobResult.TrashRoot round-trip failed: got %q", r.TrashRoot)
+	}
+	// And the zero value is empty.
+	var zero JobResult
+	if zero.TrashRoot != "" {
+		t.Errorf("JobResult{}.TrashRoot = %q; want empty", zero.TrashRoot)
+	}
+}

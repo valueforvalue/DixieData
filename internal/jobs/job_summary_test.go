@@ -50,7 +50,13 @@ func TestSummaryIsKindAware(t *testing.T) {
 		},
 		{
 			kind:        "backup_import",
-			mustContain: []string{"backup_import complete", "Duration:"},
+			// Issue #556 slice 1: DisplayLabel migrated to the
+			// KindRegistry, so the headline now reads "Backup restore
+			// complete." (was "backup_import complete." — raw
+			// snake_case leak). The new assertion locks the
+			// registry-driven friendly label; the regression net for
+			// the snake_case fix is kinds_test.go.
+			mustContain: []string{"Backup restore complete", "Duration:"},
 			// Imports don't produce an on-disk artifact the user
 			// would download later, so no Size: line is expected.
 			mustNotContain: []string{"Size:"},
