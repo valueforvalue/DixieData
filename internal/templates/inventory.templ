@@ -27,11 +27,7 @@ templ InventoryView(view viewmodel.InventoryView) {
 	@Layout("Archive Inventory") {
 		<div id={ uiids.PageInventory } class="relative mx-auto max-w-5xl space-y-6">
 			<header class="space-y-2">
-				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Archive Inventory</p>
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">What's in your Local Archive</h1>
-				<p class="max-w-3xl text-sm text-slate-600">
-					A basic rollup of the five entity kinds the Local Archive stores: Person Records (soldiers + spouses + linked persons), Event Records, and Articles. Tags are a labeling primitive, not a primary entity. For per-attribute analytics, see <a href={ templ.SafeURL("/insights") } class="text-[var(--theme-text-primary)] underline">Insights</a>.
-				</p>
 			</header>
 			// Headline numbers — same six cards the Calendar header
 			// surface will eventually mirror (the Calendar header
@@ -56,9 +52,7 @@ templ InventoryView(view viewmodel.InventoryView) {
 			// see an empty panel header.
 			if view.Counts.EventRecordCount > 0 {
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Event Records by Kind</p>
 					<h2 class="text-xl font-bold gold">Per-kind rollup</h2>
-					<p class="text-sm text-slate-600">Kinds are free-text (Battle, Campaign, Death, Marriage, Hospital stay, etc. — no enum per issue #320).</p>
 					if len(view.EventKinds) == 0 {
 						<p class="text-sm text-slate-500">Event Records are present but the per-kind rollup failed to load. See the audit log for the underlying query error.</p>
 					} else {
@@ -75,7 +69,6 @@ templ InventoryView(view viewmodel.InventoryView) {
 			}
 			if view.Counts.ArticleRecordCount > 0 {
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Articles</p>
 					<h2 class="text-xl font-bold gold">Live articles (snapshots excluded)</h2>
 					if len(view.ArticleRefs) == 0 {
 						<p class="text-sm text-slate-500">Articles are present but the title list failed to load. See the audit log for the underlying query error.</p>
@@ -90,7 +83,6 @@ templ InventoryView(view viewmodel.InventoryView) {
 			}
 			if view.Counts.TagCount > 0 {
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Tags</p>
 					<h2 class="text-xl font-bold gold">Tag names</h2>
 					if len(view.TagKinds) == 0 {
 						<p class="text-sm text-slate-500">Tags are present but the name list failed to load. See the audit log for the underlying query error.</p>

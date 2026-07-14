@@ -50,7 +50,6 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 							<div>
 								<h3 class="text-lg font-semibold text-slate-900">Add Research Task</h3>
-								<p class="text-sm text-slate-600">Track missing evidence, unresolved identity questions, or records still needing verification.</p>
 							</div>
 						</div>
 						<form action={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } data-dixie-submit="true" class="mt-4 grid gap-4 md:grid-cols-2">

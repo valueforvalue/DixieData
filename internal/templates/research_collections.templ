@@ -16,7 +16,6 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Named Research Collections</h2>
-					<p class="mt-2 text-sm text-slate-600">Save custom record groups for a project, family cluster, cemetery visit, or unresolved investigation thread.</p>
 				</div>
 				if hub.CurrentPersonRecord != nil {
 					<button
@@ -62,7 +61,6 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 					<div>
 						<h3 class="text-lg font-semibold text-slate-900">Collections</h3>
-						<p class="text-sm text-slate-600">Open a collection to browse its members, or add the current person record directly from here.</p>
 					</div>
 					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d collections", len(hub.Collections)) }</p>
 				</div>

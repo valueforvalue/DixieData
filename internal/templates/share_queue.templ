@@ -27,9 +27,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 	@Layout("Share Queue Management") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			<div class="card rounded-3xl p-5 sm:p-8">
-				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Share Queue</p>
-				<h1 class="mt-2 text-2xl gold font-bold">Manage your staged subset</h1>
-				<p class="mt-2 text-sm text-slate-600">Re-order, remove, or bulk-export the Person Records you have staged for sharing. This page mirrors the Share Build modal queue so changes sync back to localStorage on every action.</p>
+				<h1 class="text-2xl gold font-bold">Manage your staged subset</h1>
 				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form data-clear-share-queue-on-success="true" class="mt-4 flex flex-wrap items-center gap-3">
 					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgb(var(--theme-review-red-rgb)/0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--theme-review-red)] hover:bg-white" disabled>
 						Remove Selected
@@ -42,7 +40,6 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 			</div>
 			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueuePresets }>
 				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]">Saved Queues</p>
-				<p class="mt-2 text-sm text-slate-600">Reuse a previously-named queue without re-staging every row from Browse. Saves live in the share_queue_presets table (issue #192).</p>
 				<form data-share-queue-preset-save class="mt-4 flex flex-wrap items-center gap-2">
 					<input type="text" name="name" placeholder="Name this queue (e.g. Shiloh Cemetery)" aria-label="Preset name" class="min-w-0 flex-1 rounded-full border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/85 px-3 py-1.5 text-sm" required/>
 					<button type="submit" class="inline-flex items-center rounded-full border border-[var(--theme-accent-strong)] bg-[var(--theme-accent-strong)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-[#7a6635]">Save current queue</button>

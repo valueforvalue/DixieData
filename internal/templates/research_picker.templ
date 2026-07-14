@@ -59,11 +59,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 	@Layout("Research & Review") {
 		<div id={ uiids.PageResearchPicker } class="relative mx-auto max-w-4xl space-y-6">
 			<header class="space-y-2">
-				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Research & Review</p>
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Choose a Person Record</h1>
-				<p class="text-sm text-slate-600">
-					Pick the Person Record you want to research. Your selection is stored in a signed cookie so navigating between sub-pages does not re-prompt.
-				</p>
 			</header>
 			if view.CurrentPerson != nil {
 				<div id={ uiids.PanelResearchPickerContinue } class="card rounded-3xl p-5 space-y-3">
@@ -133,7 +129,6 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 			</section>
 			if view.NextAction == "research-pack" {
 				<section id={ uiids.PanelResearchPickerPackSubScreen } class="card rounded-3xl p-5 space-y-3" data-research-pack-sub-screen>
-					<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Research Pack geography</p>
 					<p class="text-sm text-slate-600">Choose state or county before picking the Person Record. The choice is forwarded into the sub-page URL.</p>
 					<form
 						method="get"
