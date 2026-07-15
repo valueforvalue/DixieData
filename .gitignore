@@ -20,6 +20,7 @@ node_modules/
 
 # Templ generated files
 internal/templates/*_templ.go
+internal/releasehistory/baked.go
 internal/templates/*_templ.txt
 *_templ.go
 *_templ.txt

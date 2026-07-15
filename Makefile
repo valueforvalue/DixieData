@@ -377,6 +377,14 @@ endif
 # Version pinned per scripts/build-common.ps1.
 tpl: ## Regenerate templ files
 	go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+	$(MAKE) release-notes-bake
+
+# release-notes-bake: parse CHANGELOG.md into
+# internal/releasehistory/baked.go (gitignored). Run via `make tpl`
+# (which calls this) or directly. The dev binary ships with
+# baked == nil until this runs. Issue #585 slice 2.
+release-notes-bake: ## Parse CHANGELOG.md into releasehistory/baked.go
+	go run ./scripts/bake-release-notes
 
 # npm --silent suppresses npm's own chatter; tailwind output is short.
 css: ## Rebuild Tailwind bundle
