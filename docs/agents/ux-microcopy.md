@@ -277,6 +277,49 @@ node audit/smoke_icalendar_microcopy.mjs --strict
 node audit/smoke_icalendar_microcopy.test.mjs
 ```
 
+### Runtime coverage (issue #581)
+
+`audit/smoke_runtime_microcopy.mjs` walks the runtime user-
+facing copy that the earlier three probes did not cover:
+the top-traffic `showToast()` call sites in
+`frontend/app.js`, the loading-screen placeholder in
+`internal/appshell/app.go`, and the CLI help text in
+`main.go::cliHelpText`. Slice 4 ships **GREEN-on-HEAD** (no
+edits planned); the probe pins the surface so a future
+contributor cannot drift the catalogued copy without breaking
+the CI gate.
+
+Catalogued copy (15 strings total): the loading-screen `<title>`
++ body heading + status sentence (`"The local archive is
+still starting up. This screen will refresh automatically."`),
+9 top-traffic toast strings (`"Saved local draft restored."`,
+`"Path copied."`, `"No path to copy."`, `"Could not load print
+options."`, `"Browse refresh failed."`, `"Choose exactly two
+records to compare."`, `"Nothing to copy."`, `"Clipboard helper
+unavailable."`, `"Preview content was not available."`), the
+CLI help opener (`"DixieData CLI — headless archive operations"`),
+the usage line (`"dixiedata <subcommand> [flags]"`), and the
+doc reference (`"See docs/agents/cli-plan.md for the full
+roadmap."`).
+
+Drift signposts: status-form empty copy in app.js toasts
+(`showToast("No records yet.", ...)`); verbose second paragraphs
+in the startup placeholder; missing CLI verbs or blank lines
+in the help text.
+
+The probe skips JSON keys, route names, generated Tailwind
+output, service-worker plumbing, error chains not shown to
+researchers, and the ~21 `showToast()` call sites that the
+early-2026 slice already audited in `669a761`. `RUNTIME_SOURCE`
+env-override lets the test file feed a synthetic fixture.
+
+When changing runtime copy, run:
+
+```text
+node audit/smoke_runtime_microcopy.mjs --strict
+node audit/smoke_runtime_microcopy.test.mjs
+```
+
 ### Probe rules (enforced today)
 
 The `.templ` probe currently asserts five concrete checks:

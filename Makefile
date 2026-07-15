@@ -450,6 +450,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-static-archive-microcopy-strict
 	make lint-pdf-microcopy-strict
 	make lint-icalendar-microcopy-strict
+	make lint-runtime-microcopy-strict
 	make lint-typecheck
 
 lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
@@ -538,6 +539,23 @@ lint-icalendar-microcopy-strict: ## iCalendar microcopy sweep as CI failure
 
 lint-icalendar-microcopy-test: ## Run iCalendar microcopy probe tests
 	@node audit/smoke_icalendar_microcopy.test.mjs
+
+# Runtime + server + startup + CLI microcopy (issue #581,
+# Slice 4, audit-only). The probe walks frontend/app.js +
+# internal/appshell/app.go (loading placeholder) + main.go
+# (cliHelpText) for the canonical user-facing copy that the
+# earlier three probes did not cover. Slice 4 ships
+# GREEN-on-HEAD (no edits planned); the probe pins the
+# surface so a future contributor cannot drift it without
+# breaking the CI gate.
+lint-runtime-microcopy: ## Runtime + server + startup + CLI microcopy (issue #581, slice 4)
+	@node audit/smoke_runtime_microcopy.mjs
+
+lint-runtime-microcopy-strict: ## Runtime microcopy sweep as CI failure
+	@node audit/smoke_runtime_microcopy.mjs --strict
+
+lint-runtime-microcopy-test: ## Run runtime microcopy probe tests
+	@node audit/smoke_runtime_microcopy.test.mjs
 
 # Issue #446 — extend the dispatcher-contract coverage. Live-server
 # probe that sends POST + X-HTTP-Method-Override for every PATCH/

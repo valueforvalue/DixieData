@@ -202,6 +202,21 @@ jobs:
           make lint-icalendar-microcopy-test
         timeout-minutes: 3
 
+      # Runtime + server + startup + CLI microcopy lint (issue
+      # #581, Slice 4, audit-only). Probe walks frontend/app.js +
+      # internal/appshell/app.go (loading placeholder) + main.go
+      # (cliHelpText) for the canonical user-facing copy that the
+      # earlier three probes did not cover. Slice 4 ships
+      # GREEN-on-HEAD (no edits planned); the probe pins the
+      # surface so a future contributor cannot drift it without
+      # breaking the CI gate.
+      - name: Runtime microcopy lint (issue #581, --strict)
+        shell: bash
+        run: |
+          make lint-runtime-microcopy-strict
+          make lint-runtime-microcopy-test
+        timeout-minutes: 3
+
       # slice 4 — CI gate). The frontend ships raw from disk via
       # internal/appshell/lifecycle.go (no bundler, no emit); the
       # only purpose of this gate is to catch the bug class the
