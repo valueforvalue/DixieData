@@ -117,6 +117,11 @@ declare global {
     __copyPathBound?: boolean;
     __pickerClearBound?: boolean;
     __cheatsheetCopyBound?: boolean;
+    // Issue #583: initializeInventoryMetricsChart paints the
+    // Activity metrics SVG once per chart wrapper; the guard
+    // prevents double-painting on htmx re-render. Mirrors the
+    // __copyPathBound pattern (idempotent install).
+    __inventoryChartPainted?: boolean;
   }
 }
 

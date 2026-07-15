@@ -2768,6 +2768,356 @@ function serializeDraftFields(form) {
     });
   }
 
+  // initializeInventoryMetricsChart (issue #583 slice 3) paints
+  // the hand-rolled SVG line graph into the chart host the
+  // templ partial renders, and wires the per-kind legend chips
+  // so the user can toggle series visibility without an htmx
+  // round-trip. The chart reads its data from the
+  // data-inventory-metrics-by-kind attribute (JSON-encoded per
+  // kind -> day -> count) and the data-active-kinds attribute
+  // (comma-separated visible kinds).
+  //
+  // Series paths are grouped under data-inventory-metrics-series
+  // (one <path> per kind) so the legend toggle can flip
+  // display:none on the matching path. The whole render is
+  // idempotent: the global guard __inventoryChartPainted plus
+  // the empty-host check prevents double-painting on htmx swaps.
+  /** Render the Activity metrics SVG line graph (issue #583). */
+  function initializeInventoryMetricsChart() {
+    const hosts = document.querySelectorAll("[data-inventory-metrics-svg-host]");
+    hosts.forEach((host) => {
+      if (!(host instanceof HTMLElement)) return;
+      const wrapper = host.closest("[data-inventory-metrics-chart]");
+      if (!(wrapper instanceof HTMLElement)) return;
+      if (wrapper.__inventoryChartPainted === true) return;
+      const raw = wrapper.getAttribute("data-inventory-metrics-by-kind");
+      if (!raw) return;
+      let byKind;
+      try {
+        byKind = JSON.parse(raw);
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("inventory metrics: invalid JSON in data-inventory-metrics-by-kind", err);
+        }
+        return;
+      }
+      const kinds = readActiveKinds(wrapper);
+      paintInventoryChart(host, wrapper, byKind, kinds);
+      wireInventoryLegend(wrapper, kinds);
+      wrapper.__inventoryChartPainted = true;
+    });
+  }
+
+  // readActiveKinds reads the comma-separated kind list from
+  // data-active-kinds. Falls back to the locked 5-kind default
+  // if the attribute is absent or malformed so a templ bug
+  // never produces an invisible chart.
+  /**
+   * @param {HTMLElement} wrapper chart wrapper
+   * @returns {string[]} active kinds
+   */
+  function readActiveKinds(wrapper) {
+    const raw = wrapper.getAttribute("data-active-kinds");
+    if (!raw) {
+      return ["soldier", "spouse", "linked", "event", "article"];
+    }
+    const out = raw
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    if (out.length === 0) {
+      return ["soldier", "spouse", "linked", "event", "article"];
+    }
+    return out;
+  }
+
+  // paintInventoryChart writes the SVG into the host. The host's
+  // "Loading chart..." placeholder is removed; the SVG replaces
+  // it. The function is the only writer of the host's children
+  // so the templ placeholder cannot leak through.
+  /**
+   * @param {HTMLElement} host SVG mount host
+   * @param {HTMLElement} wrapper chart wrapper
+   * @param {Record<string, Record<string, number>>} byKind per-kind per-day counts
+   * @param {string[]} activeKinds visible kinds
+   */
+  function paintInventoryChart(host, wrapper, byKind, activeKinds) {
+    // Aggregate the union of all days across all kinds so the
+    // x-axis spans the full activity window. Use a Set for O(1)
+    // dedup; sort lexicographically (YYYY-MM-DD = chronological).
+    const daySet = new Set();
+    for (const kind of Object.keys(byKind)) {
+      const inner = byKind[kind];
+      if (!inner || typeof inner !== "object") continue;
+      for (const day of Object.keys(inner)) {
+        daySet.add(day);
+      }
+    }
+    const days = Array.from(daySet).sort();
+    const maxY = computeMaxY(byKind);
+    const width = Math.max(host.clientWidth || 480, 320);
+    const height = 192;
+    const padding = { top: 16, right: 16, bottom: 28, left: 36 };
+    const innerW = width - padding.left - padding.right;
+    const innerH = height - padding.top - padding.bottom;
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Activity metrics: per-kind entry counts over time");
+    svg.setAttribute("data-inventory-metrics-svg", "");
+    // Y-axis gridlines + labels.
+    const yTicks = chooseYTicks(maxY);
+    yTicks.forEach((tick) => {
+      const y = padding.top + innerH * (1 - tick / maxY);
+      const line = document.createElementNS(ns, "line");
+      line.setAttribute("x1", String(padding.left));
+      line.setAttribute("x2", String(padding.left + innerW));
+      line.setAttribute("y1", String(y));
+      line.setAttribute("y2", String(y));
+      line.setAttribute("stroke", "rgba(120, 90, 60, 0.18)");
+      line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = document.createElementNS(ns, "text");
+      label.setAttribute("x", String(padding.left - 6));
+      label.setAttribute("y", String(y + 3));
+      label.setAttribute("text-anchor", "end");
+      label.setAttribute("font-size", "10");
+      label.setAttribute("fill", "rgba(80, 60, 40, 0.7)");
+      label.textContent = String(tick);
+      svg.appendChild(label);
+    });
+    // X-axis labels: first, last, and one midpoint if there are
+    // enough days to space them apart. Avoids a label collision
+    // on a single-day chart.
+    if (days.length === 1) {
+      const x = padding.left + innerW / 2;
+      const label = document.createElementNS(ns, "text");
+      label.setAttribute("x", String(x));
+      label.setAttribute("y", String(height - 8));
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("font-size", "10");
+      label.setAttribute("fill", "rgba(80, 60, 40, 0.7)");
+      label.textContent = days[0];
+      svg.appendChild(label);
+    } else {
+      [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].forEach((d) => {
+        const x = padding.left + innerW * (dayIndex(d, days) / Math.max(days.length - 1, 1));
+        const label = document.createElementNS(ns, "text");
+        label.setAttribute("x", String(x));
+        label.setAttribute("y", String(height - 8));
+        label.setAttribute("text-anchor", "middle");
+        label.setAttribute("font-size", "10");
+        label.setAttribute("fill", "rgba(80, 60, 40, 0.7)");
+        label.textContent = d;
+        svg.appendChild(label);
+      });
+    }
+    // Series paths, one per kind. Visibility is driven by the
+    // active-kinds list -- a hidden series is display:none on
+    // the <path>, not omitted from the DOM, so the legend toggle
+    // can restore it without repainting.
+    const seriesGroup = document.createElementNS(ns, "g");
+    seriesGroup.setAttribute("data-inventory-metrics-series", "");
+    const orderedKinds = ["soldier", "spouse", "linked", "event", "article"];
+    orderedKinds.forEach((kind) => {
+      const inner = byKind[kind];
+      if (!inner || typeof inner !== "object") return;
+      const d = linePath(kind, inner, days, padding, innerW, innerH, maxY);
+      const path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill", "none");
+      path.setAttribute("stroke", kindColor(kind));
+      path.setAttribute("stroke-width", "1.75");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      path.setAttribute("data-inventory-metrics-series-kind", kind);
+      if (!activeKinds.includes(kind)) {
+        path.setAttribute("display", "none");
+      }
+      seriesGroup.appendChild(path);
+    });
+    svg.appendChild(seriesGroup);
+    // Clear the host and mount the SVG. The placeholder
+    // paragraph is removed so it cannot flash through.
+    while (host.firstChild) host.removeChild(host.firstChild);
+    host.appendChild(svg);
+    void wrapper; // wrapper arg reserved for future chart-options binding
+  }
+
+  // computeMaxY chooses the y-axis upper bound for the chart.
+  // Uses the highest per-day count across every kind + every
+  // active series; falls back to 1 so the chart renders an
+  // empty archive's "all-zero" state without a div-by-zero.
+  /**
+   * @param {Record<string, Record<string, number>>} byKind per-kind per-day counts
+   * @returns {number} y-axis upper bound
+   */
+  function computeMaxY(byKind) {
+    let max = 0;
+    for (const kind of Object.keys(byKind)) {
+      const inner = byKind[kind];
+      if (!inner || typeof inner !== "object") continue;
+      for (const day of Object.keys(inner)) {
+        const v = Number(inner[day]) || 0;
+        if (v > max) max = v;
+      }
+    }
+    return max === 0 ? 1 : max;
+  }
+
+  // chooseYTicks returns a small set of integer y-axis tick
+  // values that bracket the chart's max. 1/2/5/10/etc., so the
+  // gridlines land on round numbers regardless of magnitude.
+  /**
+   * @param {number} maxY y-axis upper bound
+   * @returns {number[]} round y-axis tick values
+   */
+  function chooseYTicks(maxY) {
+    if (maxY <= 1) return [0, 1];
+    if (maxY <= 5) return [0, 1, 2, 3, 4, 5];
+    if (maxY <= 10) return [0, 2, 4, 6, 8, 10];
+    const step = Math.pow(10, Math.floor(Math.log10(maxY)));
+    const ticks = [];
+    for (let v = 0; v <= maxY; v += step) {
+      ticks.push(v);
+      if (ticks.length > 6) break;
+    }
+    return ticks;
+  }
+
+  // linePath emits an SVG path "d" attribute for a single kind.
+  // Connects every day in the union-day-list with a straight
+  // line; missing days produce a 0-height segment so the path
+  // visibly dips rather than skipping.
+  /**
+   * @param {string} kind storage kind key
+   * @param {Record<string, number>} inner per-day counts
+   * @param {string[]} days sorted union of days across kinds
+   * @param {{top:number,right:number,bottom:number,left:number}} padding chart padding
+   * @param {number} innerW chart inner width
+   * @param {number} innerH chart inner height
+   * @param {number} maxY y-axis upper bound
+   * @returns {string} SVG path "d" attribute
+   */
+  function linePath(kind, inner, days, padding, innerW, innerH, maxY) {
+    void kind; // reserved for future per-kind styling variants
+    const denom = Math.max(days.length - 1, 1);
+    /** @type {string[]} */
+    const parts = [];
+    days.forEach((day, i) => {
+      const count = Number(inner[day]) || 0;
+      const x = padding.left + innerW * (i / denom);
+      const y = padding.top + innerH * (1 - count / maxY);
+      parts.push(`${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`);
+    });
+    return parts.join(" ");
+  }
+
+  // dayIndex returns the position of day in the sorted days
+  // array. Linear scan is fine -- the day list is at most a
+  // few hundred entries for the rolling archive window.
+  /**
+   * @param {string} day YYYY-MM-DD key
+   * @param {string[]} days sorted day list
+   * @returns {number} position of day in days
+   */
+  function dayIndex(day, days) {
+    return days.indexOf(day);
+  }
+
+  // kindColor maps each kind to a stroke colour from the locked
+  // design-token palette. Saturated enough to read on the
+  // parchment background; distinct enough that adjacent lines
+  // don't blur into each other.
+  /**
+   * @param {string} kind storage kind key
+   * @returns {string} hex stroke colour
+   */
+  function kindColor(kind) {
+    switch (kind) {
+      case "soldier":
+        return "#7d4f2d"; // ink / sepia
+      case "spouse":
+        return "#b6854f"; // warm gold
+      case "linked":
+        return "#4f7d6b"; // slate green
+      case "event":
+        return "#a14747"; // review red
+      case "article":
+        return "#3f5d8a"; // ink blue
+      default:
+        return "#666";
+    }
+  }
+
+  // wireInventoryLegend binds click handlers on the legend chips.
+  // Toggling flips aria-pressed + the matching <path>'s display,
+  // and rewrites the data-active-kinds attribute so a future
+  // server-render or htmx swap sees the user's choices. The
+  // chips' swatches use the same kindColor palette as the lines.
+  /**
+   * @param {HTMLElement} wrapper chart wrapper
+   * @param {string[]} initialKinds initial active kinds (templ-default)
+   */
+  function wireInventoryLegend(wrapper, initialKinds) {
+    const chips = wrapper.querySelectorAll("[data-inventory-metrics-legend-chip]");
+    chips.forEach((chip) => {
+      if (!(chip instanceof HTMLElement)) return;
+      const kind = chip.getAttribute("data-inventory-metrics-legend-chip");
+      if (!kind) return;
+      const swatch = chip.querySelector("[data-inventory-metrics-legend-swatch]");
+      if (swatch instanceof HTMLElement) {
+        swatch.style.backgroundColor = kindColor(kind);
+      }
+      chip.addEventListener("click", () => {
+        const active = readActiveKinds(wrapper);
+        const idx = active.indexOf(kind);
+        if (idx >= 0) {
+          active.splice(idx, 1);
+          chip.setAttribute("aria-pressed", "false");
+        } else {
+          active.push(kind);
+          chip.setAttribute("aria-pressed", "true");
+        }
+        wrapper.setAttribute("data-active-kinds", active.join(","));
+        const path = wrapper.querySelector(
+          `[data-inventory-metrics-series-kind="${cssEscape(kind)}"]`,
+        );
+        if (path instanceof SVGElement) {
+          if (active.includes(kind)) {
+            path.removeAttribute("display");
+          } else {
+            path.setAttribute("display", "none");
+          }
+        }
+      });
+    });
+    // initialKinds is read so the chips' aria-pressed state matches
+    // the rendered chart on first paint; templ already sets the
+    // pressed state but a future refactor could change that.
+    void initialKinds;
+  }
+
+  // cssEscape escapes an arbitrary string into a CSS attribute
+  // selector. SVG <path> data-inventory-metrics-series-kind
+  // values come from the templ-rendered kind keys so they are
+  // always one of the locked 5 strings, but defensive escaping
+  // is the right discipline for a querySelector argument.
+  /**
+   * @param {unknown} value arbitrary string
+   * @returns {string} CSS-attribute-selector-safe form
+   */
+  function cssEscape(value) {
+    const s = typeof value === "string" ? value : String(value);
+    if (typeof window !== "undefined" && typeof window.CSS !== "undefined" && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(s);
+    }
+    return s.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
   // Floating nav toggle: the click handler is bound inline in
   // layout.templ (onclick="…toggle('hidden')") so it works even
   // before this script runs. This init function only owns the
@@ -3667,6 +4017,7 @@ function serializeDraftFields(form) {
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
     initializeCopyPathButtons();
+    initializeInventoryMetricsChart();
     initializePersonRecordPicker();
     initializeMarkdownCheatsheet();
     // installFoldouts is idempotent (guarded by
@@ -6145,6 +6496,12 @@ async function refreshShareQueuePresetsPage(panel) {
     // on modal open is safe.
     installShareQueueGlobals();
     updateShareQueuePill(readShareQueue());
+    // Issue #583 slice 3: paint the Activity metrics SVG line
+    // graph into data-inventory-metrics-svg-host and wire the
+    // legend chips. Idempotent -- the SVG host is checked for
+    // presence first and the global guard __inventoryChartPainted
+    // prevents double-painting on htmx swaps.
+    initializeInventoryMetricsChart();
     // Re-init swapped subtrees after htmx polling swaps.
     if (typeof window !== "undefined" && window.htmx && typeof window.htmx.on === "function") {
       window.htmx.on("htmx:load", (evt) => {

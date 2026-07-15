@@ -1,4 +1,5 @@
-// smoke_inventory_metrics.mjs -- issue #580 slice 1 regression net.
+// smoke_inventory_metrics.mjs -- issue #580 slice 1 + #583 slice 3
+// regression net.
 //
 // Visits /inventory against a live dixiedata-web server (started
 // by audit/run.mjs), confirms the new Activity metrics section
@@ -10,8 +11,12 @@
 //   data-inventory-metrics-first       first-entry date
 //   data-inventory-metrics-latest      latest-entry date
 //   data-inventory-metrics-active-days active day count
-//   data-inventory-metrics-days        per-day table wrapper
-//   data-inventory-metrics-day-count   per-day row count
+//   data-inventory-metrics-chart       chart wrapper (issue #583)
+//   data-inventory-metrics-svg         painted SVG (slice 3)
+//   data-inventory-metrics-series      group containing 5 paths
+//   data-inventory-metrics-legend      legend region
+//   data-inventory-metrics-legend-chip="<kind>" one chip per kind
+//   data-active-kinds                  comma-separated visible kinds
 //
 // Run via: `node audit/run.mjs --probe=inventory-metrics` (or as
 // part of the full audit sweep when the script is added to the
@@ -37,26 +42,104 @@ async function expect(cond, msg, details) {
 async function populatedProbe(page) {
   await page.goto(BASE + '/inventory');
   await page.waitForSelector('[data-inventory-metrics]', { timeout: 5000 }).catch(() => null);
+  // Issue #583 slice 3: wait for the chart paint to settle so the
+  // assertions below can rely on the SVG being mounted (the JS
+  // renderer runs on DOMContentLoaded). The selector resolves
+  // once the SVG is in place; if it never does (e.g. templ
+  // shipped without the data attribute) the assertion below
+  // fails with a clear shape mismatch.
+  await page.waitForSelector('[data-inventory-metrics-svg]', { timeout: 5000 }).catch(() => null);
   const state = await page.evaluate(() => {
     const section = document.querySelector('[data-inventory-metrics]');
     const first = document.querySelector('[data-inventory-metrics-first]')?.textContent || '';
     const latest = document.querySelector('[data-inventory-metrics-latest]')?.textContent || '';
     const activeDays = document.querySelector('[data-inventory-metrics-active-days]')?.textContent || '';
-    const tableExists = !!document.querySelector('[data-inventory-metrics-days]');
+    const chartWrapper = document.querySelector('[data-inventory-metrics-chart]');
+    const svg = document.querySelector('[data-inventory-metrics-svg]');
+    const seriesPaths = Array.from(
+      document.querySelectorAll('[data-inventory-metrics-series] [data-inventory-metrics-series-kind]'),
+    );
+    const chips = Array.from(
+      document.querySelectorAll('[data-inventory-metrics-legend-chip]'),
+    );
+    const activeKinds = chartWrapper?.getAttribute('data-active-kinds') || '';
+    const kindSet = new Set(seriesPaths.map((p) => p.getAttribute('data-inventory-metrics-series-kind')));
     return {
       sectionRendered: !!section,
       first,
       latest,
       activeDays,
-      tableExists,
+      chartRendered: !!chartWrapper,
+      svgRendered: !!svg,
+      seriesPathCount: seriesPaths.length,
+      seriesKinds: Array.from(kindSet).sort(),
+      chipCount: chips.length,
+      chipKinds: chips.map((c) => c.getAttribute('data-inventory-metrics-legend-chip')).sort(),
+      activeKinds: activeKinds.split(',').filter((k) => k.length > 0).sort(),
     };
   });
   await expect(state.sectionRendered, 'populated archive renders metrics section', state);
   await expect(state.first.length >= 8, 'first-entry is an ISO date', state);
   await expect(state.latest.length >= 8, 'latest-entry is an ISO date', state);
   await expect(parseInt(state.activeDays, 10) >= 1, 'active day count is at least 1', state);
-  if (parseInt(state.activeDays, 10) > 1) {
-    await expect(state.tableExists, 'multi-day state renders per-day table', state);
+  // Issue #583 slice 3 chart wiring.
+  await expect(state.chartRendered, 'chart wrapper renders inside metrics section', state);
+  await expect(state.svgRendered, 'SVG paint completed (JS renderer ran)', state);
+  await expect(state.seriesPathCount === 5, 'chart renders 5 series paths', state);
+  await expect(
+    JSON.stringify(state.seriesKinds) === JSON.stringify(['article','event','linked','soldier','spouse']),
+    'series paths cover all 5 kinds in templ order',
+    state,
+  );
+  await expect(state.chipCount === 5, 'legend has 5 chips', state);
+  await expect(
+    JSON.stringify(state.chipKinds) === JSON.stringify(['article','event','linked','soldier','spouse']),
+    'legend chips cover all 5 kinds in templ order',
+    state,
+  );
+  await expect(state.activeKinds.length === 5, 'all 5 kinds are active by default', state);
+
+  // Issue #583 slice 3 legend toggle: clicking a chip hides the
+  // matching series path (display:none) and updates
+  // data-active-kinds. Re-clicking restores visibility.
+  if (state.seriesPathCount === 5) {
+    const beforeAfterToggle = await page.evaluate(() => {
+      const wrapper = document.querySelector('[data-inventory-metrics-chart]');
+      const chip = document.querySelector('[data-inventory-metrics-legend-chip="event"]');
+      const path = document.querySelector('[data-inventory-metrics-series-kind="event"]');
+      if (!wrapper || !chip || !path) return { ok: false };
+      const beforeDisplay = path.getAttribute('display') || '';
+      chip.click();
+      const afterDisplay = path.getAttribute('display') || '';
+      const afterActive = wrapper.getAttribute('data-active-kinds') || '';
+      chip.click();
+      const restoredDisplay = path.getAttribute('display') || '';
+      const restoredActive = wrapper.getAttribute('data-active-kinds') || '';
+      return {
+        ok: true,
+        beforeDisplay,
+        afterDisplay,
+        afterActive,
+        restoredDisplay,
+        restoredActive,
+      };
+    });
+    await expect(beforeAfterToggle.ok, 'toggle selectors all resolve', beforeAfterToggle);
+    await expect(
+      beforeAfterToggle.beforeDisplay === '' && beforeAfterToggle.afterDisplay === 'none',
+      'clicking the event chip sets display:none on the event series',
+      beforeAfterToggle,
+    );
+    await expect(
+      !beforeAfterToggle.afterActive.split(',').includes('event'),
+      'data-active-kinds drops event after toggle',
+      beforeAfterToggle,
+    );
+    await expect(
+      beforeAfterToggle.restoredDisplay === '' && beforeAfterToggle.restoredActive.split(',').includes('event'),
+      'clicking the chip again restores the series and active kinds',
+      beforeAfterToggle,
+    );
   }
 }
 

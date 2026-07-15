@@ -96,7 +96,7 @@ test('DixieDataWindow interface is declared with all install-once markers', () =
     // Issue #476 floating-nav panel markers (installFloatingNavPanel).
     '__floatingNavInstallN',
     '__floatingNavBoundTriggers',
-    '__dixieBrowseFilterTimer',
+    '__dixieBrowseFilterDebounce',
     '__dixieDebug',
     '__dixieDebugDisabled',
     '__dixieGoogleSettings',
@@ -139,6 +139,13 @@ test('per-element marker interfaces are still declared', () => {
   }
   if (!dts.includes('__copyPathBound')) {
     throw new Error('`__copyPathBound` marker missing.');
+  }
+  // Issue #583: __inventoryChartPainted is the install-once
+  // guard on the Activity metrics SVG chart wrapper. Same
+  // idempotent-install discipline as the other per-element
+  // markers.
+  if (!dts.includes('__inventoryChartPainted')) {
+    throw new Error('`__inventoryChartPainted` marker missing from HTMLElement augmentation — slice-3 SVG renderer would re-emit TS2339.');
   }
 });
 
