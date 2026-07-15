@@ -243,6 +243,12 @@ type InventoryView struct {
 //     a chart may supplement but never replace it.
 type InventoryMetrics struct {
 	EntriesPerDay  map[string]int
+	// EntriesPerDayByKind is the per-kind per-day breakdown
+	// the /inventory Activity metrics line graph renders
+	// (issue #583). Always carries every kind even on an empty
+	// archive. See records.InventoryMetricsRaw for the bucket
+	// shape.
+	EntriesPerDayByKind map[string]map[string]int
 	FirstEntryDate string
 	LatestEntryDate string
 	ActiveDayCount int

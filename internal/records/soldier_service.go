@@ -525,6 +525,15 @@ func (s *SoldierService) CountNeedsReview() (int, error) {
 // matches the existing Articles inventory headline number.
 type InventoryMetricsRaw struct {
 	EntriesPerDay  map[string]int
+	// EntriesPerDayByKind is the per-kind per-day breakdown
+	// the /inventory Activity metrics line graph renders
+	// (issue #583). The outer map is keyed by kind
+	// ("soldier" / "spouse" / "linked" / "event" / "article")
+	// and always carries every kind even on an empty archive
+	// so the templ partial never has to nil-check an inner
+	// map. The inner map is keyed by YYYY-MM-DD with the
+	// day's per-kind count; missing days are absent (not zero).
+	EntriesPerDayByKind  map[string]map[string]int
 	FirstEntryDate string
 	LatestEntryDate string
 	ActiveDayCount int
@@ -594,6 +603,15 @@ func (s *SoldierService) ActivityMetrics(ctx context.Context) (InventoryMetricsR
 
 	out := InventoryMetricsRaw{
 		EntriesPerDay: make(map[string]int),
+		// Per-kind buckets always carry every kind so the
+		// templ partial never nil-checks (issue #583 slice 1).
+		EntriesPerDayByKind: map[string]map[string]int{
+			"soldier": {},
+			"spouse":  {},
+			"linked":  {},
+			"event":   {},
+			"article": {},
+		},
 	}
 	first := ""
 	latest := ""
@@ -605,6 +623,9 @@ func (s *SoldierService) ActivityMetrics(ctx context.Context) (InventoryMetricsR
 			return InventoryMetricsRaw{}, err
 		}
 		out.EntriesPerDay[day] += count
+		if bucket, ok := out.EntriesPerDayByKind[kind]; ok {
+			bucket[day] += count
+		}
 		switch kind {
 		case "soldier":
 			out.TotalsByType.Soldiers += count

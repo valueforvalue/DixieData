@@ -172,8 +172,21 @@ func inventoryMetricsFromRecords(raw records.InventoryMetricsRaw) viewmodel.Inve
 	for k, v := range raw.EntriesPerDay {
 		entries[k] = v
 	}
+	// Per-kind buckets (issue #583 slice 1). The storage layer
+	// always seeds every kind with a non-nil inner map so the
+	// templ partial never nil-checks; we deep-copy here so a
+	// downstream mutation cannot poison the storage cache.
+	byKind := make(map[string]map[string]int, len(raw.EntriesPerDayByKind))
+	for k, inner := range raw.EntriesPerDayByKind {
+		copyInner := make(map[string]int, len(inner))
+		for day, count := range inner {
+			copyInner[day] = count
+		}
+		byKind[k] = copyInner
+	}
 	return viewmodel.InventoryMetrics{
-		EntriesPerDay:   entries,
+		EntriesPerDay:      entries,
+		EntriesPerDayByKind: byKind,
 		FirstEntryDate:  raw.FirstEntryDate,
 		LatestEntryDate: raw.LatestEntryDate,
 		ActiveDayCount:  raw.ActiveDayCount,
