@@ -1,49 +1,352 @@
-// about.templ -- issue #585 slice 4 (stub).
+// about.templ -- issue #585 slice 4.
 //
-// Full AboutView implementation lands in slice 4. Slice 3 needs
-// a stub so the build chain compiles (the presentation wrapper
-// requires templates.AboutView to exist). The slice-3 stub
-// renders the minimum identity surface so the route returns 200
-// and the build succeeds; slice 4 expands it to the full 3-
-// section page (identity + license + release history) with the
-// in-page nav strip.
+// Full /about page. Three sections (anchored: #identity, #license,
+// #history) plus an in-page nav strip at the top. Anchors use
+// plain <a href="#id"> so no JS is required. Section anchors
+// are stable URLs (a deep link to /about#license survives a
+// page refresh).
+//
+// Locked copy decisions (issue #585 chat 2026-07-15):
+//   - License renders as a 1-paragraph summary + a "View full
+//     license" link out to the GitHub LICENSE blob. No inline
+//     full text.
+//   - Credits render as a minimal list (name + license + one-
+//     line purpose). No versions, no URLs (those live in the
+//     footer / buildinfo).
+//   - Release history: last 10 releases expanded (newest
+//     first), older collapsed behind a "show all N releases"
+//     toggle. Per-release preview = first 3 bullets of the
+//     first non-empty subsection (Added / Changed / Fixed /
+//     Maintenance / Documentation in that order); a
+//     <details> toggle exposes the rest of that subsection +
+//     all other subsections in place. No JS.
 
 package templates
 
 import (
 	"fmt"
 
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
+
+// aboutMaxExpandedReleases is the number of releases that
+// render fully expanded on first paint. Releases beyond this
+// count are collapsed behind the "show all" toggle.
+const aboutMaxExpandedReleases = 10
+
+// aboutMaxPreviewBullets is the per-release bullet preview
+// length. The "show all" toggle surfaces when the first
+// non-empty subsection has more.
+const aboutMaxPreviewBullets = 3
 
 templ AboutView(view viewmodel.AboutView) {
 	@Layout("About") {
 		<div class="relative mx-auto max-w-4xl space-y-6" id="page.about" data-page-about>
 			<header class="space-y-2">
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">About DixieData</h1>
-				<p class="text-sm text-slate-600">App identity, license, release history, and credits. Slice 3 stub -- full layout arrives in slice 4.</p>
+				<p class="text-sm text-slate-600">App identity, license, and release history. Built into the binary so it stays accurate even when you are offline.</p>
 			</header>
-			<section class="card rounded-3xl p-5 sm:p-8 space-y-3" id="about.identity" data-about-identity>
-				<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">App identity</h2>
-				<dl class="grid gap-3 sm:grid-cols-2 text-sm">
-					<div>
-						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">App</dt>
-						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-app>{ view.AppName }</dd>
-					</div>
-					<div>
-						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Version</dt>
-						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-version>{ view.Version }</dd>
-					</div>
-					<div>
-						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codename</dt>
-						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-codename>{ view.Codename }</dd>
-					</div>
-					<div>
-						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Schema</dt>
-						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-schema>{ fmt.Sprintf("%d", view.Schema) }</dd>
-					</div>
-				</dl>
-			</section>
+			@aboutInPageNav()
+			@aboutIdentitySection(view)
+			@aboutLicenseSection(view)
+			@aboutHistorySection(view)
 		</div>
 	}
+}
+
+templ aboutInPageNav() {
+	<nav aria-label="On this page" class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 px-4 py-3 text-sm" data-about-in-page-nav>
+		<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">On this page</p>
+		<ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+			<li><a href="#about.identity" class="text-[var(--theme-text-primary)] underline">App identity</a></li>
+			<li><a href="#about.license" class="text-[var(--theme-text-primary)] underline">License + credits</a></li>
+			<li><a href="#about.history" class="text-[var(--theme-text-primary)] underline">Release history</a></li>
+		</ul>
+	</nav>
+}
+
+templ aboutIdentitySection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-3" id="about.identity" data-about-identity>
+		@components.Heading(components.H2, "App identity", "", nil)
+		<p class="text-sm text-slate-600">Build-time metadata. The codename is the Southern place-name convention per <code class="font-mono">docs/RELEASING.md</code>; the schema version is the data-plane counter.</p>
+		<dl class="grid gap-3 sm:grid-cols-2 text-sm">
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">App</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-app>{ view.AppName }</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Version</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-version>{ view.Version }</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codename</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-codename>{ view.Codename }</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Schema</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-schema>{ fmt.Sprintf("%d", view.Schema) }</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Branch</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-branch>{ view.Branch }</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Commit</dt>
+				<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-commit>{ view.Commit }</dd>
+			</div>
+			if view.BuiltAt != "" {
+				<div class="sm:col-span-2">
+					<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Built at</dt>
+					<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-built>{ view.BuiltAt }</dd>
+				</div>
+			}
+		</dl>
+	</section>
+}
+
+templ aboutLicenseSection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-3" id="about.license" data-about-license>
+		@components.Heading(components.H2, "License + credits", "", nil)
+		<div class="space-y-4 text-sm text-slate-700">
+			<div data-about-license-summary>
+				<p>DixieData is <strong>MIT-licensed</strong> &mdash; free to use, modify, and distribute, with attribution.</p>
+				<p class="mt-2">
+					<a
+						href={ templ.SafeURL(view.LicenseURL) }
+						class="text-[var(--theme-text-primary)] underline"
+						rel="noopener"
+						data-open-external
+					>View full license &rarr;</a>
+				</p>
+			</div>
+			<div data-about-credits>
+				<h3 class="text-base font-semibold text-[var(--theme-text-primary)]">Credits</h3>
+				<p class="text-xs text-slate-500">Binaries the DixieData build actually links. Exact versions live in the footer + buildinfo; this list is the human-readable who-what.</p>
+				<ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="pdfium">
+						<p class="font-semibold">pdfium</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">Apache 2.0</p>
+						<p class="mt-1 text-sm text-slate-600">PDF rendering for Soldier previews.</p>
+					</li>
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="typst">
+						<p class="font-semibold">Typst</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">Apache 2.0</p>
+						<p class="mt-1 text-sm text-slate-600">PDF report generation.</p>
+					</li>
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="htmx">
+						<p class="font-semibold">htmx</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">BSD-2-Clause</p>
+						<p class="mt-1 text-sm text-slate-600">In-page navigation.</p>
+					</li>
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="tailwindcss">
+						<p class="font-semibold">Tailwind CSS</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">MIT</p>
+						<p class="mt-1 text-sm text-slate-600">Styling system.</p>
+					</li>
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="playwright">
+						<p class="font-semibold">Playwright</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">Apache 2.0</p>
+						<p class="mt-1 text-sm text-slate-600">UI audit harness (test-only).</p>
+					</li>
+					<li class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3" data-about-credit="go-stdlib">
+						<p class="font-semibold">Go standard library</p>
+						<p class="text-xs uppercase tracking-[0.18em] text-slate-500">BSD-3-Clause</p>
+						<p class="mt-1 text-sm text-slate-600">Language runtime.</p>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</section>
+}
+
+templ aboutHistorySection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="about.history" data-about-history>
+		@components.Heading(components.H2, "Release history", "", nil)
+		<p class="text-sm text-slate-600">Newest first. Baked into the binary at release time so it stays accurate offline. The first three bullets of each release are visible by default; click <em>show all</em> to expand.</p>
+		if view.Releases == nil {
+			<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-amber-100-rgb)/0.6)] p-4 text-sm text-amber-950" data-about-history-empty>
+				<p><strong>Release history not yet generated for this build.</strong></p>
+				<p class="mt-1 text-xs">Run <code class="font-mono">make tpl</code> to bake from <code class="font-mono">CHANGELOG.md</code>. Every tagged release rebuilds the bake via the release pipeline (<code class="font-mono">scripts/release-github.ps1</code>); the dev binary ships with no baked data so the empty-state copy reads naturally.</p>
+			</div>
+		} else {
+			@aboutReleaseTimeline(view.Releases)
+		}
+	</section>
+}
+
+// aboutReleaseTimeline renders the release list. The first
+// aboutMaxExpandedReleases entries render fully expanded;
+// entries beyond that count are collapsed behind a toggle.
+templ aboutReleaseTimeline(releases []viewmodel.ReleaseEntry) {
+	<div class="space-y-4" data-about-release-timeline>
+		for i, rel := range releases {
+			if i < aboutMaxExpandedReleases {
+				@aboutReleaseCard(rel, false)
+			} else if i == aboutMaxExpandedReleases {
+				<details class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-4" data-about-history-collapse>
+					<summary class="cursor-pointer text-sm font-semibold text-[var(--theme-text-primary)]">Show all { fmt.Sprintf("%d", len(releases)) } releases</summary>
+					<div class="mt-3 space-y-4">
+						@aboutReleaseCard(rel, true)
+						for _, older := range releases[i+1:] {
+							@aboutReleaseCard(older, true)
+						}
+					</div>
+				</details>
+			}
+		}
+	</div>
+}
+
+// aboutReleaseCard renders a single release. insideCollapse is
+// true when the card is inside the "show all" details toggle;
+// the styling shifts slightly so the cards read as a list
+// inside a panel rather than top-level cards.
+templ aboutReleaseCard(rel viewmodel.ReleaseEntry, insideCollapse bool) {
+	if insideCollapse {
+		<article class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.25)] bg-white/30 p-3" data-about-release={ rel.Version }>
+			@aboutReleaseCardBody(rel)
+		</article>
+	} else {
+		<article class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/50 p-4" data-about-release={ rel.Version }>
+			@aboutReleaseCardBody(rel)
+		</article>
+	}
+}
+
+templ aboutReleaseCardBody(rel viewmodel.ReleaseEntry) {
+	<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+		<h3 class="font-mono text-base font-semibold text-[var(--theme-text-primary)]">{ rel.Version }</h3>
+		if rel.Codename != "" {
+			<span class="text-xs uppercase tracking-[0.18em] text-slate-500">&mdash; { rel.Codename }</span>
+		}
+		<time class="ml-auto text-xs font-mono text-slate-500">{ rel.Date }</time>
+	</header>
+	@aboutReleaseBullets(rel)
+}
+
+// aboutReleaseBullets renders the per-subsection bullet lists
+// with the preview-vs-expand behavior. The first
+// aboutMaxPreviewBullets bullets of the FIRST non-empty
+// subsection show by default; a <details> toggle exposes the
+// remaining bullets of that subsection + all other non-empty
+// subsections (the user sees every bullet once expanded).
+templ aboutReleaseBullets(rel viewmodel.ReleaseEntry) {
+	if computeReleasePlan(rel) == nil {
+		return
+	}
+	if computeReleasePlan(rel).fitsInPreview {
+		@aboutRenderSubsection(computeReleasePlan(rel).preview.name, computeReleasePlan(rel).preview.bullet)
+		@aboutRenderSubsectionList(computeReleasePlan(rel).tail)
+	} else {
+		@aboutRenderSubsection(computeReleasePlan(rel).preview.name, computeReleasePlan(rel).previewBullets)
+		<details class="mt-2" data-about-release-expand={ rel.Version }>
+			<summary class="cursor-pointer text-xs font-semibold text-[var(--theme-text-primary)] underline">
+				Show all { fmt.Sprintf("%d", computeReleasePlan(rel).totalBullets) } bullets
+			</summary>
+			<div class="mt-2 space-y-3">
+				@aboutRenderSubsection(computeReleasePlan(rel).preview.name, computeReleasePlan(rel).overflowBullets)
+				@aboutRenderSubsectionList(computeReleasePlan(rel).tail)
+			</div>
+		</details>
+	}
+}
+
+// aboutReleaseSubsection is a typed pair (subsection name +
+// bullets) used by the helpers below.
+type aboutReleaseSubsection struct {
+	name   string
+	bullet []string
+}
+
+// aboutReleasePlan is the pre-computed plan the templ body
+// consumes. Splitting the slice logic out of the templ keeps
+// the body declarative (no local Go variables inside a
+// templ scope).
+type releasePlan struct {
+	preview         aboutReleaseSubsection
+	tail            []aboutReleaseSubsection
+	previewBullets  []string
+	overflowBullets []string
+	totalBullets    int
+	fitsInPreview   bool
+}
+
+// computeReleasePlan returns the preview/expand plan for one
+// release. Returns nil when every subsection is empty.
+func computeReleasePlan(rel viewmodel.ReleaseEntry) *releasePlan {
+	subs := []aboutReleaseSubsection{
+		{"Added", rel.Added},
+		{"Changed", rel.Changed},
+		{"Fixed", rel.Fixed},
+		{"Removed", rel.Removed},
+		{"Maintenance", rel.Maintenance},
+		{"Documentation", rel.Docs},
+	}
+	previewIdx := -1
+	for i, s := range subs {
+		if len(s.bullet) > 0 {
+			previewIdx = i
+			break
+		}
+	}
+	if previewIdx < 0 {
+		return nil
+	}
+	preview := subs[previewIdx]
+	tail := subs[previewIdx+1:]
+	total := 0
+	for _, s := range subs {
+		total += len(s.bullet)
+	}
+	if len(preview.bullet) <= aboutMaxPreviewBullets {
+		return &releasePlan{
+			preview:       preview,
+			tail:          tail,
+			totalBullets:  total,
+			fitsInPreview: true,
+		}
+	}
+	return &releasePlan{
+		preview:         preview,
+		tail:            tail,
+		previewBullets:  preview.bullet[:aboutMaxPreviewBullets],
+		overflowBullets: preview.bullet[aboutMaxPreviewBullets:],
+		totalBullets:    total,
+		fitsInPreview:   false,
+	}
+}
+
+templ aboutRenderSubsection(name string, bullets []string) {
+	if len(bullets) == 0 {
+		return
+	}
+	<div class="mt-2" data-about-release-section={ name }>
+		<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ name }</p>
+		<ul class="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-700">
+			for _, b := range bullets {
+				<li>{ b }</li>
+			}
+		</ul>
+	</div>
+}
+
+// aboutRenderSubsectionList renders a slice of subsections,
+// skipping empty ones. Used by the preview/expand path to
+// render the rest of the release without a per-bullet
+// if-empty check.
+templ aboutRenderSubsectionList(subs []aboutReleaseSubsection) {
+	for _, sub := range subs {
+		if len(sub.bullet) == 0 {
+			continue
+		}
+		@aboutRenderSubsection(sub.name, sub.bullet)
+	}
+}
+
+// aboutReleaseTotalBullets is a Go helper that returns the
+// total bullet count across all subsections (used in the
+// "show all N bullets" summary).
+func aboutReleaseTotalBullets(rel viewmodel.ReleaseEntry) int {
+	return len(rel.Added) + len(rel.Changed) + len(rel.Fixed) + len(rel.Removed) + len(rel.Maintenance) + len(rel.Docs)
 }
