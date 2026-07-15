@@ -8,11 +8,11 @@ state without re-reading every issue title.
 | Axis | Question | Labels |
 |---|---|---|
 | **Type** | What's the work? | `bug`, `enhancement`, `documentation`, `reference-doc` |
-| **Status** | Where is it in triage? | `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` |
-| **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug` |
+| **Status** | Where is it in triage? | `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human` |
+| **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug`, `area:build`, `area:ci` |
 | **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
 | **Cohort** | What batch does it belong to? | `audit-fallout` |
-| **Meta** | Process state, not work state | `blocked`, `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix` |
+| **Meta** | Process state, not work state | `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix`, `safe-for-in-place`, `unsafe-for-in-place` |
 
 The full label set with colors + descriptions is defined in
 [`scripts/sync-labels.sh`](../../scripts/sync-labels.sh).
@@ -73,7 +73,6 @@ table from before:
 | `needs-info` | `needs-info` | Waiting on reporter for more information |
 | `ready-for-agent` | `ready-for-agent` | Fully specified, ready for an AFK agent |
 | `ready-for-human` | `ready-for-human` | Requires human implementation |
-| `wontfix` | `wontfix` | Will not be actioned |
 
 For **bugs**, `ready-for-agent` requires the bug template
 (Symptom + Repro + Root cause + Files + Regression net) filled in
@@ -93,12 +92,14 @@ The current set, with the docs each one signals an agent to load:
 | Label | Signals | Agent loads |
 |---|---|---|
 | `area:backend` | Go code in `internal/appshell/`, `internal/records/`, etc. | `docs/CODE_CHANGES.md`, `docs/COMMON_BUGS.md` §4 |
+| `area:build` | Build pipeline (Makefile, `scripts/`, release pipeline, `versioninfo` codename mechanics) | `docs/RELEASING.md` |
+| `area:ci` | GitHub Actions workflows, race gates, CI plumbing | `.github/workflows/` |
 | `area:cli` | Headless subcommand in `internal/appshell/cli_*.go` | `docs/agents/cli-plan.md` |
 | `area:db` | SQLite schema / migrations / queries | `docs/migrations/` (latest two) |
 | `area:debug` | Debug harness, trace instrumentation | `docs/agents/dialog-guard.md`, ADR 0006 |
-| `area:docs` | `CONTEXT.md`, `agents/`, `adr/`, `migrations/` | This file, `docs/agents/INDEX.md` |
+| `area:docs` | `CONTEXT.md`, `agents/`, `adr/` | This file, `docs/agents/INDEX.md` |
 | `area:export` | Export surface (PDF, JPG, JSON, CSV, iCal) | `docs/agents/dialog-guard.md` |
-| `area:frontend` | Frontend JS, CSS, htmx, `templates/` | `docs/COMMON_BUGS.md` §1-3 |
+| `area:frontend` | Frontend JS, CSS, htmx, `templates/`, UX/microcopy | `docs/COMMON_BUGS.md` §1-3 |
 | `area:import` | Import surface (.ddbak, .ddshare, images) | `docs/agents/cli-plan.md` §Phase 5 |
 | `area:share` | `/share` screen + subpages | `docs/ui-map/wireframes/08-export.md` |
 | `area:tags` | Tag system (Person Record free-text labels) | Issue #183 |
@@ -139,15 +140,26 @@ a backlog of related issues.
 
 | Label | When to apply |
 |---|---|
-| `blocked` | Held by another issue. Comment on the issue with a link to the blocker. |
-| `deferred` | Held until a future trigger fires. Issue body must document the reopen conditions (what event would un-defer this?). Distinct from `wontfix` (decision to never action) and `blocked` (held by a specific in-flight issue). |
+| `deferred` | Held until a future trigger fires. Issue body must document the reopen conditions (what event would un-defer this?). Distinct from `wontfix` (decision to never action). |
 | `duplicate` | This issue already exists. Comment with a link to the canonical issue. |
 | `good first issue` | Small enough for a newcomer to pick up. Maintainer-curated. |
 | `help wanted` | Maintainer is actively looking for someone to pick this up. |
 | `invalid` | Not a real issue (test post, spam, off-topic). |
-| `release-counter-exempt` | PRs targeting `stable` that intentionally do not bump `CurrentAppVersionInt` (issue #578). Used rarely — pure-docs releases, dependency update rotations with no new release value. The N-bump CI gate (`release-counter-bumped` step in `.github/workflows/test.yml`) auto-allows PRs carrying this label. Apply with a one-line comment justifying the exception. |
 | `question` | Reporter is asking, not filing. Convert to enhancement/bug if it becomes a real issue. |
 | `wontfix` | Decision to not action. Must include reasoning in a comment. |
+
+## In-place update safety (build-protocol.md §5)
+
+| Label | When to apply |
+|---|---|
+| `safe-for-in-place` | Reviewed against the 4 safety rules; safe for in-place update on `main`. |
+| `unsafe-for-in-place` | Intentional destructive change; ships via full re-install + restore-point only. |
+
+## Release-process exemptions
+
+| Label | When to apply |
+|---|---|
+| `release-counter-exempt` | PR may skip the `CurrentAppVersionInt` bump gate. Used rarely — pure-docs releases advancing N for tracking. The N-bump CI step (`release-counter-bumped` in `.github/workflows/test.yml`) auto-allows PRs carrying this label. Apply with a one-line comment justifying the exception. See `docs/RELEASING.md` §"N bump semantics". |
 
 ## References
 
