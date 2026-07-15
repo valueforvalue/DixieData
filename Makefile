@@ -379,7 +379,7 @@ tpl: ## Regenerate templ files
 	go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
 	# Sub-target via shell `make` (not $(MAKE)) to dodge the
 	# GNUWin32 path-with-parens expansion bug per AGENTS.md.
-	sh -c 'make release-notes-bake'
+	sh -c 'make release-notes-bake && make activity-history-bake'
 
 # release-notes-bake: parse CHANGELOG.md into
 # internal/releasehistory/baked.go (gitignored). Run via `make tpl`
@@ -387,6 +387,12 @@ tpl: ## Regenerate templ files
 # baked == nil until this runs. Issue #585 slice 2.
 release-notes-bake: ## Parse CHANGELOG.md into releasehistory/baked.go
 	go run ./scripts/bake-release-notes
+
+# activity-history-bake: parse git log + GitHub Issues into
+# internal/activityhistory/baked.go (gitignored). Issue #586
+# slice 2/3.
+activity-history-bake: ## Bake git log + closed issues into activityhistory/baked.go
+	go run ./scripts/bake-activity
 
 # npm --silent suppresses npm's own chatter; tailwind output is short.
 css: ## Rebuild Tailwind bundle
