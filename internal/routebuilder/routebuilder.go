@@ -333,6 +333,11 @@ func Inventory() string {
 	return "/inventory"
 }
 
+// About returns the path to the /about page (issue #585).
+func About() string {
+	return "/about"
+}
+
 // ExportBackup returns the URL for the Backup Archive export button.
 // Registered as POST /export/backup in routes.go.
 func ExportBackup() string {

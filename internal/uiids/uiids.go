@@ -70,6 +70,8 @@ const (
 	PageShareLanding            = "page.share.landing"
 // PageInsights is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInsights                = "page.insights"
+	// Issue #585: About page UIID.
+	PageAbout                   = "page.about"
 // PageInventory is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInventory               = "page.inventory"
 // PanelInsightsOverview is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
@@ -202,6 +204,13 @@ const (
 	// The 2 pre-#380 top-nav foldouts (Share + Research &
 	// Review) collapsed into the single LayoutShareReviewMenu /
 	// LayoutShareReviewMenuTrigger mega-menu (declared above).
+
+	// Issue #585: About mega-menu (slice 5). Single-item panel:
+	// the about page itself. In-page anchor jumps to
+	// #identity / #license / #history live on the page's own
+	// nav strip, not in this menu.
+	LayoutAboutMenu       = "layout.about.menu"
+	LayoutAboutMenuTrigger = "layout.about.menu.trigger"
 
 	// Issue #378: Research & Review picker (slice 1 — picker landing).
 	// PageResearchPicker wraps the page-level main content area on
@@ -370,6 +379,7 @@ var Registry = []Surface{
 	{ID: PageShareSync, Kind: "page", Description: "Share Sync subpage (Google Integration surface + Calendar Preferences modal)."},
 	{ID: PageInsights, Kind: "page", Description: "Archive insights dashboard page."},
 	{ID: PageInventory, Kind: "page", Description: "Archive inventory page (issue #491): full DB rollup — Person Record subtypes + Event Records + Articles + Tags at a basic level than Insights."},
+	{ID: PageAbout, Kind: "page", Description: "About page (issue #585): app identity + license + credits + release history + (post-#586) repository activity. Anchors: #identity / #license / #history / #activity."},
 	{ID: PanelInsightsOverview, Kind: "panel", Description: "Overview card on the insights page."},
 	{ID: PanelInsightsCemeteries, Kind: "panel", Description: "Top cemeteries analytics card."},
 	{ID: PanelInsightsHomes, Kind: "panel", Description: "Confederate home analytics card."},
@@ -423,6 +433,8 @@ var Registry = []Surface{
 	{ID: LayoutRecordsMenuTrigger, Kind: "nav", Description: "Top-nav Records mega-menu trigger button (issue #380 slice 2); clicking opens LayoutRecordsMenu. aria-controls points at the panel's id."},
 	{ID: LayoutShareReviewMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the Share & Review trigger (issue #380 slice 3); 2D grid with two groups (Review & Research: Review Queue with badge + Timeline + Research Log + Collections + Insights; Share: Landing + Export + Import + Share Queue + Sync)."},
 	{ID: LayoutShareReviewMenuTrigger, Kind: "nav", Description: "Top-nav Share & Review mega-menu trigger button (issue #380 slice 3); clicking opens LayoutShareReviewMenu. aria-controls points at the panel's id."},
+	{ID: LayoutAboutMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the About trigger (issue #585 slice 5); single-group panel with one destination (About DixieData -> /about). In-page section anchors (#identity/#license/#history) live on the page itself, not in this menu."},
+	{ID: LayoutAboutMenuTrigger, Kind: "nav", Description: "Top-nav About mega-menu trigger button (issue #585 slice 5); clicking opens LayoutAboutMenu. aria-controls points at the panel's id."},
 	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
 	{ID: PanelResearchPickerSearch, Kind: "panel", Description: "Search input region on the Research picker page; htmx target for the live results swap."},
 	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},
