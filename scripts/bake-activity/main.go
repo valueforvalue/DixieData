@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/activityhistory"
+	"github.com/valueforvalue/DixieData/internal/activityhistory/parse"
 	"github.com/valueforvalue/DixieData/internal/releasehistory"
 )
 
@@ -99,7 +99,7 @@ func repoRoot() (string, error) {
 // gitLogRolling returns the rolling N-day git log as a slice
 // of GitLogEntry. Uses `git log --format=%aI %an` and slices
 // the timestamp to YYYY-MM-DD.
-func gitLogRolling(root string, days int) ([]activityhistory.GitLogEntry, error) {
+func gitLogRolling(root string, days int) ([]parse.GitLogEntry, error) {
 	cmd := exec.Command("git", "log",
 		fmt.Sprintf("--since=%d days ago", days),
 		"--format=%aI %an",
@@ -110,7 +110,7 @@ func gitLogRolling(root string, days int) ([]activityhistory.GitLogEntry, error)
 	if err != nil {
 		return nil, fmt.Errorf("git log: %w", err)
 	}
-	var entries []activityhistory.GitLogEntry
+	var entries []parse.GitLogEntry
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
@@ -121,7 +121,7 @@ func gitLogRolling(root string, days int) ([]activityhistory.GitLogEntry, error)
 			continue
 		}
 		date := parts[0][:10] // YYYY-MM-DD slice
-		entries = append(entries, activityhistory.GitLogEntry{Date: date, Name: parts[1]})
+		entries = append(entries, parse.GitLogEntry{Date: date, Name: parts[1]})
 	}
 	return entries, nil
 }
@@ -136,7 +136,7 @@ func gitLogRolling(root string, days int) ([]activityhistory.GitLogEntry, error)
 // counts -- the templ partial renders "N/A" for the per-release
 // row in that case (the about page surfaces "this release was
 // amended in dev; activity data not yet baked").
-func perReleaseActivity(root string, releases []releasehistory.Entry) ([]activityhistory.ReleaseActivity, error) {
+func perReleaseActivity(root string, releases []releasehistory.Entry) ([]parse.ReleaseActivity, error) {
 	if len(releases) == 0 {
 		return nil, nil
 	}
@@ -144,12 +144,12 @@ func perReleaseActivity(root string, releases []releasehistory.Entry) ([]activit
 	for _, r := range releases {
 		tagExists[r.Version] = gitTagExists(root, r.Version)
 	}
-	var out []activityhistory.ReleaseActivity
+	var out []parse.ReleaseActivity
 	for i, rel := range releases {
 		if !tagExists[rel.Version] {
 			// Tag does not exist -- emit a zero row so the
 			// templ partial can render an N/A marker.
-			out = append(out, activityhistory.ReleaseActivity{
+			out = append(out, parse.ReleaseActivity{
 				Version:      rel.Version,
 				Date:         rel.Date,
 				CommitCount:  0,
@@ -166,7 +166,7 @@ func perReleaseActivity(root string, releases []releasehistory.Entry) ([]activit
 			// Skip per-release counts when the previous tag is
 			// missing -- the range spec would error.
 			if !tagExists[releases[i-1].Version] {
-				out = append(out, activityhistory.ReleaseActivity{
+				out = append(out, parse.ReleaseActivity{
 					Version:      rel.Version,
 					Date:         rel.Date,
 					CommitCount:  0,
@@ -186,7 +186,7 @@ func perReleaseActivity(root string, releases []releasehistory.Entry) ([]activit
 		if err != nil {
 			return nil, fmt.Errorf("per-release contribs %s: %w", rel.Version, err)
 		}
-		out = append(out, activityhistory.ReleaseActivity{
+		out = append(out, parse.ReleaseActivity{
 			Version:      rel.Version,
 			Date:         rel.Date,
 			CommitCount:  count,
@@ -276,8 +276,8 @@ func gitLogContributors(root, rangeSpec string) ([]string, error) {
 // gh CLI, paginating until exhausted. The bake accepts that
 // this requires `gh auth login` -- a non-authenticated dev
 // environment bakes with an empty issues summary.
-func fetchClosedIssues() ([]activityhistory.IssueLabel, error) {
-	all := []activityhistory.IssueLabel{}
+func fetchClosedIssues() ([]parse.IssueLabel, error) {
+	all := []parse.IssueLabel{}
 	page := 1
 	for {
 		// gh api paginates automatically with --paginate; we use
@@ -298,7 +298,7 @@ func fetchClosedIssues() ([]activityhistory.IssueLabel, error) {
 			if line == "" {
 				continue
 			}
-			all = append(all, activityhistory.IssueLabel{Name: line})
+			all = append(all, parse.IssueLabel{Name: line})
 		}
 		page++
 		if page > 50 {
@@ -311,24 +311,18 @@ func fetchClosedIssues() ([]activityhistory.IssueLabel, error) {
 }
 
 // buildSnapshot assembles the typed Snapshot from the inputs.
-func buildSnapshot(entries []activityhistory.GitLogEntry, perRelease []activityhistory.ReleaseActivity, issueLabels []activityhistory.IssueLabel) *activityhistory.Snapshot {
-	perDay := activityhistory.PerDayFromGitLog(entries)
+func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivity, issueLabels []parse.IssueLabel) *parse.Snapshot {
+	perDay := parse.PerDayFromGitLog(entries)
 	// Compute top contributors from the rolling entries.
 	contribCounts := make(map[string]int)
 	for _, e := range entries {
 		contribCounts[e.Name]++
 	}
-	var counts []activityhistory.ContributorCount
+	var counts []parse.ContributorCount
 	for name, c := range contribCounts {
-		counts = append(counts, activityhistory.ContributorCount{Name: name, Count: c})
+		counts = append(counts, parse.ContributorCount{Name: name, Count: c})
 	}
-	// Sort by count desc; keep top N.
-	sort.SliceStable(counts, func(i, j int) bool {
-		return counts[i].Count > counts[j].Count
-	})
-	if len(counts) > topContributorsCap {
-		counts = counts[:topContributorsCap]
-	}
+	counts = parse.TopContributors(counts, topContributorsCap)
 	// Find first / latest commit dates.
 	first := ""
 	latest := ""
@@ -341,9 +335,9 @@ func buildSnapshot(entries []activityhistory.GitLogEntry, perRelease []activityh
 		}
 	}
 	// Issues-closed.
-	issues := activityhistory.IssuesClosedFromLabels(issueLabels)
+	issues := parse.IssuesClosedFromLabels(issueLabels)
 	issues.GeneratedAt = time.Now().UTC().Format("2006-01-02T15:04:05Z")
-	return &activityhistory.Snapshot{
+	return &parse.Snapshot{
 		GeneratedAt:        time.Now().UTC().Format("2006-01-02T15:04:05Z"),
 		FirstCommitDate:    first,
 		LatestCommitDate:   latest,
@@ -358,7 +352,7 @@ func buildSnapshot(entries []activityhistory.GitLogEntry, perRelease []activityh
 
 // render emits the Go source for baked.go. gofmt-formatted for
 // stable diffs.
-func render(path string, snap *activityhistory.Snapshot) ([]byte, error) {
+func render(path string, snap *parse.Snapshot) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString(`// Code generated by scripts/bake-activity. DO NOT EDIT.
 //
