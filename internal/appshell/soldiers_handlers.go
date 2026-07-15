@@ -705,7 +705,10 @@ func (a *App) handleRecoverDisplayID(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, fmt.Sprintf("Could not recover display_id for record %d.", id), err)
 		return
 	}
-	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Display ID recovered: %s", newID))
+	// Issue #582: pass-to-active voice. "recovered" was status-form
+	// (passive); "set to" is action-form (verb-led) per
+	// docs/agents/ux-microcopy.md R5.
+	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Display ID set to %s", newID))
 	w.Header().Set("X-DixieData-Toast-Type", "success")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

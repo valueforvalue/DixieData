@@ -277,41 +277,76 @@ node audit/smoke_icalendar_microcopy.mjs --strict
 node audit/smoke_icalendar_microcopy.test.mjs
 ```
 
-### Runtime coverage (issue #581)
+### Runtime coverage (issues #581 / #582)
 
 `audit/smoke_runtime_microcopy.mjs` walks the runtime user-
 facing copy that the earlier three probes did not cover:
-the top-traffic `showToast()` call sites in
-`frontend/app.js`, the loading-screen placeholder in
-`internal/appshell/app.go`, and the CLI help text in
-`main.go::cliHelpText`. Slice 4 ships **GREEN-on-HEAD** (no
-edits planned); the probe pins the surface so a future
-contributor cannot drift the catalogued copy without breaking
-the CI gate.
+the `showToast()` call sites in `frontend/app.js`, the
+loading-screen placeholder in `internal/appshell/app.go`,
+the CLI help text in `main.go::cliHelpText`, and the server-
+side `X-DixieData-Toast` producer sites in the appshell
+handlers. Slice 4 (issue #581) shipped GREEN-on-HEAD as
+thin-recon; issue #582 closed the thin-recon gaps by
+adding 9 more `frontend/app.js` toast literals, 4 server-
+side toast strings, and an R5 rephrase in
+`internal/appshell/soldiers_handlers.go:711` (passive
+`"Display ID recovered: %s"` → action-form
+`"Display ID set to %s"`).
 
-Catalogued copy (15 strings total): the loading-screen `<title>`
-+ body heading + status sentence (`"The local archive is
-still starting up. This screen will refresh automatically."`),
-9 top-traffic toast strings (`"Saved local draft restored."`,
-`"Path copied."`, `"No path to copy."`, `"Could not load print
-options."`, `"Browse refresh failed."`, `"Choose exactly two
-records to compare."`, `"Nothing to copy."`, `"Clipboard helper
-unavailable."`, `"Preview content was not available."`), the
-CLI help opener (`"DixieData CLI — headless archive operations"`),
-the usage line (`"dixiedata <subcommand> [flags]"`), and the
-doc reference (`"See docs/agents/cli-plan.md for the full
-roadmap."`).
+**Catalogued copy** (issue #582 final state):
+
+- **Loading-screen placeholder** (`app.go`): `<title>Loading
+  DixieData...</title>` + body heading + the second-clause
+  status sentence (`"The local archive is still starting
+  up. This screen will refresh automatically."`). The
+  second clause is **kept** per the slice-1 R5 carveout for
+  status-form copy that reveals state the user needs (no
+  manual refresh required). Drift signposts: a third
+  paragraph would fire the `verbose-second-paragraph`
+  forbidden rule.
+- **`frontend/app.js` toasts** (18 literal pins): `"Saved
+  local draft restored."`, `"Path copied."`, `"No path to
+  copy."`, `"Could not copy the path. Long-press to
+  select."`, `"Could not load print options."`, `"Browse
+  refresh failed."`, `"Choose exactly two records to
+  compare."`, `"Nothing to copy."`, `"Clipboard helper
+  unavailable."`, `"Could not copy. Long-press to select."`,
+  the `"Copied: "` prefix for the dynamic-preview toast,
+  `"Preview content was not available."`, `"Open a record
+  with a saved Record ID before launching the scratch pad."`,
+  `"Scratch pad opened."`, `"Scratch pad failed to open."`
+  (literal + caller-passed fallback), `"Request failed."`
+  fallback, `"stale filter values; click 'Show details' for
+  the list."`. The 6 caller-passed variants
+  (`showToast(toastMessage, toastKind)` and friends) are out
+  of probe reach; their messages live in server headers
+  (`X-DixieData-Toast`) or other callers.
+- **Server-side `X-DixieData-Toast` producer sites**
+  (`appshell/{articles,events,calendar,soldiers}_handlers.go`):
+  `"Article PDF saved to %s."`, `"Event PDF saved to %s."`,
+  `"Identity saved. Loading DixieData..."`
+  (kept as-is per the slice-1 R5 carveout — second clause
+  acknowledges the redirect auto-fire), `"Display ID set to
+  %s"` (slice 582B R5 rephrase).
+- **CLI help** (`main.go::cliHelpText`): opener
+  (`"DixieData CLI — headless archive operations"`), usage
+  line (`"dixiedata <subcommand> [flags]"`), doc reference
+  (`"See docs/agents/cli-plan.md for the full roadmap."`).
+  Frozen as-is per the #582 audit — no verbosity /
+  duplication / self-explanatory-heading findings.
 
 Drift signposts: status-form empty copy in app.js toasts
-(`showToast("No records yet.", ...)`); verbose second paragraphs
-in the startup placeholder; missing CLI verbs or blank lines
-in the help text.
+(`showToast("No records yet.", ...)`); the pre-fix passive
+`"Display ID recovered:"` phrasing in `soldiers_handlers.go`;
+verbose third paragraphs in the startup placeholder; missing
+CLI verbs or blank lines in the help text.
 
 The probe skips JSON keys, route names, generated Tailwind
 output, service-worker plumbing, error chains not shown to
-researchers, and the ~21 `showToast()` call sites that the
-early-2026 slice already audited in `669a761`. `RUNTIME_SOURCE`
-env-override lets the test file feed a synthetic fixture.
+researchers, the caller-passed `showToast(toastMessage,
+toastKind)` variants in `frontend/app.js`, and the dynamic
+`respond.go` envelope surface. `RUNTIME_SOURCE` env-override
+lets the test file feed a synthetic fixture.
 
 When changing runtime copy, run:
 

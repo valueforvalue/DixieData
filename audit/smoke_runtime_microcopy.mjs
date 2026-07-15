@@ -46,28 +46,52 @@ const FILES = {
   'app.js': join(ROOT, 'frontend', 'app.js'),
   'app.go (startup placeholder)': join(ROOT, 'internal', 'appshell', 'app.go'),
   'cliHelpText (main.go)': join(ROOT, 'main.go'),
+  'articles_handlers.go (X-DixieData-Toast)': join(ROOT, 'internal', 'appshell', 'articles_handlers.go'),
+  'events_handlers.go (X-DixieData-Toast)': join(ROOT, 'internal', 'appshell', 'events_handlers.go'),
+  'calendar_handlers.go (X-DixieData-Toast)': join(ROOT, 'internal', 'appshell', 'calendar_handlers.go'),
+  'soldiers_handlers.go (X-DixieData-Toast)': join(ROOT, 'internal', 'appshell', 'soldiers_handlers.go'),
 };
 
 // Required strings — each is pinned verbatim so any future
 // drift breaks the gate.
 const REQUIRED = [
-  // top-traffic toasts in app.js (action-form verb-led, ≤80 chars each)
+  // top-traffic toasts in app.js (action-form verb-led, ≤80 chars each).
+  // Slice 582A extends slice 4's 9 pins to cover every literal
+  // call site in frontend/app.js (24 total, 15 caller-passed
+  // variants are out of probe reach).
   ['toast: Saved local draft restored.', 'frontend/app.js', 'Saved local draft restored.'],
   ['toast: Path copied.', 'frontend/app.js', 'Path copied.'],
   ['toast: No path to copy.', 'frontend/app.js', 'No path to copy.'],
+  ['toast: Could not copy the path. Long-press to select.', 'frontend/app.js', 'Could not copy the path. Long-press to select.'],
   ['toast: Could not load print options.', 'frontend/app.js', 'Could not load print options.'],
   ['toast: Browse refresh failed.', 'frontend/app.js', 'Browse refresh failed.'],
   ['toast: Choose exactly two records to compare.', 'frontend/app.js', 'Choose exactly two records to compare.'],
   ['toast: Nothing to copy.', 'frontend/app.js', 'Nothing to copy.'],
   ['toast: Clipboard helper unavailable.', 'frontend/app.js', 'Clipboard helper unavailable.'],
+  ['toast: Could not copy. Long-press to select.', 'frontend/app.js', 'Could not copy. Long-press to select.'],
+  ['toast: Copied: prefix.', 'frontend/app.js', '"Copied: "'],
   ['toast: Preview content was not available.', 'frontend/app.js', 'Preview content was not available.'],
+  ['toast: Open a record with a saved Record ID before launching the scratch pad.', 'frontend/app.js', 'Open a record with a saved Record ID before launching the scratch pad.'],
+  ['toast: Scratch pad opened fallback.', 'frontend/app.js', '"Scratch pad opened."'],
+  ['toast: Scratch pad failed to open fallback.', 'frontend/app.js', '"Scratch pad failed to open."'],
+  ['toast: Scratch pad failed to open.', 'frontend/app.js', '"Scratch pad failed to open."'],
+  ['toast: Request failed fallback.', 'frontend/app.js', '"Request failed."'],
+  ['toast: stale filter values suffix.', 'frontend/app.js', "stale filter values; click 'Show details' for the list."],
+
+  // server-side X-DixieData-Toast producer sites (slice 582A).
+  // Slice 4 did not walk this surface.
+  ['server-toast: Article PDF saved', 'articles_handlers.go (X-DixieData-Toast)', 'Article PDF saved to '],
+  ['server-toast: Event PDF saved', 'events_handlers.go (X-DixieData-Toast)', 'Event PDF saved to '],
+  ['server-toast: Identity saved (load)', 'calendar_handlers.go (X-DixieData-Toast)', 'Identity saved. Loading DixieData...'],
+  ['server-toast: Display ID set (R5 rephrase #582)', 'soldiers_handlers.go (X-DixieData-Toast)', 'Display ID set to '],
 
   // startup placeholder (app.go)
   ['startup: title', 'app.go', '<title>Loading DixieData...</title>'],
   ['startup: body heading', 'app.go', 'text-2xl font-semibold text-[var(--theme-text-primary)]">Loading DixieData...</p>'],
   ['startup: status body', 'app.go', 'The local archive is still starting up. This screen will refresh automatically.'],
 
-  // CLI help (main.go)
+  // CLI help (main.go) — frozen per issue #582 (no verbosity
+  // / duplication found; audit-class commit freezes the text).
   ['cli: DixieData CLI opener', 'cliHelpText (main.go)', 'DixieData CLI \u2014 headless archive operations'],
   ['cli: usage line', 'cliHelpText (main.go)', 'dixiedata <subcommand> [flags]'],
   ['cli: doc reference', 'cliHelpText (main.go)', 'See docs/agents/cli-plan.md for the full roadmap.'],
@@ -83,10 +107,16 @@ const FORBIDDEN = [
     'toasts must be action-form ("Saved X", "Could not load Y"); never status-form ("No records yet.")',
   ],
   [
+    'server-toast: passive "recovered" / "saved" status-form',
+    'soldiers_handlers.go (X-DixieData-Toast)',
+    /Display ID recovered:/,
+    'soldiers_handlers Display ID toast must use action-form ("Display ID set to {id}"), not status-form ("recovered"); see docs/agents/ux-microcopy.md R5',
+  ],
+  [
     'startup: verbose second paragraph',
     'app.go',
     /Loading DixieData\.\.\.[\s\S]{0,400}still starting up[\s\S]{0,400}refreshes? automatically/,
-    'the startup second sentence must remain in its current concise form; the placeholder auto-refreshes regardless',
+    'the startup second sentence must remain in its current concise form (R5 carveout for status revealing state the user needs); see docs/agents/ux-microcopy.md',
   ],
   [
     'cli: redundant subcommand list',

@@ -1,9 +1,10 @@
 // audit/smoke_runtime_microcopy.test.mjs
 //
 // Regression tests for the issue #581 runtime microcopy gate
-// (slice 4, audit-only). The probe is GREEN-on-HEAD; this
-// test file pins the GREEN state plus synthetic regressions
-// for each rule family.
+// (slice 4) and its issue #582 follow-up. The probe is
+// RED-on-HEAD pre-fix (the soldiers_handlers.go:708 rephrase
+// is missing), GREEN-on-HEAD post-fix. This file pins both the
+// RED state and the synthetic regressions for each rule family.
 
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
@@ -47,19 +48,39 @@ function withTempSource(body, fn) {
   }
 }
 
+// Canonical synthetic source represents the POST-FIX repo (every
+// pinned string present, including the slice 582B R5 rephrase).
+// Slice 582A RED-on-HEAD assertions check that the pre-fix repo
+// missing the R5 rephrase is exactly 1 finding; the synthetic
+// canonical proves the probe accepts the post-fix shape.
 const CANONICAL_SOURCE = [
   '// canonical runtime producer -- every pinned string present',
   '',
-  '// top-traffic toasts',
+  '// top-traffic toasts in app.js',
   'showToast("Saved local draft restored.", "success");',
   'showToast("Path copied.", "success");',
   'showToast("No path to copy.", "error");',
+  'showToast("Could not copy the path. Long-press to select.", "error");',
   'showToast("Could not load print options.", "error");',
   'showToast("Browse refresh failed.", "error");',
   'showToast("Choose exactly two records to compare.", "error");',
   'showToast("Nothing to copy.", "error");',
   'showToast("Clipboard helper unavailable.", "error");',
+  'showToast("Could not copy. Long-press to select.", "error");',
+  'showToast("Copied: " + preview, "success");',
   'showToast("Preview content was not available.", "error");',
+  'showToast("Open a record with a saved Record ID before launching the scratch pad.", "warning");',
+  'showToast(message || "Scratch pad opened.", "success");',
+  'showToast(message || "Scratch pad failed to open.", "error");',
+  'showToast("Scratch pad failed to open.", "error");',
+  'showToast(toastMessage || "Request failed.", "error");',
+  'showToast(warnings.length + " stale filter values; click \'Show details\' for the list.", "warning");',
+  '',
+  '// server-side X-DixieData-Toast producer sites',
+  'w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Article PDF saved to %s.", filepath.Base(path)))',
+  'w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Event PDF saved to %s.", filepath.Base(path)))',
+  'w.Header().Set("X-DixieData-Toast", "Identity saved. Loading DixieData...")',
+  'w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Display ID set to %s", newID))',
   '',
   '// startup placeholder',
   '<title>Loading DixieData...</title>',
@@ -73,32 +94,44 @@ const CANONICAL_SOURCE = [
   '',
 ].join('\n');
 
+// Pre-fix canonical: the soldiers_handlers.go toast is the
+// passive "Display ID recovered" phrasing that the slice 582B
+// rephrase replaces. We use this for the RED-on-HEAD baseline
+// assertions.
+const PREFIX_CANONICAL = CANONICAL_SOURCE.replace(
+  'fmt.Sprintf("Display ID set to %s", newID)',
+  'fmt.Sprintf("Display ID recovered: %s", newID)',
+);
+
 // --- baseline-on-HEAD --------------------------------------------------
 
-test('probe reports 0 baseline findings on current repo (GREEN-on-HEAD)', () => {
+test('probe reports 0 baseline findings on current repo (GREEN-on-HEAD, slice 582B rephrase landed)', () => {
+  // Post-fix HEAD: the slice 582B R5 rephrase replaced the
+  // passive "recovered" with action-form "set to", so the
+  // required pin finds its match AND the forbidden regex
+  // finds no source for the passive phrasing. Both flip to
+  // clean. Issue #582 closed.
   const result = runProbe(undefined, false);
-  // When RUNTIME_SOURCE is unset the probe scans the real
-  // repo. Use --strict to make sure the real repo passes too.
   assert.equal(result.status, 0, `expected informational exit 0\nstdout: ${result.stdout}`);
   assert.match(
     result.stdout,
-    /Required copy findings: 0/,
-    `expected 0 required findings on HEAD; got:\n${result.stdout}`,
+    /Required copy findings: 0\b/,
+    `expected 0 required findings on HEAD post-fix; got:\n${result.stdout}`,
   );
   assert.match(
     result.stdout,
-    /Forbidden\/verbose copy findings: 0/,
-    `expected 0 forbidden findings on HEAD; got:\n${result.stdout}`,
+    /Forbidden\/verbose copy findings: 0\b/,
+    `expected 0 forbidden findings on HEAD post-fix (R5 rephrase landed); got:\n${result.stdout}`,
   );
 });
 
-test('probe exits 0 under --strict on current repo (GREEN-on-HEAD)', () => {
+test('probe exits 0 under --strict on current repo (GREEN-on-HEAD post-fix)', () => {
   const result = runProbe(undefined, true);
   assert.equal(result.status, 0, `expected strict exit 0 on HEAD\nstdout: ${result.stdout}`);
   assert.match(result.stdout, /Runtime microcopy sweep: clean/);
 });
 
-// --- synthetic positive: missing-toast fixture ------------------------
+// --- synthetic positive: missing-toast fixtures -----------------------
 
 test('synthetic missing-toast fixture fails the required rule', () => {
   withTempSource(
@@ -112,9 +145,6 @@ test('synthetic missing-toast fixture fails the required rule', () => {
 });
 
 test('synthetic missing-startup-heading fixture fails the required rule', () => {
-  // Strip only the full markup line so the title-required
-  // stays green and the body-heading-required fires on its
-  // own.
   const mutated = CANONICAL_SOURCE.replace(
     '\ntext-2xl font-semibold text-[var(--theme-text-primary)]">Loading DixieData...</p>\n',
     '\nLoading app...\n',
@@ -137,6 +167,28 @@ test('synthetic missing-CLI-help-opener fixture fails the required rule', () => 
   );
 });
 
+test('synthetic missing-server-toast Article PDF fixture fails the required rule', () => {
+  withTempSource(
+    CANONICAL_SOURCE.replace('Article PDF saved to ', '[removed] '),
+    (source) => {
+      const result = runProbe(source, true);
+      assert.equal(result.status, 1, `expected strict failure\nstdout: ${result.stdout}`);
+      assert.match(result.stdout, /Article PDF/);
+    },
+  );
+});
+
+test('synthetic missing-server-toast Display ID set fixture fails the required rule', () => {
+  withTempSource(
+    CANONICAL_SOURCE.replace('Display ID set to ', '[removed] '),
+    (source) => {
+      const result = runProbe(source, true);
+      assert.equal(result.status, 1, `expected strict failure\nstdout: ${result.stdout}`);
+      assert.match(result.stdout, /Display ID set/);
+    },
+  );
+});
+
 // --- synthetic positive: forbidden drift fixtures ---------------------
 
 test('synthetic status-form-empty-toast fixture fails the forbidden rule', () => {
@@ -148,6 +200,18 @@ test('synthetic status-form-empty-toast fixture fails the forbidden rule', () =>
       assert.match(result.stdout, /status-form empty copy/);
     },
   );
+});
+
+test('synthetic passive-recovered-toast fixture fails the forbidden R5 rule', () => {
+  // Synthesize the PRE-FIX repo shape (with the slice 582B
+  // rephrase missing) and assert the passive "recovered"
+  // forbidden rule fires. This pins the R5 fix's rephrase
+  // direction: the probe must reject the passive phrasing.
+  withTempSource(PREFIX_CANONICAL, (source) => {
+    const result = runProbe(source, true);
+    assert.equal(result.status, 1, `expected strict failure on pre-fix R5\nstdout: ${result.stdout}`);
+    assert.match(result.stdout, /server-toast: passive/);
+  });
 });
 
 // --- synthetic positive: full canonical passes -------------------------
