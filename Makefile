@@ -449,6 +449,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-microcopy
 	make lint-static-archive-microcopy-strict
 	make lint-pdf-microcopy-strict
+	make lint-icalendar-microcopy-strict
 	make lint-typecheck
 
 lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
@@ -519,6 +520,24 @@ lint-pdf-microcopy-strict: ## Typst PDF microcopy sweep as CI failure
 
 lint-pdf-microcopy-test: ## Run Typst PDF microcopy probe tests
 	@node audit/smoke_pdf_microcopy.test.mjs
+
+# iCalendar microcopy (issue #581, Slice 3, audit-only). The
+# .ics export is the only DixieData surface that emits RFC 5545
+# text; the probe walks internal/archive/export_service.go for
+# the canonical user-facing copy (calname, PRODID, SUMMARY
+# presets, DESCRIPTION lines, VALARM bodies) without applying
+# .templ or Typst rules to the wrong grammar. Slice 3 ships
+# GREEN-on-HEAD (no edits planned); the probe pins the surface
+# so a future contributor cannot drift the catalogued copy
+# without breaking the CI gate.
+lint-icalendar-microcopy: ## iCalendar microcopy sweep (issue #581, slice 3, audit-only)
+	@node audit/smoke_icalendar_microcopy.mjs
+
+lint-icalendar-microcopy-strict: ## iCalendar microcopy sweep as CI failure
+	@node audit/smoke_icalendar_microcopy.mjs --strict
+
+lint-icalendar-microcopy-test: ## Run iCalendar microcopy probe tests
+	@node audit/smoke_icalendar_microcopy.test.mjs
 
 # Issue #446 — extend the dispatcher-contract coverage. Live-server
 # probe that sends POST + X-HTTP-Method-Override for every PATCH/

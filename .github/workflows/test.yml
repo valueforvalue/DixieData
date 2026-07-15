@@ -189,6 +189,19 @@ jobs:
           make lint-pdf-microcopy-test
         timeout-minutes: 3
 
+      # iCalendar microcopy lint (issue #581, Slice 3, audit-only).
+      # Probe walks internal/archive/export_service.go for the
+      # canonical iCalendar copy (calname, PRODID, SUMMARY presets,
+      # DESCRIPTION lines, VALARM bodies). Slice 3 ships GREEN-on-HEAD
+      # (no edits planned); the probe pins the surface so a future
+      # contributor cannot drift it without breaking the CI gate.
+      - name: iCalendar microcopy lint (issue #581, --strict)
+        shell: bash
+        run: |
+          make lint-icalendar-microcopy-strict
+          make lint-icalendar-microcopy-test
+        timeout-minutes: 3
+
       # slice 4 — CI gate). The frontend ships raw from disk via
       # internal/appshell/lifecycle.go (no bundler, no emit); the
       # only purpose of this gate is to catch the bug class the
