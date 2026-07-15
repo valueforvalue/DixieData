@@ -250,6 +250,24 @@ is the runtime check.
 - `docs/CODE_CHANGES.md` — the cross-layer working contract.
 - The smoke probes (Playwright) — behavioral postconditions for
   the HTTP surface.
+- `docs/agents/tdd.md` §Contract touch — prospective rule for new
+  behavior and materially changed public seams. The RED test makes
+  relevant caller obligations and observable guarantees executable.
+
+**Prospective contract-touch rule:** every new or materially changed
+public seam leaves with a clearer documented and executable contract
+than it had before. State the relevant preconditions, postconditions,
+failure modes, state/atomicity effects, and idempotency/concurrency
+rules; omit dimensions that do not apply. Apply this to existing code
+when a behavioral slice materially touches its seam, not through a
+backlog-wide retrofit. Mechanical edits do not trigger contract churn.
+
+This is pragmatic DbC, not a Meyer-style runtime contract system. Do
+not add generic `Require`, `Ensure`, or `Invariant` helpers. Prefer Go
+types and typed builders, SQLite constraints, service validation and
+typed errors, architecture tests, and behavior tests. Reserve panics
+for developer-created impossible states; ordinary user input and
+recoverable failures return through the seam's documented error path.
 
 **When you might violate:**
 - **Third-party library contracts** — when the repo wraps a
@@ -937,9 +955,9 @@ The full evidence per tip lives in the source audit at
 | 34 | Don't Assume It—Prove It | ✅ | ⵏ1.6 Dead Programs | The `tools/tune/snapshot_test.go` per-iter SQL footprint doc-comment pattern is the operational form: every non-trivial function documents the count of SELECTs, INSERTs, and transactions the test actually performs. *When violated:* a function's doc-comment has no SQL footprint (the test is incomplete). |
 | 35 | Learn a Text Manipulation Language | ➖ | — (philosophy / technique, not a principle) | N/A at the repo level. |
 | 36 | You Can't Write Perfect Software | ✅ | ⵏ1.5 Design by Contract | The dialog-guard Law (CONTEXT.md) is the operational form. The "Fail loud, no silent fallback" decision in #117 is the worked example. *How to apply:* every error path either crashes early or surfaces a clear toast; a silent fallback (returning `nil, nil` on error, swallowing a panic) is the violation. |
-| 37 | Design with Contracts | ✅ | ⵏ1.5 Design by Contract | `internal/architecture/architecture_test.go` is the package-contract enforcement. `docs/CODE_CHANGES.md` is the cross-layer working contract. The doc-comment floor is the function-contract enforcement. *How to apply:* every exported function's doc-comment names the preconditions (input invariants), postconditions (return values + error semantics), and side effects. A doc-comment without these is incomplete. |
+| 37 | Design with Contracts | ✅ | ⵏ1.5 Design by Contract | `docs/agents/tdd.md` §Contract touch is the prospective function- and boundary-contract rule; `internal/architecture/architecture_test.go` enforces package contracts. *How to apply:* every new or materially changed public seam documents relevant caller obligations, observable guarantees, failure/state semantics, and retry/concurrency behavior; its RED test proves those claims. Skip mechanical edits and untouched code. Prefer types, constraints, typed errors, and tests over generic runtime assertion helpers. |
 | 38 | Crash Early | ✅ | ⵏ1.5 Design by Contract | `htmxattr.Mux` swap-allowlist panic at render time on an invalid swap value — the panic is the signal. The native `<dialog>` revert (#117) is the worked example. *How to apply:* an unreachable code path should panic, not silently return. The panic is the agent's "the world is broken" signal; swallowing it is the violation. |
-| 39 | Use Assertions to Prevent the Impossible | ✅ | ⵏ1.5 Design by Contract | `templ.Attributes` typed spread + `routebuilder` typed URL builder + `internal/uiids` registry IDs all assert at compile time. The `htmxattr.Mux` builder pre-validates at construction time. *How to apply:* if the type system can't express the invariant, a runtime assertion at the boundary catches the impossible case. The `nil` check at the top of every public method is the cheap form. |
+| 39 | Use Assertions to Prevent the Impossible | ✅ | ⵏ1.5 Design by Contract | `templ.Attributes` typed spread + `routebuilder` typed URL builder + `internal/uiids` registry IDs prevent invalid states at construction time. The `htmxattr.Mux` builder pre-validates its values. *How to apply:* prefer types, builders, database constraints, validation, and typed errors. Use a runtime panic only for a developer-created impossible state; never panic for ordinary user input, recoverable I/O, or third-party failure. |
 | 40 | Finish What You Start | ✅ | — (philosophy / technique, not a principle) | Go's `defer` for resource close + the defer-close lint rule. *How to apply:* every `Open()` / `Lock()` / goroutine launch is paired with `defer Close()` / `defer Unlock()` / a context-aware wait. A resource opened without a defer is the violation. |
 | 41 | Act Locally | ✅ | — (philosophy / technique, not a principle) | Function-scope variables; the Wails v2.12.0 dialog-guard mutex is a per-handler-scope guard. *When violated:* a package-level mutable variable (the architecture test flags it). *How to apply:* a `var foo = ...` at the package level is the violation; pass the value into the function or hold it on the `App` struct. |
 | 42 | Take Small Steps—Always | ✅ | ⵏ1.10 Take Small Steps | RPCI is the operational form. Slice 1 is always the tracer bullet. *How to apply:* a slice plan that lists >5 files touched is doing two things; split it. The fresh-context-per-slice rule in `rpci.md` makes "ship the smallest useful unit" the default. |

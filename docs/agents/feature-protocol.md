@@ -27,11 +27,13 @@ Tick these before any recon. Five skills, ~30 seconds:
 - [ ] **Index** — read [`docs/agents/INDEX.md`](INDEX.md) to know
        which tier-1/2 docs (CLI plan, Typst tips, UI map wireframes)
        to load for this task.
-- [ ] **TDD anchor** — read [`docs/agents/tdd.md`](tdd.md). Every
-       slice pins its user-facing acceptance criterion with a
-       failing test BEFORE the slice lands. The TDD protocol sits
-       inside the vertical-slice discipline above; it does not
-       replace it.
+- [ ] **TDD + contract anchor** — read [`docs/agents/tdd.md`](tdd.md).
+       Every slice pins its user-facing acceptance criterion with a
+       failing test BEFORE the slice lands. New behavior and materially
+       changed public seams also get a contract touch: document caller
+       obligations and observable guarantees, then prove relevant claims
+       at the seam. The TDD protocol sits inside the vertical-slice
+       discipline above; it does not replace it.
 
 Add to the checklist when the feature touches:
 
@@ -299,6 +301,8 @@ surface; see Backend-First Law in `CONTEXT.md`.
 ### Slice 1 (tracer bullet — fully detailed)
 - Files: <paths>
 - Success criteria: <observable, testable in 5 min>
+- Contract touch: <new or materially changed public seams;
+  caller obligations + observable guarantees, or "N/A — mechanical change">
 - Regression net: <unit test, smoke probe, or manual step>
 
 ### Subsequent slices (stub only — fill in when their turn arrives)
@@ -369,6 +373,14 @@ Each slice names its tier in the subject (`Slice C: row chips`)
 and ships the whole tier in one commit. Backend-only slices MUST
 list their matching UI apply-site in the acceptance criteria of
 the same PR (or a linked follow-up issue with its own checklist).
+
+**Contract touch** names each new or materially changed public seam
+(service method, handler, DTO, builder, exported helper, or durable
+data boundary), its caller obligations, and its observable guarantees.
+Use `N/A — mechanical change` for formatting, renames, generated output,
+and other edits that do not alter behavior. Do not expand the slice to
+retrofit untouched code. The matching RED test proves relevant claims
+at the seam; see [`docs/agents/tdd.md`](tdd.md) §Contract touch.
 
 ### Detailed design (follow-up section — 6+ file cross-layer features only)
 

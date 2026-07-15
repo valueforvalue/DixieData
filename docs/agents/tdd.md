@@ -153,6 +153,82 @@ for an unrelated reason (missing import, test setup
 mistake), fix the test, not the code. A passing test that
 wasn't actually pinning the criterion is worse than no test.
 
+### Contract touch
+
+TDD is DixieData's executable form of Design by Contract, but it
+is not a formal Meyer-style contract system. Tests express and
+verify caller obligations, observable guarantees, and invariants;
+Go source does not gain a generic `Require`, `Ensure`, or
+`Invariant` framework.
+
+Apply a contract touch when a slice:
+
+- adds behavior at a public seam;
+- materially changes behavior at an existing public seam; or
+- fixes a bug caused by an implicit or violated seam contract.
+
+A public seam includes an exported service method or helper, HTTP
+handler, DTO, typed builder, persistence boundary, Wails/native
+adapter, and user-visible DOM interaction. Apply the rule to
+existing code when the slice materially touches that seam. Do not
+start a backlog-wide retrofit or expand a slice into unrelated code.
+Formatting, generated output, mechanical renames, and other
+behavior-preserving edits do not trigger contract churn.
+
+For each affected seam, document and test whichever dimensions
+apply:
+
+- **Preconditions** — what callers must provide or establish.
+- **Postconditions** — observable result after success.
+- **Failure modes** — typed error, status/header/body, toast, or
+  other caller-visible failure behavior.
+- **State effects** — what changes, what remains unchanged on
+  failure, and whether the operation is atomic.
+- **Idempotency and concurrency** — whether retries, duplicate
+  actions, or simultaneous calls are safe.
+
+Omit dimensions that do not apply; do not write boilerplate such as
+"no side effects" on every pure helper. Exported Go doc comments
+state the source-level contract. The RED test proves relevant claims
+at the seam. For cross-layer slices, the handler test proves the
+server contract and the smoke probe proves the user-visible
+postcondition.
+
+Choose the strongest enforcement site that removes invalid states
+with the least runtime risk:
+
+1. Go types, enums, and typed builders prevent invalid
+   representation.
+2. SQLite constraints protect durable data invariants.
+3. Service validation and typed errors reject user or caller input.
+4. Architecture tests protect package boundaries.
+5. Handler, service, property, render, and smoke tests prove
+   observable postconditions.
+6. Panics protect developer-created impossible states only. Never
+   panic for ordinary user input, recoverable I/O, or third-party
+   failures.
+
+The contract is complete enough when a caller can answer "what must
+I provide, what may change, and what can fail?" and a failing test
+identifies which promise broke. More prose or assertions after that
+point add noise, not safety.
+
+Example:
+
+```go
+// AttachSourceRecord attaches sourceID to personID.
+//
+// personID and sourceID must identify existing records. On success,
+// the attachment is persisted exactly once. Duplicate attachment is
+// idempotent. ErrNotFound identifies either missing record; all errors
+// leave archive state unchanged.
+func (s *Service) AttachSourceRecord(personID, sourceID int64) error
+```
+
+Tests then cover success, either missing record, duplicate calls, and
+unchanged state after failure. They do not assert private SQL call
+order unless that order is itself a documented performance contract.
+
 ### Step 2 — GREEN: write the minimum slice code
 
 Implement the smallest diff that satisfies the RED test.
