@@ -1,4 +1,4 @@
-// smoke_about.mjs -- issue #585 slice 6 regression net.
+// smoke_about.mjs -- issue #585 + #586 regression net.
 //
 // Visits /about against a live dixiedata-web server (started
 // by audit/run.mjs) and confirms the page renders every locked-
@@ -9,6 +9,7 @@
 //   data-about-identity              #identity section
 //   data-about-license               #license section
 //   data-about-history               #history section
+//   data-about-activity              #activity section (#586)
 //   data-about-in-page-nav           on-this-page nav strip
 //   data-about-app / -version /      identity fields
 //   -codename / -schema / -branch
@@ -20,6 +21,12 @@
 //   data-about-release="<version>"   one card per release
 //   data-about-release-expand="<v>"  per-release expand toggle
 //   data-about-history-collapse      show-all toggle (10+ releases)
+//   data-about-activity-empty        activity empty-state (#586)
+//   data-about-activity-summary      activity summary line (#586)
+//   data-about-activity-heatmap      heatmap host (#586)
+//   data-about-activity-contributor  one per top contributor (#586)
+//   data-about-activity-per-release  one per release activity row (#586)
+//   data-about-activity-issues-bar    issues-closed stacked bar (#586)
 //
 // Read-only against /about. The seed-data fixture populates
 // enough primary entries that the metrics section renders too,
@@ -49,6 +56,7 @@ async function populatedProbe(page) {
     const identity = document.querySelector('[data-about-identity]');
     const license = document.querySelector('[data-about-license]');
     const history = document.querySelector('[data-about-history]');
+    const activity = document.querySelector('[data-about-activity]');
     const inPageNav = document.querySelector('[data-about-in-page-nav]');
     const identityFields = {
       app: document.querySelector('[data-about-app]')?.textContent || '',
@@ -64,11 +72,17 @@ async function populatedProbe(page) {
     ).map((el) => el.getAttribute('data-about-release'));
     const collapse = document.querySelector('[data-about-history-collapse]');
     const empty = document.querySelector('[data-about-history-empty]');
+    // Activity section (#586) — either populated or empty.
+    const activityEmpty = document.querySelector('[data-about-activity-empty]');
+    const activitySummary = document.querySelector('[data-about-activity-summary]');
+    const activityContributors = document.querySelectorAll('[data-about-activity-contributor]');
+    const activityIssuesBar = document.querySelector('[data-about-activity-issues-bar]');
     return {
       pageRendered: !!pageRoot,
       identityRendered: !!identity,
       licenseRendered: !!license,
       historyRendered: !!history,
+      activityRendered: !!activity,
       inPageNavRendered: !!inPageNav,
       identityFields,
       credits,
@@ -76,12 +90,17 @@ async function populatedProbe(page) {
       releases,
       collapseRendered: !!collapse,
       emptyRendered: !!empty,
+      activityEmptyRendered: !!activityEmpty,
+      activitySummaryRendered: !!activitySummary,
+      activityContributorCount: activityContributors.length,
+      activityIssuesBarRendered: !!activityIssuesBar,
     };
   });
   await expect(state.pageRendered, 'about page renders', state);
   await expect(state.identityRendered, 'identity section renders', state);
   await expect(state.licenseRendered, 'license section renders', state);
   await expect(state.historyRendered, 'history section renders', state);
+  await expect(state.activityRendered, 'activity section renders (#586)', state);
   await expect(state.inPageNavRendered, 'in-page nav strip renders', state);
   await expect(
     state.identityFields.app === 'DixieData',
@@ -127,6 +146,24 @@ async function populatedProbe(page) {
         state,
       );
     }
+  }
+  // Activity section (#586): either populated or empty-state.
+  await expect(
+    state.activityEmptyRendered !== state.activitySummaryRendered,
+    'activity section is either empty-state or populated, not both',
+    state,
+  );
+  if (state.activitySummaryRendered) {
+    await expect(
+      state.activityContributorCount > 0,
+      `at least one top contributor rendered (got ${state.activityContributorCount})`,
+      state,
+    );
+    await expect(
+      state.activityIssuesBarRendered,
+      'issues-closed stacked bar renders when baked',
+      state,
+    );
   }
 }
 
