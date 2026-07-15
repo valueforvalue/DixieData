@@ -929,3 +929,38 @@ type ResearchPickerView struct {
 	// hide the County option for soldiers without county data.
 	HasCountyInBirth bool
 }
+
+// AboutView is the data shape the /about page renders
+// (issue #585). Identity carries the version/codename/schema
+// metadata the templ partial reads; Releases is the baked
+// release history slice (nil in dev builds where the bake
+// has not run).
+type AboutView struct {
+	AppName    string
+	Version    string
+	Codename   string
+	Schema     int
+	Commit     string
+	Branch     string
+	BuiltAt    string
+	LicenseURL string
+	Releases   []ReleaseEntry
+}
+
+// ReleaseEntry is a flat projection of releasehistory.Entry
+// (the templ partial cannot import releasehistory without
+// dragging the build-time bake machinery into every consuming
+// binary). Codename is filled for the current release only
+// (the baked entries do not carry codenames -- the CHANGELOG
+// does not store them).
+type ReleaseEntry struct {
+	Version     string
+	Codename    string
+	Date        string
+	Added       []string
+	Changed     []string
+	Fixed       []string
+	Removed     []string
+	Maintenance []string
+	Docs        []string
+}

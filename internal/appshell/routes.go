@@ -307,6 +307,12 @@ func (a *App) setupRoutes() {
 	r.Post("/settings/quality/scan", a.handleScanDataQuality)
 	r.Post("/settings/quality/apply", a.handleApplyDataQuality)
 
+	// Issue #585: new /about page (app identity + license + release
+	// history). Renders the baked releasehistory entries; the dev
+	// binary ships with baked == nil and the partial renders an
+	// empty-state message.
+	r.Get("/about", a.handleAbout)
+
 	r.Post("/export/json", a.handleExportJSON)
 	r.Post("/export/csv", a.handleExportCSV)
 	r.Post("/export/ical", a.handleExportICalendar)

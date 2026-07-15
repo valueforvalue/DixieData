@@ -1,0 +1,49 @@
+// about.templ -- issue #585 slice 4 (stub).
+//
+// Full AboutView implementation lands in slice 4. Slice 3 needs
+// a stub so the build chain compiles (the presentation wrapper
+// requires templates.AboutView to exist). The slice-3 stub
+// renders the minimum identity surface so the route returns 200
+// and the build succeeds; slice 4 expands it to the full 3-
+// section page (identity + license + release history) with the
+// in-page nav strip.
+
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ AboutView(view viewmodel.AboutView) {
+	@Layout("About") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.about" data-page-about>
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">About DixieData</h1>
+				<p class="text-sm text-slate-600">App identity, license, release history, and credits. Slice 3 stub -- full layout arrives in slice 4.</p>
+			</header>
+			<section class="card rounded-3xl p-5 sm:p-8 space-y-3" id="about.identity" data-about-identity>
+				<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">App identity</h2>
+				<dl class="grid gap-3 sm:grid-cols-2 text-sm">
+					<div>
+						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">App</dt>
+						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-app>{ view.AppName }</dd>
+					</div>
+					<div>
+						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Version</dt>
+						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-version>{ view.Version }</dd>
+					</div>
+					<div>
+						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Codename</dt>
+						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-codename>{ view.Codename }</dd>
+					</div>
+					<div>
+						<dt class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Schema</dt>
+						<dd class="mt-1 font-mono text-[var(--theme-text-primary)]" data-about-schema>{ fmt.Sprintf("%d", view.Schema) }</dd>
+					</div>
+				</dl>
+			</section>
+		</div>
+	}
+}

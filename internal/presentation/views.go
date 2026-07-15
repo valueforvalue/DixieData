@@ -463,6 +463,13 @@ func InventoryView(view viewmodel.InventoryView) templ.Component {
 	return templates.InventoryView(view)
 }
 
+// AboutView wraps the templ AboutView so the appshell handler
+// does not import internal/templates directly (the same
+// indirection every page-level view uses).
+func AboutView(view viewmodel.AboutView) templ.Component {
+	return templates.AboutView(view)
+}
+
 // ResearchPickerRecent wraps the recents-only fragment returned by
 // the /research/recent endpoint (issue #378 slice 3, option C1). JS
 // reads localStorage dixiedata.research.recents, fetches the

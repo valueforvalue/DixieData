@@ -377,7 +377,9 @@ endif
 # Version pinned per scripts/build-common.ps1.
 tpl: ## Regenerate templ files
 	go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
-	$(MAKE) release-notes-bake
+	# Sub-target via shell `make` (not $(MAKE)) to dodge the
+	# GNUWin32 path-with-parens expansion bug per AGENTS.md.
+	sh -c 'make release-notes-bake'
 
 # release-notes-bake: parse CHANGELOG.md into
 # internal/releasehistory/baked.go (gitignored). Run via `make tpl`
