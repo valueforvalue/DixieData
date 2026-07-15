@@ -142,6 +142,16 @@ exact checks.
   *why* and what the regression net is. Reference the issue
   number if one exists (`issue #130`). Look at recent commits
   with `git log --oneline -20` for the in-repo house style.
+- **Closing the issue is part of the slice, not a follow-up.**
+  This repo lands via direct commits to `dev`, not via merged PRs,
+  so GitHub's auto-close keywords (`fixes #N`, `Closes #N`) never
+  fire — they only parse PR bodies. The agent that lands the final
+  slice must `gh issue close <N> --comment "Closed — landed in <sha>: <subject>"`
+  in the same turn. Wrap the issue number in parens at the end of
+  the subject for human-readable grep (`(#N)` is a breadcrumb, not
+  a closing keyword). See [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)
+  §"Closing issues when the work ships" for the full discipline,
+  including the sweep fallback for issues that slipped through.
 
 ### Branch policy
 

@@ -338,3 +338,71 @@ fix either"). Process labels compose.
 The `scripts/backfill-labels.sh` script applies Area + Priority
 labels to existing open issues by parsing titles + bodies. Idempotent.
 
+## Closing issues when the work ships
+
+Because this repo's branch policy (AGENTS.md §Branch policy) lands
+work as direct commits to `dev` rather than via merged PRs, GitHub's
+auto-close-via-keyword path (`fixes #N` in a PR body) does not
+fire. **All 500 closed issues in this repo were closed manually.**
+That is the dangling-issues trap: a slice ships, the agent moves on,
+the issue stays open forever.
+
+**The discipline:** the commit subject that lands the final slice of
+an issue MUST close the issue. The closing step is part of the slice,
+not a follow-up. Three equivalent paths:
+
+### Path A: Include the issue number in the commit subject
+
+If the issue number is in the commit subject, the closing step is:
+
+```bash
+gh issue close <N> --comment "Closed — landed in <short-sha>: <subject>"
+```
+
+The subject format `<area>: <imperative> (#N)` (the AGENTS.md
+convention used by `ae86f1e`, `4198951`, etc.) makes the issue number
+easy to grep for. **The `(#N)` at the end of the subject is a
+breadcrumb, not a GitHub auto-close keyword.** Wrap it in parens or
+append it after a colon and GitHub will NOT auto-close — that's why
+agents must close manually.
+
+### Path B: `Closes #N` in the commit body
+
+If the subject doesn't have the issue number, add `Closes #N` to the
+commit body (last bullet, separated by a blank line so GitHub picks
+it up). Still requires `gh issue close <N>` after the commit lands,
+since this repo doesn't open PRs — the `Closes` keyword only fires
+on merged PR bodies.
+
+### Path C: Periodic sweep
+
+For issues that slipped through the cracks (work shipped but no
+`(#N)` breadcrumb, no close comment), run a sweep:
+
+```bash
+# Find open issues whose number appears in any merged-or-on-dev commit
+# subject across the last 90 days:
+gh issue list --state open --json number,title --jq '.[] | .number' \
+  | while read n; do
+      if git log --since="90 days ago" --format='%s' \
+         | grep -qE "(#${n}\b|fixes? #${n}\b)"; then
+        echo "#$n likely shipped; review and close"
+      fi
+    done
+```
+
+The sweep is a fallback. Path A is the primary discipline.
+
+### Anti-patterns
+
+- **Ship the slice, leave the issue open "for the user to close".**
+  The user is not always watching; the issue rots.
+- **Trust `fixes #N` in the commit body to auto-close.** It won't,
+  because there is no PR. The keyword only fires on merged PR bodies.
+- **Trust `(#N)` at the end of the subject to auto-close.** Same
+  reason — GitHub's parser sees the parens and ignores it. It's a
+  breadcrumb for humans, not a closing keyword.
+- **Close without a comment.** A close-with-no-comment loses the
+  ship evidence. Future agents reading the issue need to know which
+  commit landed the fix.
+
