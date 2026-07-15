@@ -262,7 +262,7 @@
   if s != none and notes-trim != "" {
     line(length: 100%, stroke: 0.5pt + theme.palette.divider)
     v(0.4em)
-    text(size: 7pt, weight: "bold", fill: theme.palette.text_muted, font: "Arial")[INTERNAL NOTES]
+    text(size: 7pt, weight: "bold", fill: theme.palette.text_muted, font: "Arial")[Internal Notes]  
     v(0.2em)
     text(size: 8pt, fill: theme.palette.text_secondary, font: "Arial")[
       #notes-trim
@@ -278,8 +278,8 @@
   line(length: 100%, stroke: 0.5pt + theme.palette.divider)
   v(0.4em)
   text(size: 7pt, weight: "bold", fill: theme.palette.text_muted, font: "Arial")[
-    LINKED PERSON RECORDS
-  ]
+    Linked Person Records
+  ]  
   v(0.4em)
 
   // D5: 3-col flat table — Display ID | Name | Dates
@@ -315,7 +315,7 @@
 } else {
   line(length: 100%, stroke: 0.5pt + theme.palette.divider)
   v(0.4em)
-  text(size: 7pt, weight: "bold", fill: theme.palette.text_muted, font: "Arial")[LINKED PERSON RECORDS]
+  text(size: 7pt, weight: "bold", fill: theme.palette.text_muted, font: "Arial")[Linked Person Records]  
   v(0.2em)
   text(size: 8pt, fill: theme.palette.text_muted, font: "Arial")[
     No Person Records are linked to this Event yet. Attach this event to a Person Record from the Person Record detail page's Events tab.

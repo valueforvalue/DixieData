@@ -175,6 +175,20 @@ jobs:
           make lint-static-archive-microcopy-test
         timeout-minutes: 3
 
+      # Typst PDF microcopy lint (issue #581, Slice 2). Format-aware
+      # probe walks templates/**/*.typ for the canonical forbidden-
+      # pattern rules (analytics_summary verbose subtitle + stacked
+      # sub-headings, group_divider trailing sentence, event card
+      # ALL-CAPS eyebrows, biography_appendix status-form empty
+      # state) without applying `.templ` parsing to common/ helpers
+      # or theme/hello smoke templates.
+      - name: Typst PDF microcopy lint (issue #581, --strict)
+        shell: bash
+        run: |
+          make lint-pdf-microcopy-strict
+          make lint-pdf-microcopy-test
+        timeout-minutes: 3
+
       # slice 4 — CI gate). The frontend ships raw from disk via
       # internal/appshell/lifecycle.go (no bundler, no emit); the
       # only purpose of this gate is to catch the bug class the

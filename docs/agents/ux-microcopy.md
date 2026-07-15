@@ -193,6 +193,48 @@ node audit/smoke_static_archive_microcopy.mjs --strict
 node audit/smoke_static_archive_microcopy.test.mjs
 ```
 
+### PDF coverage (issue #581)
+
+`audit/smoke_pdf_microcopy.mjs` walks `templates/**/*.typ` for the
+canonical forbidden-pattern rules agreed in slice 2 of #581.
+Typst is a different grammar from Go-templ + HTML, so the
+`.templ` probe does not apply here; the PDF probe is
+format-aware. It checks:
+
+- no verbose body paragraphs trailing the `Archive Summary Report`
+  title in `templates/analytics_summary.typ`;
+- no stacked `weight: "bold"` sub-headings under a parent section
+  heading (`Status breakdown`, `Most frequent home names`,
+  `Birth decades`, `Death decades`);
+- no trailing "The following record pages belong to this section."
+  narration on `templates/group_divider.typ` (and the inlined
+  variant in `templates/bulk_soldier.typ`);
+- no ALL-CAPS `[INTERNAL NOTES]` / `[LINKED PERSON RECORDS]`
+  eyebrows above self-explanatory single-field groups;
+- no status-form `No biography recorded for this person.` empty
+  state in `templates/biography_appendix.typ` (the `Biography`
+  heading alone suffices);
+- visible-text duplication inside a single template file
+  (Typst-code expressions and attribute lines are stripped first).
+
+The probe skips `templates/hello.typ` (smoke target),
+`templates/common/theme.typ`, and the `templates/common/`
+directory (helpers carry no chrome of their own). When
+deduplicating an inlined divider page, `#import` from
+`group_divider.typ` rather than copying the helper.
+
+`--strict` is the CI gate; `audit/smoke_pdf_microcopy.test.mjs`
+pins clean output plus synthetic regressions for each rule
+family. `PDF_SOURCE` env-override lets the test file feed
+fixtures without touching `templates/`.
+
+When changing Typst PDF copy, run:
+
+```text
+node audit/smoke_pdf_microcopy.mjs --strict
+node audit/smoke_pdf_microcopy.test.mjs
+```
+
 ### Probe rules (enforced today)
 
 The `.templ` probe currently asserts five concrete checks:

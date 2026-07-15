@@ -448,6 +448,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-dialog-guard
 	make lint-microcopy
 	make lint-static-archive-microcopy-strict
+	make lint-pdf-microcopy-strict
 	make lint-typecheck
 
 lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
@@ -501,6 +502,23 @@ lint-static-archive-microcopy-strict: ## Static Archive microcopy sweep as CI fa
 
 lint-static-archive-microcopy-test: ## Run Static Archive microcopy probe tests
 	@node audit/smoke_static_archive_microcopy.test.mjs
+
+# Typst PDF microcopy (issue #581, Slice 2). The PDF surface uses
+# Typst, not Go-templ + HTML; this format-aware probe walks
+# templates/**/*.typ for the canonical forbidden-pattern rules
+# (analytics_summary verbose subtitle + stacked sub-headings,
+# group_divider trailing sentence, event card ALL-CAPS eyebrows,
+# biography_appendix status-form empty state) without applying
+# `.templ` parsing to common/ helpers or the theme/hello smoke
+# templates. Informational by default; --strict is the CI gate.
+lint-pdf-microcopy: ## Typst PDF microcopy sweep (issue #581, slice 2)
+	@node audit/smoke_pdf_microcopy.mjs
+
+lint-pdf-microcopy-strict: ## Typst PDF microcopy sweep as CI failure
+	@node audit/smoke_pdf_microcopy.mjs --strict
+
+lint-pdf-microcopy-test: ## Run Typst PDF microcopy probe tests
+	@node audit/smoke_pdf_microcopy.test.mjs
 
 # Issue #446 — extend the dispatcher-contract coverage. Live-server
 # probe that sends POST + X-HTTP-Method-Override for every PATCH/

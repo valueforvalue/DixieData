@@ -68,18 +68,14 @@
   out
 }
 
-// Title.
+// Title. Issue #581: dropped the 38-word subtitle that named
+// every section in prose; the section headings below carry the
+// same information without duplication.
 #text(
   size: 20pt,
   font: ("Times New Roman", "Liberation Serif", "DejaVu Serif"),
   weight: "bold",
 )[Archive Summary Report]
-#v(0.2em)
-#text(size: 10pt, fill: theme.palette.text_secondary)[
-  High-level archive analytics covering burial density,
-  Confederate Home participation, record types, pension
-  geography, unit representation, and decade trends.
-]
 #v(0.6em)
 
 // Record Types.
@@ -102,14 +98,13 @@
 #v(0.5em)
 
 // Confederate Home Participation.
+// Issue #581: dropped the stacked "Status breakdown" and "Most
+// frequent home names" sub-headings; the parent heading names
+// the section and the bullets are self-explanatory.
 #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Confederate Home Participation]
 #v(0.3em)
-#text(size: 9pt, weight: "bold")[Status breakdown]
-#v(0.2em)
 #bullet-list(snapshot.at("confederate_home_status", default: ()), "No Confederate Home statuses are recorded yet.")
 #v(0.3em)
-#text(size: 9pt, weight: "bold")[Most frequent home names]
-#v(0.2em)
 #bullet-list(snapshot.at("confederate_home_names", default: ()), "No Confederate Home names are recorded yet.")
 #v(0.5em)
 
@@ -126,12 +121,11 @@
 #v(0.5em)
 
 // Chronological Overview.
+// Issue #581: dropped the stacked "Birth decades" and "Death
+// decades" sub-headings; the bullet values are self-evidently
+// decades (e.g. "1840s: 4").
 #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Chronological Overview]
 #v(0.3em)
-#text(size: 9pt, weight: "bold")[Birth decades]
-#v(0.2em)
 #bullet-list(snapshot.at("birth_decade_distribution", default: ()), "No birth decades are recorded yet.")
 #v(0.3em)
-#text(size: 9pt, weight: "bold")[Death decades]
-#v(0.2em)
 #bullet-list(snapshot.at("death_decade_distribution", default: ()), "No death decades are recorded yet.")

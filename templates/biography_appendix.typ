@@ -54,10 +54,11 @@
 #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
 #v(0.4em)
 
+// Issue #581: dropped the status-form empty state ("No biography
+// recorded for this person."); the "Biography" heading alone
+// suffices, and the parent bulk-export context shows the page
+// belongs to a person whose biography has not yet been added.
 #if biography != none and biography.trim() != "" [
   #set text(size: 9pt)
   #biography
-] else [
-  #set text(size: 9pt, fill: theme.palette.text_secondary)
-  No biography recorded for this person.
 ]

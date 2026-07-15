@@ -49,6 +49,6 @@
   fill: theme.palette.text_primary,
 )[#if value == none or value == "" { [(unknown)] } else [#value]]
 #v(0.5em)
-#text(size: 9pt, fill: theme.palette.text_secondary)[
-  The following record pages belong to this section.
-]
+// Issue #581: dropped the trailing "The following record pages
+// belong to this section." narration; the divider page itself is
+// the instruction.

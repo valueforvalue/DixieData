@@ -37,9 +37,12 @@
 }
 
 // render-divider-page emits a single divider page sized to the
-// current orientation. Matches the layout of
+// current orientation. Mirrors the layout of
 // templates/group_divider.typ but inlined here so the bulk
-// template stays self-contained for the loop.
+// template stays self-contained for the loop. Issue #581: the
+// trailing "The following record pages belong to this section."
+// narration was dropped (the divider page itself is the
+// instruction); align with templates/group_divider.typ.
 #let render-divider-page(label, value, level) = {
   let title-size = calc.max(20pt, 28pt - 2pt * level)
   v(2em)
@@ -56,9 +59,6 @@
     fill: theme.palette.text_primary,
   )[#value]
   v(0.5em)
-  text(size: 9pt, fill: theme.palette.text_secondary)[
-    The following record pages belong to this section.
-  ]
 }
 
 // render-group walks one group: optionally a divider page, then
