@@ -136,6 +136,19 @@ const (
 	PageInsightsDrilldown       = "page.insights.drilldown"
 // PageSettings is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSettings                = "page.settings"
+	// Issue #584: Settings sub-pages. The flat /settings page
+	// is now an index listing 6 destinations; each sub-page
+	// carries its own PageSettings<X> ID. The /settings/build
+	// sub-page is the existing SettingsBuildPanel lifted into
+	// its own route; /settings/updates carries the update
+	// surface; etc. The PageSettings ID (above) remains the
+	// canonical ID for the index page.
+	PageSettingsAppearance      = "page.settings.appearance"
+	PageSettingsUpdates         = "page.settings.updates"
+	PageSettingsMaintenance     = "page.settings.maintenance"
+	PageSettingsData            = "page.settings.data"
+	PageSettingsBuild           = "page.settings.build"
+	PageSettingsDiagnostics     = "page.settings.diagnostics"
 // PanelSettingsLayout is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsLayout         = "panel.settings.layout"
 // PanelSettingsInitialize is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
@@ -211,6 +224,11 @@ const (
 	// nav strip, not in this menu.
 	LayoutAboutMenu       = "layout.about.menu"
 	LayoutAboutMenuTrigger = "layout.about.menu.trigger"
+	// Issue #584: Settings mega-menu (slice 5). 6-item panel
+	// pointing at the /settings/<section> sub-pages. The
+	// mega-menu replaces the prior flat /settings pill link.
+	LayoutSettingsMenu       = "layout.settings.menu"
+	LayoutSettingsMenuTrigger = "layout.settings.menu.trigger"
 
 	// Issue #378: Research & Review picker (slice 1 — picker landing).
 	// PageResearchPicker wraps the page-level main content area on
@@ -399,7 +417,13 @@ var Registry = []Surface{
 	{ID: PageUnitCamaraderie, Kind: "page", Description: "Unit camaraderie page for a person record."},
 	{ID: PageMergeReviewLedger, Kind: "page", Description: "Merge review ledger page for a person record."},
 	{ID: PageInsightsDrilldown, Kind: "page", Description: "Insights drilldown results page."},
-	{ID: PageSettings, Kind: "page", Description: "Settings page."},
+	{ID: PageSettings, Kind: "page", Description: "Settings page (index, issue #584). The flat /settings page is now an index listing 6 destinations: appearance, updates, maintenance, data, build, diagnostics."},
+	{ID: PageSettingsAppearance, Kind: "page", Description: "Settings sub-page: theme, post-export surface, responsive layout mode (issue #584)."},
+	{ID: PageSettingsUpdates, Kind: "page", Description: "Settings sub-page: source URL, check for updates, apply latest, health bootstrap, release notes banner (issue #584)."},
+	{ID: PageSettingsMaintenance, Kind: "page", Description: "Settings sub-page: image orphan scan + cleanup, data quality scan + apply (issue #584)."},
+	{ID: PageSettingsData, Kind: "page", Description: "Settings sub-page: Initialize Local Archive (destructive; confirmation word) (issue #584)."},
+	{ID: PageSettingsBuild, Kind: "page", Description: "Settings sub-page: build information (codename, branch, version, schema, commit/timestamp) (issue #584). Carries the v1 About/Build panel lifted into its own route."},
+	{ID: PageSettingsDiagnostics, Kind: "page", Description: "Settings sub-page: Support & Diagnostics (Export Feedback Log + Report a Bug) + Debug Mode toggle (issue #584)."},
 	{ID: PanelSettingsLayout, Kind: "panel", Description: "Responsive layout mode controls on the settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: PanelSettingsUpdates, Kind: "panel", Description: "Software Updates panel on the settings page."},
@@ -435,6 +459,8 @@ var Registry = []Surface{
 	{ID: LayoutShareReviewMenuTrigger, Kind: "nav", Description: "Top-nav Share & Review mega-menu trigger button (issue #380 slice 3); clicking opens LayoutShareReviewMenu. aria-controls points at the panel's id."},
 	{ID: LayoutAboutMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the About trigger (issue #585 slice 5); single-group panel with one destination (About DixieData -> /about). In-page section anchors (#identity/#license/#history) live on the page itself, not in this menu."},
 	{ID: LayoutAboutMenuTrigger, Kind: "nav", Description: "Top-nav About mega-menu trigger button (issue #585 slice 5); clicking opens LayoutAboutMenu. aria-controls points at the panel's id."},
+	{ID: LayoutSettingsMenu, Kind: "nav", Description: "Top-nav mega-menu panel under the Settings trigger (issue #584 slice 5); single-group panel with 6 destinations (appearance, updates, maintenance, data, build, diagnostics) wired to /settings/<section> sub-pages."},
+	{ID: LayoutSettingsMenuTrigger, Kind: "nav", Description: "Top-nav Settings mega-menu trigger button (issue #584 slice 5); clicking opens LayoutSettingsMenu. aria-controls points at the panel's id."},
 	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
 	{ID: PanelResearchPickerSearch, Kind: "panel", Description: "Search input region on the Research picker page; htmx target for the live results swap."},
 	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},

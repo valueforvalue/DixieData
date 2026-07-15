@@ -1,0 +1,215 @@
+// settings_subpages.templ -- issue #584.
+//
+// The 6 /settings/<section> sub-page views. Each renders the
+// matching panel from the existing SettingsView (which becomes
+// the index page) with a "Back to Settings" breadcrumb.
+//
+// The sub-pages are thin: each is a Layout wrapper around the
+// existing SettingsXxxPanel partial. The section panels
+// themselves (SettingsAppearancePanel, SettingsUpdatePanel,
+// SettingsBuildPanel) were already lifted in earlier work;
+// the new sections here lift the inline blocks of the
+// existing SettingsView into named panels of their own.
+
+package templates
+
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// settingsBreadcrumb renders the "Back to Settings" link the
+// sub-pages share. Anchors /settings; lives at the top of
+// each sub-page below the H1.
+templ settingsBreadcrumb(section string) {
+	<nav aria-label="Settings" class="text-xs text-slate-500" data-settings-breadcrumb>
+		<a href="/settings" class="text-[var(--theme-text-primary)] underline">Settings</a>
+		<span aria-hidden="true" class="mx-1">›</span>
+		<span aria-current="page" data-settings-breadcrumb-current>{ section }</span>
+	</nav>
+}
+
+// SettingsIndex renders the 6-destination grid the /settings
+// page now shows above the inline panels. Each destination
+// links to the matching sub-page; the inline panels below
+// stay for backward compatibility (the Settings mega-menu
+// also links to each sub-page, so the index is the second
+// navigation surface for the same destinations).
+templ SettingsIndex() {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-3" data-settings-index>
+		<h3 class="text-xl gold font-bold">Settings</h3>
+		<p class="text-sm text-slate-600">Settings split into focused sub-pages (issue #584). Pick a destination:</p>
+		<ul class="mt-2 grid gap-3 sm:grid-cols-2 text-sm">
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("appearance")) } class="pill-link justify-start w-full" data-settings-index-target="appearance">Appearance</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("updates")) } class="pill-link justify-start w-full" data-settings-index-target="updates">Software updates</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("maintenance")) } class="pill-link justify-start w-full" data-settings-index-target="maintenance">Maintenance</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("data")) } class="pill-link justify-start w-full" data-settings-index-target="data">Data</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("build")) } class="pill-link justify-start w-full" data-settings-index-target="build">Build information</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(routebuilder.SettingsSection("diagnostics")) } class="pill-link justify-start w-full" data-settings-index-target="diagnostics">Diagnostics</a>
+			</li>
+		</ul>
+	</section>
+}
+
+templ SettingsAppearancePage(currentTheme, currentExportSurface string) {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.appearance" data-page-about="settings-appearance">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Appearance")
+			</header>
+			@SettingsAppearancePanel(currentTheme, currentExportSurface)
+		</div>
+	}
+}
+
+templ SettingsUpdatesPage(state viewmodel.UpdateSettings) {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.updates" data-page-about="settings-updates">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Software updates")
+			</header>
+			@SettingsUpdatePanel(state)
+		</div>
+	}
+}
+
+templ SettingsMaintenancePage() {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.maintenance" data-page-about="settings-maintenance">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Maintenance")
+			</header>
+			@SettingsMaintenancePanel()
+		</div>
+	}
+}
+
+templ SettingsDataPage(confirmationWord string) {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.data" data-page-about="settings-data">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Data")
+			</header>
+			@SettingsDataPanel(confirmationWord)
+		</div>
+	}
+}
+
+templ SettingsBuildPage() {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.build" data-page-about="settings-build">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Build information")
+			</header>
+			@SettingsBuildPanel()
+		</div>
+	}
+}
+
+templ SettingsDiagnosticsPage(debugEnabled bool) {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.diagnostics" data-page-about="settings-diagnostics">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Diagnostics")
+			</header>
+			@SettingsDiagnosticsPanel(debugEnabled)
+		</div>
+	}
+}
+
+// SettingsMaintenancePanel renders the maintenance section:
+// image orphan scan + cleanup + data quality scan + apply.
+// Lifted from the inline content of the original SettingsView
+// so the /settings/maintenance sub-page can render the same
+// surface.
+templ SettingsMaintenancePanel() {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="settings-maintenance-panel" data-settings-maintenance-panel>
+		<div>
+			<h3 class="text-xl gold font-bold">Image Maintenance</h3>
+		</div>
+		<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } data-dixie-submit="true" data-results-target="#settings-orphan-results" class="space-y-4">
+			@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+		</form>
+		<div id="settings-orphan-results" class="space-y-3"></div>
+		<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.25)] pt-4">
+			<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
+		</div>
+		<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" data-results-target="#settings-quality-results" class="space-y-4">
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
+				<label class="flex items-center gap-2">
+					<input type="checkbox" name="dry_run" value="1" class="field-input" />
+					<span>Dry-run (preview only)</span>
+				</label>
+			</div>
+			<div class="flex flex-wrap gap-3">
+				@components.Button("Run Data Quality Scan", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+				<button type="submit" formaction={ templ.SafeURL(routebuilder.SettingsQualityApply()) } class="secondary-button w-full sm:w-auto" data-confirm="Apply data quality fixes? This mutates the Local Archive.">Apply Data Quality Fixes</button>
+			</div>
+		</form>
+		<div id="settings-quality-results" class="space-y-3"></div>
+	</section>
+}
+
+// SettingsDataPanel renders the data section: Initialize
+// Local Archive (destructive; requires typed confirmation
+// word). Lifted from the original SettingsView.
+templ SettingsDataPanel(confirmationWord string) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="settings-data-panel" data-settings-data-panel>
+		<div>
+			<h3 class="text-xl gold font-bold">Initialize Local Archive</h3>
+			<p class="mt-2 text-sm text-slate-600">Erase every Person Record, Event Record, Article, and Tag from the Local Archive and restore the empty-archive state. The scratch folder's database file is replaced with a fresh copy; image files are kept.</p>
+		</div>
+		<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } method="post" data-dixie-submit="true" class="space-y-4">
+			<label class="block text-sm text-slate-700">
+				Type <code class="font-mono">{ confirmationWord }</code> to confirm.
+				<input type="text" name="confirmation" autocomplete="off" required aria-required="true" class="field-input mt-2" />
+			</label>
+			@components.Button("Initialize Local Archive", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+		</form>
+	</section>
+}
+
+// SettingsDiagnosticsPanel renders the diagnostics section:
+// Debug Mode toggle + Support & Diagnostics. Lifted from the
+// original SettingsView.
+templ SettingsDiagnosticsPanel(debugEnabled bool) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="settings-diagnostics-panel" data-settings-diagnostics-panel>
+		<div>
+			<h3 class="text-xl gold font-bold">Debug Mode</h3>
+			<p class="mt-2 text-sm text-slate-600">Toggles the in-app debug toolbox + the persistent dev page badge. The setting is per-user; turning it off hides both surfaces on the next navigation.</p>
+		</div>
+		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" class="space-y-4">
+			<label class="flex items-center gap-2 text-sm">
+				<input type="checkbox" name="enabled" value="1" class="field-input" if debugEnabled { checked } />
+				<span>Enable debug mode</span>
+			</label>
+			@components.Button("Save", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+		</form>
+		<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.25)] pt-4">
+			<h3 class="text-xl gold font-bold">Support & Diagnostics</h3>
+			<p class="mt-2 text-sm text-slate-600">Export the feedback log for an email attachment, or file a bug report directly.</p>
+			<div class="flex flex-wrap gap-3">
+				<a href="/share/feedback-log" class="secondary-button w-full sm:w-auto">Export Feedback Log</a>
+				<a href="/share/report-bug" class="secondary-button w-full sm:w-auto">Report a Bug</a>
+			</div>
+		</div>
+	</section>
+}

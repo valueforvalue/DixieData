@@ -470,6 +470,36 @@ func AboutView(view viewmodel.AboutView) templ.Component {
 	return templates.AboutView(view)
 }
 
+// SettingsAppearanceView wraps the appearance sub-page templ.
+func SettingsAppearanceView(currentTheme, currentExportSurface string) templ.Component {
+	return templates.SettingsAppearancePage(currentTheme, currentExportSurface)
+}
+
+// SettingsUpdatesView wraps the updates sub-page templ.
+func SettingsUpdatesView(state update.SettingsState) templ.Component {
+	return templates.SettingsUpdatesPage(viewmodel.UpdateSettingsFromDomain(state))
+}
+
+// SettingsMaintenanceView wraps the maintenance sub-page templ.
+func SettingsMaintenanceView() templ.Component {
+	return templates.SettingsMaintenancePage()
+}
+
+// SettingsDataView wraps the data sub-page templ.
+func SettingsDataView(confirmationWord string) templ.Component {
+	return templates.SettingsDataPage(confirmationWord)
+}
+
+// SettingsBuildView wraps the build sub-page templ.
+func SettingsBuildView() templ.Component {
+	return templates.SettingsBuildPage()
+}
+
+// SettingsDiagnosticsView wraps the diagnostics sub-page templ.
+func SettingsDiagnosticsView(debugEnabled bool) templ.Component {
+	return templates.SettingsDiagnosticsPage(debugEnabled)
+}
+
 // ResearchPickerRecent wraps the recents-only fragment returned by
 // the /research/recent endpoint (issue #378 slice 3, option C1). JS
 // reads localStorage dixiedata.research.recents, fetches the

@@ -307,6 +307,17 @@ func (a *App) setupRoutes() {
 	r.Post("/settings/quality/scan", a.handleScanDataQuality)
 	r.Post("/settings/quality/apply", a.handleApplyDataQuality)
 
+	// Issue #584: Settings split. The flat /settings page is
+	// now an index listing 6 destinations; each sub-page carries
+	// its own templ partial. POSTs stay under the same paths so
+	// the existing form handlers keep working.
+	r.Get("/settings/appearance", a.handleSettingsAppearance)
+	r.Get("/settings/updates", a.handleSettingsUpdates)
+	r.Get("/settings/maintenance", a.handleSettingsMaintenance)
+	r.Get("/settings/data", a.handleSettingsData)
+	r.Get("/settings/build", a.handleSettingsBuild)
+	r.Get("/settings/diagnostics", a.handleSettingsDiagnostics)
+
 	// Issue #585: new /about page (app identity + license + release
 	// history). Renders the baked releasehistory entries; the dev
 	// binary ships with baked == nil and the partial renders an

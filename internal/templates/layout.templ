@@ -218,6 +218,19 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						},
 					})
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
+					@components.MegaMenu("Settings", uiids.LayoutSettingsMenu, nil, []components.MegaGroup{
+						{
+							Title: "Settings",
+							Items: []templ.Component{
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/appearance" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-appearance">Appearance</a></li>`),
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/updates" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-updates">Software updates</a></li>`),
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/maintenance" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-maintenance">Maintenance</a></li>`),
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/data" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-data">Data</a></li>`),
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/build" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-build">Build information</a></li>`),
+								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/diagnostics" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-diagnostics">Diagnostics</a></li>`),
+							},
+						},
+					})
 					@components.MegaMenu("About", uiids.LayoutAboutMenu, nil, []components.MegaGroup{
 						{
 							Title: "App",

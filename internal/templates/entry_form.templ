@@ -457,6 +457,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 	@Layout("Settings") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
+			@SettingsIndex()
 			@SettingsAppearancePanel(currentTheme, currentExportSurface)
 			@SettingsUpdatePanel(updateState)
 			@SettingsBuildPanel()
