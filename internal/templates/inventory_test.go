@@ -277,7 +277,7 @@ func TestInventoryView_RendersMetricsSection(t *testing.T) {
 		"2026-07-12",
 		`data-inventory-metrics-active-days`,
 		"2", // active day count
-		`data-inventory-metrics-days`,
+		`data-inventory-metrics-chart`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("inventory page missing %q in metrics render", want)
@@ -289,11 +289,23 @@ func TestInventoryView_RendersMetricsSection(t *testing.T) {
 // single-day state: the per-day table is suppressed (the
 // summary dates above already convey the single-day state).
 // Without this suppression a one-row table reads as noise.
-func TestInventoryView_MetricsOmitsTableForSingleDay(t *testing.T) {
+func TestInventoryView_MetricsOmitsChartWrapperForSingleDay(t *testing.T) {
+	// Issue #583 slice 2 changed the per-day UL into a chart
+	// wrapper. The wrapper renders for any archive with at least
+	// one active day (the JS renderer handles single-column
+	// gracefully); the wrapper is suppressed only on empty
+	// archives.
 	view := viewmodel.InventoryView{
 		Counts: viewmodel.ArchiveCounts{SoldierCount: 1},
 		Metrics: viewmodel.InventoryMetrics{
 			EntriesPerDay:   map[string]int{"2026-07-14": 1},
+			EntriesPerDayByKind: map[string]map[string]int{
+				"soldier": {"2026-07-14": 1},
+				"spouse":  {},
+				"linked":  {},
+				"event":   {},
+				"article": {},
+			},
 			FirstEntryDate:  "2026-07-14",
 			LatestEntryDate: "2026-07-14",
 			ActiveDayCount:  1,
@@ -310,16 +322,18 @@ func TestInventoryView_MetricsOmitsTableForSingleDay(t *testing.T) {
 	if !strings.Contains(content, `data-inventory-metrics`) {
 		t.Errorf("inventory page missing metrics section anchor in single-day state")
 	}
-	if strings.Contains(content, `data-inventory-metrics-days`) {
-		t.Errorf("inventory page rendered per-day table for a single-day state; the table should suppress when len(EntriesPerDay) <= 1")
+	if !strings.Contains(content, `data-inventory-metrics-chart`) {
+		t.Errorf("inventory page missing chart wrapper in single-day state (the JS renderer handles the single-column case)")
 	}
 }
 
-// TestInventoryView_MetricsOrderIsChronological pins the
-// storage contract: the per-day bucket keys are YYYY-MM-DD
-// strings (lexicographic sort = chronological sort). Verify
-// the render output orders the day rows chronologically.
-func TestInventoryView_MetricsOrderIsChronological(t *testing.T) {
+// TestInventoryView_MetricsFirstLatestOrder pins the summary
+// strip ordering. The chart wrapper (issue #583) replaced the
+// per-day UL, so the chronological row-order assertion moved
+// to the JS renderer (slice 3). This test pins that First
+// entry / Latest entry render in that order in the summary
+// strip above the chart.
+func TestInventoryView_MetricsFirstLatestOrder(t *testing.T) {
 	view := viewmodel.InventoryView{
 		Counts: viewmodel.ArchiveCounts{SoldierCount: 6},
 		Metrics: viewmodel.InventoryMetrics{
@@ -341,22 +355,13 @@ func TestInventoryView_MetricsOrderIsChronological(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
-	// Slice the content to the per-day table so the summary
-	// dates card (which lists First entry + Latest entry) doesn't
-	// pull the first occurrence out of order.
-	tableStart := strings.Index(content, `data-inventory-metrics-days`)
-	if tableStart < 0 {
-		t.Fatalf("per-day table marker not found in rendered output")
+	firstAnchor := strings.Index(content, `data-inventory-metrics-first`)
+	latestAnchor := strings.Index(content, `data-inventory-metrics-latest`)
+	if firstAnchor < 0 || latestAnchor < 0 {
+		t.Fatalf("summary anchors missing: first=%d latest=%d", firstAnchor, latestAnchor)
 	}
-	table := content[tableStart:]
-	p05 := strings.Index(table, "2026-05-01")
-	p615 := strings.Index(table, "2026-06-15")
-	p630 := strings.Index(table, "2026-06-30")
-	if p05 < 0 || p615 < 0 || p630 < 0 {
-		t.Fatalf("not all day keys in per-day table: may=%d jun15=%d jun30=%d", p05, p615, p630)
-	}
-	if !(p05 < p615 && p615 < p630) {
-		t.Errorf("day rows not chronological: may=%d jun15=%d jun30=%d", p05, p615, p630)
+	if firstAnchor > latestAnchor {
+		t.Errorf("first-entry anchor appears AFTER latest-entry anchor (first=%d latest=%d)", firstAnchor, latestAnchor)
 	}
 }
 
