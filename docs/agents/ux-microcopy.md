@@ -164,31 +164,61 @@ page or in the panel.
 probe is the executor; this doc is the spec. When a rule changes here,
 the probe changes in the same PR.
 
+The `.templ` probe covers live Wails pages. Static Archive has a separate
+format-aware gate because its UI is embedded as HTML + JavaScript inside
+`internal/archive/static_archive.go`; do not apply `.templ` parsing rules
+blindly to that mixed source. Run both probes when changing shared copy.
+
+### Static Archive coverage (issue #581)
+
+`audit/smoke_static_archive_microcopy.mjs` scans the user-facing Static
+Archive shell plus strings emitted by its hash-routed renderers. It checks:
+
+- concise hero, report, list, and page-description copy;
+- glossary-aligned `Person Record`, `Source Record`, `Linked Soldier`,
+  `Linked Persons`, and `Confederate Home Status` labels;
+- entity-specific list actions instead of generic `View More` labels;
+- concise empty states and one printable-report instruction;
+- printable-report and detail-view labels.
+
+The scan excludes CSS, JavaScript plumbing, route names, JSON/data field
+names, researcher-authored archive content, and generated export contracts.
+`--strict` is the CI gate; `audit/smoke_static_archive_microcopy.test.mjs`
+pins clean output plus synthetic regressions for each rule family.
+
+When changing Static Archive copy, run:
+
+```text
+node audit/smoke_static_archive_microcopy.mjs --strict
+node audit/smoke_static_archive_microcopy.test.mjs
+```
+
 ### Probe rules (enforced today)
 
-The probe currently asserts four concrete checks:
+The `.templ` probe currently asserts five concrete checks:
 
-1. **Single-button heading.** A `<h1>`–`<h4>` immediately followed by
-   exactly one `<button>` (within the same parent block) is flagged.
-   Fix: drop the heading.
+1. **Eyebrow above a self-explanatory block.** An uppercase,
+   letter-spaced eyebrow above a single blockquote or table without
+   form controls is flagged. Fix: drop the eyebrow.
 
-2. **Heading repeats button label.** A heading whose text is
-   case-insensitively equal to a `<button>` label inside the same
-   sibling group is flagged. Fix: drop the heading (the button carries
-   the meaning) or rewrite the heading to add new information.
+2. **Heading repeats button label.** A heading whose text matches an
+   adjacent button label is flagged. Fix: drop the heading or rewrite
+   it to add new information.
 
-3. **Helper copy longer than the label.** A `<p class="*help*">`,
-   `<small class="*hint*">`, or `aria-describedby` target whose text
-   length exceeds the label of the field it describes (and the label
-   is non-empty) is flagged. Fix: drop the helper copy or shorten it
-   to a single short clause.
+3. **Duplicated visible text.** The same user-facing text appearing
+   within a short source window is flagged after classes, component
+   calls, attributes, and control flow are removed. Fix: deduplicate.
 
-4. **Duplicated strings within a fragment.** The same string
-   (case-insensitive, whitespace-collapsed) appearing twice within
-   ~10 lines of the same templ fragment is flagged. Fix: deduplicate.
+4. **Stacked headings.** Two short heading-style elements within three
+   lines without body copy between them are flagged. Fix: keep only the
+   heading that adds information.
+
+5. **Verbose body under heading.** A body paragraph longer than 80
+   characters directly under a heading-style element is flagged. Fix:
+   trim or remove narration that repeats the heading.
 
 Each violation message includes `file:line` and a suggested fix per
-the rule above.
+rule above.
 
 ### Probe rules (not yet enforced — TODO)
 

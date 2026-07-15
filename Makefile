@@ -447,6 +447,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-htmx-guard
 	make lint-dialog-guard
 	make lint-microcopy
+	make lint-static-archive-microcopy-strict
 	make lint-typecheck
 
 lint-typecheck: ## TypeScript type-check on frontend/**/*.js via tsc (--noEmit)
@@ -487,6 +488,19 @@ lint-microcopy-strict: ## UX microcopy sweep as CI failure (--strict)
 
 lint-microcopy-test: ## Run the smoke_microcopy probe test suite
 	@node audit/smoke_microcopy.test.mjs
+
+# Static Archive microcopy (issue #581, Slice 1). The archive viewer
+# embeds HTML + JS in internal/archive/static_archive.go, so this
+# format-aware probe checks user-facing shell and renderer strings
+# without applying .templ parsing to CSS, JS plumbing, or data fields.
+lint-static-archive-microcopy: ## Static Archive microcopy sweep (issue #581)
+	@node audit/smoke_static_archive_microcopy.mjs
+
+lint-static-archive-microcopy-strict: ## Static Archive microcopy sweep as CI failure
+	@node audit/smoke_static_archive_microcopy.mjs --strict
+
+lint-static-archive-microcopy-test: ## Run Static Archive microcopy probe tests
+	@node audit/smoke_static_archive_microcopy.test.mjs
 
 # Issue #446 — extend the dispatcher-contract coverage. Live-server
 # probe that sends POST + X-HTTP-Method-Override for every PATCH/

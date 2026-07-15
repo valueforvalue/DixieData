@@ -1566,7 +1566,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     <header class="hero">
       <div class="hero-shell">
         <h1>{{ .ArchiveTitle }}</h1>
-        <p>Browse this standalone DixieData archive as a read-only mirror of the DixieData app. The Calendar landing shows every anniversary and event day in the archive; use the nav to jump to Filter (filterable Person Record list), Insights (analytics snapshot), or the Event / Article tabs.</p>
+        <p>Read-only Static Archive export.</p>
         <div class="archive-meta">
           <span>Generated {{ .GeneratedAt }}</span>
         </div>
@@ -1595,12 +1595,12 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       <section id="archive-page" class="screen page-screen" aria-live="polite"></section>
       <section id="archive-detail-screen" class="screen detail-screen hidden">
         <div class="detail-toolbar">
-          <button type="button" id="detail-back" class="back-button">← Back to Archive List</button>
-          <a id="detail-export-report" class="export-report-button" target="_blank" rel="noopener noreferrer" title="Open the printable report in a new tab. Use your browser's Print → PDF (Cmd+P on Mac, Ctrl+P on Windows/Linux) to save it as a PDF." style="display:none;">Export Report</a>
-          <span class="export-report-tip">💡 Open the printable report in a new tab, then use your browser's Print → PDF to save it.</span>
-          <span id="detail-position" class="pill">Record View</span>
+          <button type="button" id="detail-back" class="back-button">← Back to list</button>
+          <a id="detail-export-report" class="export-report-button" target="_blank" rel="noopener noreferrer" title="Print this report" style="display:none;">Export Report</a>
+          <span class="export-report-tip">Open printable report in new tab, then use browser Print → PDF.</span>
+          <span id="detail-position" class="pill">Person Record View</span>
         </div>
-        <div id="detail-content" class="detail-card">Select a record to view its details.</div>
+        <div id="detail-content" class="detail-card">Select a Person Record.</div>
       </section>
     </main>
 
@@ -1821,7 +1821,7 @@ function escapeHtml(value) {
             '</div>' +
             (record.notes ? '<div class="row-excerpt">' + escapeHtml(excerpt(record.notes, 150)) + '</div>' : '') +
           '</div>' +
-          '<button type="button" class="action-button" data-view-record="' + index + '">View More</button>' +
+          '<button type="button" class="action-button" data-view-record="' + index + '">View Person Record</button>' +
         '</article>';
     }
 
@@ -1831,7 +1831,7 @@ function escapeHtml(value) {
         : '';
       const relatedFamily = relatedFamilyRecords(record, allRecords);
       const details = [
-        ['Record Type', detailValue(record.displayType)],
+        ['Person Record Type', detailValue(record.displayType)],
         ['Display ID', detailValue(record.displayId)],
         ['Prefix', blankDetailValue(record.prefix)],
         ['First Name', blankDetailValue(record.firstName)],
@@ -1846,7 +1846,7 @@ function escapeHtml(value) {
       ];
       if (record.entryType === 'wife' || record.entryType === 'widow') {
         details.push(['Married To', detailValue(record.spouseName)]);
-        details.push(['Linked Soldier Record', detailValue(record.spouseDisplayId)]);
+        details.push(['Linked Soldier', detailValue(record.spouseDisplayId)]);
         details.push(['Maiden Name', detailValue(record.maidenName)]);
         if (record.entryType === 'widow') {
           details.push(['Pension ID', detailValue(record.pensionId)]);
@@ -1854,7 +1854,7 @@ function escapeHtml(value) {
         }
       } else if (record.entryType === 'linked_person') {
         details.push(['Relationship to Soldier', detailValue(record.relationshipLabel)]);
-        details.push(['Linked Soldier Record', detailValue(record.spouseDisplayId)]);
+        details.push(['Linked Soldier', detailValue(record.spouseDisplayId)]);
       } else {
         details.push(['Rank', blankDetailValue(record.rankOut || record.rank || record.rankIn)]);
         details.push(['Rank In', blankDetailValue(record.rankIn)]);
@@ -1878,7 +1878,7 @@ function escapeHtml(value) {
                 '<div class="related-card">' +
                   '<strong>' + escapeHtml(item.name) + '</strong>' +
                   '<p>' + escapeHtml(item.displayType + ' • ' + item.displayId) + '</p>' +
-                  '<div class="related-links"><a class="image-button" href="' + detailLink(item.displayId) + '">Open Related Record</a></div>' +
+                  '<div class="related-links"><a class="image-button" href="' + detailLink(item.displayId) + '">Open Person Record</a></div>' +
                 '</div>';
             }).join('') + '</div>' : '') +
           '</section>'
@@ -1896,11 +1896,11 @@ function escapeHtml(value) {
       }
       if (record.records && record.records.length) {
         primarySections.push(
-          '<section class="detail-section"><h4>Records</h4><ul>' +
+          '<section class="detail-section"><h4>Source Records</h4><ul>' +
             record.records.map(function(item) {
               const app = item.appId ? ' (' + escapeHtml(item.appId) + ')' : '';
               const detailsText = item.details ? '<br>' + renderRecordDetailsLink(item.details) : '';
-              return '<li><strong>' + escapeHtml(item.recordType || 'Record') + '</strong>' + app + detailsText + '</li>';
+              return '<li><strong>' + escapeHtml(item.recordType || 'Source Record') + '</strong>' + app + detailsText + '</li>';
             }).join('') +
           '</ul></section>'
         );
@@ -1965,7 +1965,7 @@ function escapeHtml(value) {
             primarySections.join('') +
           '</div>' +
           '<div>' +
-            (sideSections.length ? sideSections.join('') : '<section class="detail-section"><h4>Images</h4><p>No images recorded for this entry.</p></section>') +
+            (sideSections.length ? sideSections.join('') : '<section class="detail-section"><h4>Images</h4><p>No images.</p></section>') +
           '</div>' +
         '</div>';
     }
@@ -2136,11 +2136,11 @@ function escapeHtml(value) {
       } else if (record.entryType === 'linked_person') {
         serviceRows = [
           printFieldRow('Relationship to Soldier', record.relationshipLabel),
-          printFieldRow('Linked Soldier Record', record.spouseDisplayId),
+          printFieldRow('Linked Soldier', record.spouseDisplayId),
         ].join('');
       } else {
         serviceRows = [
-          printFieldRow('Record Type', printEntryTypeLabel(record.entryType)),
+          printFieldRow('Person Record Type', printEntryTypeLabel(record.entryType)),
           printFieldRow('Rank', record.rankOut || record.rank || record.rankIn),
           printFieldRow('Rank In', record.rankIn),
           printFieldRow('Rank Out', record.rankOut || record.rank),
@@ -2160,7 +2160,7 @@ function escapeHtml(value) {
       if (record.entryType === 'wife' || record.entryType === 'widow') {
         householdRows = [
           printFieldRow('Married To', record.spouseName),
-          printFieldRow('Linked Soldier Record', record.spouseDisplayId),
+          printFieldRow('Linked Soldier', record.spouseDisplayId),
           printFieldRow('Maiden Name', record.maidenName),
         ].join('');
       }
@@ -2172,7 +2172,7 @@ function escapeHtml(value) {
         recordsHtml = '<ul>' + record.records.map(function(r) {
           var app = r.appId ? ' (' + escapeHtml(r.appId) + ')' : '';
           var details = r.details ? '<br>' + printRenderLink(r.details) : '';
-          return '<li><strong>' + escapeHtml(r.recordType || 'Record') + '</strong>' + app + details + '</li>';
+          return '<li><strong>' + escapeHtml(r.recordType || 'Source Record') + '</strong>' + app + details + '</li>';
         }).join('') + '</ul>';
       }
 
@@ -2206,7 +2206,7 @@ function escapeHtml(value) {
           '<section class="print-section"><h3>Identity &amp; Vital Details</h3><dl class="print-grid">' + identityRows + '</dl></section>' +
           (serviceRows ? '<section class="print-section"><h3>Service &amp; Archive Details</h3><dl class="print-grid">' + serviceRows + '</dl></section>' : '') +
           (hasHousehold ? '<section class="print-section"><h3>Household &amp; Context</h3><dl class="print-grid">' + householdRows + '</dl></section>' : '') +
-          (recordsHtml ? '<section class="print-section print-records"><h3>Records</h3>' + recordsHtml + '</section>' : '') +
+          (recordsHtml ? '<section class="print-section print-records"><h3>Source Records</h3>' + recordsHtml + '</section>' : '') +
           '<div class="print-footer">' +
             '<span>' + escapeHtml(footerText) + '</span>' +
             (codename ? ' <span class="print-codename">\u2014 ' + escapeHtml(codename) + '</span>' : '') +
@@ -2236,7 +2236,7 @@ function escapeHtml(value) {
               (event.location ? '<span><strong>Location:</strong> ' + escapeHtml(event.location) + '</span>' : '') +
             '</div>' +
           '</div>' +
-          '<button type="button" class="action-button" data-view-event="' + index + '">View More</button>' +
+          '<button type="button" class="action-button" data-view-event="' + index + '">View Event Record</button>' +
         '</article>';
     }
 
@@ -2278,7 +2278,7 @@ function escapeHtml(value) {
             '<h3 class="row-title">' + escapeHtml(article.title || 'Untitled Article') + '</h3>' +
             (article.subtitle ? '<div class="row-summary"><span>' + escapeHtml(article.subtitle) + '</span></div>' : '') +
           '</div>' +
-          '<button type="button" class="action-button" data-view-article="' + index + '">View More</button>' +
+          '<button type="button" class="action-button" data-view-article="' + index + '">View Article</button>' +
         '</article>';
     }
 
@@ -2557,11 +2557,11 @@ function escapeHtml(value) {
       var totalItems = Array.isArray(bundle.calendar_items) ? bundle.calendar_items.length : 0;
       return '' +
         '<div class="panel-head"><h2>Calendar</h2></div>' +
-        '<p class="panel-subtext">Every anniversary and event day in this archive, by month. Click a day to filter Person Records for that date.</p>' +
+        '<p class="panel-subtext">Anniversaries, events, and holidays by month.</p>' +
         selectorHtml +
         '<div class="calendar-items-link"><a href="#/calendar-items" class="action-link">View all ' + totalItems + ' calendar items &rarr;</a></div>' +
         (totalDaysWithData === 0
-          ? '<div class="placeholder-card">No anniversaries, events, or holidays recorded in this archive.</div>'
+          ? '<div class="placeholder-card">No anniversaries, events, or holidays.</div>'
           : '<div id="calendar-month-grid">' + blocks.join('') + '</div>');
     }
 
@@ -2606,7 +2606,7 @@ function escapeHtml(value) {
         '<div class="panel-head"><h2>Filter</h2>' +
         '<span class="browse-count" id="browse-count">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + '</span>' +
         '</div>' +
-        '<p class="panel-subtext">Search and filter the Person Records. Click any row for the full detail view. Click an Insights card on the Insights page to pre-filter this list.</p>' +
+        '<p class="panel-subtext">Search Person Records by name or archive field.</p>' +
         '<div class="browse-toolbar">' +
           '<div class="browse-search-row">' +
             '<label for="browse-search">Search</label>' +
@@ -2635,7 +2635,7 @@ function escapeHtml(value) {
           renderFilterDropdown('pension_state', 'Pension state', records, function(r) { return r.pensionState; }) +
           renderFilterDropdown('unit', 'Unit', records, function(r) { return r.unit; }) +
           renderFilterDropdown('buried_in', 'Buried in', records, function(r) { return r.location; }) +
-          renderFilterDropdown('confederate_home_status', 'Confederate Home status', records, function(r) { return r.homeStatus; }) +
+          renderFilterDropdown('confederate_home_status', 'Confederate Home Status', records, function(r) { return r.homeStatus; }) +
           buildTagsDropdown(records, events) +
         '</div>' +
         '<div class="browse-active-filters" id="browse-active-filters"></div>' +
@@ -2939,14 +2939,14 @@ function escapeHtml(value) {
       var insights = (bundle && bundle.insights) ? bundle.insights : null;
       var html = '' +
         '<div class="panel-head"><h2>Insights</h2></div>' +
-        '<p class="panel-subtext">A pre-computed snapshot of the archive\'s analytics — Person Record Types, top cemeteries, Confederate Home status, pension distribution, top units, and birth/death decades. Click any entry to filter Person Records with that filter pre-filled.</p>' +
+        '<p class="panel-subtext">Archive analytics with links to matching Person Records.</p>' +
         '<div class="insights-grid">';
       if (!insights) {
-        html += '<div class="placeholder-card">No insights snapshot available in this archive.</div>';
+        html += '<div class="placeholder-card">No insights snapshot.</div>';
       } else {
         html += renderRecordTypesCard(insights.record_types);
         html += renderInsightsCountCard('Top cemeteries', 'cemetery_density', insights.cemetery_density, 'buried_in', 'No cemetery data');
-        html += renderInsightsCountCard('Confederate Home status', 'confederate_home_status', insights.confederate_home_status, 'confederate_home_status', 'No Confederate Home status data');
+        html += renderInsightsCountCard('Confederate Home Status', 'confederate_home_status', insights.confederate_home_status, 'confederate_home_status', 'No Confederate Home Status data');
         html += renderInsightsCountCard('Pension distribution', 'pension_distribution', insights.pension_distribution, 'pension_state', 'No pension state data');
         html += renderInsightsCountCard('Top units', 'unit_representation', insights.unit_representation, 'unit', 'No unit data');
         html += renderDecadeCard('Birth decade distribution', 'birth_decade_distribution', insights.birth_decade_distribution);
@@ -2970,7 +2970,7 @@ function escapeHtml(value) {
       var items = [
         ['Soldiers', rt.total_soldiers],
         ['Wives + widows', rt.total_wives_widows],
-        ['Linked people', rt.total_linked_people]
+        ['Linked Persons', rt.total_linked_people]
       ];
       var rows = '';
       for (var i = 0; i < items.length; i++) {
@@ -3080,9 +3080,9 @@ function escapeHtml(value) {
       }
       return '' +
         '<div class="panel-head"><h2>Calendar Items</h2></div>' +
-        '<p class="panel-subtext">' + items.length + ' calendar item' + (items.length === 1 ? '' : 's') + ' (holidays, anniversaries, events). Sorted by month and day.</p>' +
+        '<p class="panel-subtext">' + items.length + ' calendar item' + (items.length === 1 ? '' : 's') + '.</p>' +
         (items.length === 0
-          ? '<div class="placeholder-card">No calendar items in this archive.</div>'
+          ? '<div class="placeholder-card">No calendar items.</div>'
           : '<div class="ci-table-wrap"><table class="ci-table">' +
             '<thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Notes</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table></div>');
@@ -3097,13 +3097,13 @@ function escapeHtml(value) {
       var records = Array.isArray(bundle.records) ? bundle.records : [];
       var html =
         '<div class="panel-head"><h2>View All</h2></div>' +
-        '<p class="panel-subtext">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + ' in this archive. Click any row for the full detail view.</p>' +
+        '<p class="panel-subtext">' + records.length + ' Person Record' + (records.length === 1 ? '' : 's') + '.</p>' +
         '<div class="results">';
       for (var i = 0; i < records.length; i++) {
         html += renderRecord(records[i], i, records);
       }
       if (!records.length) {
-        html += '<div class="placeholder-card">No Person Records in this archive.</div>';
+        html += '<div class="placeholder-card">No Person Records.</div>';
       }
       html += '</div>';
       return html;
@@ -3113,13 +3113,13 @@ function escapeHtml(value) {
       var events = Array.isArray(bundle.events) ? bundle.events : [];
       var html =
         '<div class="panel-head"><h2>Events</h2></div>' +
-        '<p class="panel-subtext">' + events.length + ' Event Record' + (events.length === 1 ? '' : 's') + ' in this archive. Click any row for the full detail view.</p>' +
+        '<p class="panel-subtext">' + events.length + ' Event Record' + (events.length === 1 ? '' : 's') + '.</p>' +
         '<div class="results">';
       for (var i = 0; i < events.length; i++) {
         html += renderEventRow(events[i], i);
       }
       if (!events.length) {
-        html += '<div class="placeholder-card">No Event Records in this archive.</div>';
+        html += '<div class="placeholder-card">No Event Records.</div>';
       }
       html += '</div>';
       return html;
@@ -3129,13 +3129,13 @@ function escapeHtml(value) {
       var articles = Array.isArray(bundle.articles) ? bundle.articles : [];
       var html =
         '<div class="panel-head"><h2>Articles</h2></div>' +
-        '<p class="panel-subtext">' + articles.length + ' Article' + (articles.length === 1 ? '' : 's') + ' in this archive. Click any row for the full detail view.</p>' +
+        '<p class="panel-subtext">' + articles.length + ' Article' + (articles.length === 1 ? '' : 's') + '.</p>' +
         '<div class="results">';
       for (var i = 0; i < articles.length; i++) {
         html += renderArticleRow(articles[i], i);
       }
       if (!articles.length) {
-        html += '<div class="placeholder-card">No Articles in this archive.</div>';
+        html += '<div class="placeholder-card">No Articles.</div>';
       }
       html += '</div>';
       return html;
