@@ -45,12 +45,13 @@ templ AboutView(view viewmodel.AboutView) {
 		<div class="relative mx-auto max-w-4xl space-y-6" id="page.about" data-page-about>
 			<header class="space-y-2">
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">About DixieData</h1>
-				<p class="text-sm text-slate-600">App identity, license, and release history. Built into the binary so it stays accurate even when you are offline.</p>
+				<p class="text-sm text-slate-600">App identity, license, release history, and repository activity. Built into the binary so it stays accurate even when you are offline.</p>
 			</header>
 			@aboutInPageNav()
 			@aboutIdentitySection(view)
 			@aboutLicenseSection(view)
 			@aboutHistorySection(view)
+			@aboutActivitySection(view)
 		</div>
 	}
 }
@@ -62,6 +63,7 @@ templ aboutInPageNav() {
 			<li><a href="#about.identity" class="text-[var(--theme-text-primary)] underline">App identity</a></li>
 			<li><a href="#about.license" class="text-[var(--theme-text-primary)] underline">License + credits</a></li>
 			<li><a href="#about.history" class="text-[var(--theme-text-primary)] underline">Release history</a></li>
+			<li><a href="#about.activity" class="text-[var(--theme-text-primary)] underline">Repository activity</a></li>
 		</ul>
 	</nav>
 }
@@ -349,4 +351,167 @@ templ aboutRenderSubsectionList(subs []aboutReleaseSubsection) {
 // "show all N bullets" summary).
 func aboutReleaseTotalBullets(rel viewmodel.ReleaseEntry) int {
 	return len(rel.Added) + len(rel.Changed) + len(rel.Fixed) + len(rel.Removed) + len(rel.Maintenance) + len(rel.Docs)
+}
+
+// aboutActivitySection renders the Repository activity
+// section (anchored #activity). When Activity is nil, the
+// empty-state copy renders. Otherwise the section shows a
+// summary line, a 52-week commit heatmap (SVG, painted by
+// the JS renderer in a follow-up slice), top contributors,
+// per-release activity breakdown, and a stacked bar of
+// issues-closed-by-Type. All surfaces are server-rendered;
+// the heatmap is the one piece of client-rendered SVG (the
+// 52*7=364-cell grid is too dense to inline into the HTML).
+templ aboutActivitySection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="about.activity" data-about-activity>
+		@components.Heading(components.H2, "Repository activity", "", nil)
+		<p class="text-sm text-slate-600">Rolling 52 weeks of git activity baked at release time. The heatmap reads the per-day commit counts; the contributors list is the top 10 by commit count; the issues-closed bar groups closed issues by triage Type label.</p>
+		if view.Activity == nil {
+			<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-amber-100-rgb)/0.6)] p-4 text-sm text-amber-950" data-about-activity-empty>
+				<p><strong>Repository activity not yet baked for this build.</strong></p>
+				<p class="mt-1 text-xs">Run <code class="font-mono">make tpl</code> to bake from <code class="font-mono">git log</code> + the GitHub Issues API. The dev binary ships with no baked data so the empty-state copy reads naturally.</p>
+			</div>
+		} else {
+			@aboutActivitySummary(view.Activity)
+			@aboutActivityHeatmap(view.Activity)
+			@aboutActivityContributors(view.Activity)
+			@aboutActivityPerRelease(view.Activity)
+			@aboutActivityIssuesClosed(view.Activity)
+		}
+	</section>
+}
+
+// aboutActivitySummary renders the one-line summary: total
+// commits + first/latest dates.
+templ aboutActivitySummary(act *viewmodel.ActivitySnapshotView) {
+	<p class="text-sm text-slate-700" data-about-activity-summary>
+		<strong data-about-activity-commits>{ fmt.Sprintf("%d", act.TotalCommits) }</strong> commits since <span data-about-activity-first>{ act.FirstCommitDate }</span> through <span data-about-activity-latest>{ act.LatestCommitDate }</span> across <strong data-about-activity-contributors-count>{ fmt.Sprintf("%d", act.TotalContributors) }</strong> contributors.
+	</p>
+}
+
+// aboutActivityHeatmap renders the heatmap host + the JSON
+// data attribute the JS renderer reads. The host is empty
+// until the JS paints the SVG (the templ's job is the
+// data-attribute plumbing; the JS paints the grid).
+templ aboutActivityHeatmap(act *viewmodel.ActivitySnapshotView) {
+	<div
+		class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-3"
+		data-about-activity-heatmap
+		data-about-activity-heatmap-data={ act.HeatmapData }
+	>
+		<p class="text-xs text-slate-500" data-about-activity-heatmap-loading>Loading heatmap...</p>
+	</div>
+}
+
+// aboutActivityContributors renders the top-contributors
+// list. The list is server-rendered (no JS needed).
+templ aboutActivityContributors(act *viewmodel.ActivitySnapshotView) {
+	<div data-about-activity-contributors>
+		<h3 class="text-base font-semibold text-[var(--theme-text-primary)]">Top contributors</h3>
+		if len(act.TopContributors) == 0 {
+			<p class="mt-2 text-sm text-slate-500">No contributors in the rolling window.</p>
+		} else {
+			<ul class="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+				for _, c := range act.TopContributors {
+					<li class="rounded-lg border border-[rgb(var(--theme-sepia-rgb)/0.25)] bg-white/30 px-3 py-2" data-about-activity-contributor={ c.Name }>
+						<span class="font-mono">{ c.Name }</span>
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-slate-500">{ fmt.Sprintf("%d commits", c.Count) }</span>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// aboutActivityPerRelease renders the per-release commit
+// rollup. Releases whose tag does not exist (CHANGELOG entry
+// without a corresponding git tag) render "N/A" for the
+// commit count.
+templ aboutActivityPerRelease(act *viewmodel.ActivitySnapshotView) {
+	<div data-about-activity-per-release>
+		<h3 class="text-base font-semibold text-[var(--theme-text-primary)]">Per-release activity</h3>
+		if len(act.PerRelease) == 0 {
+			<p class="mt-2 text-sm text-slate-500">No release activity baked yet.</p>
+		} else {
+			<ul class="mt-2 divide-y divide-[rgb(var(--theme-sepia-rgb)/0.25)] text-sm">
+				for _, r := range act.PerRelease {
+					<li class="flex flex-wrap items-baseline justify-between gap-2 py-2" data-about-activity-per-release-row={ r.Version }>
+						<span class="font-mono text-xs text-[var(--theme-text-primary)]">{ r.Version }</span>
+						if r.CommitCount == 0 {
+							<span class="text-xs text-slate-500" data-about-activity-per-release-count="n/a">N/A (tag missing)</span>
+						} else {
+							<span class="text-xs text-slate-700" data-about-activity-per-release-count>
+								{ fmt.Sprintf("%d", r.CommitCount) } commits &middot; { fmt.Sprintf("%d", r.Contributors) } contributors &middot; +{ fmt.Sprintf("%d", r.LinesAdded) }/-{ fmt.Sprintf("%d", r.LinesRemoved) } LOC
+							</span>
+						}
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// aboutActivityIssuesClosed renders the issues-closed-by-Type
+// stacked bar + the legend. The bar itself is a flex row of
+// divs (one per Type); each div's width is proportional to
+// its share of TotalClosed. The legend lists the same buckets
+// with their counts.
+templ aboutActivityIssuesClosed(act *viewmodel.ActivitySnapshotView) {
+	<div data-about-activity-issues-closed>
+		<h3 class="text-base font-semibold text-[var(--theme-text-primary)]">Issues closed by type</h3>
+		if act.IssuesClosed.TotalClosed == 0 {
+			<p class="mt-2 text-sm text-slate-500">No closed issues baked yet.</p>
+		} else {
+			<div class="mt-3 flex h-6 w-full overflow-hidden rounded-md border border-[rgb(var(--theme-sepia-rgb)/0.35)]" data-about-activity-issues-bar>
+				for _, b := range act.IssuesClosed.ByType {
+					<div
+						class="h-full"
+						style={ fmt.Sprintf("width: %s%%; background-color: %s;", bucketPercent(b.Count, act.IssuesClosed.TotalClosed), bucketColor(b.Type)) }
+						data-about-activity-issues-bucket={ b.Type }
+						title={ fmt.Sprintf("%s: %d", b.Type, b.Count) }
+					></div>
+				}
+			</div>
+			<ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+				for _, b := range act.IssuesClosed.ByType {
+					<li class="inline-flex items-center gap-1.5" data-about-activity-issues-legend={ b.Type }>
+						<span class="inline-block h-2.5 w-2.5 rounded-sm" style={ fmt.Sprintf("background-color: %s;", bucketColor(b.Type)) }></span>
+						<span class="text-slate-700">{ b.Type } &middot; { fmt.Sprintf("%d", b.Count) }</span>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// bucketPercent returns the width percent of one bucket
+// within the total (rounded to one decimal).
+func bucketPercent(count, total int) string {
+	if total == 0 {
+		return "0"
+	}
+	return fmt.Sprintf("%.1f", float64(count)/float64(total)*100)
+}
+
+// bucketColor maps a triage Type label to a stack-bar slice
+// colour. The palette matches the legend chips the rest of
+// the about page uses (sepia / gold / green / red / blue).
+func bucketColor(typeName string) string {
+	switch typeName {
+	case "bug":
+		return "#a14747" // review red
+	case "enhancement":
+		return "#7d4f2d" // sepia
+	case "documentation":
+		return "#4f7d6b" // slate green
+	case "duplicate":
+		return "#b6854f" // warm gold
+	case "question":
+		return "#3f5d8a" // ink blue
+	case "invalid":
+		return "#9c9c9c" // grey
+	case "wontfix":
+		return "#6b6b6b" // dark grey
+	}
+	return "#cccccc"
 }

@@ -51,9 +51,11 @@ func TestAboutViewRendersAllThreeSections(t *testing.T) {
 		`id="about.identity"`,
 		`id="about.license"`,
 		`id="about.history"`,
+		`id="about.activity"`,
 		`data-about-identity`,
 		`data-about-license`,
 		`data-about-history`,
+		`data-about-activity`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("about page missing %q", want)
@@ -295,6 +297,95 @@ func TestAboutViewIdentityFieldsRender(t *testing.T) {
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("identity section missing %q", want)
+		}
+	}
+}
+
+// TestAboutViewActivitySectionEmptyState pins the dev-build
+// behaviour: when the activity snapshot is nil (no bake has
+// run), the section renders the empty-state notice.
+func TestAboutViewActivitySectionEmptyState(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Activity: nil,
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `data-about-activity-empty`) {
+		t.Errorf("about page missing activity empty-state wrapper")
+	}
+	if !strings.Contains(content, "Repository activity not yet baked") {
+		t.Errorf("about page missing activity empty-state copy")
+	}
+	if !strings.Contains(content, "make tpl") {
+		t.Errorf("activity empty-state missing the `make tpl` instruction")
+	}
+}
+
+// TestAboutViewActivitySectionBaked pins the populated
+// shape: the heatmap host, the contributors list, the
+// per-release list, and the issues-closed stacked bar all
+// render. The heatmap itself is client-rendered SVG (a
+// follow-up slice); the host + the data attribute are this
+// slice's job.
+func TestAboutViewActivitySectionBaked(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Activity: &viewmodel.ActivitySnapshotView{
+			GeneratedAt:       "2026-07-15T00:00:00Z",
+			FirstCommitDate:   "2025-07-15",
+			LatestCommitDate:  "2026-07-15",
+			TotalCommits:      1213,
+			TotalContributors: 8,
+			HeatmapData:       `{"2026-07-15":3,"2026-07-14":5}`,
+			TopContributors: []viewmodel.Contributor{
+				{Name: "Jeremy Morris", Count: 900},
+				{Name: "dependabot[bot]", Count: 200},
+			},
+			PerRelease: []viewmodel.ActivityView{
+				{Version: "v1.2.55", Date: "2026-06-25", CommitCount: 0, Contributors: 0},
+				{Version: "v1.2.54", Date: "2026-06-08", CommitCount: 14, Contributors: 3, LinesAdded: 824, LinesRemoved: 312},
+			},
+			IssuesClosed: viewmodel.IssuesClosedView{
+				TotalClosed: 364,
+				GeneratedAt: "2026-07-15T00:00:00Z",
+				ByType: []viewmodel.TypeBucket{
+					{Type: "enhancement", Count: 200},
+					{Type: "bug", Count: 100},
+				},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-about-activity-summary`,
+		`data-about-activity-commits`,
+		`1213`,
+		`data-about-activity-first`,
+		`2025-07-15`,
+		`data-about-activity-latest`,
+		`2026-07-15`,
+		`data-about-activity-heatmap`,
+		`data-about-activity-heatmap-data="{`,
+		`Jeremy Morris`,
+		`data-about-activity-contributor="Jeremy Morris"`,
+		`data-about-activity-contributor="dependabot[bot]"`,
+		`data-about-activity-per-release-row="v1.2.54"`,
+		`data-about-activity-per-release-row="v1.2.55"`,
+		`N/A (tag missing)`,
+		`data-about-activity-issues-bucket="enhancement"`,
+		`data-about-activity-issues-bucket="bug"`,
+		`data-about-activity-issues-legend="enhancement"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about page activity section missing %q", want)
 		}
 	}
 }

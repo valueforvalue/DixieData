@@ -931,10 +931,10 @@ type ResearchPickerView struct {
 }
 
 // AboutView is the data shape the /about page renders
-// (issue #585). Identity carries the version/codename/schema
-// metadata the templ partial reads; Releases is the baked
-// release history slice (nil in dev builds where the bake
-// has not run).
+// (issue #585 + #586). Identity carries the version/codename/
+// schema metadata; Releases is the baked release history
+// (nil in dev builds); Activity is the baked repository-
+// activity snapshot (nil in dev builds).
 type AboutView struct {
 	AppName    string
 	Version    string
@@ -945,6 +945,7 @@ type AboutView struct {
 	BuiltAt    string
 	LicenseURL string
 	Releases   []ReleaseEntry
+	Activity   *ActivitySnapshotView
 }
 
 // ReleaseEntry is a flat projection of releasehistory.Entry
@@ -963,4 +964,60 @@ type ReleaseEntry struct {
 	Removed     []string
 	Maintenance []string
 	Docs        []string
+}
+
+// ActivityView is the per-release-commit row the /about
+// page's Repository activity section renders inline next to
+// the release-history bullets. CommitCount is 0 when the
+// release's tag does not exist (CHANGELOG entry without a
+// corresponding git tag); the templ partial renders "N/A"
+// in that case.
+type ActivityView struct {
+	Version      string
+	Date         string
+	CommitCount  int
+	Contributors int
+	LinesAdded   int
+	LinesRemoved int
+}
+
+// ActivitySnapshotView is the repository-activity section's
+// data shape. HeatmapData is a JSON-encoded string of
+// per-day counts (the templ partial hands it to the JS
+// heatmap renderer). TopContributors is the viewmodel-
+// projected list (max 10). PerRelease is the per-release
+// commit rollup. IssuesClosed carries the by-Type breakdown.
+type ActivitySnapshotView struct {
+	GeneratedAt      string
+	FirstCommitDate  string
+	LatestCommitDate string
+	TotalCommits     int
+	TotalContributors int
+	HeatmapData      string
+	TopContributors  []Contributor
+	PerRelease       []ActivityView
+	IssuesClosed     IssuesClosedView
+}
+
+// Contributor is the viewmodel projection of
+// activityhistory.ContributorCount.
+type Contributor struct {
+	Name  string
+	Count int
+}
+
+// IssuesClosedView is the viewmodel projection of
+// activityhistory.IssuesSummary.
+type IssuesClosedView struct {
+	TotalClosed int
+	GeneratedAt string
+	ByType      []TypeBucket
+}
+
+// TypeBucket is one entry in the issues-closed-by-Type
+// stacked bar. Buckets are sorted by count descending so
+// the templ partial renders the largest slice first.
+type TypeBucket struct {
+	Type  string
+	Count int
 }
