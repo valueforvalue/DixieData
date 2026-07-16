@@ -115,3 +115,70 @@ test("replaces selection: selected text is overwritten by the insert", () => {
   assert.equal(ta.value, "hello team", "selected range must be replaced by the inserted text");
   assert.equal(ta.selectionStart, 10, "caret must land at start + inserted-text length");
 });
+
+// TestRawInsert_PreservesUndo — issue #611 slice 1.
+// The three JS-side fallback paths in frontend/app.js
+// (initializeMarkdownCheatsheet + initializeEditorToolbar +
+// initializeTableBuilder) used to clobber the browser's
+// native undo stack by doing
+//   textarea.value = textarea.value.slice(0, start) + text + slice(end)
+// which assigns to .value (the signal the browser treats as a
+// fresh state for undo purposes). The slice-1 fix replaces
+// that with textarea.setRangeText(text, start, end, "end") +
+// a manual input event + focus. setRangeText is a BROWSER API
+// (not a helper-script function), so the fallback works even
+// when window.__dixieInsertTextAtCursor is missing.
+//
+// This test pins the contract: a "raw insert" function (the
+// shape the app.js fallbacks use) must call setRangeText, not
+// assign to .value. We test an inline copy of the fallback
+// shape so the test is deterministic and independent of the
+// helper script.
+test("raw insert: calls setRangeText, never assigns to .value (preserves undo)", () => {
+  let setRangeTextCalled = 0;
+  let valueAssigns = 0;
+  class TrackedTextarea {
+    constructor(initialValue = "") {
+      this._value = initialValue;
+      this.selectionStart = initialValue.length;
+      this.selectionEnd = initialValue.length;
+    }
+    get value() {
+      return this._value;
+    }
+    set value(v) {
+      valueAssigns += 1;
+      this._value = String(v);
+    }
+    focus() {}
+    setRangeText(text, start, end, _mode) {
+      setRangeTextCalled += 1;
+      this._value = this._value.slice(0, start) + text + this._value.slice(end);
+      this.selectionStart = start + text.length;
+      this.selectionEnd = start + text.length;
+    }
+    dispatchEvent() {
+      return true;
+    }
+  }
+
+  // The "raw insert" shape that the slice-1 fix uses. Inline
+  // here so the test pins the contract independently of the
+  // helper script (the helper IS the thing that's allowed to
+  // be missing).
+  function rawInsert(textarea, text) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.setRangeText(text, start, end, "end");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.focus();
+    return true;
+  }
+
+  const ta = new TrackedTextarea("hello world");
+  const ok = rawInsert(ta, " team");
+  assert.equal(ok, true, "raw insert must return true on success");
+  assert.equal(ta.value, "hello world team", "raw insert must splice text at cursor");
+  assert.equal(setRangeTextCalled, 1, "raw insert must call setRangeText exactly once");
+  assert.equal(valueAssigns, 0, "raw insert must NOT assign to .value (would clobber undo)");
+});

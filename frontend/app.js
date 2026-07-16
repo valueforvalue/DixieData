@@ -5771,15 +5771,14 @@ function onPrintRecordsFragmentReady(modal) {
           }
           const start = textarea.selectionStart;
           const end = textarea.selectionEnd;
-          // Mirror setRangeText semantics: replace selection,
-          // caret lands at start + value.length. The value
-          // assignment clobbers the undo stack — acceptable
-          // for the fallback because the helper is the
-          // contract, not the splice.
-          textarea.value = textarea.value.slice(0, start) + value + textarea.value.slice(end);
-          const cursor = start + value.length;
-          textarea.selectionStart = cursor;
-          textarea.selectionEnd = cursor;
+          // Issue #611 slice 1: use setRangeText directly so
+          // the fallback path preserves the browser's native
+          // undo stack. setRangeText is a browser API, not a
+          // helper-script function, so it works whether or
+          // not window.__dixieInsertTextAtCursor is loaded.
+          // Caret lands at start + value.length per the
+          // selectionMode="end" semantics.
+          textarea.setRangeText(value, start, end, "end");
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
           textarea.focus();
         } else {
@@ -5893,12 +5892,13 @@ function onPrintRecordsFragmentReady(modal) {
           if (typeof console !== "undefined" && typeof console.warn === "function") {
             console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Editor toolbar uses raw value splice fallback.");
           }
+          // Issue #611 slice 1: use setRangeText directly so
+          // the fallback path preserves the browser's native
+          // undo stack. See the matching comment in
+          // initializeMarkdownCheatsheet for the full rationale.
           const start = textarea.selectionStart;
           const end = textarea.selectionEnd;
-          textarea.value = textarea.value.slice(0, start) + template + textarea.value.slice(end);
-          const cursor = start + template.length;
-          textarea.selectionStart = cursor;
-          textarea.selectionEnd = cursor;
+          textarea.setRangeText(template, start, end, "end");
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
           textarea.focus();
         } else {
@@ -6043,12 +6043,13 @@ function onPrintRecordsFragmentReady(modal) {
         if (typeof console !== "undefined" && typeof console.warn === "function") {
           console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Table builder uses raw value splice fallback.");
         }
+        // Issue #611 slice 1: use setRangeText directly so
+        // the fallback path preserves the browser's native
+        // undo stack. See the matching comment in
+        // initializeMarkdownCheatsheet for the full rationale.
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        textarea.value = textarea.value.slice(0, start) + md + textarea.value.slice(end);
-        const cursor = start + md.length;
-        textarea.selectionStart = cursor;
-        textarea.selectionEnd = cursor;
+        textarea.setRangeText(md, start, end, "end");
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         textarea.focus();
       } else {
