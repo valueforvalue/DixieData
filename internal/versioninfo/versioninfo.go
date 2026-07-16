@@ -23,7 +23,7 @@ const AppName = "DixieData"
 // version >= 67, so block-67's Up is no-op for fresh v66+. v54-
 // v66 archives land in the v67 state via block-60 (sets columns)
 // + block-67 (sets FTS5).
-const CurrentSchemaVersion = 67
+const CurrentSchemaVersion = 68
 
 // CurrentUpdateFlowVersion is the update-flow-shape gate.
 // Bumped when the auto-update mechanism itself changes shape
