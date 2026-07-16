@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 // bodyExcerptCap is the issue #532 slice-2 contract: the
@@ -106,10 +107,35 @@ type ArticleRef struct {
 // in slice 1 (body_html column is set to body_md in Create so the
 // first read can render without a markdown library); slice 2's
 // mapper swap reads BodyHTML instead.
+//
+// Issue #606: when body_html is empty (legacy articles from
+// pre-slice-3.6 saves, or any path that didn't write back the
+// rendered HTML), the mapper falls back to body_md -- but the
+// templ renders via @templ.Raw(view.Body), so the literal
+// markdown source appears in the rendered HTML and the user
+// sees "**bold**" instead of bold text. Fix: when body_html
+// is empty AND body_md is non-empty, render body_md through
+// the same goldmark + bluemonday pipeline the editor preview
+// uses (internal/records.MarkdownRenderer). The mapper catches
+// the renderer's error and falls back to body_md -- a failed
+// render is better than a blank body.
 func ArticleFromModel(input models.Article) Article {
 	body := input.BodyHTML
 	if body == "" {
-		body = input.BodyMD
+		// body_html is empty; render the markdown source
+		// so the user sees the formatted article instead
+		// of the literal "*" / "#" characters. The
+		// renderer uses the same sanitization policy as
+		// the editor preview (so XSS-laden markdown
+		// still gets scrubbed).
+		if input.BodyMD != "" {
+			r := records.NewMarkdownRenderer()
+			if rendered, err := r.Render(input.BodyMD); err == nil {
+				body = rendered
+			} else {
+				body = input.BodyMD
+			}
+		}
 	}
 	return Article{
 		ID:            input.ID,

@@ -107,3 +107,70 @@ func TestArticleFromModel_BodyExcerptFallsBackToMarkdown(t *testing.T) {
 		t.Errorf("BodyExcerpt missing fallback markdown text: %q", out.BodyExcerpt)
 	}
 }
+// TestArticleFromModel_RendersMarkdownWhenBodyHTMLEmpty pins
+// the issue #606 contract: when an article was saved before
+// the slice-3.6 body_html round-trip (so body_html is empty)
+// and the markdown source body_md is populated, the mapper
+// must render body_md through the goldmark + bluemonday
+// pipeline so the user sees formatted HTML on /articles/{id}
+// instead of literal "*" / "#" characters.
+//
+// Prior to this fix, the mapper fell back to body_md verbatim;
+// the templ renders via @templ.Raw, so the user saw "##
+// Heading" + "**bold**" instead of the formatted article.
+func TestArticleFromModel_RendersMarkdownWhenBodyHTMLEmpty(t *testing.T) {
+	in := models.Article{
+		DisplayID: "ART-0002",
+		Title:     "Legacy article",
+		// body_html empty (legacy save before slice 3.6);
+		// body_md populated (the source row was always saved).
+		BodyHTML: "",
+		BodyMD:   "# Legacy heading\n\nThis is **bold** and *italic*.",
+	}
+	out := ArticleFromModel(in)
+	// The mapper should have rendered the markdown source
+	// into HTML. The mapper uses the same renderer as the
+	// editor preview; goldmark's default heading is h1
+	// (no # == h1) and ** == strong, * == em.
+	if !strings.Contains(out.Body, "<h1>") {
+		t.Errorf("Body should contain rendered <h1> heading for legacy article — got %q", out.Body)
+	}
+	if !strings.Contains(out.Body, "<strong>bold</strong>") {
+		t.Errorf("Body should contain rendered <strong>bold</strong> for legacy article — got %q", out.Body)
+	}
+	if !strings.Contains(out.Body, "<em>italic</em>") {
+		t.Errorf("Body should contain rendered <em>italic</em> for legacy article — got %q", out.Body)
+	}
+	// Defensive: the literal markdown characters must
+	// not return. If the mapper silently reverts to the
+	// raw-markdown fallback, the user still sees literal
+	// asterisks + hashes.
+	if strings.Contains(out.Body, "**bold**") {
+		t.Errorf("Body still contains literal **bold** — issue #606 (Markdown render on read) regressed")
+	}
+	if strings.Contains(out.Body, "# Legacy heading") {
+		t.Errorf("Body still contains literal '# Legacy heading' — issue #606 (Markdown render on read) regressed")
+	}
+}
+
+// TestArticleFromModel_RawMarkdownUnavailableWhenBothEmpty is
+// the empty-input degenerate case: when both body_html and
+// body_md are empty, the mapper returns an empty Body rather
+// than crashing or returning "<p></p>" — the templ's
+// empty-state branch renders the guidance copy.
+func TestArticleFromModel_RawMarkdownUnavailableWhenBothEmpty(t *testing.T) {
+	in := models.Article{
+		DisplayID: "ART-0003",
+		Title:     "Empty article",
+		BodyHTML:  "",
+		BodyMD:    "",
+	}
+	out := ArticleFromModel(in)
+	if out.Body != "" {
+		t.Errorf("Body should be empty when both body_html + body_md are empty; got %q", out.Body)
+	}
+	// BodyExcerpt also empty.
+	if out.BodyExcerpt != "" {
+		t.Errorf("BodyExcerpt should be empty when Body is empty; got %q", out.BodyExcerpt)
+	}
+}
