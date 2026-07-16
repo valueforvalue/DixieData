@@ -405,3 +405,55 @@ func TestAboutViewNoReleaseHistorySection(t *testing.T) {
 		}
 	}
 }
+// TestAboutViewRendersGlossarySection pins the Glossary
+// section's render contract (issue #564 slice 1 part 2).
+//
+// RED (this commit lands before the templ emits the
+// section): the templ renders no `id="about.glossary"` or
+// `data-about-glossary`, so this test's positive assertions
+// fail. GREEN lands in the same slice's part 3 when the
+// templ gains the @aboutGlossarySection call.
+//
+// Contract:
+//   - The section anchor `id="about.glossary"` is present.
+//   - The wrapper `data-about-glossary` hook is present.
+//   - At least one row renders with `id="about.glossary-<slug>"`
+//     (the anchor pattern the related-term cross-links use).
+//   - Every row renders the kebab-Case-slug `data-about-glossary-term="<slug>"`
+//     hook for the future disclosure popover's click target.
+func TestAboutViewRendersGlossarySection(t *testing.T) {
+	// Build a fixture: 3 terms covering the registry contract.
+	// The full registry has 36 terms; this fixture exercises
+	// the same render code path without bringing every term
+	// into the test file.
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Glossary: []viewmodel.GlossaryEntry{
+			{Slug: "person-record", Term: "Person Record", Short: "A primary archive entry.", Full: "A primary archive entry for one person."},
+			{Slug: "display-id", Term: "Display ID", Short: "The canonical user-facing identifier.", Full: "The canonical user-facing identifier."},
+			{Slug: "shared-archive", Term: "Shared Archive", Short: "A merge-oriented archive package.", Full: "A merge-oriented archive package exchanged between users."},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`id="about.glossary"`,
+		`data-about-glossary`,
+		`id="about.glossary-person-record"`,
+		`id="about.glossary-display-id"`,
+		`id="about.glossary-shared-archive"`,
+		`data-about-glossary-term="person-record"`,
+		`data-about-glossary-term="display-id"`,
+		`data-about-glossary-term="shared-archive"`,
+		`>Person Record<`,
+		`>Display ID<`,
+		`>Shared Archive<`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about page missing glossary marker %q (issue #564 slice 1)", want)
+		}
+	}
+}

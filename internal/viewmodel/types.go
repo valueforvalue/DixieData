@@ -953,6 +953,35 @@ type AboutView struct {
 	LicenseURL    string
 	Activity      *ActivitySnapshotView
 	RecentCommits []RecentCommitView
+	// Glossary is the project-wide terminology catalog
+	// mirrored from `CONTEXT.md` (issue #564 slice 1).
+	// The /about page renders every entry under the
+	// `#about.glossary-<slug>` anchor; the (future) in-
+	// context disclosure popover on a verified apply site
+	// reads the Short field to populate its body.
+	//
+	// Sourced from `internal/glossary.Registry()`. The view
+	// layer is purely a projection — the registry is the
+	// single source of truth.
+	Glossary []GlossaryEntry
+}
+
+// GlossaryEntry is the viewmodel projection of one
+// internal/glossary.Term row (the templates package
+// cannot import internal/glossary without a cycle, and
+// the viewmodel contract is what the templ actually
+// consumes — see plan §Module discipline).
+//
+// All fields are required. The templ partial renders
+// Short as the row's preview line and Full as the
+// rest of the row body; Related is the "See also"
+// links at the bottom of the row.
+type GlossaryEntry struct {
+	Slug    string
+	Term    string
+	Short   string
+	Full    string
+	Related []string
 }
 
 // ActivityView is the per-release-commit row the /about
