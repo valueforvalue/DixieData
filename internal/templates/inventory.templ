@@ -75,11 +75,21 @@ templ InventoryView(view viewmodel.InventoryView) {
 					if len(view.ArticleRefs) == 0 {
 						<p class="text-sm text-slate-500">Articles are present but the title list failed to load. See the audit log for the underlying query error.</p>
 					} else {
-						<ul class="mt-3 space-y-2" data-inventory-articles>
-							for _, article := range view.ArticleRefs {
-								<li class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-2 text-sm text-[var(--theme-text-primary)]">{ article.Label }</li>
-							}
-						</ul>
+						// Issue #596: bounded height + inner scroll.
+						// 24rem (≈384px) on small screens, 32rem on
+						// `sm:` so the list scrolls independently when
+						// the archive carries many live Articles,
+						// instead of forcing the whole /inventory
+						// page to grow vertically. Each <li> is the
+						// existing per-Article tile; the wrapping
+						// div provides the scroll viewport.
+						<div class="mt-3 max-h-96 overflow-y-auto sm:max-h-[32rem]" data-inventory-articles>
+							<ul class="space-y-2">
+								for _, article := range view.ArticleRefs {
+									<li class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.28)] bg-white/70 px-4 py-2 text-sm text-[var(--theme-text-primary)]">{ article.Label }</li>
+								}
+							</ul>
+						</div>
 					}
 				</section>
 			}

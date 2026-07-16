@@ -382,3 +382,66 @@ func TestInventoryView_EmptyArchiveOmitsMetrics(t *testing.T) {
 		t.Errorf("inventory page rendered the metrics section for an empty archive (ActiveDayCount=0 should suppress it)")
 	}
 }
+
+// TestInventoryView_ArticlesSectionBoundedHeight pins the
+// issue #596 contract: the Live articles (snapshots
+// excluded) section wraps its <ul> in a scroll-viewport
+// div so the list has a bounded height + inner scroll
+// regardless of how many live Articles the archive carries.
+//
+//   - The outer wrapper carries the audit hook
+//     `data-inventory-articles` (the existing selector
+//     the test fixture has used since #491).
+//   - The wrapper carries `max-h-96 overflow-y-auto` so
+//     it acts as the scroll viewport on small screens,
+//     plus the responsive `sm:max-h-[32rem]` upgrade so
+//     larger screens get a taller, still-bounded scroll
+//     area (~512px).
+//   - The wrapper encloses a real <ul> with one <li> per
+//     Article. The fixture populates 3 entries; the test
+//     confirms every label renders (the bounded container
+//     must not truncate the content list — only the
+//     visual viewport).
+//   - The section heading still carries the user-facing
+//     "snapshots excluded" copy so a future refactor that
+//     drops the wrapper class for a plain <ul> trips the
+//     test before the user sees the long page again.
+func TestInventoryView_ArticlesSectionBoundedHeight(t *testing.T) {
+	view := viewmodel.InventoryView{
+		Counts: viewmodel.ArchiveCounts{
+			ArticleRecordCount: 3,
+		},
+		ArticleRefs: []viewmodel.InventoryKindCount{
+			{Label: "On the Battle of Gettysburg"},
+			{Label: "Letters from the front"},
+			{Label: "A short memoir"},
+		},
+	}
+	var buf bytes.Buffer
+	if err := InventoryView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-inventory-articles`,
+		`max-h-96`,
+		`sm:max-h-[32rem]`,
+		`overflow-y-auto`,
+		`>On the Battle of Gettysburg<`,
+		`>Letters from the front<`,
+		`>A short memoir<`,
+		`Live articles (snapshots excluded)`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("inventory articles wrapper missing %q (#596)", want)
+		}
+	}
+	// Defensive: the old un-bounded <ul> shape (no wrapper
+	// div, no max-height utility) must not return. A future
+	// refactor that strips the wrapper for the simpler bare-
+	// list shape would silently regress the long-page bug;
+	// this assertion trips before the user notices.
+	if strings.Contains(content, `<ul class="mt-3 space-y-2" data-inventory-articles>`) {
+		t.Errorf("inventory articles reverted to the un-bounded <ul> shape — issue #596 (bounded height) regressed")
+	}
+}
