@@ -481,3 +481,79 @@ for the canonical contract.
 
 See [`docs/agents/build-protocol.md`](docs/agents/build-protocol.md)
 §4 for the canonical reference.
+
+### No slice ships until a live probe confirms the fix on the real archive
+
+A "ship" commit is not the same as a "verified" commit. This law
+exists because the 2026-07 #607 sequence demonstrated the failure
+mode end-to-end:
+
+- A bug was filed (Preview button does nothing on /articles/{id}/edit).
+- An agent shipped two patches citing it as fixed (commits in the
+  #607 sequence). The user's `markdown.png` screenshot + a live
+  Playwright probe proved neither fix addressed the actual cause.
+- The real bug was a missing chi mux route for `/_lib/*` (filed
+  separately as #609).
+
+Slice work is complete when **a live probe** (Playwright against
+`dixiedata-web` OR a Wails-binary smoke against the real
+`.dixiedata` archive at the repo root — see `Data directory`
+below) shows:
+
+- `modalOpen: true` (or the equivalent end-state assertion for the
+  report's "expected behavior") **after** the user's reported
+  trigger.
+- The pre-fix failing assertion **flips to PASS** in the audit
+  probe (no ship-then-claim; ship-then-verify is the rule).
+- The git comment + the CHANGELOG bullet cite the live probe by
+  file path (`audit/_probe_*.mjs`) so a future audit can replay
+  the verification.
+
+If a slice's fix is static-only (e.g. a CSS class swap, a string
+swap, a templator rename), the live probe is a single `curl
+http://127.0.0.1:8765/path | grep "<new-content>"` check. If a
+slice requires the Wails binary (modal opens with WebView2
+quirks), the probe runs against the binary, not just the web
+harness. The `ready-for-agent` label is not a closure signal; the
+`gh issue close` call happens only after the probe flips.
+
+### Data directory: `.dixiedata` lives at the repo root, always
+
+The canonical Local Archive the Wails desktop binary reads/writes
+is `<repo-root>/.dixiedata/` (per `internal/appdata/appdata.go`
+§`DefaultDir` — the resolution walks up from `build/bin/` looking
+for `wails.json`). `dixiedata-web` honors the same default; passing
+`-scratch-dir` overrides it for the audit harness.
+
+This law exists because the `~/.dixiedata/` (home-dir) convention
+was the legacy v1.1 default on some install paths, and the agent
+sessons that touched both `~/.dixiedata/` + `<repo>/.dixiedata/`
+ended up reporting "I imported 665 soldiers" against one while
+the other stayed unchanged — same import code path, two file
+systems, two outcomes. The audit-harness smoke probes crashed
+in the home-dir because the post-import `import_batches` was
+written to the repo root.
+
+Therefore:
+
+- **Never assume a data directory.** When the bug, plan, or issue
+  says "the live archive", it means `<repo-root>/.dixiedata/`.
+  When the user passes a custom path via `-data-dir` / `-scratch-dir`,
+  pin that path explicitly in the issue body.
+- **Never operate against `~/.dixiedata/` without a confirmation
+  step.** The home-dir archive is usually a v0 + April-2026 orphan
+  (per issue #608's discovery). If a probe finds data in `~/`, it
+  is silently testing an unmigrated empty archive, not the live
+  one.
+- **Audit scripts that probe the live app** resolve the data dir
+  via `appdata.DefaultDir()` (the same call the app makes), not
+  by constructing paths from `$HOME` or from environment defaults
+  that may differ across the Wails binary, the web harness, and
+  the CLI runner.
+
+A future slice that wants to delete or relocate the Wails binary's
+output directory (the repo-root `.dixiedata/`) must update
+`internal/appdata/appdata.go` + the `Data directory` law here +
+the `docs/agents/manual-audit-playbook.md` "where the archive
+lives" section. Three changes; one ADR-style commit.
+

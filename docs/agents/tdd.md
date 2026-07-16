@@ -38,6 +38,38 @@ Each was caught by an after-the-fact `fix:` commit, not by
 the slice that introduced it. Each is preventable by a
 single test written *before* the slice lands.
 
+### #4 — Ship-and-claim without live repro (newest, July 2026)
+
+**Symptom:** A slice ships + closes an issue + claims the
+bug is fixed. The agent never actually opened a browser,
+clicked the reported trigger, or asserted the end state.
+The user's screenshot or a Playwright probe proves the fix
+addressed a *different* layer of the bug than the one filed.
+
+**Real example:** the `markdown.png` + #607 + #609
+sequence. A user reported "Preview button on
+/articles/{id}/edit does nothing." An agent shipped an
+`internal/templates/soldier_card.templ`-shaped fix (moved
+the install into `initializeDynamicContent` + added an
+idempotency guard) and closed the issue. The user re-pinged
+because the button still did nothing. A live Playwright
+probe against `dixiedata-web` revealed the real bug — the
+chi mux + the `<head>` lacked any route for `/_lib/*.js`,
+so `window.__dixieDebounce` was undefined and the
+`initializeArticlePreview` function bailed early *before*
+the fix had a chance to do anything. The agent's fix was
+correct in isolation, but neither it nor the verification
+ever touched the actual repo-root `.dixiedata/` archive.
+
+**Prevention:** `CONTEXT.md` §"No slice ships until a live
+probe confirms" + `manual-audit-playbook.md` "Where the
+archive lives" codify the rule end-to-end: a slice ships
+when a live probe (Playwright OR a binary smoke against
+the canonical `<repo-root>/.dixiedata/`) shows the
+user-reported trigger now produces the expected end
+state. The git comment + CHANGELOG bullet cite the probe
+file path so the verification is replayable.
+
 ### #1 — Modal invoker wiring (most common)
 
 **Symptom:** UI button calls a JS helper that queries the

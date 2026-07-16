@@ -13,7 +13,65 @@ findings into a running notes file.
 
 ## How to run
 
+### Where the archive lives
+
+There are **two** data directories the agent must keep
+straight, per `CONTEXT.md` §Data directory:
+
+- `<repo-root>/.dixiedata/` — the **canonical live archive** the
+  Wails desktop binary reads/writes (per
+  `internal/appdata/appdata.go::DefaultDir`). Audit work + the
+  user-reported bugs + the production smoke probes target this
+  directory.
+- `<anywhere>/.scratch/<purpose>/` — the **ephemeral audit
+  harness** (used by `audit/run.mjs` + the seeded smoke
+  scripts). Always passed to `dixiedata-web` via `-scratch-dir`
+  to keep the live archive untouched during a full
+  reseed → run → screenshot sweep.
+
+Default rule:
+
+| Question | Answer |
+|---|---|
+| "the live archive" | `<repo-root>/.dixiedata/` |
+| where does `git ls-files '*.dixiedata'` look? | nowhere — the `.dixiedata/` directory is `.gitignore`d (it holds user data, never code) |
+| the audit script's auto-detect | `appdata.DefaultDir()` — the same call the Go app makes; do not roll your own |
+| `dixiedata-web -scratch-dir /x` | points the harness at `/x`; do not point it at the live archive unless you intend to mutate it |
+| the home-dir `~/.dixiedata/` | legacy v1.1 install path; usually stale + unmigrated; **do not assume it is the live archive** |
+
+If a bug report / issue body / user message refers to "the
+archive" without specifying, default to `<repo-root>/.dixiedata/`
+and confirm with the user before mutating.
+
 ### Pre-flight
+
+The canonical live-archive probe:
+
+```bash
+# 1. Build (gitignored generated artifacts won't exist; rebuild fresh).
+make web seed
+
+# 2. Start the web harness against the LIVE archive (not a scratch dir).
+nohup ./build/bin/dixiedata-web.exe -addr 127.0.0.1:8765 > /tmp/web-live.log 2>&1 &
+
+# 3. Wait for the server.
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/
+
+# 4. Run the probe (audit/smoke_*.mjs as appropriate).
+node audit/smoke_<NAME>.mjs
+
+# 5. Tear down.
+kill %1   # the nohup'd dixiedata-web
+```
+
+The audit-harness sweep (separate, ephemeral, reseed every run):
+
+```bash
+# Build + seed a SCRATCH dir + start the harness against it.
+make web seed
+rm -rf .scratch/webmode && ./build/bin/seed-data.exe -data-dir .scratch/webmode -soldiers 25 -reset
+nohup ./build/bin/dixiedata-web.exe -addr 127.0.0.1:8765 -scratch-dir .scratch/webmode > /tmp/web.log 2>&1 &
+```
 
 ```bash
 # Build + seed + start the web server

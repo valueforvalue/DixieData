@@ -179,9 +179,41 @@ func main() {
 	fmt.Println("dixiedata-web: bye")
 }
 
+// defaultScratchDir returns the canonical scratch-dir path
+// dixiedata-web uses when -scratch-dir is not provided. The
+// env override + the .scratch/webmode anchor-in-repo-root
+// default are documented in the package-level comment so
+// audit playbooks can rely on a stable path.
+//
+// The path is ALWAYS anchored in the repo root (via
+// appdata.ProjectRoot()) so a process started from
+// ~/Downloads still lands the scratch dir under the repo,
+// not somewhere the caller's cwd leads. This eliminates
+// the "scratch landed in the wrong place" class of bug
+// (notably the 2026-07 confusion where the live archive at
+// ~/.dixiedata was being mutated instead of the audit
+// harness's ./scratch/webmode).
+//
+// .scratch/ is .gitignored. Never point this at the Wails
+// binary's canonical .dixiedata/ archive; the audit
+// harness is required to start with `-scratch-dir` set to
+// a non-live path so the seeded fixture doesn't overwrite
+// the user's real data. The Playwright probe
+// `audit/_probe-scratch-vs-live.mjs` (added together with
+// this) catches the inverse mistake (running against the
+// live archive with mutation-side-effect scripts).
 func defaultScratchDir() string {
-	if v := os.Getenv("DIXIEDATA_WEB_SCRATCH_DIR"); v != "" {
+	if v := strings.TrimSpace(os.Getenv("DIXIEDATA_WEB_SCRATCH_DIR")); v != "" {
 		return v
 	}
-	return filepath.Join(".scratch", "webmode")
+	root, err := appdata.ProjectRoot()
+	if err != nil {
+		// Fall back to the cwd-relative default; the
+		// error path is well-tested by the existing
+		// smoke probes and the failure mode is loud
+		// (the user sees the wrong dir, immediately
+		// notices, sets DIXIEDATA_WEB_SCRATCH_DIR).
+		return filepath.Join(".scratch", "webmode")
+	}
+	return filepath.Join(root, ".scratch", "webmode")
 }

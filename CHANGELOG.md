@@ -6643,6 +6643,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - Fixed split-screen layouts.
 
+### Documentation
+
+- **`docs/agents/tdd.md`**: add a fourth bug class — "Ship-and-claim without live repro" — with the `#607` / `#609` sequence as the canonical post-mortem. The three prior bug classes (modal invoker wiring, htmx silent swaps, fix-only + 1 commit) stay; the new class codifies the rule "a slice ships only after a live probe against the canonical repo-root `.dixiedata` archive shows the user's reported trigger now produces the expected end state." Slice work that ships without a verification probe is treated as not shipped until the probe flips.
+- **`CONTEXT.md`**: add two new Laws under "Laws (non-negotiable)". **No slice ships until a live probe confirms the fix on the real archive** (every slice's git commit + CHANGELOG bullet cite the live probe by file path so verification is replayable). **Data directory: `.dixiedata` lives at the repo root, always** (pins the canonical-vs-scratch split: `<repo-root>/.dixiedata/` is the archive the Wails binary reads/writes; `<anywhere>/.scratch/<purpose>/` is the audit harness; `~/.dixiedata/` is a legacy home-dir orphan that is usually stale + unmigrated).
+- **`docs/agents/manual-audit-playbook.md`**: add a "Where the archive lives" preamble plus a canonical-live-archive pre-flight block (runs the harness against the live archive by default, not the scratch dir). Split is explicit: "the live archive" = `<repo-root>/.dixiedata/`; the audit-harness sweep = `make web seed && nohup dixiedata-web -scratch-dir .scratch/webmode`. Cross-cuts the same warnings the user surfaced in the #607/#608/#609 follow-up.
+- **`docs/agents/INDEX.md`**: cross-link the live-repro rule + archive-location contract under a single "Live-repro rule + archive-location contract (read these together)" callout so future agents land here without a search.
+- **`cmd/dixiedata-web/main.go`**: `defaultScratchDir()` now anchors the default in `appdata.ProjectRoot()` instead of `os.Getwd()`, so a process started from `~/Downloads` still lands the scratch dir under the repo (cwd-relativity was the source of the `~/.dixiedata/` vs `<repo>/.dixiedata/` confusion that triggered #608's false-positive "imported 665 soldiers" report). Env override `DIXIEDATA_WEB_SCRATCH_DIR` + the `.scratch/webmode` subdir + the gitignore boundary are unchanged.
+- **`audit/probe_data_dir_contract.mjs` (new)**: 9 probes that pin the canonical-vs-scratch contract. Run via `node audit/probe_data_dir_contract.mjs` (no live server required; pure logic + filesystem + `go list -m`). Future refactors that accidentally land a scratch dir at a cwd-relative path, point at `.dixiedata` from a `-scratch-dir`, or commit either path to git, fail the probe loudly. `node audit/probe_data_dir_contract.mjs` is the canonical pre-release check alongside the existing `audit/smoke_*.mjs` probes.
+
 ## v1.2.32 - 2026-05-31
 
 ### Changed

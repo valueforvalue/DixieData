@@ -122,6 +122,27 @@ If a doc you'd expect to find isn't listed here, it's either in
 the wrong tier (open an issue) or it doesn't exist yet (open an
 issue with a "missing doc" label).
 
+## Live-repro rule + archive-location contract (read these together)
+
+- `CONTEXT.md` §"Laws (non-negotiable)" — **No slice ships
+  until a live probe confirms the fix** (the agent must
+  open a browser / probe Playwright / run a binary smoke
+  against the real archive BEFORE claiming the bug is
+  fixed). Same doc §"Data directory: `.dixiedata` lives at
+  the repo root, always" — resolves the
+  `~/.dixiedata/`-vs-`<repo>/.dixiedata/` confusion that
+  has caused at least two false-positive "imported 665
+  soldiers" reports (issue #608 follow-up).
+- `docs/agents/manual-audit-playbook.md` §"Where the archive
+  lives" — the operational mirror of the two CONTEXT.md
+  laws: which dir is canonical, which is scratch, and a
+  step-by-step pre-flight for a live-archive probe vs an
+  audit-harness sweep.
+- `docs/agents/tdd.md` §"#4 — Ship-and-claim without live
+  repro" — the post-mortem for the #607 / #609 sequence;
+  read it before shipping any "fix" without an end-to-end
+  probe.
+
 ## References
 
 - [`CONTEXT.md`](../../CONTEXT.md) §Historical Artifact — glossary
