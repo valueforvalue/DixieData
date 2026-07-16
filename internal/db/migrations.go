@@ -920,6 +920,119 @@ var migrations = []Migration{
 			return dropSoldierFTS(tx)
 		},
 	},
+	// Block 68 (issue #612 slice 1) — extend the images
+	// table so Article Records can attach images too.
+	//
+	// Background: the v67 images table carries a single FK
+	// (person_record_id) — every image is "owned" by a Soldier
+	// (Person Record). The article editor (#610) needs a way
+	// to insert images that aren't tied to a Soldier (e.g.
+	// a chapter illustration, a cemetery photo, a map). The
+	// v68 block adds a nullable sibling FK (article_id) +
+	// a kind discriminator ('person' | 'article') so an
+	// image row is "owned" by EITHER a Person Record OR an
+	// Article Record (not both — the picker filter is exact).
+	//
+	// The Article reference uses the existing articles(id)
+	// table (slice 3 of #321 added it). ON DELETE CASCADE
+	// matches the person_record_id FK so deleting an article
+	// also cleans up its images (a backstop — the picker
+	// modal's cancel + the new delete-article path are the
+	// primary cleanup).
+	//
+	// The kind column is NOT NULL with DEFAULT 'person' so:
+	//   - Legacy INSERTs (the existing soldier_service code
+	//     path) don't need to be updated; the default carries
+	//     the right value.
+	//   - The v67→v68 backfill (UPDATE images SET kind = 'person'
+	//     WHERE kind IS NULL) is a safety net for archives that
+	//     somehow landed rows without a kind. columnExists +
+	//     the new column's default make the backfill a
+	//     belt-and-suspenders step (the default is the suspenders).
+	//
+	// The new index on article_id is the picker-side O(log n)
+	// path. Without it, the picker query (WHERE article_id = ?
+	// AND kind = 'article') is a table scan on the editor page.
+	// The existing per-Person-Record indexes (idx_images_person
+	// + the partial indexes block-60 added) stay — we only add
+	// the new sibling.
+	//
+	// Reversibility: Reversible. The Down function drops the
+	// 2 columns + the index. SQLite's ALTER TABLE DROP COLUMN
+	// auto-updates index references + FK references. No data
+	// is moved (article_id was always nullable, so the legacy
+	// person-attached images are unaffected by the rollback).
+	// The kind column is dropped, which is fine because the
+	// legacy queries don't reference it (they filter on
+	// person_record_id IS NOT NULL, which is equivalent for
+	// the v67 image set).
+	{
+		ID:            "block-68-images-article-id-and-kind",
+		Reversibility: Reversible,
+		Reason: "Pure additive: 2 columns (article_id nullable + kind TEXT NOT NULL DEFAULT 'person') + 1 index + 1 backfill UPDATE. The article_id FK is ON DELETE CASCADE so deleting an article cleans up its images. Reversible: the Down drops the 2 columns + the index; no data is moved; legacy queries are unaffected because the kind column is what the new picker relies on and the legacy queries don't reference it.",
+		Up: func(tx *sql.Tx) error {
+			// Add article_id if missing (fresh installs via
+			// the updated schema const already have it; this
+			// guard handles v67-or-earlier archives).
+			if exists, err := columnExists(tx, "images", "article_id"); err != nil {
+				return err
+			} else if !exists {
+				if _, err := tx.Exec(`ALTER TABLE images ADD COLUMN article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE`); err != nil {
+					return err
+				}
+			}
+			// Add kind if missing. The DEFAULT 'person' clause
+			// is part of the ADD COLUMN statement so existing
+			// rows automatically get kind = 'person' on the
+			// ALTER (SQLite populates the default for every
+			// existing row at column-add time). The explicit
+			// backfill below is redundant in practice but
+			// documents the invariant.
+			if exists, err := columnExists(tx, "images", "kind"); err != nil {
+				return err
+			} else if !exists {
+				if _, err := tx.Exec(`ALTER TABLE images ADD COLUMN kind TEXT NOT NULL DEFAULT 'person'`); err != nil {
+					return err
+				}
+			}
+			// Belt-and-suspenders: every v67-or-earlier row
+			// already got kind = 'person' from the column
+			// default, but the explicit UPDATE documents the
+			// invariant and would catch any future column
+			// default regression. Idempotent (SET to the same
+			// value is a no-op).
+			if _, err := tx.Exec(`UPDATE images SET kind = 'person' WHERE kind IS NULL OR TRIM(kind) = ''`); err != nil {
+				return err
+			}
+			// The picker-side index. IF NOT EXISTS so re-runs
+			// on partially-upgraded archives are no-ops.
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_images_article_id ON images(article_id)`); err != nil {
+				return err
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			// Drop the index first (FK child of the column).
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_images_article_id`); err != nil {
+				return err
+			}
+			// Drop the columns. SQLite's ALTER TABLE DROP COLUMN
+			// auto-removes the index references (we did it
+			// explicitly above for safety; the auto-removal is
+			// belt-and-suspenders). FK references to the dropped
+			// column are also auto-cleaned.
+			for _, col := range []string{"article_id", "kind"} {
+				if exists, err := columnExists(tx, "images", col); err != nil {
+					return err
+				} else if exists {
+					if _, err := tx.Exec(`ALTER TABLE images DROP COLUMN ` + col); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every

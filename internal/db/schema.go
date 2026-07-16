@@ -124,7 +124,9 @@ CREATE TABLE IF NOT EXISTS images (
     file_name    TEXT,
     file_path    TEXT,
     caption      TEXT,
-    is_primary   BOOLEAN DEFAULT 0
+    is_primary   BOOLEAN DEFAULT 0,
+    article_id   INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+    kind         TEXT NOT NULL DEFAULT 'person'
 );
 
 CREATE TABLE IF NOT EXISTS merge_review_sessions (

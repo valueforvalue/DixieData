@@ -266,17 +266,25 @@ type Article struct {
 	IsSnapshot    bool   `json:"is_snapshot"`
 }
 
-// Image is a per-soldier image: portrait, document scan, cemetery
-// photo. Carries the on-disk relative path under the dataDir's
-// images directory, the SHA-256 used for dedup, and the
-// soldier-attach metadata. See CONTEXT.md §Domain vocabulary
-// (Image is not a glossary term but is the canonical field name
-// across exports and the PDF pipeline).
+// Image is a per-soldier image (portrait, document scan,
+// cemetery photo) OR a per-article image (chapter
+// illustration, map, attached document). Carries the
+// on-disk relative path under the dataDir's images
+// directory, the SHA-256 used for dedup, and the
+// soldier-attach + article-attach metadata. The Kind
+// discriminator + the nullable ArticleID + the legacy
+// PersonRecordID together encode the "owned by EITHER a
+// Person Record OR an Article Record" relationship
+// (issue #612 slice 1). See CONTEXT.md §Domain vocabulary
+// (Image is not a glossary term but is the canonical
+// field name across exports and the PDF pipeline).
 type Image struct {
 	ID            int64  `json:"id"`
 	SyncID        string `json:"sync_id"`
 	PersonRecordID int64  `json:"soldier_id"`
-	PersonSyncID  string `json:"soldier_sync_id"`
+	PersonSyncID  string `json:"person_sync_id"`
+	ArticleID     *int64 `json:"article_id,omitempty"`
+	Kind          string `json:"kind"`
 	FileName      string `json:"file_name"`
 	FilePath      string `json:"file_path"`
 	Caption       string `json:"caption"`
