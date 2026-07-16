@@ -88,6 +88,17 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		</script>
 		<script defer src="/debug.js"></script>
 		<script defer src="/debug-toolbox.js"></script>
+		<!-- Issue #609: shared frontend utilities. Order
+		     matters: debounce.js MUST load before app.js so
+		     the latter can reach window.__dixieDebounce at
+		     module-init time without a race (the article
+		     preview modal, the browse filter debounce, etc.
+		     depend on this). The Wails binary serves these
+		     via //go:embed; dixiedata-web (and any non-Wails
+		     deploy) serves them via the chi mux route at
+		     internal/appshell/routes.go. -->
+		<script defer src="/_lib/debounce.js"></script>
+		<script defer src="/_lib/clipboard.js"></script>
 		<script defer src="/htmx.min.js"></script>
 		<script defer src="/app.js"></script>
 		<!-- CSS moved to frontend/tailwind.css by PR1. -->

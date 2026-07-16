@@ -350,6 +350,63 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 	return nil, lastErr
 }
 
+// --- handleFrontendLib ---
+// Issue #609: serves files under `/_lib/` (the shared
+// frontend utilities like debounce.js + clipboard.js
+// that frontend/index.html loads ahead of app.js).
+// Distinct from handleFrontendAsset above because (a)
+// the URL prefix is `/_lib/`, not `/`, and (b) the
+// embedded asset filesystem path drops the prefix
+// (`_lib/debounce.js`, not `frontend/_lib/debounce.js`).
+func (a *App) handleFrontendLib(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.Path != "/_lib/"+name {
+			http.NotFound(w, r)
+			return
+		}
+		data, err := a.readFrontendLib(name)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		_, _ = w.Write(data)
+	}
+}
+
+// readFrontendLib reads `frontend/_lib/<name>` from the
+// embedded fs (if WithFrontendAssets is wired) or from
+// ./frontend on disk (the headless dev / audit-harness
+// fallback). Mirrors readFrontendAsset.
+func (a *App) readFrontendLib(name string) ([]byte, error) {
+	path := "_lib/" + name
+	if a.frontendAssets != nil {
+		return fs.ReadFile(a.frontendAssets, path)
+	}
+	candidates := []string{filepath.Join("frontend", "_lib", filepath.FromSlash(name))}
+	if root, err := appdata.ProjectRoot(); err == nil {
+		candidates = append([]string{filepath.Join(root, "frontend", "_lib", filepath.FromSlash(name))}, candidates...)
+	}
+	var lastErr error
+	for _, candidate := range candidates {
+		data, err := os.ReadFile(candidate)
+		if err == nil {
+			return data, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
 // ServeHTTP routes an incoming HTTP request to the appshell's
 // htmx + REST dispatcher, recording the request in the debug
 // context and recovering from any panic to the crash log.
@@ -395,6 +452,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// is mux-independent (only reads a.theme / disk) so it's
 			// safe to call in the pre-mux window.
 			a.handleBootThemeScript(w, r)
+			return
+		case "/_lib/debounce.js":
+			a.handleFrontendLib("debounce.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
+			return
+		case "/_lib/clipboard.js":
+			a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
 		}
 		renderStartupPlaceholder(a, w, r)
