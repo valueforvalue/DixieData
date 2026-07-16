@@ -6317,11 +6317,31 @@ function onPrintRecordsFragmentReady(modal) {
         });
       });
 
-      // After the Upload form submits (data-dixie-submit),
-      // the dispatcher writes the response into the
-      // data-results-target element. The user can switch to
-      // the Pick existing tab manually to see the results.
-      // (No auto-switch — it fires even on error responses.)
+      // After the Upload form submits via data-dixie-submit,
+      // the dispatcher writes the response into data-results-target
+      // on success. Use a MutationObserver to auto-switch to
+      // Pick existing when the list gets populated with image
+      // rows (not the Loading… placeholder).
+      if (uploadPanel instanceof HTMLElement && existingPanel instanceof HTMLElement) {
+        var existingList = existingPanel.querySelector("[data-image-picker-existing-list]");
+        if (existingList instanceof HTMLElement) {
+          var observer = new MutationObserver(function () {
+            // Check if the list now contains image rows (not
+            // just the Loading… placeholder).
+            if (existingList instanceof HTMLElement && existingList.querySelector("[data-article-image-insert]")) {
+              observer.disconnect();
+              existingLoaded = true;
+              tabButtons.forEach(function (b) {
+                if (!(b instanceof HTMLElement)) return;
+                if (b.getAttribute("data-image-picker-tab") === "existing") {
+                  b.click();
+                }
+              });
+            }
+          });
+          observer.observe(existingList, { childList: true, subtree: true });
+        }
+      }
     }
 
     // Manual URL insert button
