@@ -2761,7 +2761,9 @@ function serializeDraftFields(form) {
             }, 50);
           } else {
             // Fallback: raw setTimeout when debounce helper unavailable (issue #610).
+            /** @type {ReturnType<typeof setTimeout> | null} */
             var _fallbackTimer = null;
+            /** @type {((...args: any[]) => void) & { cancel: () => void; schedule: () => void }} */
             var _fallback = /** @type {any} */ (function () {
               if (_fallbackTimer !== null) clearTimeout(_fallbackTimer);
               _fallbackTimer = setTimeout(function () { _fallbackTimer = null; requestRender(); }, 50);
@@ -2771,7 +2773,9 @@ function serializeDraftFields(form) {
             busyDebounce = _fallback;
           }
         }
-        busyDebounce();
+        if (busyDebounce) {
+          busyDebounce();
+        }
       });
     });
 
@@ -5706,25 +5710,102 @@ function onPrintRecordsFragmentReady(modal) {
     });
   }
 
-  // initializeMarkdownCheatsheet wires the per-row Copy
-  // buttons on the Article editor's Markdown syntax
-  // cheatsheet (issue #565 / #576). The data attrs are
-  // already shipped by the templ component
-  // (`data-md-cheatsheet-copy-key` for the row id,
-  // `data-md-cheatsheet-copy-value` for the example source);
-  // the JS hookup was missing, so the buttons did nothing.
-  // The wire-up goes through the shared clipboard helper
-  // (window.__dixieCopyText) so the cheatsheet + the
-  // [data-copy-path] copy-path buttons share one code
-  // path (DRY §1.1). Idempotent via the per-element guard
-  // matching the rest of the initializer family.
+  // initializeMarkdownCheatsheet wires the per-row Insert +
+  // Copy buttons on the Article editor's Markdown syntax
+  // cheatsheet (issue #565 + #610 slice 3). The data attrs
+  // are already shipped by the templ component
+  // (`data-md-cheatsheet-insert-key/value` for the row's
+  // Insert-at-cursor menuitem + `data-md-cheatsheet-copy-
+  // key/value` for the secondary Copy button).
+  //
+  // Insert wiring: the menuitem reads its example value from
+  // `data-md-cheatsheet-insert-value` and calls
+  // window.__dixieInsertTextAtCursor on the article body
+  // textarea (<textarea id="article-body"> shared between
+  // /articles/new and /articles/{id}/edit). If the helper
+  // is missing, we fall back to a direct .value splice + focus
+  // so the button still works in dev mode.
+  //
+  // Copy wiring: shared with the existing
+  // window.__dixieCopyText helper so the cheatsheet + the
+  // [data-copy-path] copy-path buttons share one code path
+  // (DRY §1.1).
+  //
+  // Idempotent via per-element guard matching the rest of
+  // the initializer family.
   function initializeMarkdownCheatsheet() {
+    document.querySelectorAll("[data-md-cheatsheet-insert-key]").forEach((button) => {
+      if (button.__cheatsheetInsertBound) {
+        return;
+      }
+      button.__cheatsheetInsertBound = true;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const value = button.getAttribute("data-md-cheatsheet-insert-value") || "";
+        if (!value) {
+          showToast("Nothing to insert.", "error");
+          return;
+        }
+        const textarea = document.getElementById("article-body");
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          // The cheatsheet is currently only used on the
+          // article editor pages; if the textarea isn't
+          // present, the cheatsheet is in a stale state —
+          // surface it instead of silently failing.
+          showToast("Editor textarea not found.", "error");
+          return;
+        }
+        const insertTextAtCursor = window.__dixieInsertTextAtCursor;
+        if (!insertTextAtCursor) {
+          // Fallback: raw value splice + focus (preserves
+          // the existing draft-form listener that fires on
+          // the input event we'll dispatch manually). Same
+          // fail-loud contract as the cheatsheet's debounce
+          // guard (#607 / #610): if the helper script
+          // failed to load, surface it via the console so
+          // future regressions don't silently no-op.
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Article editor cheatsheet uses raw value splice fallback.");
+          }
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          // Mirror setRangeText semantics: replace selection,
+          // caret lands at start + value.length. The value
+          // assignment clobbers the undo stack — acceptable
+          // for the fallback because the helper is the
+          // contract, not the splice.
+          textarea.value = textarea.value.slice(0, start) + value + textarea.value.slice(end);
+          const cursor = start + value.length;
+          textarea.selectionStart = cursor;
+          textarea.selectionEnd = cursor;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+        } else {
+          const ok = insertTextAtCursor(textarea, value);
+          if (!ok) {
+            showToast("Could not insert at cursor.", "error");
+            return;
+          }
+        }
+        // Truncate the toast text for long examples so the
+        // toast card doesn't grow a long paragraph per click.
+        const preview = value.length > 40 ? value.slice(0, 40) + "…" : value;
+        showToast("Inserted: " + preview, "success");
+      });
+    });
+
     document.querySelectorAll("[data-md-cheatsheet-copy-key]").forEach((button) => {
       if (button.__cheatsheetCopyBound) {
         return;
       }
       button.__cheatsheetCopyBound = true;
-      button.addEventListener("click", async () => {
+      button.addEventListener("click", async (event) => {
+        // The Insert menuitem sits in the same <li> as the
+        // Copy button; prevent the click from bubbling to
+        // a parent listener that might misinterpret the
+        // click target. The Copy button has no Insert
+        // effect — it's a pure clipboard action.
+        event.preventDefault();
         const value = button.getAttribute("data-md-cheatsheet-copy-value") || "";
         if (!value) {
           showToast("Nothing to copy.", "error");

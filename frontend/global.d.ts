@@ -54,6 +54,16 @@ interface DixieDataWindow {
   // Both [data-copy-path] and the Markdown cheatsheet per-row
   // copy buttons route through this helper.
   __dixieCopyText?: (text: string) => Promise<void>;
+  // Issue #610 slice 2: shared insert-at-cursor helper
+  // attached by frontend/lib/insert_text_at_cursor.js
+  // (loaded via a <script defer> in layout.templ). Wraps
+  // the modern HTMLTextAreaElement.setRangeText API so the
+  // article editor cheatsheet + toolbar + table-builder
+  // modal can splice Markdown template fragments at the
+  // user's cursor position without clobbering the native
+  // undo stack. Returns true on success, false on bad
+  // inputs (non-textarea or non-string text).
+  __dixieInsertTextAtCursor?: (textarea: HTMLTextAreaElement, text: string) => boolean;
   __dixieDebug?: {
     openFolder?: () => void | Promise<void>;
     copyEntries?: () => void | Promise<void>;
@@ -116,6 +126,14 @@ declare global {
     // cheatsheet per-row copy button via this guard. Mirrors
     // the __copyPathBound / __pickerClearBound pattern.
     __cheatsheetCopyBound?: boolean;
+    // Issue #610 slice 3: initializeMarkdownCheatsheet binds
+    // once per cheatsheet per-row Insert menuitem via this
+    // guard. The Insert menuitem (data-md-cheatsheet-insert-key)
+    // and the Copy button (data-md-cheatsheet-copy-key) are
+    // siblings inside the row's <li>; both bindings share the
+    // same idempotent install pattern but each needs its own
+    // sentinel so re-installs on htmx:load are no-ops.
+    __cheatsheetInsertBound?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;

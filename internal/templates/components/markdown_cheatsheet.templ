@@ -11,10 +11,15 @@
 //   - Trigger label: "Markdown syntax" with ▾ chevron
 //     (matches the Foldout primitive's visual vocabulary).
 //   - Panel: a <ul role="menu"> of <li role="none"> rows.
-//     Each row is a single menuitem carrying the syntax,
-//     effect label, a Copy example button identified by
-//     data-md-cheatsheet-copy-key, and a live preview
-//     cell (issue #610 slice 1) identified by
+//     Each row carries a primary Insert-at-cursor menuitem
+//     (identified by data-md-cheatsheet-insert-key + value)
+//     AND a secondary Copy example button (identified by
+//     data-md-cheatsheet-copy-key + value). The two buttons
+//     are siblings inside the <li>; the Insert menuitem is
+//     full-width so the row click inserts, while the small
+//     Copy button on the right provides the existing copy-
+//     to-clipboard affordance. The live preview cell
+//     (issue #610 slice 1) is identified by
 //     data-md-cheatsheet-preview-key.
 //   - The popover does NOT steal focus from the editor
 //     textarea (matches the issue's "unobtrusive" goal).
@@ -47,17 +52,27 @@ import (
 // server-side via RenderPreview (records.NewMarkdownRenderer)
 // and inserted via templ.Raw — safe because the renderer
 // runs the same bluemonday pass as the article editor.
+//
+// Issue #610 slice 3: each row now ships an Insert-at-
+// cursor button as the primary row action (was Copy in
+// #565) AND retains the Copy example button as a
+// secondary affordance. The Insert menuitem carries
+// `data-md-cheatsheet-insert-key` + `data-md-cheatsheet-
+// insert-value` so the JS initializer can find the
+// <textarea id="article-body"> + call
+// window.__dixieInsertTextAtCursor. The Copy button is
+// unchanged (same data attrs + handler as before).
 templ MarkdownCheatsheet() {
 	@Foldout("Markdown syntax", uiids.PanelArticleMarkdownCheatsheet, nil) {
 		for _, row := range articles.Rows() {
-			<li role="none">
+			<li role="none" class="flex items-stretch gap-1 px-1 py-1">
 				<button
 					type="button"
 					role="menuitem"
-					class="foldout-menuitem block w-full px-3 py-2 text-left text-sm text-slate-100 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
-					data-md-cheatsheet-copy-key={ row.Key }
-					data-md-cheatsheet-copy-value={ row.Example }
-					aria-label={ "Copy " + row.Effect + " example: " + row.Example }
+					class="foldout-menuitem flex-1 rounded-xl px-3 py-2 text-left text-sm text-slate-100 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+					data-md-cheatsheet-insert-key={ row.Key }
+					data-md-cheatsheet-insert-value={ row.Example }
+					aria-label={ "Insert " + row.Effect + " example at cursor: " + row.Example }
 				>
 					<div class="flex items-baseline justify-between gap-3">
 						<span class="font-mono text-xs text-[var(--theme-accent-strong)]">{ row.Syntax }</span>
@@ -68,6 +83,14 @@ templ MarkdownCheatsheet() {
 						data-md-cheatsheet-preview-key={ row.Key }
 					>@templ.Raw(RenderPreview(row.Example))</div>
 				</button>
+				<button
+					type="button"
+					class="shrink-0 rounded-xl px-2 py-1 text-[10px] uppercase tracking-wider text-slate-300 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+					data-md-cheatsheet-copy-key={ row.Key }
+					data-md-cheatsheet-copy-value={ row.Example }
+					aria-label={ "Copy " + row.Effect + " example to clipboard: " + row.Example }
+					title="Copy to clipboard"
+				>Copy</button>
 			</li>
 		}
 	}

@@ -179,7 +179,7 @@ func TestMarkdownCheatsheet_RowWrapperHasCorrectARIA(t *testing.T) {
 	}
 	got := buf.String()
 
-	if !strings.Contains(got, `<li role="none">`) {
+	if !strings.Contains(got, `<li role="none"`) {
 		t.Errorf("rows must be wrapped in <li role=\"none\"> per the WAI-ARIA menu pattern\nfull render:\n%s", got)
 	}
 	if !strings.Contains(got, `role="menuitem"`) {
@@ -284,5 +284,153 @@ func TestRenderPreview_PureHelper(t *testing.T) {
 				t.Errorf("RenderPreview(%q) = %q; want substring %q", c.input, got, c.want)
 			}
 		})
+	}
+}
+
+// TestMarkdownCheatsheet_RendersInsertButton — issue #610 slice 3.
+// Every cheatsheet row ships an Insert-at-cursor button as the
+// primary row action. Clicking the row inserts the example at
+// the cursor in <textarea id="article-body"> via
+// window.__dixieInsertTextAtCursor. The button is identified
+// by data-md-cheatsheet-insert-key="<row.Key>" +
+// data-md-cheatsheet-insert-value="<row.Example>" so the JS
+// initializer can wire the click handler.
+func TestMarkdownCheatsheet_RendersInsertButton(t *testing.T) {
+	var buf bytes.Buffer
+	if err := MarkdownCheatsheet().Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	rows := articles.Rows()
+	if len(rows) == 0 {
+		t.Fatal("articles.Rows() returned no rows; data not implemented")
+	}
+
+	for _, r := range rows {
+		insertMarker := `data-md-cheatsheet-insert-key="` + r.Key + `"`
+		if !strings.Contains(got, insertMarker) {
+			t.Errorf("row %q: missing Insert button (%s)\nfull render:\n%s", r.Key, insertMarker, got)
+		}
+		// The insert-value attr must carry the row's example
+		// (HTML-escaped when the source contains special chars
+		// like <, >, &, "). Spot-check the first 20 chars of
+		// the example so the assertion catches "wrong example"
+		// without breaking on attribute encoding. Multi-line
+		// examples (code-block, unordered-list, etc.) use \n
+		// in the attribute value, which is fine.
+		examplePrefix := r.Example
+		if len(examplePrefix) > 20 {
+			examplePrefix = examplePrefix[:20]
+		}
+		if examplePrefix == "" {
+			continue
+		}
+		valueMarker := `data-md-cheatsheet-insert-value="` + htmlEscape(examplePrefix)
+		if !strings.Contains(got, valueMarker) {
+			t.Errorf("row %q: missing insert-value attr carrying example prefix %q\nfull render:\n%s", r.Key, examplePrefix, got)
+		}
+	}
+}
+
+// TestMarkdownCheatsheet_KeepsCopyButton — issue #610 slice 3.
+// The Copy example button (originally the row's primary action
+// in #565) stays as a secondary affordance alongside the new
+// Insert button. Both data attrs must render so the existing
+// initializeMarkdownCheatsheet() clipboard wiring continues to
+// work unchanged.
+func TestMarkdownCheatsheet_KeepsCopyButton(t *testing.T) {
+	var buf bytes.Buffer
+	if err := MarkdownCheatsheet().Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	rows := articles.Rows()
+	for _, r := range rows {
+		copyKey := `data-md-cheatsheet-copy-key="` + r.Key + `"`
+		if !strings.Contains(got, copyKey) {
+			t.Errorf("row %q: Copy button missing (data-md-cheatsheet-copy-key)\nfull render:\n%s", r.Key, got)
+		}
+	}
+}
+
+// TestMarkdownCheatsheet_InsertAndCopyButtonsAreSiblings — issue
+// #610 slice 3. The Insert menuitem and Copy button are siblings
+// inside the <li role="none">; clicking one doesn't bubble through
+// the other. This test asserts the structural separation: each
+// row has both data attrs and they belong to different buttons.
+func TestMarkdownCheatsheet_InsertAndCopyButtonsAreSiblings(t *testing.T) {
+	var buf bytes.Buffer
+	if err := MarkdownCheatsheet().Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	rows := articles.Rows()
+	for _, r := range rows {
+		insertKey := `data-md-cheatsheet-insert-key="` + r.Key + `"`
+		// Use the FIRST occurrence of the row's insert marker
+		// and the FIRST occurrence of the row's copy marker
+		// AFTER the insert marker — this guarantees both
+		// markers belong to the same row (subsequent rows
+		// would have a different Key). Skip the global
+		// copyIdx = strings.Index(...) approach because a
+		// previous row's Copy button sits BEFORE the current
+		// row's Insert marker in the byte stream.
+		insertIdx := strings.Index(got, insertKey)
+		if insertIdx < 0 {
+			t.Errorf("row %q: insert marker not found", r.Key)
+			continue
+		}
+		copyKey := `data-md-cheatsheet-copy-key="` + r.Key + `"`
+		copyIdx := strings.Index(got[insertIdx:], copyKey)
+		if copyIdx < 0 {
+			t.Errorf("row %q: copy marker not found after insert marker (insertIdx=%d)", r.Key, insertIdx)
+			continue
+		}
+		copyIdx += insertIdx
+		// The current row's outer </li> sits between the Copy
+		// marker and the next row's <li>. The preview HTML can
+		// contain NESTED </li> (e.g. the unordered-list row's
+		// preview is <ul><li>one</li></ul>) — we must walk past
+		// those nested closes. Track the open/close depth
+		// starting from the row's <li> opening.
+		liOpenIdx := strings.LastIndex(got[:insertIdx], "<li")
+		if liOpenIdx < 0 {
+			t.Errorf("row %q: could not find row's <li opening", r.Key)
+			continue
+		}
+		// Walk forward from the row's <li opening, tracking
+		// the open/close depth. Stop at depth 0 — that's the
+		// matching </li> for the row.
+		depth := 0
+		liCloseIdx := -1
+		cursor := liOpenIdx
+		for cursor < len(got) {
+			nextOpen := strings.Index(got[cursor:], "<li")
+			nextClose := strings.Index(got[cursor:], "</li>")
+			if nextClose < 0 {
+				break
+			}
+			if nextOpen >= 0 && nextOpen < nextClose {
+				depth++
+				cursor += nextOpen + len("<li")
+			} else {
+				depth--
+				cursor += nextClose + len("</li>")
+				if depth == 0 {
+					liCloseIdx = cursor
+					break
+				}
+			}
+		}
+		if liCloseIdx < 0 {
+			t.Errorf("row %q: could not locate matching </li> for row's <li", r.Key)
+			continue
+		}
+		if copyIdx >= liCloseIdx {
+			t.Errorf("row %q: Copy marker (idx=%d) lands AFTER the row's </li> (idx=%d) — Copy button is on a different row", r.Key, copyIdx, liCloseIdx)
+		}
 	}
 }
