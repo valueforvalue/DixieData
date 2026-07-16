@@ -107,6 +107,13 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		     consumers so it stays deferred. -->
 		<script src="/lib/debounce.js"></script>
 		<script defer src="/lib/clipboard.js"></script>
+		<!-- Issue #610 slice 2: shared insert-at-cursor
+		     helper for the article editor cheatsheet +
+		     toolbar + table-builder modal. Defer is fine
+		     because the consumers all wire from
+		     initializeDynamicContent (which fires on
+		     htmx:load, after defer scripts have executed). -->
+		<script defer src="/lib/insert_text_at_cursor.js"></script>
 		<script defer src="/htmx.min.js"></script>
 		<script defer src="/app.js"></script>
 		<!-- CSS moved to frontend/tailwind.css by PR1. -->

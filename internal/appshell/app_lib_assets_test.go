@@ -75,7 +75,7 @@ func TestServeHTTP_LibAssets_Clipboard(t *testing.T) {
 // (a user accidentally trims frontend/lib/).
 func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
 	app := NewApp()
-	for _, name := range []string{"debounce.js", "clipboard.js"} {
+	for _, name := range []string{"debounce.js", "clipboard.js", "insert_text_at_cursor.js"} {
 		url := "/lib/" + name
 		req := httptest.NewRequest(http.MethodGet, url, nil)
 		rec := httptest.NewRecorder()
@@ -101,6 +101,29 @@ func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
 		if got := rec.Body.Len(); got != len(data) {
 			t.Errorf("%s length mismatch: response=%d, disk=%d (issue #609 — handler reading wrong source?)", name, got, len(data))
 		}
+	}
+}
+
+// TestServeHTTP_LibAssets_InsertTextAtCursor is the slice-2
+// regression net (issue #610). The insert-at-cursor helper
+// powers the article editor cheatsheet (slice 3) + toolbar
+// (slice 4) + table-builder modal (slice 5). A 404 here means
+// every editor affordance wired to window.__dixieInsertTextAtCursor
+// silently no-ops, the same failure mode #607/#610 just shipped
+// fixes for.
+func TestServeHTTP_LibAssets_InsertTextAtCursor(t *testing.T) {
+	app := NewApp()
+	req := httptest.NewRequest(http.MethodGet, "/lib/insert_text_at_cursor.js", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/javascript") {
+		t.Fatalf("Content-Type=%q, want text/javascript", got)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "__dixieInsertTextAtCursor") {
+		t.Fatalf("body did not contain insertTextAtCursor marker (issue #610 — /lib/insert_text_at_cursor.js serving wrong bytes?)")
 	}
 }
 

@@ -51,6 +51,13 @@ func (a *App) setupRoutes() {
 	// guard, silently no-oping the user-visible features.
 	r.Get("/lib/debounce.js", a.handleFrontendLib("debounce.js", "text/javascript; charset=utf-8"))
 	r.Get("/lib/clipboard.js", a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8"))
+	// Issue #610 slice 2: shared insert-at-cursor helper for
+	// the article editor cheatsheet (slice 3) + toolbar
+	// (slice 4) + table-builder modal (slice 5). Defer is
+	// fine here — the consumers wire from
+	// initializeDynamicContent (htmx:load), after defer scripts
+	// have executed.
+	r.Get("/lib/insert_text_at_cursor.js", a.handleFrontendLib("insert_text_at_cursor.js", "text/javascript; charset=utf-8"))
 
 	r.Get("/recovery", a.handleRecovery)
 	r.Get("/jobs/active", a.renderActiveJob)

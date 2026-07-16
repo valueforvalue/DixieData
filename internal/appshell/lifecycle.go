@@ -459,6 +459,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/lib/clipboard.js":
 			a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
+		case "/lib/insert_text_at_cursor.js":
+			// Issue #610 slice 2: insert-at-cursor helper
+			// for the article editor cheatsheet + toolbar +
+			// table-builder modal. Pre-mux allowlist so
+			// the helper is available during the boot
+			// window if the editor page is the first
+			// navigation after startup.
+			a.handleFrontendLib("insert_text_at_cursor.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
+			return
 		}
 		renderStartupPlaceholder(a, w, r)
 		return
