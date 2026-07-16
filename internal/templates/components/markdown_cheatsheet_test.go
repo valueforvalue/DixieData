@@ -202,3 +202,87 @@ func TestMarkdownCheatsheet_DoesNotEmitFormSubmitMarkers(t *testing.T) {
 		t.Errorf("MarkdownCheatsheet must not emit data-dixie-submit; the Copy example button is not a form submit\nfull render:\n%s", got)
 	}
 }
+
+// TestMarkdownCheatsheet_RendersLivePreview — issue #610 slice 1.
+// Every cheatsheet row ships a tiny rendered preview of what
+// its Markdown syntax produces. The cheatsheet currently
+// shows Syntax + Effect + Example as text; the live preview
+// makes the cheatsheet self-documenting so the user can see
+// "**bold**" → actual <strong>bold</strong> without having
+// to mentally translate.
+//
+// The preview is rendered server-side via the same goldmark
+// pipeline the article editor uses (records.MarkdownRenderer).
+// The component-level helper is in
+// components/markdown_cheatsheet.go (RenderPreview); the row
+// itself is left untouched so the articles package stays a
+// leaf node (no records import).
+func TestMarkdownCheatsheet_RendersLivePreview(t *testing.T) {
+	var buf bytes.Buffer
+	if err := MarkdownCheatsheet().Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	// Spot-check three rows whose rendered HTML shape is
+	// unambiguous: heading renders to <h2> with the example
+	// text; strong renders to <strong>; link renders to <a>
+	// with the href. If any preview is missing, the user
+	// sees raw syntax instead of the rendered output.
+	type previewCheck struct {
+		rowKey     string
+		wantMarker string
+	}
+	checks := []previewCheck{
+		{"heading", "<h2>The Battle of Gettysburg</h2>"},
+		{"strong", "<strong>important</strong>"},
+		{"link", `<a href="https://www.nps.gov/gett/">NPS Gettysburg</a>`},
+	}
+	for _, c := range checks {
+		marker := `data-md-cheatsheet-preview-key="` + c.rowKey + `"`
+		idx := strings.Index(got, marker)
+		if idx < 0 {
+			t.Errorf("row %q: missing preview surface marker %q\nfull render:\n%s", c.rowKey, marker, got)
+			continue
+		}
+		// The preview content lives in the same <li> as the
+		// marker; look ahead 2KB for the want-marker so a
+		// future marker from a different row doesn't satisfy.
+		end := idx + 2048
+		if end > len(got) {
+			end = len(got)
+		}
+		region := got[idx:end]
+		if !strings.Contains(region, c.wantMarker) {
+			t.Errorf("row %q: preview missing %q\npreview region:\n%s", c.rowKey, c.wantMarker, region)
+		}
+	}
+}
+
+// TestRenderPreview_PureHelper — issue #610 slice 1.
+// Pin the RenderPreview helper's contract: input is a Markdown
+// source string, output is the goldmark-rendered HTML
+// (bluemonday-sanitized). Empty input returns empty string
+// (matches the records.MarkdownRenderer.Render contract).
+func TestRenderPreview_PureHelper(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string // substring of rendered output
+	}{
+		{"heading", "## Title", "<h2>Title</h2>"},
+		{"strong", "**x**", "<strong>x</strong>"},
+		{"empty", "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := RenderPreview(c.input)
+			if c.want == "" && got != "" {
+				t.Errorf("RenderPreview(%q) = %q; want empty", c.input, got)
+			}
+			if c.want != "" && !strings.Contains(got, c.want) {
+				t.Errorf("RenderPreview(%q) = %q; want substring %q", c.input, got, c.want)
+			}
+		})
+	}
+}
