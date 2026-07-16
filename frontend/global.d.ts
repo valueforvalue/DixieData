@@ -139,6 +139,12 @@ declare global {
     // __cheatsheetCopyBound / __cheatsheetInsertBound pattern
     // (idempotent install on htmx re-render).
     __editorToolbarBound?: boolean;
+    // Issue #611 slice 2: Undo + Redo toolbar buttons get
+    // a separate sentinel so the format-button wiring and
+    // the undo/redo wiring can be installed independently
+    // (the undo/redo wiring ships later than the format
+    // wiring in a follow-up slice).
+    __editorToolbarUndoRedoBound?: boolean;
     // Issue #610 slice 5: initializeTableBuilder wires the
     // modal element once per modal. The sentinel mirrors
     // __articlePreviewWired / __termDisclosureWired (per-modal
@@ -170,6 +176,13 @@ declare global {
     // keeps installs idempotent on htmx:load re-renders
     // (mirror of __inventoryChartPainted).
     __articlePreviewWired?: boolean;
+    // Issue #611 slice 2: the editor toolbar owns a 500ms
+    // interval that polls document.queryCommandEnabled to
+    // keep the Undo + Redo buttons in sync with the
+    // textarea's actual undo depth. The sentinel prevents
+    // multiple intervals from stacking across htmx:load
+    // re-renders.
+    __undoRedoPollerBound?: boolean;
   }
 }
 

@@ -5913,6 +5913,92 @@ function onPrintRecordsFragmentReady(modal) {
         void action; // currently unused but available for future per-action overrides
       });
     });
+
+    // Undo + Redo buttons (issue #611 slice 2). Click
+    // dispatches document.execCommand("undo") / "redo";
+    // the native browser undo covers every textarea edit
+    // (the slice-1 fallback fix guarantees even the
+    // no-helper-script path preserves undo via setRangeText).
+    // Idempotent via the same __editorToolbarBound sentinel
+    // as the format buttons.
+    document.querySelectorAll("[data-editor-toolbar-action=\"undo\"], [data-editor-toolbar-action=\"redo\"]").forEach((button) => {
+      if (button.__editorToolbarUndoRedoBound) {
+        return;
+      }
+      button.__editorToolbarUndoRedoBound = true;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const action = button.getAttribute("data-editor-toolbar-action") || "";
+        const cmd = action === "undo" ? "undo" : action === "redo" ? "redo" : "";
+        if (!cmd) return;
+        // execCommand is deprecated but still supported in
+        // Chromium + WebView2 (the only environment DixieData
+        // ships in). It dispatches the right action against
+        // the document's active element (which the textarea
+        // is after initializeDynamicContent focuses it).
+        try {
+          if (typeof document.execCommand === "function") {
+            document.execCommand(cmd);
+          }
+        } catch (err) {
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn("DixieData: execCommand(" + cmd + ") failed", err);
+          }
+        }
+      });
+    });
+
+    // Poller: update the Undo/Redo buttons' disabled state
+    // to match document.queryCommandEnabled. The browser
+    // knows when the undo stack has entries (after any
+    // user edit) and when redo is available (after an undo).
+    // Polling every 500ms is cheap + matches the cadence
+    // the cheatsheet foldout uses for its aria-expanded
+    // sync. We also trigger an update on every `input` event
+    // so a keystroke immediately re-enables Undo.
+    function refreshUndoRedoState() {
+      const undoBtn = document.querySelector("[data-editor-toolbar-action=\"undo\"]");
+      const redoBtn = document.querySelector("[data-editor-toolbar-action=\"redo\"]");
+      if (undoBtn instanceof HTMLButtonElement) {
+        var canUndo = false;
+        try {
+          canUndo = typeof document.queryCommandEnabled === "function" && document.queryCommandEnabled("undo");
+        } catch (e) {
+          canUndo = false;
+        }
+        undoBtn.disabled = !canUndo;
+      }
+      if (redoBtn instanceof HTMLButtonElement) {
+        var canRedo = false;
+        try {
+          canRedo = typeof document.queryCommandEnabled === "function" && document.queryCommandEnabled("redo");
+        } catch (e) {
+          canRedo = false;
+        }
+        redoBtn.disabled = !canRedo;
+      }
+    }
+    refreshUndoRedoState();
+    // Polling loop. Idempotent via per-toolbar guard so
+    // multiple initializeEditorToolbar calls share one timer.
+    const toolbarRoot = document.querySelector("[data-editor-toolbar]");
+    if (toolbarRoot instanceof HTMLElement && !toolbarRoot.__undoRedoPollerBound) {
+      toolbarRoot.__undoRedoPollerBound = true;
+      setInterval(refreshUndoRedoState, 500);
+      // Re-check on every input event in the article body
+      // textarea so the buttons react immediately.
+      const body = document.getElementById("article-body");
+      if (body instanceof HTMLTextAreaElement) {
+        body.addEventListener("input", refreshUndoRedoState);
+        body.addEventListener("keydown", function (e) {
+          // Also re-check after Ctrl+Z / Ctrl+Y so the
+          // button state reflects the new undo/redo depth.
+          if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "y")) {
+            setTimeout(refreshUndoRedoState, 0);
+          }
+        });
+      }
+    }
   }
 
   // initializeTableBuilder wires the article editor's table

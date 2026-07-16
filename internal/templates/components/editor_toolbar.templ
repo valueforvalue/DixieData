@@ -60,6 +60,9 @@ templ EditorToolbar() {
 		@editorToolbarButton("code",     "Code",    "`code`",          "Code")
 		@editorToolbarButton("quote",    "Quote",   "> quote",         "Quote")
 		@editorToolbarButton("table",    "Table",   "",                "Table")
+		<span class="mx-1 h-6 w-px bg-slate-200" aria-hidden="true"></span>
+		@editorToolbarUndoRedoButton("undo", "↶ Undo", "Undo")
+		@editorToolbarUndoRedoButton("redo", "↷ Redo", "Redo")
 	</div>
 }
 
@@ -79,6 +82,29 @@ templ editorToolbarButton(action, label, template, ariaLabel string) {
 		if template == "" {
 			data-editor-toolbar-opens-modal="table-builder-modal"
 		}
+		aria-label={ ariaLabel }
+		title={ ariaLabel }
+	>{ label }</button>
+}
+
+// editorToolbarUndoRedoButton renders the Undo/Redo toolbar
+// buttons (issue #611 slice 2). Different shape from
+// editorToolbarButton because:
+//   - They start disabled (no undo history on first paint);
+//     the JS poller removes the attribute once queryCommandEnabled
+//     returns true.
+//   - They have NO data-editor-toolbar-template attribute
+//     (they're actions, not inserts). The JS initializer
+//     routes them to document.execCommand("undo") / "redo".
+//   - Slightly different visual treatment (lighter color,
+//     a small visual separator above) to read as "browser
+//     chrome" rather than "format this text".
+templ editorToolbarUndoRedoButton(action, label, ariaLabel string) {
+	<button
+		type="button"
+		class="inline-flex h-8 items-center justify-center rounded-lg px-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+		data-editor-toolbar-action={ action }
+		disabled
 		aria-label={ ariaLabel }
 		title={ ariaLabel }
 	>{ label }</button>
