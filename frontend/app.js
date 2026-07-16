@@ -4313,6 +4313,20 @@ function serializeDraftFields(form) {
    * @param {HTMLElement} host SVG mount host
    * @param {Record<string, number>} byDay per-day commit counts
    */
+  // SVG NS shorthand for the cells + labels below.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  // Month labels for the heatmap axis (3-letter
+  // abbreviations, GitHub/GitLab convention).
+  const HEATMAP_MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // Weekday labels for the heatmap left-margin gutter
+  // (1-letter abbreviations; only Sun / Wed / Fri render
+  // to avoid overcrowding the column).
+  const HEATMAP_WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+
+  /**
+   * @param {HTMLElement} host SVG mount host
+   * @param {Record<string, number>} byDay per-day commit counts
+   */
   function paintAboutActivityHeatmap(host, byDay) {
     // Compute the rolling max count across the visible
     // window. byDay is `date(YYYY-MM-DD) -> count`;
@@ -4325,19 +4339,26 @@ function serializeDraftFields(form) {
     // SVG layout: 52 cols, 7 rows (Sun-Sat). Cell size
     // 12px wide, with 2px gap. Total grid width 720px
     // (52*12 + 51*2). Total height 7*12 + 6*2 = 96px.
+    //
+    // Issue #602 axes: 24px left gutter for weekday
+    // labels + 24px top gutter for month labels.
+    // Updated dimensions: width 744px (720 + 24), height
+    // 120px (96 + 24). The grid offsets by (24, 24)
+    // so cells render in the bottom-right 720x96 region.
     const cell = 12;
     const gap = 2;
     const cols = 52;
     const rows = 7;
-    const width = cols * cell + (cols - 1) * gap;
-    const height = rows * cell + (rows - 1) * gap;
+    const gridWidth = cols * cell + (cols - 1) * gap;
+    const gridHeight = rows * cell + (rows - 1) * gap;
+    const gutterX = 24;
+    const gutterY = 24;
+    const width = gridWidth + gutterX;
+    const height = gridHeight + gutterY;
     // Empty all host children (removes the loading
-    // placeholder + any stray leftovers). White-element
-    // assignment is the canonical DOM mutation — faster
-    // than innerHTML='' + appendChild on Chromium's SVG
-    // path.
+    // placeholder + any stray leftovers).
     while (host.firstChild) host.removeChild(host.firstChild);
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("width", String(width));
     svg.setAttribute("height", String(height));
@@ -4346,18 +4367,18 @@ function serializeDraftFields(form) {
     svg.classList.add("about-activity-heatmap-svg");
     // Find the most recent date in byDay; the heatmap
     // renders the 52 weeks ending at that date so the
-    // "today" column is on the right (the GitHub /
-    // GitLab convention).
+    // "today" column is on the right.
     let endDate = new Date();
     const dateKeys = Object.keys(byDay);
     if (dateKeys.length > 0) {
       const latest = dateKeys.sort().slice(-1)[0];
-      // The parse assumes YYYY-MM-DD shape.
       const parts = latest.split("-").map((p) => parseInt(p, 10));
       if (parts.length === 3 && parts.every((p) => Number.isFinite(p))) {
         endDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
       }
     }
+    /** @type {Record<string, number>} */
+    const firstColumnOfMonth = {};
     for (let col = 0; col < cols; col++) {
       for (let row = 0; row < rows; row++) {
         const dayOffset = -(cols - 1 - col) * 7 + row;
@@ -4367,18 +4388,64 @@ function serializeDraftFields(form) {
         const m = String(cellDate.getUTCMonth() + 1).padStart(2, "0");
         const d = String(cellDate.getUTCDate()).padStart(2, "0");
         const dateKey = y + "-" + m + "-" + d;
+        const monthKey = y + "-" + m;
+        if (firstColumnOfMonth[monthKey] === undefined) {
+          firstColumnOfMonth[monthKey] = col;
+        }
         const count = byDay[dateKey] || 0;
-        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        rect.setAttribute("x", String(col * (cell + gap)));
-        rect.setAttribute("y", String(row * (cell + gap)));
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", String(gutterX + col * (cell + gap)));
+        rect.setAttribute("y", String(gutterY + row * (cell + gap)));
         rect.setAttribute("width", String(cell));
         rect.setAttribute("height", String(cell));
         rect.setAttribute("rx", "2");
         rect.setAttribute("fill", aboutActivityHeatmapFill(count, maxCount));
         rect.setAttribute("data-about-activity-heatmap-cell", dateKey);
         rect.setAttribute("data-about-activity-heatmap-count", String(count));
+        rect.setAttribute("tabindex", "0");
+        rect.setAttribute("role", "img");
+        // Singular / plural matches the user's mental
+        // model ("1 commit" vs "3 commits"); native
+        // <title> shows it on hover + focus.
+        const labelSingularSuffix = count === 1 ? "" : "s";
+        rect.setAttribute("aria-label", dateKey + " · " + count + " commit" + labelSingularSuffix);
+        const title = document.createElementNS(SVG_NS, "title");
+        title.textContent = dateKey + " · " + count + " commit" + labelSingularSuffix;
+        rect.appendChild(title);
         svg.appendChild(rect);
       }
+    }
+    // Month labels above the grid (first column of each
+    // new month). Sorted by month key so render order
+    // matches the calendar axis.
+    const monthLabelPositions = Object.keys(firstColumnOfMonth).sort();
+    for (const mk of monthLabelPositions) {
+      const col = firstColumnOfMonth[mk];
+      const monthIdx = parseInt(mk.split("-")[1], 10) - 1;
+      const text = document.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", String(gutterX + col * (cell + gap)));
+      text.setAttribute("y", String(gutterY - 8));
+      text.setAttribute("font-size", "10");
+      text.setAttribute("fill", "var(--theme-text-mid, #6b6b6b)");
+      text.setAttribute("font-family", "system-ui, sans-serif");
+      text.setAttribute("data-about-activity-heatmap-month", HEATMAP_MONTH_LABELS[monthIdx]);
+      text.textContent = HEATMAP_MONTH_LABELS[monthIdx];
+      svg.appendChild(text);
+    }
+    // Weekday labels in the left margin: only Sun / Wed
+    // / Fri to keep the column visually balanced.
+    for (let row = 0; row < rows; row++) {
+      if (row !== 0 && row !== 2 && row !== 4) continue;
+      const text = document.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", String(gutterX - 6));
+      text.setAttribute("y", String(gutterY + row * (cell + gap) + cell - 3));
+      text.setAttribute("font-size", "10");
+      text.setAttribute("fill", "var(--theme-text-mid, #6b6b6b)");
+      text.setAttribute("font-family", "system-ui, sans-serif");
+      text.setAttribute("text-anchor", "end");
+      text.setAttribute("data-about-activity-heatmap-weekday", HEATMAP_WEEKDAY_LABELS[row]);
+      text.textContent = HEATMAP_WEEKDAY_LABELS[row];
+      svg.appendChild(text);
     }
     host.appendChild(svg);
   }

@@ -100,6 +100,33 @@ async function populatedProbe(page) {
       ? activityHeatmapHost.querySelector('svg')
       : null;
     const activityHeatmapLoading = document.querySelector('[data-about-activity-heatmap-loading]');
+    // Issue #602: each cell carries a <title> child for
+    // native hover/focus tooltip + a tabindex for keyboard
+    // nav; the grid also has month labels above and
+    // weekday labels on the left margin.
+    const activityHeatmapCells = activityHeatmapSVG
+      ? Array.from(activityHeatmapSVG.querySelectorAll('[data-about-activity-heatmap-cell]'))
+      : [];
+    const activityHeatmapMonthLabels = activityHeatmapSVG
+      ? Array.from(activityHeatmapSVG.querySelectorAll('[data-about-activity-heatmap-month]'))
+      : [];
+    const activityHeatmapWeekdayLabels = activityHeatmapSVG
+      ? Array.from(activityHeatmapSVG.querySelectorAll('[data-about-activity-heatmap-weekday]'))
+      : [];
+    // Sample the first cell with a non-empty <title>
+    // child so the assertion can verify the tooltip
+    // text shape ("YYYY-MM-DD · N commit(s)").
+    const firstCellWithTitle = activityHeatmapCells.find(
+      (c) => c.querySelector('title') && (c.querySelector('title').textContent || '').length > 0,
+    );
+    const firstCellTitleText = firstCellWithTitle
+      ? (firstCellWithTitle.querySelector('title').textContent || '')
+      : '';
+    const firstCellAriaLabel = firstCellWithTitle
+      ? (firstCellWithTitle.getAttribute('aria-label') || '')
+      : '';
+    const monthLabelTexts = activityHeatmapMonthLabels.map((el) => el.getAttribute('data-about-activity-heatmap-month') || el.textContent || '');
+    const weekdayLabelTexts = activityHeatmapWeekdayLabels.map((el) => el.getAttribute('data-about-activity-heatmap-weekday') || el.textContent || '');
     // Issue #564 slice 1: Glossary section + nav link + rows.
     const glossary = document.querySelector('[data-about-glossary]');
     const glossaryNavLink = document.querySelector('[data-about-nav-glossary]');
@@ -135,6 +162,14 @@ async function populatedProbe(page) {
       activityHeatmapHostRendered: !!activityHeatmapHost,
       activityHeatmapSVGRendered: !!activityHeatmapSVG,
       activityHeatmapLoadingRendered: !!activityHeatmapLoading,
+      // Issue #602 fields.
+      activityHeatmapCellCount: activityHeatmapCells.length,
+      activityHeatmapMonthLabelCount: activityHeatmapMonthLabels.length,
+      activityHeatmapWeekdayLabelCount: activityHeatmapWeekdayLabels.length,
+      activityHeatmapFirstCellTitle: firstCellTitleText,
+      activityHeatmapFirstCellAriaLabel: firstCellAriaLabel,
+      activityHeatmapMonthLabels: monthLabelTexts,
+      activityHeatmapWeekdayLabels: weekdayLabelTexts,
       // Issue #594 fields.
       recentRendered: !!recent,
       recentEmptyRendered: !!recentEmpty,
@@ -148,6 +183,14 @@ async function populatedProbe(page) {
       activityHeatmapHostRendered: !!activityHeatmapHost,
       activityHeatmapSVGRendered: !!activityHeatmapSVG,
       activityHeatmapLoadingRendered: !!activityHeatmapLoading,
+      // Issue #602 fields.
+      activityHeatmapCellCount: activityHeatmapCells.length,
+      activityHeatmapMonthLabelCount: activityHeatmapMonthLabels.length,
+      activityHeatmapWeekdayLabelCount: activityHeatmapWeekdayLabels.length,
+      activityHeatmapFirstCellTitle: firstCellTitleText,
+      activityHeatmapFirstCellAriaLabel: firstCellAriaLabel,
+      activityHeatmapMonthLabels: monthLabelTexts,
+      activityHeatmapWeekdayLabels: weekdayLabelTexts,
       // Issue #564 slice 1: Glossary section + rows.
       glossaryRendered: !!glossary,
       glossaryNavLinkRendered: !!glossaryNavLink,
@@ -246,6 +289,53 @@ async function populatedProbe(page) {
     await expect(
       !state.activityHeatmapLoadingRendered,
       'activity heatmap loading placeholder is removed after paint (#601)',
+      state,
+    );
+    // Issue #602: each cell carries a native <title>
+    // tooltip + the grid axis labels render.
+    await expect(
+      state.activityHeatmapCellCount === 364,
+      `heat map paints 364 cells (52 weeks * 7 days; got ${state.activityHeatmapCellCount})`,
+      state,
+    );
+    // The first cell with a <title> child must have
+    // tooltip text matching the "YYYY-MM-DD · N
+    // commit(s)" shape. The singular form is "1 commit";
+    // the plural form is "N commits".
+    await expect(
+      /^\d{4}-\d{2}-\d{2} · \d+ commits?$/.test(state.activityHeatmapFirstCellTitle),
+      `first cell <title> text matches "YYYY-MM-DD · N commit(s)" (got "${state.activityHeatmapFirstCellTitle}")`,
+      state,
+    );
+    // The same cell's aria-label must mirror the
+    // <title> text so screen-reader users hear the
+    // same context.
+    await expect(
+      state.activityHeatmapFirstCellAriaLabel === state.activityHeatmapFirstCellTitle,
+      `first cell aria-label matches its <title> text (got aria-label "${state.activityHeatmapFirstCellAriaLabel}")`,
+      state,
+    );
+    // Month labels above the grid: the 52-week window
+    // covers at least one month transition (usually 12,
+    // since 365 days / 30 ~ 12 month starts). The probe
+    // pins at least 3 month labels so the user sees
+    // the calendar axis even for short windows.
+    await expect(
+      state.activityHeatmapMonthLabelCount >= 3,
+      `heat map paints >=3 month labels above the grid (got ${state.activityHeatmapMonthLabelCount})`,
+      state,
+    );
+    // Weekday labels in the left margin: Sun / Wed /
+    // Fri only (the codebase convention to keep the
+    // column visually balanced).
+    await expect(
+      state.activityHeatmapWeekdayLabelCount === 3,
+      `heat map paints exactly 3 weekday labels (Sun / Wed / Fri; got ${state.activityHeatmapWeekdayLabelCount})`,
+      state,
+    );
+    await expect(
+      ['S', 'W', 'F'].every((wanted) => state.activityHeatmapWeekdayLabels.includes(wanted)),
+      `weekday labels include S, W, F (got ${JSON.stringify(state.activityHeatmapWeekdayLabels)})`,
       state,
     );
   }
