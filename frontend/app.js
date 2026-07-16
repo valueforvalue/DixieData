@@ -2804,6 +2804,8 @@ function serializeDraftFields(form) {
       const kinds = readActiveKinds(wrapper);
       paintInventoryChart(host, wrapper, byKind, kinds);
       wireInventoryLegend(wrapper, kinds);
+      ensureInventoryChartTooltip(wrapper);
+      wireInventoryChartPoints(wrapper);
       wrapper.__inventoryChartPainted = true;
     });
   }
@@ -2939,6 +2941,15 @@ function serializeDraftFields(form) {
     // can restore it without repainting.
     const seriesGroup = document.createElementNS(ns, "g");
     seriesGroup.setAttribute("data-inventory-metrics-series", "");
+    // Issue #595 slice 3: hover hit-target layer. One <circle>
+    // per (kind, day) data point, painted on top of the series
+    // paths. The circle carries a JSON-encoded `data-point`
+    // attribute (date + count + kind) so the hover handler
+    // can read the payload without a closure lookup. The
+    // hit-target circle is slightly larger than the visible
+    // fill so the cursor doesn't need pixel-perfect aim.
+    const pointsGroup = document.createElementNS(ns, "g");
+    pointsGroup.setAttribute("data-inventory-metrics-points", "");
     const orderedKinds = ["soldier", "spouse", "linked", "event", "article"];
     orderedKinds.forEach((kind) => {
       const inner = byKind[kind];
@@ -2956,8 +2967,31 @@ function serializeDraftFields(form) {
         path.setAttribute("display", "none");
       }
       seriesGroup.appendChild(path);
+      // Points for this kind. Skip days where the count is 0 so
+      // hover doesn't fire on the flat baseline of inactive days.
+      const denom = Math.max(days.length - 1, 1);
+      for (let i = 0; i < days.length; i++) {
+        const day = days[i];
+        const count = Number(inner[day]) || 0;
+        if (count === 0) continue;
+        const x = padding.left + innerW * (i / denom);
+        const y = padding.top + innerH * (1 - count / maxY);
+        const circle = document.createElementNS(ns, "circle");
+        circle.setAttribute("cx", String(x.toFixed(1)));
+        circle.setAttribute("cy", String(y.toFixed(1)));
+        circle.setAttribute("r", "6");
+        circle.setAttribute("fill", kindColor(kind));
+        circle.setAttribute("fill-opacity", "0.0");
+        circle.setAttribute("stroke", "none");
+        circle.setAttribute("data-point", JSON.stringify({ date: day, count, kind }));
+        if (!activeKinds.includes(kind)) {
+          circle.setAttribute("display", "none");
+        }
+        pointsGroup.appendChild(circle);
+      }
     });
     svg.appendChild(seriesGroup);
+    svg.appendChild(pointsGroup);
     // Clear the host and mount the SVG. The placeholder
     // paragraph is removed so it cannot flash through.
     while (host.firstChild) host.removeChild(host.firstChild);
@@ -3117,6 +3151,165 @@ function serializeDraftFields(form) {
     // the rendered chart on first paint; templ already sets the
     // pressed state but a future refactor could change that.
     void initialKinds;
+  }
+
+  // ensureInventoryChartTooltip mounts a single tooltip element
+  // inside the chart wrapper. The tooltip is a sibling of the
+  // SVG host; positioning is `position: absolute` relative to
+  // the wrapper (which is `position: relative` via the inline
+  // class the function sets if the wrapper doesn't already have
+  // it). The tooltip carries `data-inventory-metrics-tooltip`
+  // for the audit probe + a `data-inventory-metrics-tooltip-visible`
+  // attribute the hover handler flips. Idempotent: if the tooltip
+  // already exists, no-op. The reduced-motion contract is honored
+  // via inline CSS (no transition when prefers-reduced-motion:
+  // reduce is set).
+  /**
+   * @param {HTMLElement} wrapper chart wrapper
+   */
+  function ensureInventoryChartTooltip(wrapper) {
+    if (wrapper.querySelector("[data-inventory-metrics-tooltip]")) {
+      return;
+    }
+    const tooltip = document.createElement("div");
+    tooltip.setAttribute("data-inventory-metrics-tooltip", "");
+    tooltip.setAttribute("data-inventory-metrics-tooltip-visible", "false");
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.setAttribute("aria-hidden", "true");
+    // Parchment-aligned style: subtle border, paper background,
+    // small type. Inline so the tooltip does not require a
+    // stylesheet edit to render.
+    tooltip.style.position = "absolute";
+    tooltip.style.pointerEvents = "none";
+    tooltip.style.zIndex = "20";
+    tooltip.style.padding = "4px 8px";
+    tooltip.style.borderRadius = "6px";
+    tooltip.style.border = "1px solid rgb(var(--theme-sepia-rgb) / 0.45)";
+    tooltip.style.background = "rgba(255, 251, 241, 0.96)";
+    tooltip.style.color = "var(--theme-text-primary, #2a1d10)";
+    tooltip.style.fontSize = "11px";
+    tooltip.style.lineHeight = "1.3";
+    tooltip.style.boxShadow = "0 1px 3px rgba(60, 40, 20, 0.18)";
+    tooltip.style.opacity = "0";
+    tooltip.style.transition = prefersReducedMotion() ? "none" : "opacity 80ms ease-out";
+    tooltip.style.whiteSpace = "nowrap";
+    wrapper.style.position = "relative";
+    wrapper.appendChild(tooltip);
+  }
+
+  // wireInventoryChartPoints binds the per-point hover handlers
+  // to every <circle data-point> inside the wrapper's SVG.
+  // Mouseover reads the circle's data-point attribute, sets
+  // the tooltip text + position + visible state. Mouseout
+  // hides the tooltip. Mouseleave on the wrapper also hides
+  // (covers the cursor exiting the wrapper without crossing
+  // a point's mouseout boundary).
+  /**
+   * @param {HTMLElement} wrapper chart wrapper
+   */
+  function wireInventoryChartPoints(wrapper) {
+    const tooltip = wrapper.querySelector("[data-inventory-metrics-tooltip]");
+    if (!(tooltip instanceof HTMLElement)) return;
+    const points = wrapper.querySelectorAll("[data-inventory-metrics-points] [data-point]");
+    points.forEach((point) => {
+      if (!(point instanceof Element)) return;
+      point.addEventListener("mouseover", (event) => {
+        const raw = point.getAttribute("data-point") || "{}";
+        let payload;
+        try {
+          payload = JSON.parse(raw);
+        } catch {
+          return;
+        }
+        if (!payload || typeof payload !== "object") return;
+        const label = inventoryMetricsKindLabel(payload.kind);
+        tooltip.textContent = `${payload.date} · ${payload.count} · ${label}`;
+        tooltip.setAttribute("data-inventory-metrics-tooltip-visible", "true");
+        tooltip.setAttribute("aria-hidden", "false");
+        tooltip.style.opacity = "1";
+        // Position relative to the wrapper.
+        if (event instanceof MouseEvent) {
+          const wrapperRect = wrapper.getBoundingClientRect();
+          const x = event.clientX - wrapperRect.left + 8;
+          const y = event.clientY - wrapperRect.top + 8;
+          tooltip.style.left = clamp(x, 0, wrapperRect.width - tooltip.offsetWidth - 4) + "px";
+          tooltip.style.top = clamp(y, 0, wrapperRect.height - tooltip.offsetHeight - 4) + "px";
+        }
+      });
+      point.addEventListener("mouseout", () => {
+        hideInventoryChartTooltip(tooltip);
+      });
+    });
+    wrapper.addEventListener("mouseleave", () => {
+      hideInventoryChartTooltip(tooltip);
+    });
+  }
+
+  // hideInventoryChartTooltip flips the visible + aria-hidden
+  // attributes and fades the opacity. Kept tiny so the
+  // mouseout + mouseleave paths share one implementation.
+  /**
+   * @param {HTMLElement} tooltip tooltip element
+   */
+  function hideInventoryChartTooltip(tooltip) {
+    tooltip.setAttribute("data-inventory-metrics-tooltip-visible", "false");
+    tooltip.setAttribute("aria-hidden", "true");
+    tooltip.style.opacity = "0";
+  }
+
+  // clamp constrains a value to [min, max]. Used to keep the
+  // tooltip inside the chart wrapper bounds so it never escapes
+  // the visible area on edge-of-chart hovers.
+  /**
+   * @param {number} n value
+   * @param {number} min lower bound
+   * @param {number} max upper bound
+   * @returns {number} clamped value
+   */
+  function clamp(n, min, max) {
+    if (Number.isNaN(n)) return min;
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+
+  // prefersReducedMotion returns true when the user has
+  // requested reduced motion. Used by the tooltip's transition
+  // to disable the fade-in animation.
+  /**
+   * @returns {boolean} true if reduced motion is preferred
+   */
+  function prefersReducedMotion() {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // inventoryMetricsKindLabel mirrors the templ-rendered label
+  // for each kind key. The chart's hover tooltip needs the
+  // human-readable label (not the storage key) so this small
+  // mirror lives next to the hover handler rather than a
+  // cross-module import.
+  /**
+   * @param {string} kind storage kind key
+   * @returns {string} human-readable label
+   */
+  function inventoryMetricsKindLabel(kind) {
+    switch (kind) {
+      case "soldier":
+        return "Soldiers";
+      case "spouse":
+        return "Spouse Records";
+      case "linked":
+        return "Linked Persons";
+      case "event":
+        return "Event Records";
+      case "article":
+        return "Articles";
+      default:
+        return kind;
+    }
   }
 
   // cssEscape escapes an arbitrary string into a CSS attribute
