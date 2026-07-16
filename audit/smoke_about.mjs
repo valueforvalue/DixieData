@@ -77,6 +77,19 @@ async function populatedProbe(page) {
     const activitySummary = document.querySelector('[data-about-activity-summary]');
     const activityContributors = document.querySelectorAll('[data-about-activity-contributor]');
     const activityIssuesBar = document.querySelector('[data-about-activity-issues-bar]');
+    // Issue #594: Recent commits section + nav link + permalinks.
+    const recent = document.querySelector('[data-about-recent]');
+    const recentEmpty = document.querySelector('[data-about-recent-empty]');
+    const recentList = document.querySelector('[data-about-recent-list]');
+    const recentNavLink = document.querySelector('[data-about-nav-recent]');
+    const recentRows = Array.from(
+      document.querySelectorAll('[data-about-recent-row]'),
+    );
+    // Pull the first row's hash + permalink so the assertion
+    // can verify the GitHub URL format.
+    const firstRowPermalink = recentRows.length > 0
+      ? recentRows[0].querySelector('[data-about-recent-hash]')?.getAttribute('href') || ''
+      : '';
     return {
       pageRendered: !!pageRoot,
       identityRendered: !!identity,
@@ -94,6 +107,13 @@ async function populatedProbe(page) {
       activitySummaryRendered: !!activitySummary,
       activityContributorCount: activityContributors.length,
       activityIssuesBarRendered: !!activityIssuesBar,
+      // Issue #594 fields.
+      recentRendered: !!recent,
+      recentEmptyRendered: !!recentEmpty,
+      recentListRendered: !!recentList,
+      recentNavLinkRendered: !!recentNavLink,
+      recentRowCount: recentRows.length,
+      firstRowPermalink,
     };
   });
   await expect(state.pageRendered, 'about page renders', state);
@@ -162,6 +182,32 @@ async function populatedProbe(page) {
     await expect(
       state.activityIssuesBarRendered,
       'issues-closed stacked bar renders when baked',
+      state,
+    );
+  }
+  // Issue #594: Recent commits section.
+  await expect(state.recentRendered, 'recent commits section renders (#594)', state);
+  await expect(
+    state.recentNavLinkRendered,
+    'in-page nav strip has a Recent commits link (#594)',
+    state,
+  );
+  await expect(
+    state.recentEmptyRendered !== state.recentListRendered,
+    'recent section is either empty-state or populated, not both',
+    state,
+  );
+  if (state.recentListRendered) {
+    await expect(
+      state.recentRowCount > 0,
+      `at least one recent commit row rendered (got ${state.recentRowCount})`,
+      state,
+    );
+    // The permalink must match the GitHub commit URL shape:
+    // https://github.com/valueforvalue/DixieData/commit/<40-char SHA1>.
+    await expect(
+      /^https:\/\/github\.com\/valueforvalue\/DixieData\/commit\/[0-9a-f]{40}$/.test(state.firstRowPermalink),
+      `recent row permalink matches GitHub commit URL shape (got ${state.firstRowPermalink})`,
       state,
     );
   }
