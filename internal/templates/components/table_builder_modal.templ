@@ -1,0 +1,100 @@
+// table_builder_modal.templ — issue #610 slice 5
+// Article editor Markdown table-builder modal. The user
+// clicks the toolbar's \"Table\" button (or, eventually, a
+// cheatsheet row with data-editor-toolbar-opens-modal=
+// \"table-builder-modal\"); the modal opens, they fill in
+// rows + cols, click Insert, and the JS handler generates
+// a Markdown table from the inputs + inserts it at the
+// cursor in <textarea id=\"article-body\"> via the shared
+// window.__dixieInsertTextAtCursor helper.
+//
+// The modal matches the overlay vocabulary documented in
+// docs/ui-map/surfaces.md (overlay.* — fixed inset-0, role=
+// dialog, aria-modal=\"true\") so it composes with the JS
+// showOverlayModal / hideOverlayModal helpers in
+// frontend/app.js:4399-4440 (the same pattern the article
+// preview modal #526 uses).
+//
+// The form fields, defaults, and bounds (1 <= rows,cols <=
+// 20) are all locked decisions; see the table builder test
+// for the pinned invariants.
+//
+// Generated Markdown shape:
+//   | col 1 | col 2 | ... | col N |
+//   | --- | --- | ... | --- |
+//   | cell | cell | ... | cell |
+//   ... rows-1 more data rows
+//
+// Header cells: \"col 1\", \"col 2\", ..., \"col N\".
+// Data cells: \"cell\" (placeholder — the user types over
+// them inline). N=1 rows-1 data rows after the header row.
+package components
+
+// TableBuilderModal renders the Markdown table-builder modal.
+// The modal is hidden on initial render; the JS initializer
+// opens it via showOverlayModal. The Insert button reads
+// the rows + cols inputs, generates the Markdown, and calls
+// window.__dixieInsertTextAtCursor(<textarea>, <md>).
+templ TableBuilderModal() {
+	<div
+		id="table-builder-modal"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="table-builder-modal-heading"
+		data-table-builder-modal
+		class="fixed inset-0 z-[96] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8"
+	>
+		<div class="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgb(var(--theme-parchment-rgb)/0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<h2 id="table-builder-modal-heading" class="text-xl font-semibold text-[color:var(--ink)]">Insert Markdown table</h2>
+				<button
+					type="button"
+					class="secondary-button w-full px-4 sm:w-auto"
+					data-table-builder-close
+				>Close</button>
+			</div>
+			<div class="mt-6 space-y-4">
+				<div>
+					<label for="table-builder-rows" class="block text-sm font-semibold text-[color:var(--ink)]">Rows</label>
+					<input
+						type="number"
+						id="table-builder-rows"
+						name="rows"
+						min="1"
+						max="20"
+						value="2"
+						class="field-input mt-1 w-full"
+						data-table-builder-rows
+					/>
+					<p class="mt-1 text-xs text-slate-500">Total rows including the header (1–20).</p>
+				</div>
+				<div>
+					<label for="table-builder-cols" class="block text-sm font-semibold text-[color:var(--ink)]">Columns</label>
+					<input
+						type="number"
+						id="table-builder-cols"
+						name="cols"
+						min="1"
+						max="20"
+						value="2"
+						class="field-input mt-1 w-full"
+						data-table-builder-cols
+					/>
+					<p class="mt-1 text-xs text-slate-500">Total columns (1–20).</p>
+				</div>
+				<pre
+					class="rounded-2xl border border-slate-200 bg-white p-3 font-mono text-xs text-[color:var(--ink)]"
+					data-table-builder-preview
+					hidden
+				></pre>
+				<div class="flex flex-wrap justify-end gap-3">
+					<button
+						type="button"
+						class="primary-button"
+						data-table-builder-insert
+					>Insert</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}

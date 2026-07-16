@@ -139,6 +139,11 @@ declare global {
     // __cheatsheetCopyBound / __cheatsheetInsertBound pattern
     // (idempotent install on htmx re-render).
     __editorToolbarBound?: boolean;
+    // Issue #610 slice 5: initializeTableBuilder wires the
+    // modal element once per modal. The sentinel mirrors
+    // __articlePreviewWired / __termDisclosureWired (per-modal
+    // not per-trigger).
+    __tableBuilderWired?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;

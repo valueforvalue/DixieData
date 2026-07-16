@@ -4262,6 +4262,7 @@ function serializeDraftFields(form) {
     initializePersonRecordPicker();
     initializeMarkdownCheatsheet();
     initializeEditorToolbar();
+    initializeTableBuilder();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -5912,6 +5913,161 @@ function onPrintRecordsFragmentReady(modal) {
         void action; // currently unused but available for future per-action overrides
       });
     });
+  }
+
+  // initializeTableBuilder wires the article editor's table
+  // builder modal (issue #610 slice 5). The modal ships with
+  // rows + cols numeric inputs (defaults 2x2) + an Insert
+  // button. The Insert handler reads both inputs, generates
+  // a Markdown table skeleton, and calls
+  // window.__dixieInsertTextAtCursor on <textarea
+  // id="article-body">. The preview <pre> in the modal is
+  // updated on every input change so the user sees the
+  // generated Markdown before clicking Insert.
+  //
+  // Generated shape:
+  //   | col 1 | col 2 | ... | col N |
+  //   | --- | --- | ... | --- |
+  //   | cell  | cell  | ... | cell  |
+  //   ... rows-1 more data rows
+  //
+  // Bound enforcement: HTML5 min/max on the inputs (1..20)
+  // is enforced by the browser; the JS handler also clamps
+  // the parsed value to [1, 20] so a pasted-invalid input
+  // can't generate a 0-row or 1000-col table.
+  //
+  // Idempotent via the per-modal __tableBuilderWired sentinel
+  // (mirrors __articlePreviewWired / __termDisclosureWired).
+  function initializeTableBuilder() {
+    const modal = document.querySelector("[data-table-builder-modal]");
+    if (!(modal instanceof HTMLElement)) return;
+    if (modal.__tableBuilderWired === true) return;
+    modal.__tableBuilderWired = true;
+    const rowsInput = modal.querySelector("[data-table-builder-rows]");
+    const colsInput = modal.querySelector("[data-table-builder-cols]");
+    const preview = modal.querySelector("[data-table-builder-preview]");
+    const insertBtn = modal.querySelector("[data-table-builder-insert]");
+    const closeBtn = modal.querySelector("[data-table-builder-close]");
+    if (!(rowsInput instanceof HTMLInputElement)) return;
+    if (!(colsInput instanceof HTMLInputElement)) return;
+    if (!(preview instanceof HTMLElement)) return;
+    if (!(insertBtn instanceof HTMLButtonElement)) return;
+    if (!(closeBtn instanceof HTMLButtonElement)) return;
+
+    // The closures below (clamp + buildTable + refreshPreview)
+    // lose the instanceof narrowing from the top of the
+    // function once they close over rowsInput / colsInput /
+    // preview. Re-narrow inside the closures so the
+    // subsequent .value / .textContent reads type-check under
+    // strictNullChecks (matches the same pattern
+    // initializeArticlePreview uses).
+    /** @type {HTMLInputElement} */
+    var rowsInputEl = rowsInput;
+    /** @type {HTMLInputElement} */
+    var colsInputEl = colsInput;
+    /** @type {HTMLElement} */
+    var previewEl = preview;
+
+    /**
+     * @param {unknown} value
+     * @param {number} min
+     * @param {number} max
+     * @returns {number}
+     */
+    function clamp(value, min, max) {
+      var n = Math.floor(Number(value));
+      if (!Number.isFinite(n)) return min;
+      if (n < min) return min;
+      if (n > max) return max;
+      return n;
+    }
+
+    /**
+     * @param {number} rows
+     * @param {number} cols
+     * @returns {string}
+     */
+    function buildTable(rows, cols) {
+      const header = [];
+      const sep = [];
+      for (var c = 1; c <= cols; c += 1) {
+        header.push("col " + c);
+        sep.push("---");
+      }
+      var lines = [];
+      lines.push("| " + header.join(" | ") + " |");
+      lines.push("| " + sep.join(" | ") + " |");
+      for (var r = 2; r <= rows; r += 1) {
+        const cells = [];
+        for (var cc = 1; cc <= cols; cc += 1) cells.push("cell");
+        lines.push("| " + cells.join(" | ") + " |");
+      }
+      return lines.join("\n");
+    }
+
+    function refreshPreview() {
+      const rows = clamp(rowsInputEl.value, 1, 20);
+      const cols = clamp(colsInputEl.value, 1, 20);
+      const md = buildTable(rows, cols);
+      previewEl.textContent = md;
+      previewEl.removeAttribute("hidden");
+    }
+
+    rowsInput.addEventListener("input", refreshPreview);
+    colsInput.addEventListener("input", refreshPreview);
+
+    closeBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (typeof hideOverlayModal === "function") {
+        hideOverlayModal(modal);
+      } else {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    });
+
+    insertBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const textarea = document.getElementById("article-body");
+      if (!(textarea instanceof HTMLTextAreaElement)) {
+        showToast("Editor textarea not found.", "error");
+        return;
+      }
+      const md = preview.textContent || "";
+      if (!md) {
+        showToast("Nothing to insert.", "error");
+        return;
+      }
+      const insertTextAtCursor = window.__dixieInsertTextAtCursor;
+      if (!insertTextAtCursor) {
+        if (typeof console !== "undefined" && typeof console.warn === "function") {
+          console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Table builder uses raw value splice fallback.");
+        }
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.slice(0, start) + md + textarea.value.slice(end);
+        const cursor = start + md.length;
+        textarea.selectionStart = cursor;
+        textarea.selectionEnd = cursor;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.focus();
+      } else {
+        const ok = insertTextAtCursor(textarea, md);
+        if (!ok) {
+          showToast("Could not insert table.", "error");
+          return;
+        }
+      }
+      showToast("Table inserted.", "success");
+      if (typeof hideOverlayModal === "function") {
+        hideOverlayModal(modal);
+      }
+    });
+
+    // Initial preview paint so the user sees a 2x2 skeleton
+    // the moment the modal opens. refreshPreview also runs on
+    // every input change.
+    refreshPreview();
   }
 
   // ----- Dismiss button on /jobs/{id} (issue #249) -----
