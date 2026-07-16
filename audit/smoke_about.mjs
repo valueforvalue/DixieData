@@ -86,6 +86,20 @@ async function populatedProbe(page) {
     const recentRows = Array.from(
       document.querySelectorAll('[data-about-recent-row]'),
     );
+    // Issue #601: Repository activity heatmap. The
+    // templ emits `data-about-activity-heatmap` host
+    // with a `data-about-activity-heatmap-data` JSON
+    // payload + a `data-about-activity-heatmap-loading`
+    // placeholder paragraph. JS must paint an SVG
+    // inside the host + remove the loading paragraph.
+    // RED (pre-#601 fix): placeholder stays + no SVG.
+    // GREEN: an SVG is present inside the host + the
+    // placeholder is gone.
+    const activityHeatmapHost = document.querySelector('[data-about-activity-heatmap]');
+    const activityHeatmapSVG = activityHeatmapHost
+      ? activityHeatmapHost.querySelector('svg')
+      : null;
+    const activityHeatmapLoading = document.querySelector('[data-about-activity-heatmap-loading]');
     // Issue #564 slice 1: Glossary section + nav link + rows.
     const glossary = document.querySelector('[data-about-glossary]');
     const glossaryNavLink = document.querySelector('[data-about-nav-glossary]');
@@ -116,6 +130,11 @@ async function populatedProbe(page) {
       activitySummaryRendered: !!activitySummary,
       activityContributorCount: activityContributors.length,
       activityIssuesBarRendered: !!activityIssuesBar,
+      // Issue #601 fields (RED): placeholders stay +
+      // no SVG until slice 2 paints them.
+      activityHeatmapHostRendered: !!activityHeatmapHost,
+      activityHeatmapSVGRendered: !!activityHeatmapSVG,
+      activityHeatmapLoadingRendered: !!activityHeatmapLoading,
       // Issue #594 fields.
       recentRendered: !!recent,
       recentEmptyRendered: !!recentEmpty,
@@ -123,6 +142,12 @@ async function populatedProbe(page) {
       recentNavLinkRendered: !!recentNavLink,
       recentRowCount: recentRows.length,
       firstRowPermalink,
+      // Issue #601 fields. RED probe asserts absent
+      // until slice 2 paints the SVG + removes the
+      // loading placeholder.
+      activityHeatmapHostRendered: !!activityHeatmapHost,
+      activityHeatmapSVGRendered: !!activityHeatmapSVG,
+      activityHeatmapLoadingRendered: !!activityHeatmapLoading,
       // Issue #564 slice 1: Glossary section + rows.
       glossaryRendered: !!glossary,
       glossaryNavLinkRendered: !!glossaryNavLink,
@@ -201,6 +226,26 @@ async function populatedProbe(page) {
     await expect(
       state.activityIssuesBarRendered,
       'issues-closed stacked bar renders when baked',
+      state,
+    );
+    // Issue #601: when the activity section is populated
+    // (baked build), the heatmap host renders + an SVG
+    // is painted inside it + the "Loading heatmap..."
+    // placeholder is gone. RED: JS renderer missing;
+    // placeholder stays + no SVG.
+    await expect(
+      state.activityHeatmapHostRendered,
+      'activity heatmap host renders when baked (#601)',
+      state,
+    );
+    await expect(
+      state.activityHeatmapSVGRendered,
+      'activity heatmap paints an SVG inside the host (#601)',
+      state,
+    );
+    await expect(
+      !state.activityHeatmapLoadingRendered,
+      'activity heatmap loading placeholder is removed after paint (#601)',
       state,
     );
   }

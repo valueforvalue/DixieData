@@ -462,3 +462,55 @@ func TestAboutViewRendersGlossarySection(t *testing.T) {
 		}
 	}
 }
+
+// TestAboutViewActivityHeatmapEmitsHostAndLoading pins the
+// templ-side contract that the JS-side heatmap renderer
+// (issue #601) consumes. The templ MUST emit:
+//
+//   - `data-about-activity-heatmap` on the host div (the
+//     renderer reads this to find the element).
+//   - `data-about-activity-heatmap-data="{ ... }"` on the
+//     same host div (the renderer reads the JSON payload
+//     from this attribute).
+//   - `data-about-activity-heatmap-loading` on the inner
+//     placeholder paragraph (the renderer removes it after
+//     painting the SVG).
+//
+// The templ contract pins the data plumbing; the JS
+// renderer in `frontend/app.js::paintAboutActivityHeatmap`
+// is a separate concern. The slice-1 RED probe
+// (`audit/smoke_about.mjs`) asserts the JS side; this
+// test pins the templ side so a future refactor of the
+// attribute names trips the test before the JS
+// silently no-ops.
+func TestAboutViewActivityHeatmapEmitsHostAndLoading(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Activity: &viewmodel.ActivitySnapshotView{
+			GeneratedAt:      "2026-07-20",
+			FirstCommitDate:  "2025-07-15",
+			LatestCommitDate: "2026-07-15",
+			TotalCommits:     1213,
+			TotalContributors: 7,
+			HeatmapData:      `{"2026-07-15":3,"2026-07-14":1}`,
+			TopContributors:  nil,
+			PerRelease:       nil,
+			IssuesClosed:     viewmodel.IssuesClosedView{},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-about-activity-heatmap`,
+		`data-about-activity-heatmap-data="{"`,
+		`data-about-activity-heatmap-loading`,
+		`Loading heatmap...`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about templ activity-heatmap wiring missing %q (#601 slice 1)", want)
+		}
+	}
+}
