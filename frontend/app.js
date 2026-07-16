@@ -2855,6 +2855,17 @@ function serializeDraftFields(form) {
     }
     const days = Array.from(daySet).sort();
     const maxY = computeMaxY(byKind);
+    // Issue #595 slice 2: the width source-of-truth is the host's
+    // clientWidth at paint time, with a 480px fallback for the
+    // first-paint window before the parent flex layout settles
+    // (the Wails WebView2 sometimes reports 0 until the layout
+    // reflow lands). The SVG additionally carries inline
+    // `max-width: 100%; height: auto` so the browser clamps the
+    // rendered SVG to the host's visible bounds even when the
+    // JS-computed width is momentarily larger (e.g. on window
+    // resize between paint and ResizeObserver callback). The
+    // audit probe (audit/smoke_inventory_metrics.mjs) asserts
+    // the SVG width attribute stays within the host bounds.
     const width = Math.max(host.clientWidth || 480, 320);
     const height = 192;
     const padding = { top: 16, right: 16, bottom: 28, left: 36 };
@@ -2865,6 +2876,13 @@ function serializeDraftFields(form) {
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg.setAttribute("width", String(width));
     svg.setAttribute("height", String(height));
+    // Browser-side clamp: never render the SVG wider than the
+    // host, regardless of what `width` says. Combined with
+    // viewBox + height: auto, the path coordinates inside
+    // the viewBox (which respect `padding.left + innerW`) stay
+    // inside the host's visible area on every viewport size.
+    svg.setAttribute("style", "max-width: 100%; height: auto; display: block;");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Activity metrics: per-kind entry counts over time");
     svg.setAttribute("data-inventory-metrics-svg", "");
