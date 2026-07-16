@@ -1,4 +1,4 @@
-// article_md_cheatsheet_test.go — issue #565
+// article_md_cheatsheet_test.go — issue #565 + #610
 // Regression net for the Markdown syntax cheatsheet
 // wiring on the Article editor. The cheatsheet is a
 // Foldout (issue #264 primitive) rendered inside the
@@ -16,10 +16,16 @@
 //     (data-md-cheatsheet-copy-key) AND the raw
 //     example value the clipboard handler copies
 //     (data-md-cheatsheet-copy-value).
+//   - The Insert button (issue #610 slice 3) carries
+//     the registry surface ID (data-md-cheatsheet-insert-key)
+//     so the JS initializer can wire the click handler.
+//   - The editor toolbar (issue #610 slice 4) renders
+//     above the body textarea on both paths.
 //
 // The component-level invariants (Foldout ARIA, row
-// order, no raw HTML in examples) live in
-// components/markdown_cheatsheet_test.go. This file
+// order, no raw HTML in examples, toolbar button list)
+// live in components/markdown_cheatsheet_test.go +
+// components/editor_toolbar_test.go. This file
 // pins the page-level integration only.
 package templates
 
@@ -86,6 +92,33 @@ func TestArticleFormRendersMarkdownCheatsheetBothPaths(t *testing.T) {
 			} {
 				if !strings.Contains(content, key) {
 					t.Errorf("cheatsheet row missing %s on %s path", key, tc.name)
+				}
+			}
+
+			// The Insert button (issue #610 slice 3)
+			// ships per-row alongside the Copy button.
+			// The JS initializer wires it via the
+			// data-md-cheatsheet-insert-key attr.
+			for _, key := range []string{
+				`data-md-cheatsheet-insert-key="heading"`,
+				`data-md-cheatsheet-insert-key="person-record-reference"`,
+				`data-md-cheatsheet-insert-value="[John Doe](#person/D-00123)"`,
+			} {
+				if !strings.Contains(content, key) {
+					t.Errorf("Insert button missing %s on %s path", key, tc.name)
+				}
+			}
+
+			// The editor toolbar (issue #610 slice 4)
+			// ships above the body textarea. The JS
+			// initializer wires every
+			// data-editor-toolbar-action button.
+			for _, action := range []string{
+				"bold", "italic", "heading", "link", "image", "list", "code", "quote", "table",
+			} {
+				marker := `data-editor-toolbar-action="` + action + `"`
+				if !strings.Contains(content, marker) {
+					t.Errorf("editor toolbar missing %s button on %s path", action, tc.name)
 				}
 			}
 		})

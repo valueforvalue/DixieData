@@ -87,6 +87,7 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 				</div>
 				<div>
 					<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body (Markdown)</label>
+					@components.EditorToolbar()
 					<textarea
 						id="article-body"
 						name="body"

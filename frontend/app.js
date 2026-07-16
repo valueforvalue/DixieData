@@ -4261,6 +4261,7 @@ function serializeDraftFields(form) {
     initializeInventoryMetricsChart();
     initializePersonRecordPicker();
     initializeMarkdownCheatsheet();
+    initializeEditorToolbar();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -5825,6 +5826,90 @@ function onPrintRecordsFragmentReady(modal) {
         } catch (error) {
           showToast("Could not copy. Long-press to select.", "error");
         }
+      });
+    });
+  }
+
+  // initializeEditorToolbar wires the article editor's Markdown
+  // toolbar (issue #610 slice 4). The toolbar sits above the
+  // body textarea and carries 9 buttons identified by
+  // data-editor-toolbar-action (bold, italic, heading, link,
+  // image, list, code, quote, table). 8 of them carry a
+  // data-editor-toolbar-template attribute with the Markdown
+  // fragment to insert at cursor; the Table button carries
+  // data-editor-toolbar-opens-modal="table-builder-modal" and
+  // opens the slice-5 modal instead of inserting a static
+  // template.
+  //
+  // Insert wiring mirrors the cheatsheet's (slice 3): read the
+  // template from the data attr, call
+  // window.__dixieInsertTextAtCursor on the article body
+  // textarea. If the helper is missing, fall back to a raw
+  // value splice + manual input event + console.warn (matches
+  // the cheatsheet's fail-loud contract).
+  //
+  // Idempotent via per-element __editorToolbarBound sentinel
+  // (mirror of __cheatsheetCopyBound / __cheatsheetInsertBound).
+  function initializeEditorToolbar() {
+    document.querySelectorAll("[data-editor-toolbar-action]").forEach((button) => {
+      if (button.__editorToolbarBound) {
+        return;
+      }
+      button.__editorToolbarBound = true;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const action = button.getAttribute("data-editor-toolbar-action") || "";
+        // Table action: open the modal instead of inserting
+        // a static template. The modal generates the table
+        // from user-supplied rows + cols.
+        const modalID = button.getAttribute("data-editor-toolbar-opens-modal");
+        if (modalID) {
+          const modal = document.getElementById(modalID);
+          if (modal instanceof HTMLElement) {
+            if (typeof showOverlayModal === "function") {
+              showOverlayModal(modal);
+            } else {
+              modal.classList.remove("hidden");
+              modal.classList.add("flex");
+            }
+            return;
+          }
+          showToast("Table builder unavailable.", "error");
+          return;
+        }
+        const template = button.getAttribute("data-editor-toolbar-template") || "";
+        if (!template) {
+          showToast("Nothing to insert.", "error");
+          return;
+        }
+        const textarea = document.getElementById("article-body");
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          showToast("Editor textarea not found.", "error");
+          return;
+        }
+        const insertTextAtCursor = window.__dixieInsertTextAtCursor;
+        if (!insertTextAtCursor) {
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Editor toolbar uses raw value splice fallback.");
+          }
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          textarea.value = textarea.value.slice(0, start) + template + textarea.value.slice(end);
+          const cursor = start + template.length;
+          textarea.selectionStart = cursor;
+          textarea.selectionEnd = cursor;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+        } else {
+          const ok = insertTextAtCursor(textarea, template);
+          if (!ok) {
+            showToast("Could not insert at cursor.", "error");
+            return;
+          }
+        }
+        const preview = template.length > 40 ? template.slice(0, 40) + "…" : template;
+        showToast("Inserted: " + preview, "success");
+        void action; // currently unused but available for future per-action overrides
       });
     });
   }

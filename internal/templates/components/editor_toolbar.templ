@@ -1,0 +1,85 @@
+// editor_toolbar.templ — issue #610 slice 4
+// Article editor Markdown toolbar: icon row above the body
+// textarea that inserts common Markdown template fragments
+// at the cursor in <textarea id="article-body">.
+//
+// Reuses the insertTextAtCursor shared helper (issue #610
+// slice 2). The toolbar is a plain horizontal flex of
+// <button type="button"> elements — no nested forms, no
+// htmx attrs, no submit participation. The JS initializer
+// (initializeEditorToolbar in frontend/app.js) wires each
+// button to:
+//   1. Look up the template from data-editor-toolbar-template.
+//   2. Call window.__dixieInsertTextAtCursor(textarea, template).
+//   3. Show a toast confirmation.
+//
+// Each button carries three data attrs:
+//   - data-editor-toolbar-action="<key>"   — stable id for the JS
+//   - data-editor-toolbar-template="<md>" — Markdown template to insert
+//   - aria-label="<Human label>"          — screen reader label
+//
+// Locked design decisions (from triage):
+//   - Unicode + text labels, no SVG icon library. The labels
+//     (B, I, H, etc.) render as text so a screen reader /
+//     voice-control user can find them by name; the aria-label
+//     gives the spoken form. A future PR can swap in SVG
+//     without changing the JS contract.
+//   - 9 buttons: Bold, Italic, Heading, Link, Image, List,
+//     Code, Blockquote, Table. Each covers the 90% case.
+//     Extended Markdown (tables of any complexity, footnotes,
+//     definition lists) lives behind the cheatsheet popover.
+//   - The Table button opens the table-builder modal (slice 5)
+//     via showOverlayModal. The 8 non-table buttons insert
+//     templates directly.
+//
+// The toolbar is a pure presentation component — no state,
+// no JavaScript registration. It lives inside the article
+// form (which is fine because every button is type="button"
+// and the dispatcher doesn't pick them up).
+package components
+
+// EditorToolbar renders the 9-button Markdown toolbar that
+// sits above the body textarea in the article editor. The
+// toolbar is hidden when no <textarea id="article-body"> is
+// in the page (so a future reuse on, e.g., the event-source
+// editor picks up the toolbar without extra wiring) — but
+// for v1 it's only rendered on the article new/edit forms.
+templ EditorToolbar() {
+	<div
+		class="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white/60 px-2 py-1"
+		data-editor-toolbar
+		role="toolbar"
+		aria-label="Markdown formatting"
+	>
+		@editorToolbarButton("bold",     "B",       "**bold text**",   "Bold")
+		@editorToolbarButton("italic",   "I",       "*italic text*",   "Italic")
+		@editorToolbarButton("heading",  "H",       "## Heading",      "Heading")
+		@editorToolbarButton("link",     "Link",    "[label](https://)", "Link")
+		@editorToolbarButton("image",    "Image",   "![alt](https://)", "Image")
+		@editorToolbarButton("list",     "List",    "- item",          "List")
+		@editorToolbarButton("code",     "Code",    "`code`",          "Code")
+		@editorToolbarButton("quote",    "Quote",   "> quote",         "Quote")
+		@editorToolbarButton("table",    "Table",   "",                "Table")
+	</div>
+}
+
+// editorToolbarButton renders a single toolbar button. The
+// `template` argument is the Markdown fragment the JS will
+// insert at cursor (empty for the Table action, which opens
+// the table-builder modal instead). The `label` argument is
+// the human-readable name (used as the button's text content
+// + aria-label; screen readers + voice control announce the
+// label, not the abbreviation).
+templ editorToolbarButton(action, label, template, ariaLabel string) {
+	<button
+		type="button"
+		class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg px-2 text-sm font-semibold text-[color:var(--ink)] hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
+		data-editor-toolbar-action={ action }
+		data-editor-toolbar-template={ template }
+		if template == "" {
+			data-editor-toolbar-opens-modal="table-builder-modal"
+		}
+		aria-label={ ariaLabel }
+		title={ ariaLabel }
+	>{ label }</button>
+}

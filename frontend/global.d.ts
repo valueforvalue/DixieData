@@ -134,6 +134,11 @@ declare global {
     // same idempotent install pattern but each needs its own
     // sentinel so re-installs on htmx:load are no-ops.
     __cheatsheetInsertBound?: boolean;
+    // Issue #610 slice 4: initializeEditorToolbar binds once
+    // per toolbar button via this guard. Mirrors the
+    // __cheatsheetCopyBound / __cheatsheetInsertBound pattern
+    // (idempotent install on htmx re-render).
+    __editorToolbarBound?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;
