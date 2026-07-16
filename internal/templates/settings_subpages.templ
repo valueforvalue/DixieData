@@ -180,7 +180,7 @@ templ SettingsDataPanel(confirmationWord string) {
 		<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } method="post" data-dixie-submit="true" class="space-y-4">
 			<label class="block text-sm text-slate-700">
 				Type <code class="font-mono">{ confirmationWord }</code> to confirm.
-				<input type="text" name="confirmation" autocomplete="off" required aria-required="true" class="field-input mt-2" />
+				<input type="text" name="confirmation_word" autocomplete="off" required aria-required="true" class="field-input mt-2" />
 			</label>
 			@components.Button("Initialize Local Archive", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>

@@ -83,7 +83,7 @@ func TestSettingsDataPageRenders(t *testing.T) {
 		`Data`,
 		`id="settings-data-panel"`,
 		`INITIALIZE`,
-		`name="confirmation"`,
+		`name="confirmation_word"`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("SettingsDataPage missing %q", want)
