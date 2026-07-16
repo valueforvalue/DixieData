@@ -1,7 +1,7 @@
 // app_lib_assets_test.go -- issue #609 regression net.
 //
-// Verifies the appshell serves /_lib/debounce.js +
-// /_lib/clipboard.js from the embedded frontend asset
+// Verifies the appshell serves /lib/debounce.js +
+// /lib/clipboard.js from the embedded frontend asset
 // filesystem (or ./frontend on disk if the embed was
 // bypassed). Before this slice, both URLs returned 404
 // from dixiedata-web -- even though the Wails binary
@@ -24,7 +24,7 @@ import (
 )
 
 // TestServeHTTP_LibAssets_ProjectRoot verifies the
-// /_lib/* routes serve the correct file from
+// /lib/* routes serve the correct file from
 // ./frontend on disk (the headless fallback path
 // dixiedata-web + the test harness use, since they
 // bypass WithFrontendAssets). Pins the bytes' shape
@@ -34,7 +34,7 @@ import (
 // script as a module).
 func TestServeHTTP_LibAssets_ProjectRoot(t *testing.T) {
 	app := NewApp()
-	req := httptest.NewRequest(http.MethodGet, "/_lib/debounce.js", nil)
+	req := httptest.NewRequest(http.MethodGet, "/lib/debounce.js", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -44,7 +44,7 @@ func TestServeHTTP_LibAssets_ProjectRoot(t *testing.T) {
 		t.Fatalf("Content-Type=%q, want text/javascript", got)
 	}
 	if body := rec.Body.String(); !strings.Contains(body, "function debounce") && !strings.Contains(body, "debounce(") {
-		t.Fatalf("body did not contain debounce content (issue #609 — /_lib/debounce.js serving wrong bytes?)")
+		t.Fatalf("body did not contain debounce content (issue #609 — /lib/debounce.js serving wrong bytes?)")
 	}
 }
 
@@ -55,7 +55,7 @@ func TestServeHTTP_LibAssets_ProjectRoot(t *testing.T) {
 // regression lands.
 func TestServeHTTP_LibAssets_Clipboard(t *testing.T) {
 	app := NewApp()
-	req := httptest.NewRequest(http.MethodGet, "/_lib/clipboard.js", nil)
+	req := httptest.NewRequest(http.MethodGet, "/lib/clipboard.js", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -72,11 +72,11 @@ func TestServeHTTP_LibAssets_Clipboard(t *testing.T) {
 // bytes the file on disk has. Catches a future
 // refactor that mounts the wrong path or reads
 // a stub. Also catches filesystem-level drift
-// (a user accidentally trims frontend/_lib/).
+// (a user accidentally trims frontend/lib/).
 func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
 	app := NewApp()
 	for _, name := range []string{"debounce.js", "clipboard.js"} {
-		url := "/_lib/" + name
+		url := "/lib/" + name
 		req := httptest.NewRequest(http.MethodGet, url, nil)
 		rec := httptest.NewRecorder()
 		app.ServeHTTP(rec, req)
@@ -93,7 +93,7 @@ func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
 		if err != nil {
 			t.Fatalf("locate repo root: %v", err)
 		}
-		path := filepath.Join(root, "frontend", "_lib", name)
+		path := filepath.Join(root, "frontend", "lib", name)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read disk fallback %s: %v", path, err)
@@ -111,11 +111,11 @@ func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
 func TestServeHTTP_LibAssets_RejectsNonGet(t *testing.T) {
 	app := NewApp()
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		req := httptest.NewRequest(method, "/_lib/debounce.js", nil)
+		req := httptest.NewRequest(method, "/lib/debounce.js", nil)
 		rec := httptest.NewRecorder()
 		app.ServeHTTP(rec, req)
 		if rec.Code != http.StatusMethodNotAllowed {
-			t.Errorf("%s /_lib/debounce.js status=%d, want %d", method, rec.Code, http.StatusMethodNotAllowed)
+			t.Errorf("%s /lib/debounce.js status=%d, want %d", method, rec.Code, http.StatusMethodNotAllowed)
 		}
 	}
 }

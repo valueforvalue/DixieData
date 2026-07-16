@@ -23,11 +23,11 @@
        debounce.js MUST load before app.js so the latter can
        reach `window.__dixieDebounce` at module-init time
        without a race. -->
-  <script defer src="/_lib/debounce.js"></script>
+  <script defer src="/lib/debounce.js"></script>
   <!-- Issue #576: shared clipboard helper. Same loading
        discipline as debounce.js — must be ahead of app.js
        so the IIFE bundle sees window.__dixieCopyText. -->
-  <script defer src="/_lib/clipboard.js"></script>
+  <script defer src="/lib/clipboard.js"></script>
   <script defer src="/app.js"></script>
   <style>
     :root {

@@ -23,7 +23,7 @@
 // timer. The helper exposes `{ schedule, cancel }` for tests
 // that need to wait for or reset the timer without firing.
 //
-// See frontend/_lib/debounce.test.mjs for the pinned
+// See frontend/lib/debounce.test.mjs for the pinned
 // behavior contract and audit/smoke_articles.mjs +
 // audit/smoke_browse_*.mjs for the regression net.
 

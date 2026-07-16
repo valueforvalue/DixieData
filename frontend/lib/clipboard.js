@@ -24,7 +24,7 @@
 // clipboard (modern API success) or after the legacy
 // fallback completes.
 //
-// See frontend/_lib/clipboard.test.mjs for the pinned
+// See frontend/lib/clipboard.test.mjs for the pinned
 // behavior contract.
 
 (function (root) {

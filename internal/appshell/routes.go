@@ -39,8 +39,8 @@ func (a *App) setupRoutes() {
 	r.Get("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
 	r.Get("/boot-theme.js", a.handleBootThemeScript)
 	// Issue #609: frontend/index.html loads the shared
-	// lib scripts at /_lib/debounce.js +
-	// /_lib/clipboard.js before app.js so window.__dixieDebounce
+	// lib scripts at /lib/debounce.js +
+	// /lib/clipboard.js before app.js so window.__dixieDebounce
 	// + window.__dixieCopyText are populated at module-init
 	// time. The Wails binary serves them via //go:embed;
 	// dixiedata-web (and any non-Wails deploy) needs explicit
@@ -49,8 +49,8 @@ func (a *App) setupRoutes() {
 	// initializeArticlePreview, installBrowseFilterDebounce)
 	// bail at the `if (!window.__dixieDebounce) return;`
 	// guard, silently no-oping the user-visible features.
-	r.Get("/_lib/debounce.js", a.handleFrontendLib("debounce.js", "text/javascript; charset=utf-8"))
-	r.Get("/_lib/clipboard.js", a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8"))
+	r.Get("/lib/debounce.js", a.handleFrontendLib("debounce.js", "text/javascript; charset=utf-8"))
+	r.Get("/lib/clipboard.js", a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8"))
 
 	r.Get("/recovery", a.handleRecovery)
 	r.Get("/jobs/active", a.renderActiveJob)

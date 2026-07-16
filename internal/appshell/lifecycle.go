@@ -351,20 +351,20 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 }
 
 // --- handleFrontendLib ---
-// Issue #609: serves files under `/_lib/` (the shared
+// Issue #609: serves files under `/lib/` (the shared
 // frontend utilities like debounce.js + clipboard.js
 // that frontend/index.html loads ahead of app.js).
 // Distinct from handleFrontendAsset above because (a)
-// the URL prefix is `/_lib/`, not `/`, and (b) the
+// the URL prefix is `/lib/`, not `/`, and (b) the
 // embedded asset filesystem path drops the prefix
-// (`_lib/debounce.js`, not `frontend/_lib/debounce.js`).
+// (`lib/debounce.js`, not `frontend/lib/debounce.js`).
 func (a *App) handleFrontendLib(name, contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if r.URL.Path != "/_lib/"+name {
+		if r.URL.Path != "/lib/"+name {
 			http.NotFound(w, r)
 			return
 		}
@@ -383,18 +383,18 @@ func (a *App) handleFrontendLib(name, contentType string) http.HandlerFunc {
 	}
 }
 
-// readFrontendLib reads `frontend/_lib/<name>` from the
+// readFrontendLib reads `frontend/lib/<name>` from the
 // embedded fs (if WithFrontendAssets is wired) or from
 // ./frontend on disk (the headless dev / audit-harness
 // fallback). Mirrors readFrontendAsset.
 func (a *App) readFrontendLib(name string) ([]byte, error) {
-	path := "_lib/" + name
+	path := "lib/" + name
 	if a.frontendAssets != nil {
 		return fs.ReadFile(a.frontendAssets, path)
 	}
-	candidates := []string{filepath.Join("frontend", "_lib", filepath.FromSlash(name))}
+	candidates := []string{filepath.Join("frontend", "lib", filepath.FromSlash(name))}
 	if root, err := appdata.ProjectRoot(); err == nil {
-		candidates = append([]string{filepath.Join(root, "frontend", "_lib", filepath.FromSlash(name))}, candidates...)
+		candidates = append([]string{filepath.Join(root, "frontend", "lib", filepath.FromSlash(name))}, candidates...)
 	}
 	var lastErr error
 	for _, candidate := range candidates {
@@ -453,10 +453,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// safe to call in the pre-mux window.
 			a.handleBootThemeScript(w, r)
 			return
-		case "/_lib/debounce.js":
+		case "/lib/debounce.js":
 			a.handleFrontendLib("debounce.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
-		case "/_lib/clipboard.js":
+		case "/lib/clipboard.js":
 			a.handleFrontendLib("clipboard.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
 		}

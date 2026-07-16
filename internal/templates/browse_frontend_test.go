@@ -121,10 +121,10 @@ global.requestAnimationFrame = windowMock.requestAnimationFrame;
 
 // Issue #573: app.js consumes the shared debounce helper via
 // window.__dixieDebounce. The browser loads the helper via a
-// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// <script defer src="/lib/debounce.js"> ahead of app.js; this
 // harness has no DOM <script>, so pre-load the helper here to
 // keep behavior parity with the live page.
-vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js") });
 
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 
@@ -376,10 +376,10 @@ global.requestAnimationFrame = windowMock.requestAnimationFrame;
 
 // Issue #573: app.js consumes the shared debounce helper via
 // window.__dixieDebounce. The browser loads the helper via a
-// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// <script defer src="/lib/debounce.js"> ahead of app.js; this
 // harness has no DOM <script>, so pre-load the helper here to
 // keep behavior parity with the live page.
-vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js") });
 
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 
@@ -633,10 +633,10 @@ global.requestAnimationFrame = windowMock.requestAnimationFrame;
 
 // Issue #573: app.js consumes the shared debounce helper via
 // window.__dixieDebounce. The browser loads the helper via a
-// <script defer src="/_lib/debounce.js"> ahead of app.js; this
+// <script defer src="/lib/debounce.js"> ahead of app.js; this
 // harness has no DOM <script>, so pre-load the helper here to
 // keep behavior parity with the live page.
-vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "_lib", "debounce.js") });
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js"), "utf8"), { filename: path.join(path.dirname(process.env.APP_JS_PATH), "lib", "debounce.js") });
 
 vm.runInThisContext(fs.readFileSync(process.env.APP_JS_PATH, "utf8"), { filename: process.env.APP_JS_PATH });
 

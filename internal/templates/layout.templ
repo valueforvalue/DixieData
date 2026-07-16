@@ -96,9 +96,17 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		     depend on this). The Wails binary serves these
 		     via //go:embed; dixiedata-web (and any non-Wails
 		     deploy) serves them via the chi mux route at
-		     internal/appshell/routes.go. -->
-		<script defer src="/_lib/debounce.js"></script>
-		<script defer src="/_lib/clipboard.js"></script>
+		     internal/appshell/routes.go.
+
+		     Issue #610: debounce.js loads synchronously
+		     (no defer) so window.__dixieDebounce is
+		     guaranteed available before any DOMContentLoaded
+		     handler fires. WebView2 defer ordering can race;
+		     the file is ~2 KB so the render-block cost is
+		     negligible. clipboard.js has no timing-critical
+		     consumers so it stays deferred. -->
+		<script src="/lib/debounce.js"></script>
+		<script defer src="/lib/clipboard.js"></script>
 		<script defer src="/htmx.min.js"></script>
 		<script defer src="/app.js"></script>
 		<!-- CSS moved to frontend/tailwind.css by PR1. -->

@@ -2691,8 +2691,14 @@ function serializeDraftFields(form) {
     // Typed as the helper's return shape (`(...args) => void` &
     // `{ cancel, schedule }`) so the `busyDebounce.cancel()` /
     // `busyDebounce()` calls type-check under strictNullChecks.
+    // Issue #610: when window.__dixieDebounce is missing (the
+    // /lib/debounce.js script failed to load), we warn once
+    // and fall back to a raw setTimeout clone so the Preview
+    // button still works instead of silently no-opping.
     const debounce = window.__dixieDebounce;
-    if (!debounce) return;
+    if (!debounce && typeof console !== "undefined" && typeof console.warn === "function") {
+      console.warn("DixieData: window.__dixieDebounce missing (/lib/debounce.js not loaded). Article preview uses raw setTimeout fallback.");
+    }
     /** @type {((...args: any[]) => void) & { cancel: () => void; schedule: () => void } | null} */
     let busyDebounce = null;
 
@@ -2749,9 +2755,21 @@ function serializeDraftFields(form) {
         }
         previewBody.innerHTML = "<p class=\"text-sm text-slate-500\">Rendering preview\u2026</p>";
         if (!busyDebounce) {
-          busyDebounce = debounce(() => {
-            requestRender();
-          }, 50);
+          if (debounce) {
+            busyDebounce = debounce(() => {
+              requestRender();
+            }, 50);
+          } else {
+            // Fallback: raw setTimeout when debounce helper unavailable (issue #610).
+            var _fallbackTimer = null;
+            var _fallback = /** @type {any} */ (function () {
+              if (_fallbackTimer !== null) clearTimeout(_fallbackTimer);
+              _fallbackTimer = setTimeout(function () { _fallbackTimer = null; requestRender(); }, 50);
+            });
+            _fallback.cancel = function () { if (_fallbackTimer !== null) { clearTimeout(_fallbackTimer); _fallbackTimer = null; } };
+            _fallback.schedule = _fallback;
+            busyDebounce = _fallback;
+          }
         }
         busyDebounce();
       });
@@ -6270,7 +6288,7 @@ async function refreshShareQueuePresetsPage(panel) {
     // Issue #573: shared debounce helper. Same trailing-edge
     // semantics as the inline impl it replaced (collapse rapid
     // input/change into a single fetch after 150ms of quiet).
-    // The helper is loaded by frontend/_lib/debounce.js via a
+    // The helper is loaded by frontend/lib/debounce.js via a
     // <script defer> in index.html that runs ahead of app.js.
     const debounce = window.__dixieDebounce;
     if (!debounce) return;
