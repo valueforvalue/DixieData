@@ -17,6 +17,7 @@ package parse
 
 import (
 	"sort"
+	"strings"
 )
 
 // GitLogEntry is one parsed line of `git log --format=%aI
@@ -64,6 +65,30 @@ type IssuesSummary struct {
 	GeneratedAt string
 }
 
+// RecentCommit is one parsed line of
+// `git log -n <cap> --format=%H|%aI|%an|%s`, projected to
+// the /about page's Recent commits section. The bake takes
+// the last 25 (or recentCommitsCap) by commit date and stores
+// them in Snapshot.RecentCommits; the templ reads the slice
+// as-is. Hash is the full 40-char SHA1; ShortHash is the
+// 7-char prefix the UI renders as the visible hash text.
+// Date is the YYYY-MM-DD slice of the ISO timestamp; Author
+// is the git user.name; Subject is the first line of the
+// commit message.
+//
+// Issue #594: the parse package owns the RecentCommit type
+// (not the parent activityhistory package) so the bake
+// script can import it without dragging in the package-level
+// `baked` symbol from activityhistory — the same chicken-egg
+// fix that #588 applied to Snapshot itself.
+type RecentCommit struct {
+	Hash      string
+	ShortHash string
+	Date      string
+	Author    string
+	Subject   string
+}
+
 // Snapshot is the baked payload the /about page reads.
 type Snapshot struct {
 	GeneratedAt       string
@@ -75,6 +100,11 @@ type Snapshot struct {
 	TopContributors   []ContributorCount
 	PerRelease        []ReleaseActivity
 	IssuesClosed      IssuesSummary
+	// RecentCommits is the most recent cap commits to the
+	// `dev` branch, projected per the RecentCommit type
+	// above. Newest first. Empty in dev builds (no bake);
+	// the templ renders an empty-state notice in that case.
+	RecentCommits []RecentCommit
 }
 
 // PerDayFromGitLog rolls up a slice of git log entries into
@@ -121,6 +151,64 @@ var canonicalTypeLabels = map[string]bool{
 	"question":      true,
 	"invalid":       true,
 	"wontfix":       true,
+}
+
+// RecentCommitsFromGitLog parses the bake-script's
+// `git log -n <cap> --format=%H|%aI|%an|%s dev` output into
+// a slice of RecentCommit. Newest-first ordering is the
+// git-log default (no --reverse). cap truncates the result
+// after parsing; pass 0 to return all parsed entries.
+//
+// The parser splits each line on the first 3 pipes; anything
+// after the third pipe is the subject. This is defensive
+// against commit messages that contain `|` (rare but legal
+// in the first-line subject). Malformed lines (no pipes)
+// are dropped silently — the bake script's stderr will
+// already surface the upstream git failure.
+//
+// Empty input returns an empty (non-nil) slice so the templ
+// can range over the result without a nil check.
+func RecentCommitsFromGitLog(lines []string, cap int) []RecentCommit {
+	out := make([]RecentCommit, 0, len(lines))
+	for _, line := range lines {
+		// Skip blank lines (git --format can emit leading
+		// newlines on some platforms).
+		if line == "" {
+			continue
+		}
+		// Split on the first 3 pipes; the rest is the subject.
+		// strings.SplitN(line, "|", 4) gives at most 4 parts.
+		parts := strings.SplitN(line, "|", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		hash, isoDate, author, subject := parts[0], parts[1], parts[2], parts[3]
+		if hash == "" || isoDate == "" {
+			continue
+		}
+		// Date: take the YYYY-MM-DD prefix of the ISO
+		// timestamp. Defensive against malformed timestamps
+		// (don't crash on a 5-char string).
+		date := isoDate
+		if len(isoDate) >= 10 {
+			date = isoDate[:10]
+		}
+		shortHash := hash
+		if len(hash) > 7 {
+			shortHash = hash[:7]
+		}
+		out = append(out, RecentCommit{
+			Hash:      hash,
+			ShortHash: shortHash,
+			Date:      date,
+			Author:    author,
+			Subject:   subject,
+		})
+	}
+	if cap > 0 && cap < len(out) {
+		out = out[:cap]
+	}
+	return out
 }
 
 // IssuesClosedFromLabels aggregates a slice of issue labels

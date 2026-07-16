@@ -42,6 +42,14 @@ const rollingWindowDays = 364
 // the snapshot retains. Per issue #586 locked decision.
 const topContributorsCap = 10
 
+// recentCommitsCap is the maximum number of recent commits
+// the /about page's "Recent commits" section renders. Per
+// issue #594 locked decision. The bake takes the last N
+// commits on the `dev` branch (no date filter) and stores
+// them in Snapshot.RecentCommits; the templ reads the slice
+// as-is.
+const recentCommitsCap = 25
+
 func main() {
 	root, err := repoRoot()
 	if err != nil {
@@ -51,6 +59,12 @@ func main() {
 	gitEntries, err := gitLogRolling(root, rollingWindowDays)
 	if err != nil {
 		log.Fatalf("bake-activity: git log: %v", err)
+	}
+	// Issue #594: recent commits for the /about Recent commits
+	// section. Newest-first (git-log default, no --reverse).
+	recentCommitLines, err := gitLogRecentCommits(root, recentCommitsCap)
+	if err != nil {
+		log.Fatalf("bake-activity: git log recent: %v", err)
 	}
 	releases := releasehistory.Baked()
 	perRelease, err := perReleaseActivity(root, releases)
@@ -65,7 +79,7 @@ func main() {
 		log.Printf("bake-activity: gh issues fetch failed (continuing without): %v", err)
 		issues = nil
 	}
-	snap := buildSnapshot(gitEntries, perRelease, issues)
+	snap := buildSnapshot(gitEntries, perRelease, issues, recentCommitLines)
 	out := filepath.Join(root, "internal/activityhistory/baked.go")
 	src, err := render(out, snap)
 	if err != nil {
@@ -74,8 +88,8 @@ func main() {
 	if err := os.WriteFile(out, src, 0o644); err != nil {
 		log.Fatalf("bake-activity: write %s: %v", out, err)
 	}
-	fmt.Printf("bake-activity: wrote snapshot (%d commits, %d releases, %d issues) to %s\n",
-		snap.TotalCommits, len(snap.PerRelease), snap.IssuesClosed.TotalClosed, out)
+	fmt.Printf("bake-activity: wrote snapshot (%d commits, %d releases, %d issues, %d recent) to %s\n",
+		snap.TotalCommits, len(snap.PerRelease), snap.IssuesClosed.TotalClosed, len(snap.RecentCommits), out)
 }
 
 func repoRoot() (string, error) {
@@ -311,7 +325,34 @@ func fetchClosedIssues() ([]parse.IssueLabel, error) {
 }
 
 // buildSnapshot assembles the typed Snapshot from the inputs.
-func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivity, issueLabels []parse.IssueLabel) *parse.Snapshot {
+// gitLogRecentCommits returns the last `cap` commits on the
+// `dev` branch as pipe-separated lines, one per commit. The
+// format string matches the parse package's contract:
+// `<40-char hash>|<ISO timestamp>|<user.name>|<subject>`.
+// The parse package splits on the first 3 pipes; anything
+// after the third pipe is the subject. Issue #594.
+func gitLogRecentCommits(root string, capN int) ([]string, error) {
+	cmd := exec.Command("git", "log",
+		fmt.Sprintf("-n %d", capN),
+		"--format=%H|%aI|%an|%s",
+		"dev",
+	)
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git log recent: %w", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	// Drop any trailing empty line that a final newline
+	// produces. The parse package also drops empty lines, but
+	// trimming here keeps the bake-script's output clean.
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines, nil
+}
+
+func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivity, issueLabels []parse.IssueLabel, recentCommitLines []string) *parse.Snapshot {
 	perDay := parse.PerDayFromGitLog(entries)
 	// Compute top contributors from the rolling entries.
 	contribCounts := make(map[string]int)
@@ -347,6 +388,7 @@ func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivi
 		TopContributors:    counts,
 		PerRelease:         perRelease,
 		IssuesClosed:       issues,
+		RecentCommits:      parse.RecentCommitsFromGitLog(recentCommitLines, recentCommitsCap),
 	}
 }
 
@@ -409,6 +451,14 @@ var baked = &Snapshot{
 		buf.WriteString(fmt.Sprintf("\t\t\t%q: %d,\n", k, snap.IssuesClosed.ByType[k]))
 	}
 	buf.WriteString("\t\t},\n")
+	buf.WriteString("\t},\n")
+	// RecentCommits slice (issue #594). The /about page's
+	// Recent commits section reads this directly. Newest-first.
+	buf.WriteString("\tRecentCommits: []RecentCommit{\n")
+	for _, c := range snap.RecentCommits {
+		buf.WriteString(fmt.Sprintf("\t\t{Hash: %q, ShortHash: %q, Date: %q, Author: %q, Subject: %q},\n",
+			c.Hash, c.ShortHash, c.Date, c.Author, c.Subject))
+	}
 	buf.WriteString("\t},\n")
 	buf.WriteString("}\n")
 	formatted, err := format.Source(buf.Bytes())
