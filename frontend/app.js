@@ -6317,19 +6317,23 @@ function onPrintRecordsFragmentReady(modal) {
         });
       });
 
-      // After the Upload form submits via htmx, switch to
-      // the Pick existing tab so the user sees the result.
+      // After the Upload form submits (data-dixie-submit),
+      // switch to the Pick existing tab after a short delay
+      // so the dispatcher has time to write the response
+      // into data-results-target.
       if (uploadPanel instanceof HTMLElement) {
         var uploadForm = uploadPanel.querySelector("form");
-        if (uploadForm instanceof HTMLElement) {
-          uploadForm.addEventListener("htmx:afterRequest", function () {
-            tabButtons.forEach(function (b) {
-              if (!(b instanceof HTMLElement)) return;
-              if (b.getAttribute("data-image-picker-tab") === "existing") {
-                existingLoaded = true; // mark loaded
-                b.click();
-              }
-            });
+        if (uploadForm instanceof HTMLFormElement) {
+          uploadForm.addEventListener("submit", function () {
+            setTimeout(function () {
+              tabButtons.forEach(function (b) {
+                if (!(b instanceof HTMLElement)) return;
+                if (b.getAttribute("data-image-picker-tab") === "existing") {
+                  existingLoaded = true;
+                  b.click();
+                }
+              });
+            }, 200);
           });
         }
       }

@@ -71,21 +71,20 @@ templ ImagePickerModal(articleID int64) {
 							data-image-picker-tab="existing"
 						>Pick existing</button>
 					</div>
-					// Upload tab panel — htmx POST with
-					// multipart encoding. The Wails dispatcher
-					// converts the multipart body to urlencoded
-					// on wails.localhost; the server falls
-					// through to the native file dialog.
-					// hx-target is the existing-list div so the
-					// server fragment (ArticleImagesListFragment)
-					// lands in the Pick existing tab.
+					// Upload tab panel — uses data-dixie-submit
+					// (not htmx) so the Wails dispatcher in
+					// frontend/app.js handles the multipart-to-
+					// urlencoded workaround on wails.localhost.
+					// The response (ArticleImagesListFragment)
+					// is written into the existing-list div via
+					// data-results-target.
 					<div class="mt-4" data-image-picker-panel="upload">
 						<form
-							hx-post={ templ.URL("/articles/" + fmt.Sprint(articleID) + "/images/import") }
-							hx-encoding="multipart/form-data"
-							hx-target={ fmt.Sprintf("[data-image-picker-existing-list][data-article-id='%d']", articleID) }
-							hx-swap="innerHTML"
+							action={ templ.URL("/articles/" + fmt.Sprint(articleID) + "/images/import") }
+							method="post"
+							enctype="multipart/form-data"
 							data-dixie-submit="true"
+							data-results-target={ fmt.Sprintf("[data-image-picker-existing-list][data-article-id='%d']", articleID) }
 						>
 							<input
 								type="file"
