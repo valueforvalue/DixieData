@@ -51,6 +51,7 @@ templ AboutView(view viewmodel.AboutView) {
 			@aboutIdentitySection(view)
 			@aboutLicenseSection(view)
 			@aboutHistorySection(view)
+			@aboutRecentSection(view)
 			@aboutActivitySection(view)
 		</div>
 	}
@@ -63,6 +64,7 @@ templ aboutInPageNav() {
 			<li><a href="#about.identity" class="text-[var(--theme-text-primary)] underline">App identity</a></li>
 			<li><a href="#about.license" class="text-[var(--theme-text-primary)] underline">License + credits</a></li>
 			<li><a href="#about.history" class="text-[var(--theme-text-primary)] underline">Release history</a></li>
+			<li><a href="#about.recent" class="text-[var(--theme-text-primary)] underline" data-about-nav-recent>Recent commits</a></li>
 			<li><a href="#about.activity" class="text-[var(--theme-text-primary)] underline">Repository activity</a></li>
 		</ul>
 	</nav>
@@ -351,6 +353,61 @@ templ aboutRenderSubsectionList(subs []aboutReleaseSubsection) {
 // "show all N bullets" summary).
 func aboutReleaseTotalBullets(rel viewmodel.ReleaseEntry) int {
 	return len(rel.Added) + len(rel.Changed) + len(rel.Fixed) + len(rel.Removed) + len(rel.Maintenance) + len(rel.Docs)
+}
+
+// aboutRecentSection renders the Recent commits section
+// (anchored #recent, issue #594). The bake captures the
+// last N commits to the `dev` branch (default cap = 25)
+// and the templ renders each as a row with short hash +
+// date + author + subject, all linking to the GitHub commit
+// permalink. When RecentCommits is nil (dev build, no
+// bake) the empty-state copy renders.
+//
+// Sits between Release history (#history) and Repository
+// activity (#activity) per the issue's locked decision.
+// The narrative flow is "what shipped" → "what just
+// landed" → "trend data".
+templ aboutRecentSection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="about.recent" data-about-recent>
+		@components.Heading(components.H2, "Recent commits", "", nil)
+		<p class="text-sm text-slate-600">The most recent commits to the <code class="font-mono">dev</code> branch, baked at release time. Click a row to open the commit on GitHub. Commits within the last 30 days render a relative date; older commits fall back to the ISO date.</p>
+		if len(view.RecentCommits) == 0 {
+			<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.45)] bg-[rgb(var(--theme-amber-100-rgb)/0.6)] p-4 text-sm text-amber-950" data-about-recent-empty>
+				Recent commits will appear after the next build. The bake captures the last 25 commits to the <code class="font-mono">dev</code> branch; run <code class="font-mono">make tpl</code> to refresh.
+			</div>
+		} else {
+			@aboutRecentList(view.RecentCommits)
+		}
+	</section>
+}
+
+// aboutRecentList renders the per-commit rows. Newest first
+// (the bake-script's git-log default). Each row links to
+// the GitHub commit permalink; the short hash is the visible
+// link text. The full hash is also rendered (visually muted)
+// so a user can copy-paste it from the page source.
+templ aboutRecentList(commits []viewmodel.RecentCommitView) {
+	<ul class="divide-y divide-[rgb(var(--theme-sepia-rgb)/0.25)]" data-about-recent-list>
+		for _, c := range commits {
+			<li class="py-2.5 text-sm" data-about-recent-row={ c.Hash }>
+				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+					<a
+						href={ templ.URL("https://github.com/valueforvalue/DixieData/commit/" + c.Hash) }
+						class="font-mono text-[var(--theme-text-primary)] underline shrink-0"
+						data-about-recent-hash
+						data-short-hash={ c.ShortHash }
+					>{ c.ShortHash }</a>
+					<span class="text-xs text-slate-500 shrink-0" data-about-recent-date>{ c.Date }</span>
+					<span class="text-xs text-slate-600 shrink-0" data-about-recent-author>{ c.Author }</span>
+					<a
+						href={ templ.URL("https://github.com/valueforvalue/DixieData/commit/" + c.Hash) }
+						class="grow text-[var(--theme-text-primary)] hover:underline"
+						data-about-recent-subject
+					>{ c.Subject }</a>
+				</div>
+			</li>
+		}
+	</ul>
 }
 
 // aboutActivitySection renders the Repository activity

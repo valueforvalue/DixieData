@@ -53,6 +53,21 @@ type IssuesSummary = parse.IssuesSummary
 // Snapshot is the baked payload the /about page reads.
 type Snapshot = parse.Snapshot
 
+// RecentCommit is one parsed line of `git log -n <cap>`,
+// projected to the /about page's Recent commits section.
+// Aliased from the parse sub-package so existing consumers
+// (appshell handler) continue to reference
+// activityhistory.RecentCommit unchanged. Issue #594.
+type RecentCommit = parse.RecentCommit
+
+// RecentCommitsFromGitLog parses the bake-script's
+// `git log -n <cap> --format=%H|%aI|%an|%s` output into a
+// slice of RecentCommit. Aliased from the parse sub-package.
+// Issue #594.
+func RecentCommitsFromGitLog(lines []string, capN int) []RecentCommit {
+	return parse.RecentCommitsFromGitLog(lines, capN)
+}
+
 // PerDayFromGitLog rolls up a slice of git log entries into
 // the per-day commit count map. Days not present in the
 // input are absent from the map (not zero).

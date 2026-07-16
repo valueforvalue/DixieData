@@ -389,3 +389,94 @@ func TestAboutViewActivitySectionBaked(t *testing.T) {
 		}
 	}
 }
+
+// TestAboutViewRecentSectionEmptyState pins the issue #594
+// dev-build shape: when RecentCommits is nil/empty, the
+// section renders the empty-state notice + the
+// `data-about-recent-empty` attribute the audit probe
+// asserts.
+func TestAboutViewRecentSectionEmptyState(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		RecentCommits: nil,
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `id="about.recent"`) {
+		t.Errorf("about page missing the about.recent section anchor")
+	}
+	if !strings.Contains(content, `data-about-recent`) {
+		t.Errorf("about page missing the data-about-recent attribute")
+	}
+	if !strings.Contains(content, `data-about-recent-empty`) {
+		t.Errorf("about page missing the recent-commits empty-state wrapper")
+	}
+	if !strings.Contains(content, "Recent commits will appear after the next build") {
+		t.Errorf("about page missing the recent-commits empty-state copy")
+	}
+	if !strings.Contains(content, `data-about-nav-recent`) {
+		t.Errorf("about page in-page nav missing the recent-commits link")
+	}
+}
+
+// TestAboutViewRecentSectionBaked pins the issue #594
+// populated shape: when RecentCommits has entries, the
+// section renders one <li> per commit with the short hash
+// (anchor text), the full hash (data attr for the audit
+// probe), the ISO date, the author, and the subject. Each
+// hash + subject link to the GitHub commit permalink.
+func TestAboutViewRecentSectionBaked(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		RecentCommits: []viewmodel.RecentCommitView{
+			{
+				Hash:      "abcdef1234567890abcdef1234567890abcdef12",
+				ShortHash: "abcdef1",
+				Date:      "2026-07-15",
+				Author:    "Jeremy Morris",
+				Subject:   "fix: the bug",
+			},
+			{
+				Hash:      "1234567890abcdef1234567890abcdef12345678",
+				ShortHash: "1234567",
+				Date:      "2026-07-14",
+				Author:    "Jane Doe",
+				Subject:   "feat: the feature",
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`id="about.recent"`,
+		`data-about-recent`,
+		`data-about-recent-list`,
+		`data-about-recent-row="abcdef1234567890abcdef1234567890abcdef12"`,
+		`data-about-recent-row="1234567890abcdef1234567890abcdef12345678"`,
+		`data-about-recent-hash`,
+		`data-about-recent-date`,
+		`data-about-recent-author`,
+		`data-about-recent-subject`,
+		`Jeremy Morris`,
+		`Jane Doe`,
+		`fix: the bug`,
+		`feat: the feature`,
+		`https://github.com/valueforvalue/DixieData/commit/abcdef1234567890abcdef1234567890abcdef12`,
+		`https://github.com/valueforvalue/DixieData/commit/1234567890abcdef1234567890abcdef12345678`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about page recent-commits section missing %q", want)
+		}
+	}
+	// Empty-state wrapper must NOT render when the slice is
+	// populated (the templ branches on len()).
+	if strings.Contains(content, `data-about-recent-empty`) {
+		t.Errorf("about page recent-commits rendered empty-state wrapper despite populated slice")
+	}
+}
