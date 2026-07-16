@@ -514,3 +514,44 @@ func TestAboutViewActivityHeatmapEmitsHostAndLoading(t *testing.T) {
 		}
 	}
 }
+
+// TestAboutViewRecentListBoundedHeight pins the issue
+// #603 contract: the Recent commits <ul> wraps in a
+// bounded height + inner scroll viewport so the list
+// does not push the rest of /about down when the
+// build carries many baked commits.
+//
+//   - The wrapper carries max-h-96 + sm:max-h-[32rem] +
+//     overflow-y-auto so it acts as the scroll viewport.
+//   - The data-about-recent-list hook is on the inner
+//     <ul> (audit invariant).
+//   - Every baked row reaches the DOM (the bounded
+//     container clips visually, not the content list).
+func TestAboutViewRecentListBoundedHeight(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		RecentCommits: []viewmodel.RecentCommitView{
+			{Hash: "abc1234567890def1234567890def1234567890", ShortHash: "abc1234", Date: "2026-07-15", Author: "Jeremy Morris", Subject: "first commit"},
+			{Hash: "def2345678901def2345678901def2345678901ab", ShortHash: "def2345", Date: "2026-07-14", Author: "Jeremy Morris", Subject: "second commit"},
+			{Hash: "3456789012def3456789012def3456789012def3", ShortHash: "3456789", Date: "2026-07-13", Author: "Jeremy Morris", Subject: "third commit"},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-about-recent-list`,
+		`max-h-96`,
+		`sm:max-h-[32rem]`,
+		`overflow-y-auto`,
+		`>abc1234<`,
+		`>def2345<`,
+		`>3456789<`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about recent-list wrapper missing %q (#603)", want)
+		}
+	}
+}

@@ -220,10 +220,16 @@ templ aboutRecentSection(view viewmodel.AboutView) {
 // link text. The full hash is also rendered (visually muted)
 // so a user can copy-paste it from the page source.
 templ aboutRecentList(commits []viewmodel.RecentCommitView) {
-	<ul class="divide-y divide-[rgb(var(--theme-sepia-rgb)/0.25)]" data-about-recent-list>
-		for _, c := range commits {
-			<li class="py-2.5 text-sm" data-about-recent-row={ c.Hash }>
-				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+	// Issue #603: bounded height + inner scroll so
+	// the list does not push the rest of /about down
+	// when the build carries many baked commits. The
+	// cap is 24rem on small screens / 32rem on `sm:`
+	// so 6-7 commits stay visible before scrolling.
+	<div class="max-h-96 overflow-y-auto sm:max-h-[32rem]">
+		<ul class="divide-y divide-[rgb(var(--theme-sepia-rgb)/0.25)]" data-about-recent-list>
+			for _, c := range commits {
+				<li class="py-2.5 text-sm" data-about-recent-row={ c.Hash }>
+					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<a
 						href={ templ.URL("https://github.com/valueforvalue/DixieData/commit/" + c.Hash) }
 						class="font-mono text-[var(--theme-text-primary)] underline shrink-0"
@@ -240,7 +246,8 @@ templ aboutRecentList(commits []viewmodel.RecentCommitView) {
 				</div>
 			</li>
 		}
-	</ul>
+		</ul>
+	</div>
 }
 
 // aboutActivitySection renders the Repository activity

@@ -86,6 +86,13 @@ async function populatedProbe(page) {
     const recentRows = Array.from(
       document.querySelectorAll('[data-about-recent-row]'),
     );
+    // Issue #603: recent-list wrapper carries the
+    // scroll-viewport utility classes.
+    const recentListEl = document.querySelector('[data-about-recent-list]');
+    const recentListWrapper = recentListEl ? recentListEl.parentElement : null;
+    const recentListWrapperClassList = recentListWrapper
+      ? Array.from(recentListWrapper.classList)
+      : [];
     // Issue #601: Repository activity heatmap. The
     // templ emits `data-about-activity-heatmap` host
     // with a `data-about-activity-heatmap-data` JSON
@@ -176,6 +183,9 @@ async function populatedProbe(page) {
       recentListRendered: !!recentList,
       recentNavLinkRendered: !!recentNavLink,
       recentRowCount: recentRows.length,
+      // Issue #603 fields.
+      recentListWrapperClassList: recentListWrapperClassList,
+      recentListWrapperIsRecentListParent: recentListEl ? recentListEl.parentElement === recentListWrapper : false,
       firstRowPermalink,
       // Issue #601 fields. RED probe asserts absent
       // until slice 2 paints the SVG + removes the
@@ -355,6 +365,23 @@ async function populatedProbe(page) {
     await expect(
       state.recentRowCount > 0,
       `at least one recent commit row rendered (got ${state.recentRowCount})`,
+      state,
+    );
+    // Issue #603: recent-list is wrapped in a
+    // bounded scroll viewport.
+    await expect(
+      state.recentListWrapperClassList.includes('max-h-96'),
+      `recent-list wrapper carries max-h-96 utility class (got ${state.recentListWrapperClassList.join(' ')})`,
+      state,
+    );
+    await expect(
+      state.recentListWrapperClassList.includes('overflow-y-auto'),
+      `recent-list wrapper carries overflow-y-auto utility class (got ${state.recentListWrapperClassList.join(' ')})`,
+      state,
+    );
+    await expect(
+      state.recentListWrapperClassList.some((c) => c.startsWith('sm:max-h-')),
+      `recent-list wrapper carries responsive sm:max-h-* utility class (got ${state.recentListWrapperClassList.join(' ')})`,
       state,
     );
     // The permalink must match the GitHub commit URL shape:
