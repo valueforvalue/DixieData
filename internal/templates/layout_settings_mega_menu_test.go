@@ -59,3 +59,21 @@ func TestLayoutSettingsMegaMenuPosition(t *testing.T) {
 		t.Errorf("nav order off: share-review=%d, settings=%d, about=%d (expected share-review < settings < about)", shareReview, settings, about)
 	}
 }
+
+// TestLayoutNoLegacySettingsPill pins the cleanup from #584.
+// The legacy flat pill <a href="/settings" class="pill-link
+// top-nav-link">Settings</a> was replaced by the Settings
+// mega-menu trigger (issue #592). The floating-dock Quick Nav
+// panel keeps a flat "Settings" entry by design (#380 OQ4 lock
+// slice 4), so we assert against the specific top-nav marker
+// class rather than all "Settings" occurrences.
+func TestLayoutNoLegacySettingsPill(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Layout.Render: %v", err)
+	}
+	content := buf.String()
+	if strings.Contains(content, `class="pill-link top-nav-link">Settings</a>`) {
+		t.Errorf("legacy flat <a class=\"pill-link top-nav-link\">Settings</a> is still in the top nav (issue #592)")
+	}
+}

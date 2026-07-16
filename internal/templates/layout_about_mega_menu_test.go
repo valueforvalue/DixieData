@@ -42,17 +42,29 @@ func TestLayoutAboutMegaMenuTriggerPresent(t *testing.T) {
 // TestLayoutAboutMegaMenuPosition pins the nav order: Records
 // / Share & Review / Settings / About. About is the rightmost
 // mega-menu (per the locked decision: far right) and lands
-// AFTER the Settings pill link.
+// AFTER the Settings mega-menu trigger.
+//
+// We anchor on the Settings mega-menu trigger marker
+// (`data-mega-menu-trigger="layout.settings.menu"`) rather
+// than the loose `href="/settings"` substring because the
+// floating-dock Quick Nav panel also contains an `<a
+// href="/settings">` entry by design (#380 OQ4 lock slice 4)
+// that appears AFTER the top-nav About mega-menu in the
+// rendered HTML. The trigger marker scopes the assertion to
+// the top nav only. (Before the issue #592 cleanup, the
+// stale top-nav pill link happened to satisfy the loose
+// substring match; once the pill is removed, the assertion
+// must use the trigger marker to stay top-nav-scoped.)
 func TestLayoutAboutMegaMenuPosition(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Layout.Render: %v", err)
 	}
 	content := buf.String()
-	settingsIdx := strings.Index(content, `href="/settings"`)
+	settingsIdx := strings.Index(content, `data-mega-menu-trigger="layout.settings.menu"`)
 	aboutIdx := strings.Index(content, `data-mega-menu-trigger="layout.about.menu"`)
 	if settingsIdx < 0 {
-		t.Fatalf("settings link not found in nav")
+		t.Fatalf("settings mega-menu trigger not found in nav")
 	}
 	if aboutIdx < 0 {
 		t.Fatalf("about mega-menu trigger not found in nav")
