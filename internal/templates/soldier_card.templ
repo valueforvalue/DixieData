@@ -559,7 +559,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				</div>
 				if len(s.SourceRecords) > 0 {
 					<section id={ uiids.PanelSoldierDetailRecords } class="relative">
-						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
+						<h3 class="mt-8 text-lg gold font-semibold">@components.TermDisclosure("source-record", components.TermDisclosureSourceRecordShort(), templ.Raw("Source Records"))</h3>
 						@SoldierRecordsListFragment(s.ID, s.SourceRecords)
 					</section>
 				}

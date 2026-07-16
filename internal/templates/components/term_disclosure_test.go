@@ -92,6 +92,28 @@ func TestTermDisclosureReadInGlossaryAnchorURL(t *testing.T) {
 // 2 known slugs + the unknown-slug-misses-cleanly contract.
 // Future slices extend the switch; this test fires if a
 // future refactor accidentally drops one of the 2 entries.
+// TestTermDisclosureExportedWrappers pins the exported
+// wrappers (slice 3+ added 3 more: source-record, claim,
+// finding). The wrappers are the public API callers use
+// so the helper itself stays private.
+func TestTermDisclosureExportedWrappers(t *testing.T) {
+	if got := TermDisclosureDisplayIDShort(); got == "" {
+		t.Errorf("TermDisclosureDisplayIDShort returned empty")
+	}
+	if got := TermDisclosurePersonRecordShort(); got == "" {
+		t.Errorf("TermDisclosurePersonRecordShort returned empty")
+	}
+	if got := TermDisclosureSourceRecordShort(); got == "" {
+		t.Errorf("TermDisclosureSourceRecordShort returned empty")
+	}
+	if got := TermDisclosureClaimShort(); got == "" {
+		t.Errorf("TermDisclosureClaimShort returned empty")
+	}
+	if got := TermDisclosureFindingShort(); got == "" {
+		t.Errorf("TermDisclosureFindingShort returned empty")
+	}
+}
+
 func TestTermDisclosureShortLookup(t *testing.T) {
 	tests := []struct {
 		slug string
@@ -99,6 +121,9 @@ func TestTermDisclosureShortLookup(t *testing.T) {
 	}{
 		{slug: "display-id", want: "The canonical user-facing identifier for a Person Record."},
 		{slug: "person-record", want: "A primary archive entry for one person (soldier, wife, widow, linked person, or event)."},
+		{slug: "source-record", want: "An attached evidence item that documents or supports a Person Record (pension, application, etc.)."},
+		{slug: "claim", want: "An assertion about a person that is extracted from a Source Record."},
+		{slug: "finding", want: "A researcher-endorsed conclusion reached by weighing one or more Claims."},
 		{slug: "definitely-not-a-real-slug", want: ""},
 	}
 	for _, tt := range tests {

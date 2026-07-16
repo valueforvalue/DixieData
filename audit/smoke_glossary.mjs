@@ -105,18 +105,18 @@ async function populatedProbe(page) {
     return { triggers, panels, readLinks };
   });
   await expect(
-    baseline.triggers.length === 2,
-    `2 term-disclosure triggers render (got ${baseline.triggers.length})`,
+    baseline.triggers.length === 3,
+    `3 term-disclosure triggers render (got ${baseline.triggers.length})`,
     baseline,
   );
-  for (const want of ['display-id', 'person-record']) {
+  for (const want of ['display-id', 'person-record', 'source-record']) {
     await expect(
       baseline.triggers.some((t) => t.slug === want),
       `trigger for "${want}" renders`,
       baseline,
     );
   }
-  for (const want of ['display-id', 'person-record']) {
+  for (const want of ['display-id', 'person-record', 'source-record']) {
     const trig = baseline.triggers.find((t) => t.slug === want);
     await expect(
       trig.expanded === 'false',
@@ -124,7 +124,7 @@ async function populatedProbe(page) {
       baseline,
     );
   }
-  for (const want of ['display-id', 'person-record']) {
+  for (const want of ['display-id', 'person-record', 'source-record']) {
     const panel = baseline.panels.find((p) => p.slug === want);
     await expect(
       panel.hidden,
@@ -132,7 +132,7 @@ async function populatedProbe(page) {
       baseline,
     );
   }
-  for (const want of ['display-id', 'person-record']) {
+  for (const want of ['display-id', 'person-record', 'source-record']) {
     const link = baseline.readLinks.find((l) => l.slug === want);
     await expect(
       link && link.href === `/about#about.glossary-${want}`,

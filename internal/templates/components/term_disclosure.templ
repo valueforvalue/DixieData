@@ -104,6 +104,12 @@ func termDisclosureShort(slug string) string {
 		return "The canonical user-facing identifier for a Person Record."
 	case "person-record":
 		return "A primary archive entry for one person (soldier, wife, widow, linked person, or event)."
+	case "source-record":
+		return "An attached evidence item that documents or supports a Person Record (pension, application, etc.)."
+	case "claim":
+		return "An assertion about a person that is extracted from a Source Record."
+	case "finding":
+		return "A researcher-endorsed conclusion reached by weighing one or more Claims."
 	}
 	return ""
 }
@@ -121,4 +127,26 @@ func TermDisclosureDisplayIDShort() string {
 // the literal.
 func TermDisclosurePersonRecordShort() string {
 	return termDisclosureShort("person-record")
+}
+
+// TermDisclosureSourceRecordShort exports the
+// source-record short string so callers (soldier_card
+// "Source Records" h3, slice 3) can pass it without
+// hardcoding the literal.
+func TermDisclosureSourceRecordShort() string {
+	return termDisclosureShort("source-record")
+}
+
+// TermDisclosureClaimShort exports the claim short
+// string for any slice-3 apply site that renders the
+// "Claim" label.
+func TermDisclosureClaimShort() string {
+	return termDisclosureShort("claim")
+}
+
+// TermDisclosureFindingShort exports the finding short
+// string for any slice-3 apply site that renders the
+// "Finding" label.
+func TermDisclosureFindingShort() string {
+	return termDisclosureShort("finding")
 }
