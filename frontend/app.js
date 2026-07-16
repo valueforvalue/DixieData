@@ -2669,9 +2669,17 @@ function serializeDraftFields(form) {
   // with the sanitized HTML response. Empty body renders
   // the guidance message so the preview pane is never
   // blank.
+  // Issue #607: idempotent install via per-modal flag.
+  // Mirrors __inventoryChartPainted (issue #583),
+  // __termDisclosureWired (issue #564). Without this
+  // guard, moving the install site into
+  // initializeDynamicContent would compound per-trigger
+  // click listeners on every htmx:load swap.
   function initializeArticlePreview() {
     const modal = document.querySelector("[data-article-preview-modal]");
     if (!(modal instanceof HTMLElement)) return;
+    if (modal.__articlePreviewWired === true) return;
+    modal.__articlePreviewWired = true;
     const body = modal.querySelector("[data-article-preview-body]");
     if (!(body instanceof HTMLElement)) return;
     const source = document.getElementById("article-body");
@@ -4231,6 +4239,11 @@ function serializeDraftFields(form) {
     initializeInventoryMetricsChart();
     initializePersonRecordPicker();
     initializeMarkdownCheatsheet();
+    // Issue #607: article preview modal (Preview button
+    // on /articles/{id}/edit + /articles/new). Idempotent
+    // via the per-modal __articlePreviewWired flag so
+    // re-installs on htmx:load are no-ops.
+    initializeArticlePreview();
     // installFoldouts is idempotent (guarded by
     // window.__foldoutDocHandlerBound) so calling it here on
     // every htmx:load is safe. The per-trigger loop inside

@@ -136,6 +136,12 @@ declare global {
     // prevents double-painting on htmx:load re-renders
     // (mirror of __inventoryChartPainted).
     __aboutHeatmapPainted?: boolean;
+    // Issue #607: initializeArticlePreview wires the
+    // Preview button click handler + the modal close +
+    // Escape handlers once per modal element. The guard
+    // keeps installs idempotent on htmx:load re-renders
+    // (mirror of __inventoryChartPainted).
+    __articlePreviewWired?: boolean;
   }
 }
 

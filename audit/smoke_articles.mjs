@@ -455,6 +455,40 @@ try {
       return { modalClosed: modal ? modal.classList.contains('hidden') : false };
     });
     record('editor-preview-close-closes-modal', closedState.modalClosed, closedState);
+
+    // Issue #607 regression net: after the cold-start
+    // install wires the handler, a second fill+click must
+    // ALSO open the modal (proving the handler is wired
+    // twice without compounding listeners). The
+    // per-modal __articlePreviewWired flag must also be
+    // set so re-installs on htmx:load are idempotent.
+    if (editorState.previewTriggerExists) {
+      await page.fill('[data-article-editor-source]', '# Second preview\n\nStill **bold**.');
+      await page.click('[data-article-preview-open]');
+      await wait(600);
+      const secondPreview = await page.evaluate(() => {
+        const modal = document.querySelector('[data-article-preview-modal]');
+        const body = document.querySelector('[data-article-preview-body]');
+        return {
+          modalOpen: modal ? !modal.classList.contains('hidden') : false,
+          // Guard check: the per-modal flag must be set
+          // after the first install so subsequent
+          // installs are no-ops (idempotent).
+          guardSet: modal ? modal.__articlePreviewWired === true : false,
+          hasH1: body ? body.innerHTML.includes('<h1>') : false,
+        };
+      });
+      record(
+        'editor-preview-second-click-opens-modal (#607)',
+        secondPreview.modalOpen,
+        secondPreview,
+      );
+      record(
+        'editor-preview-modal-guard-installed (#607)',
+        secondPreview.guardSet,
+        secondPreview,
+      );
+    }
   }
 
   // ────────────────────────────────────────────────────────────
