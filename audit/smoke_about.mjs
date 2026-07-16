@@ -56,6 +56,7 @@ async function populatedProbe(page) {
     const identity = document.querySelector('[data-about-identity]');
     const license = document.querySelector('[data-about-license]');
     const history = document.querySelector('[data-about-history]');
+    const historyNav = document.querySelector('[data-about-nav-history]');
     const activity = document.querySelector('[data-about-activity]');
     const inPageNav = document.querySelector('[data-about-in-page-nav]');
     const identityFields = {
@@ -95,6 +96,7 @@ async function populatedProbe(page) {
       identityRendered: !!identity,
       licenseRendered: !!license,
       historyRendered: !!history,
+      historyNavRendered: !!historyNav,
       activityRendered: !!activity,
       inPageNavRendered: !!inPageNav,
       identityFields,
@@ -119,9 +121,23 @@ async function populatedProbe(page) {
   await expect(state.pageRendered, 'about page renders', state);
   await expect(state.identityRendered, 'identity section renders', state);
   await expect(state.licenseRendered, 'license section renders', state);
-  await expect(state.historyRendered, 'history section renders', state);
+  await expect(state.historyRendered, 'history section renders (issue #585)', state);
   await expect(state.activityRendered, 'activity section renders (#586)', state);
   await expect(state.inPageNavRendered, 'in-page nav strip renders', state);
+  // Issue #598: Release history is dropped — /about has 4
+  // sections, not 5. The history section + the nav-strip link
+  // to it are gone (the recent commits section, #594, is the
+  // replacement for "what just landed").
+  await expect(
+    !state.historyRendered,
+    'history section is absent (issue #598 — release history dropped)',
+    state,
+  );
+  await expect(
+    !state.historyNavRendered,
+    'in-page nav strip does NOT link to #about.history (issue #598)',
+    state,
+  );
   await expect(
     state.identityFields.app === 'DixieData',
     `app name is "DixieData" (got ${state.identityFields.app})`,
@@ -149,24 +165,14 @@ async function populatedProbe(page) {
     `credits cover the 6 locked dependencies (got ${JSON.stringify(state.credits)})`,
     state,
   );
-  // The history section is either populated (release baked) or
-  // shows the empty-state copy (no bake). One of the two must
-  // be present, never both.
-  await expect(
-    state.emptyRendered !== state.releaseCount > 0,
-    'history is either empty-state or has releases, not both',
-    state,
-  );
-  if (state.releaseCount > 0) {
-    console.log(`  ok: ${state.releaseCount} release(s) rendered`);
-    if (state.releaseCount > 10) {
-      await expect(
-        state.collapseRendered,
-        'history collapse toggle renders when 10+ releases are baked',
-        state,
-      );
-    }
-  }
+  // Issue #598: release-history surface is entirely gone. The
+  // about_handlers_test.go's TestBuildAboutViewReleasesFlatten
+  // is removed; the templ no longer renders the section. Probe
+  // asserts no release cards + no collapse toggle + no history
+  // empty-state are present (the section is absent, period).
+  await expect(state.releaseCount === 0, 'no release cards rendered (issue #598)', state);
+  await expect(!state.collapseRendered, 'history collapse toggle is absent (issue #598)', state);
+  await expect(!state.emptyRendered, 'history empty-state is absent (issue #598)', state);
   // Activity section (#586): either populated or empty-state.
   await expect(
     state.activityEmptyRendered !== state.activitySummaryRendered,

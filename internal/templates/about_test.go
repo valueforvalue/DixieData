@@ -480,3 +480,38 @@ func TestAboutViewRecentSectionBaked(t *testing.T) {
 		t.Errorf("about page recent-commits rendered empty-state wrapper despite populated slice")
 	}
 }
+
+// TestAboutViewNoReleaseHistorySection pins the issue #598
+// post-drop surface: the Release history section is gone.
+// The templ no longer renders `data-about-history` or any
+// `data-about-release` card. The recent commits section
+// (#594) is the replacement for "what just landed".
+//
+// RED (before Slice 3 lands): the templ still renders
+// `aboutHistorySection`; this test fails.
+// GREEN (after Slice 3 lands): the section is gone.
+func TestAboutViewNoReleaseHistorySection(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		// Baked-state would be irrelevant after the drop;
+		// the templ does not consult view.Releases at all.
+		Releases: nil,
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`id="about.history"`,
+		`data-about-history`,
+		`data-about-history-empty`,
+		`data-about-history-collapse`,
+		`data-about-release`,
+		`data-about-nav-history`,
+	} {
+		if strings.Contains(content, want) {
+			t.Errorf("about page still renders %q after issue #598 (release history dropped)", want)
+		}
+	}
+}
