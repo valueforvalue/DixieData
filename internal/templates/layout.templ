@@ -225,7 +225,8 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/updates" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-updates">Software updates</a></li>`),
 								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/maintenance" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-maintenance">Maintenance</a></li>`),
 								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/data" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-data">Data</a></li>`),
-								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/build" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-build">Build information</a></li>`),
+								// Issue #599: /settings/build removed — /about is
+								// canonical for build info (app identity section).
 								templ.Raw(`<li role="none"><a role="menuitem" href="/settings/diagnostics" class="mega-menu-item pill-link justify-start w-full" data-marker="settings-diagnostics">Diagnostics</a></li>`),
 							},
 						},

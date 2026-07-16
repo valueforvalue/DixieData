@@ -339,14 +339,15 @@ func About() string {
 }
 
 // SettingsSection returns the path to a /settings/<section>
-// sub-page (issue #584). The section must be one of the
-// canonical names exposed by the Settings mega-menu
-// (appearance, updates, maintenance, data, build, diagnostics).
-// Unknown sections return /settings (the index page) so a
-// templ refactor never 404s the user.
+// sub-page (issue #584, #599). The section must be one of
+// the canonical names exposed by the Settings mega-menu
+// (appearance, updates, maintenance, data, diagnostics).
+// Issue #599: "build" was removed — build info now lives
+// on /about. Unknown sections return /settings (the index
+// page) so a templ refactor never 404s the user.
 func SettingsSection(section string) string {
 	switch section {
-	case "appearance", "updates", "maintenance", "data", "build", "diagnostics":
+	case "appearance", "updates", "maintenance", "data", "diagnostics":
 		return "/settings/" + section
 	}
 	return "/settings"

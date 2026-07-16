@@ -28,7 +28,8 @@ const SUBPAGES = [
   { section: 'updates', pageId: 'page.settings.updates', marker: 'settings-updates' },
   { section: 'maintenance', pageId: 'page.settings.maintenance', marker: 'settings-maintenance' },
   { section: 'data', pageId: 'page.settings.data', marker: 'settings-data' },
-  { section: 'build', pageId: 'page.settings.build', marker: 'settings-build' },
+  // Issue #599: build destination removed; build info now
+  // lives on /about (the App identity section).
   { section: 'diagnostics', pageId: 'page.settings.diagnostics', marker: 'settings-diagnostics' },
 ];
 
@@ -69,8 +70,8 @@ async function indexProbe(page) {
       targets,
     };
   });
-  await expect(state.indexRendered, '/settings index renders the 6-destination grid', state);
-  const want = ['appearance', 'build', 'data', 'diagnostics', 'maintenance', 'updates'];
+  await expect(state.indexRendered, '/settings index renders the 5-destination grid', state);
+  const want = ['appearance', 'data', 'diagnostics', 'maintenance', 'updates'];
   await expect(
     JSON.stringify(state.targets) === JSON.stringify(want),
     `/settings index lists all 6 destinations (got ${JSON.stringify(state.targets)})`,

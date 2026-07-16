@@ -30,12 +30,15 @@ templ settingsBreadcrumb(section string) {
 	</nav>
 }
 
-// SettingsIndex renders the 6-destination grid the /settings
+// SettingsIndex renders the 5-destination grid the /settings
 // page now shows above the inline panels. Each destination
 // links to the matching sub-page; the inline panels below
 // stay for backward compatibility (the Settings mega-menu
 // also links to each sub-page, so the index is the second
 // navigation surface for the same destinations).
+//
+// Issue #599: the "build" destination is gone — build info
+// now lives on /about. The grid is 5 items, not 6.
 templ SettingsIndex() {
 	<section class="card rounded-3xl p-5 sm:p-8 space-y-3" data-settings-index>
 		<h3 class="text-xl gold font-bold">Settings</h3>
@@ -52,9 +55,6 @@ templ SettingsIndex() {
 			</li>
 			<li>
 				<a href={ templ.SafeURL(routebuilder.SettingsSection("data")) } class="pill-link justify-start w-full" data-settings-index-target="data">Data</a>
-			</li>
-			<li>
-				<a href={ templ.SafeURL(routebuilder.SettingsSection("build")) } class="pill-link justify-start w-full" data-settings-index-target="build">Build information</a>
 			</li>
 			<li>
 				<a href={ templ.SafeURL(routebuilder.SettingsSection("diagnostics")) } class="pill-link justify-start w-full" data-settings-index-target="diagnostics">Diagnostics</a>
@@ -107,18 +107,6 @@ templ SettingsDataPage(confirmationWord string) {
 				@settingsBreadcrumb("Data")
 			</header>
 			@SettingsDataPanel(confirmationWord)
-		</div>
-	}
-}
-
-templ SettingsBuildPage() {
-	@Layout("Settings") {
-		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.build" data-page-about="settings-build">
-			<header class="space-y-2">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
-				@settingsBreadcrumb("Build information")
-			</header>
-			@SettingsBuildPanel()
 		</div>
 	}
 }

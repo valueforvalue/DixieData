@@ -91,23 +91,8 @@ func TestSettingsDataPageRenders(t *testing.T) {
 	}
 }
 
-func TestSettingsBuildPageRenders(t *testing.T) {
-	var buf bytes.Buffer
-	if err := SettingsBuildPage().Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	content := buf.String()
-	for _, want := range []string{
-		`id="page.settings.build"`,
-		`Build information`,
-		`id="settings-build-panel"`,
-		`data-settings-build`,
-	} {
-		if !strings.Contains(content, want) {
-			t.Errorf("SettingsBuildPage missing %q", want)
-		}
-	}
-}
+// (Issue #599: TestSettingsBuildPageRenders removed —
+// /settings/build is gone; build info now lives on /about.)
 
 func TestSettingsDiagnosticsPageRenders(t *testing.T) {
 	var buf bytes.Buffer
@@ -129,7 +114,11 @@ func TestSettingsDiagnosticsPageRenders(t *testing.T) {
 	}
 }
 
-func TestSettingsIndexRendersSixDestinations(t *testing.T) {
+// TestSettingsIndexRendersFiveDestinations pins the
+// 5-destination grid shape. Issue #599: the build
+// destination is gone (build info now lives on /about);
+// the grid drops from 6 to 5.
+func TestSettingsIndexRendersFiveDestinations(t *testing.T) {
 	var buf bytes.Buffer
 	if err := SettingsIndex().Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -140,11 +129,16 @@ func TestSettingsIndexRendersSixDestinations(t *testing.T) {
 		`data-settings-index-target="updates"`,
 		`data-settings-index-target="maintenance"`,
 		`data-settings-index-target="data"`,
-		`data-settings-index-target="build"`,
 		`data-settings-index-target="diagnostics"`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("SettingsIndex missing %q", want)
 		}
+	}
+	// Defensive RED: the build destination must be absent
+	// (issue #599). A future refactor that re-adds it would
+	// re-introduce the duplication the user asked us to drop.
+	if strings.Contains(content, `data-settings-index-target="build"`) {
+		t.Errorf("SettingsIndex still has the build destination — issue #599 (build info now lives on /about)")
 	}
 }
