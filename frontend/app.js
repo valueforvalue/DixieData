@@ -4246,7 +4246,137 @@ function serializeDraftFields(form) {
     installFoldouts();
     installMegaMenus();
     installFloatingNavPanel();
+    installTermDisclosures();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
+  }
+
+  // installTermDisclosures attaches click + Escape +
+  // outside-click handlers to every [data-term-disclosure-trigger]
+  // element (issue #564 slice 2).
+  //
+  // Each trigger is a <button type="button"> rendered by
+  // `internal/templates/components/term_disclosure.templ`. The
+  // popover panel carries `data-term-disclosure-panel="<slug>"`
+  // and starts hidden (the templ sets the `hidden` attribute).
+  // On click, Enter, or Space the JS removes `hidden`,
+  // mirrors aria-expanded="true", and focuses the panel's
+  // "Read in glossary" link so the next Enter navigates
+  // straight to the /about kebab anchor. On Escape or
+  // outside click the JS restores hidden + aria-expanded="false"
+  // + restores focus to the trigger.
+  //
+  // Idempotent: every call re-runs the per-trigger loop and
+  // re-attaches the document-level outside-click handler
+  // (deduped by window.__termDisclosureDocHandlerBound, the
+  // installFoldouts-equivalent of the codebase pattern). htmx
+  // swaps that re-render triggers get fresh listeners without
+  // the user seeing a stuck-open popover.
+  function installTermDisclosures() {
+    /** @type {NodeListOf<HTMLElement>} */
+    const triggers = document.querySelectorAll("[data-term-disclosure-trigger]");
+    triggers.forEach((trigger) => {
+      const slug = trigger.getAttribute("data-term-disclosure-trigger");
+      if (!slug) return;
+      const panel = document.getElementById("term-disclosure-panel-" + slug);
+      if (!panel) return;
+      // Skip if we already wired this trigger (defensive: a
+      // second installTermDisclosures call from htmx:load
+      // re-attaches the click listener, but the outside-click
+      // handler must dedupe).
+      if (trigger.dataset.termDisclosureWired === "1") {
+        // Reopen state if the trigger is already-open from
+        // a prior interaction that survived an htmx swap.
+        return;
+      }
+      trigger.dataset.termDisclosureWired = "1";
+      const open = () => {
+        // Close every other open disclosure first so only
+        // one popover is visible at a time. Mirrors the
+        // foldout "single panel open" convention.
+        /** @type {NodeListOf<HTMLElement>} */
+        const otherPanels = document.querySelectorAll("[data-term-disclosure-panel]:not([hidden])");
+        otherPanels.forEach((el) => {
+          if (el.id !== panel.id) {
+            el.hidden = true;
+            const otherSlug = el.getAttribute("data-term-disclosure-panel");
+            const otherTrigger = /** @type {HTMLElement|null} */ (document.querySelector(
+              "[data-term-disclosure-trigger='" + otherSlug + "']",
+            ));
+            if (otherTrigger) otherTrigger.setAttribute("aria-expanded", "false");
+          }
+        });
+        panel.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        // Move focus into the popover so screen-reader users
+        // hear the disclosure body. The "Read in glossary"
+        // link is the natural focus target.
+        const readLink = /** @type {HTMLElement|null} */ (panel.querySelector("[data-term-disclosure-read-in-glossary]"));
+        if (readLink) readLink.focus();
+      };
+      const close = () => {
+        panel.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.focus();
+      };
+      trigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (panel.hidden) {
+          open();
+        } else {
+          close();
+        }
+      });
+      // Enter / Space on the trigger element fire a click
+      // automatically (the <button type="button"> default),
+      // so the listener above covers them. We do not need a
+      // separate keydown listener — relying on the browser
+      // default here keeps the JS small.
+    });
+
+    // Document-level outside-click + Escape handlers. Bound
+    // once per DOMContentLoaded install; subsequent
+    // installTermDisclosures calls skip the bind via the
+    // __termDisclosureDocHandlerBound dedupe (mirrors
+    // installFoldouts' __foldoutDocHandlerBound).
+    if (!window.__termDisclosureDocHandlerBound) {
+      window.__termDisclosureDocHandlerBound = true;
+      document.addEventListener("click", (e) => {
+        const openPanel = /** @type {HTMLElement|null} */ (document.querySelector(
+          "[data-term-disclosure-panel]:not([hidden])",
+        ));
+        if (!openPanel) return;
+        const slug = openPanel.getAttribute("data-term-disclosure-panel");
+        const trigger = /** @type {HTMLElement|null} */ (document.querySelector(
+          "[data-term-disclosure-trigger='" + slug + "']",
+        ));
+        if (!trigger) return;
+        // Click on the trigger itself is handled by the
+        // per-trigger listener (which close()s before
+        // re-opening), so we only act on clicks elsewhere
+        // in the document.
+        const target = /** @type {Node|null} */ (e.target);
+        if (target && trigger.contains(target)) return;
+        if (target && openPanel.contains(target)) return;
+        openPanel.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        const openPanel = /** @type {HTMLElement|null} */ (document.querySelector(
+          "[data-term-disclosure-panel]:not([hidden])",
+        ));
+        if (!openPanel) return;
+        const slug = openPanel.getAttribute("data-term-disclosure-panel");
+        const trigger = /** @type {HTMLElement|null} */ (document.querySelector(
+          "[data-term-disclosure-trigger='" + slug + "']",
+        ));
+        if (!trigger) return;
+        openPanel.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.focus();
+      });
+    }
   }
 
   // initializeCopyPathButtons binds click handlers to every

@@ -355,8 +355,8 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				}
 				<div id={ uiids.PanelSoldierDetailSummary } class="contents">
 				<dl class="responsive-two-col grid gap-2 text-sm">
-					<dt class="text-slate-500">Person Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
-					<dt class="text-slate-500">Display ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
+					<dt class="text-slate-500">@components.TermDisclosure("person-record", components.TermDisclosurePersonRecordShort(), templ.Raw("Person Record "))<span class="ml-1">Type</span></dt><dd>{ entryBadgeLabel(s) }</dd>
+					<dt class="text-slate-500">@components.TermDisclosure("display-id", components.TermDisclosureDisplayIDShort(), templ.Raw("Display ID"))</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
 					<dt class="text-slate-500">Middle Name</dt><dd>{ blankDetail(s.MiddleName) }</dd>
 					if isSoldierEntry(s) {
 						<dt class="text-slate-500">Rank In</dt><dd>{ blankDetail(s.RankIn) }</dd>

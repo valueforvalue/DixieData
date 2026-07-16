@@ -34,6 +34,10 @@ interface DixieDataWindow {
   // installFloatingNavPanel read/write sites in app.js.
   __floatingNavInstallN?: number;
   __floatingNavBoundTriggers?: WeakSet<HTMLElement>;
+  // Issue #564 slice 2: installTermDisclosures installs the
+  // document-level outside-click + Escape handler once per
+  // DOMContentLoaded; the installFoldouts-equivalent dedupe.
+  __termDisclosureDocHandlerBound?: boolean;
   // Issue #573: shared debounce helper + the window-stashed
   // browse-filter debounce instance that owns the 200ms
   // trailing-edge filter-refresh timer. The helper attaches
@@ -122,6 +126,11 @@ declare global {
     // prevents double-painting on htmx re-render. Mirrors the
     // __copyPathBound pattern (idempotent install).
     __inventoryChartPainted?: boolean;
+    // Issue #564 slice 2: installTermDisclosures wires the
+    // per-trigger click listener once per element. htmx:load
+    // can re-install without re-attaching; the guard mirrors
+    // the __copyPathBound / __cheatsheetCopyBound pattern.
+    __termDisclosureWired?: boolean;
   }
 }
 

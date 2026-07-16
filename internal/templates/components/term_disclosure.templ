@@ -1,0 +1,124 @@
+package components
+
+// TermDisclosure is the in-context glossary disclosure
+// (issue #564 slice 2).
+//
+// A curated term on a verified apply site renders with the
+// unchanged term text wrapped in a `<button>` trigger. Click /
+// Enter / Space opens the popover; Escape and outside click
+// close it; focus returns to the trigger on close. The
+// popover body shows the term's Short definition
+// (one-line, paragraph-friendly) plus a "Read in glossary"
+// link to the matching `/about#about.glossary-<slug>` anchor.
+//
+// The component takes the slug + the Short string + the body
+// as parameters so the templates package does NOT need to
+// import internal/glossary (cycle avoidance — the
+// viewmodel layer is the seam). The two callers in
+// slice 2 (Person Record detail "Display ID" + "Person
+// Record Type" headers) pass `termDisclosureShort(slug)`
+// for the Short; the helper is local to this package and
+// covers the 2 in-scope slugs only. Future slices
+// (#564 slice 3+) extend the helper as new apply sites
+// land.
+//
+// Accessibility:
+//   - The trigger is a real <button type="button">, not a
+//     div with a click handler — so screen readers,
+//     keyboard activation, and form implicit-submit all
+//     work without per-call wiring.
+//   - aria-expanded mirrors the panel's open state.
+//   - aria-controls points at the panel's id.
+//   - role="dialog" on the panel with aria-labelledby +
+//     aria-describedby is *not* used — this is a popover,
+//     not a modal. The popover uses role="region" so the
+//     label announcement doesn't trigger the modal screen-
+//     reader semantics.
+//   - The icon is decorative (aria-hidden); the trigger
+//     itself carries the term text.
+//
+// The panel's hidden attribute is the source of truth for
+// the open/closed state. JS (initializeTermDisclosures)
+// mirrors aria-expanded to match the attribute, manages
+// focus on open + close, registers a document-level
+// outside-click handler, and registers Escape to close.
+//
+// Reduced-motion: the component is motion-free by default
+// (no CSS transitions in `.term-disclosure-popover`).
+// The icon (? glyph) is static.
+
+templ TermDisclosure(slug string, short string, body templ.Component) {
+	<span class="term-disclosure relative inline-block align-baseline">
+		<button
+			type="button"
+			class="term-disclosure-trigger inline-flex items-baseline gap-1 rounded border-b border-dotted border-[var(--theme-accent-strong)] text-left font-inherit text-inherit"
+			aria-expanded="false"
+			aria-controls={ "term-disclosure-panel-" + slug }
+			data-term-disclosure-trigger={ slug }
+			data-term-disclosure-short={ short }
+		>
+			@body
+			<span aria-hidden="true" class="text-[0.7em] font-bold text-[var(--theme-accent-strong)]">?</span>
+		</button>
+		<span
+			id={ "term-disclosure-panel-" + slug }
+			role="region"
+			aria-label="Glossary disclosure"
+			data-term-disclosure-panel={ slug }
+			hidden
+			class="term-disclosure-popover absolute left-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/95 p-3 text-sm shadow-[0_18px_32px_rgba(23,33,43,0.14)]"
+		>
+			<p class="text-slate-700" data-term-disclosure-short>{ short }</p>
+			<p class="mt-2 text-xs">
+				<a
+					href={ templ.SafeURL("/about#about.glossary-" + slug) }
+					class="underline text-[var(--theme-accent-strong)]"
+					data-term-disclosure-read-in-glossary={ slug }
+				>Read in glossary</a>
+			</p>
+		</span>
+	</span>
+}
+
+// termDisclosureShort returns the Short string for the
+// term-disclosure component's call site. Lives in this
+// package (not in glossary) because the templates package
+// cannot import internal/glossary without a cycle.
+//
+// Slice 2 covers 2 apply sites — Person Record detail
+// "Display ID" + "Person Record Type". Future slices
+// (#564 slice 3+) extend the switch as new apply sites
+// land. Callers pass the result into the TermDisclosure
+// component's `short` parameter so the trigger renders
+// with the right popover body.
+//
+// Returning "" keeps the component render working — the
+// popover would just show a blank body if a future caller
+// passes a slug the helper doesn't know yet. The slice-2
+// smoke probe asserts the 2 in-scope slugs render their
+// expected Short text, so a future drift trips the test
+// before the user sees a blank popover.
+func termDisclosureShort(slug string) string {
+	switch slug {
+	case "display-id":
+		return "The canonical user-facing identifier for a Person Record."
+	case "person-record":
+		return "A primary archive entry for one person (soldier, wife, widow, linked person, or event)."
+	}
+	return ""
+}
+
+// TermDisclosureDisplayIDShort exports the display-id
+// short string so callers (soldier_card "Display ID" dt)
+// can pass it without hardcoding the literal.
+func TermDisclosureDisplayIDShort() string {
+	return termDisclosureShort("display-id")
+}
+
+// TermDisclosurePersonRecordShort exports the
+// person-record short string so callers (soldier_card
+// "Person Record Type" dt) can pass it without hardcoding
+// the literal.
+func TermDisclosurePersonRecordShort() string {
+	return termDisclosureShort("person-record")
+}
