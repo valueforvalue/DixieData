@@ -147,7 +147,8 @@ const (
 	PageSettingsUpdates         = "page.settings.updates"
 	PageSettingsMaintenance     = "page.settings.maintenance"
 	PageSettingsData            = "page.settings.data"
-	PageSettingsBuild           = "page.settings.build"
+	// Issue #599: PageSettingsBuild removed — build info
+	// now lives on /about (the canonical surface).
 	PageSettingsDiagnostics     = "page.settings.diagnostics"
 // PanelSettingsLayout is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsLayout         = "panel.settings.layout"
@@ -417,12 +418,11 @@ var Registry = []Surface{
 	{ID: PageUnitCamaraderie, Kind: "page", Description: "Unit camaraderie page for a person record."},
 	{ID: PageMergeReviewLedger, Kind: "page", Description: "Merge review ledger page for a person record."},
 	{ID: PageInsightsDrilldown, Kind: "page", Description: "Insights drilldown results page."},
-	{ID: PageSettings, Kind: "page", Description: "Settings page (index, issue #584). The flat /settings page is now an index listing 6 destinations: appearance, updates, maintenance, data, build, diagnostics."},
+	{ID: PageSettings, Kind: "page", Description: "Settings page (index, issue #584). The flat /settings page is now an index listing 5 destinations: appearance, updates, maintenance, data, diagnostics. (Build info moved to /about per issue #599.)"},
 	{ID: PageSettingsAppearance, Kind: "page", Description: "Settings sub-page: theme, post-export surface, responsive layout mode (issue #584)."},
 	{ID: PageSettingsUpdates, Kind: "page", Description: "Settings sub-page: source URL, check for updates, apply latest, health bootstrap, release notes banner (issue #584)."},
 	{ID: PageSettingsMaintenance, Kind: "page", Description: "Settings sub-page: image orphan scan + cleanup, data quality scan + apply (issue #584)."},
 	{ID: PageSettingsData, Kind: "page", Description: "Settings sub-page: Initialize Local Archive (destructive; confirmation word) (issue #584)."},
-	{ID: PageSettingsBuild, Kind: "page", Description: "Settings sub-page: build information (codename, branch, version, schema, commit/timestamp) (issue #584). Carries the v1 About/Build panel lifted into its own route."},
 	{ID: PageSettingsDiagnostics, Kind: "page", Description: "Settings sub-page: Support & Diagnostics (Export Feedback Log + Report a Bug) + Debug Mode toggle (issue #584)."},
 	{ID: PanelSettingsLayout, Kind: "panel", Description: "Responsive layout mode controls on the settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},

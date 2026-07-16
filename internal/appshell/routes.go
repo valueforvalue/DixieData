@@ -315,7 +315,9 @@ func (a *App) setupRoutes() {
 	r.Get("/settings/updates", a.handleSettingsUpdates)
 	r.Get("/settings/maintenance", a.handleSettingsMaintenance)
 	r.Get("/settings/data", a.handleSettingsData)
-	r.Get("/settings/build", a.handleSettingsBuild)
+	// Issue #599: /settings/build removed — /about is canonical
+	// for build info. The route is gone; the panel + sub-page
+	// + mega-menu item are dropped in slice 3.
 	r.Get("/settings/diagnostics", a.handleSettingsDiagnostics)
 
 	// Issue #585: new /about page (app identity + license + release

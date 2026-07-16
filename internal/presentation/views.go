@@ -490,11 +490,6 @@ func SettingsDataView(confirmationWord string) templ.Component {
 	return templates.SettingsDataPage(confirmationWord)
 }
 
-// SettingsBuildView wraps the build sub-page templ.
-func SettingsBuildView() templ.Component {
-	return templates.SettingsBuildPage()
-}
-
 // SettingsDiagnosticsView wraps the diagnostics sub-page templ.
 func SettingsDiagnosticsView(debugEnabled bool) templ.Component {
 	return templates.SettingsDiagnosticsPage(debugEnabled)

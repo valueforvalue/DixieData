@@ -11,8 +11,11 @@
 //   - GET /settings/updates -> source URL, check, apply, health, release notes banner
 //   - GET /settings/maintenance -> image orphan scan + cleanup, data quality scan + apply
 //   - GET /settings/data -> Initialize Local Archive (destructive)
-//   - GET /settings/build -> build information (codename, branch, version, schema, commit/timestamp)
+//   - GET /settings/data -> Initialize Local Archive (destructive)
 //   - GET /settings/diagnostics -> Support & Diagnostics + Debug Mode toggle
+//
+// Issue #599: build information (codename, branch, version, schema,
+// commit/timestamp) now lives on /about, not /settings/build.
 
 package appshell
 
@@ -53,16 +56,6 @@ func (a *App) handleSettingsMaintenance(w http.ResponseWriter, r *http.Request) 
 // handleSettingsData serves GET /settings/data.
 func (a *App) handleSettingsData(w http.ResponseWriter, r *http.Request) {
 	if err := presentation.SettingsDataView(initializeDataConfirmationWord).Render(r.Context(), w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// handleSettingsBuild serves GET /settings/build. Renders the
-// existing SettingsBuildPanel (issue #370 v1 About/Build
-// panel) lifted into its own route. No new viewmodel needed;
-// the build panel reads buildinfo directly.
-func (a *App) handleSettingsBuild(w http.ResponseWriter, r *http.Request) {
-	if err := presentation.SettingsBuildView().Render(r.Context(), w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
