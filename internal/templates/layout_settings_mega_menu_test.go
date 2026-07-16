@@ -1,8 +1,12 @@
-// layout_settings_mega_menu_test.go -- issue #584 slice 5.
+// layout_settings_mega_menu_test.go -- issue #584 slice 5
+// + #599 slice 1 (drop /settings/build duplication; /about
+// is canonical for build info per user direction).
 //
 // Pins the top-nav Settings mega-menu wiring. The trigger
 // sits between Share & Review and About; the panel exposes
-// 6 destinations (the 6 /settings/<section> sub-pages).
+// 5 destinations (the 5 /settings/<section> sub-pages; the
+// build sub-page is gone — build info now lives on /about
+// per issue #585).
 
 package templates
 
@@ -13,6 +17,11 @@ import (
 	"testing"
 )
 
+// TestLayoutSettingsMegaMenuTriggerPresent pins the 5-item
+// mega-menu shape. The build destination is intentionally
+// absent: per issue #599, the build info now lives on /about
+// (the canonical surface) and /settings/build is removed from
+// routes, the menu, and the templ layer.
 func TestLayoutSettingsMegaMenuTriggerPresent(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
@@ -27,17 +36,27 @@ func TestLayoutSettingsMegaMenuTriggerPresent(t *testing.T) {
 		`href="/settings/updates"`,
 		`href="/settings/maintenance"`,
 		`href="/settings/data"`,
-		`href="/settings/build"`,
 		`href="/settings/diagnostics"`,
 		`data-marker="settings-appearance"`,
 		`data-marker="settings-updates"`,
 		`data-marker="settings-maintenance"`,
 		`data-marker="settings-data"`,
-		`data-marker="settings-build"`,
 		`data-marker="settings-diagnostics"`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("Layout missing %q in settings mega-menu wiring", want)
+		}
+	}
+	// Issue #599 RED: the build destination must be absent
+	// from the menu + the templ layer. Defensive: also assert
+	// the link href is gone (a future refactor might keep the
+	// data-marker but drop the href, or vice versa).
+	for _, want := range []string{
+		`href="/settings/build"`,
+		`data-marker="settings-build"`,
+	} {
+		if strings.Contains(content, want) {
+			t.Errorf("Layout still has build menu item %q — issue #599 (build info now lives on /about)", want)
 		}
 	}
 }
