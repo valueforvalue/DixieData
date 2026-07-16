@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
@@ -287,11 +289,19 @@ func hasLogToStderr(args []string) bool {
 // dispatches, and returns the exit code. The App is fully
 // started (so the soldiers facade is wired) then shut down so
 // background jobs + the DB close cleanly. We don't need Wails.
+//
+// Issue #597: the lifecycle ctx is signal-aware on POSIX. SIGINT
+// / SIGTERM cancel the ctx so the deferred Shutdown runs and the
+// SQLite DB closes cleanly — no straggling dixiedata.db-wal /
+// dixiedata.db-shm sidecar files. signal.NotifyContext is the
+// Go 1.16+ canonical helper; stop() releases the handler on
+// normal exit so it does not leak across subsequent invocations.
 func runQuerySubcommand() int {
 	code, err := recoverExit5(func() (int, error) {
 		opts, _ := appshell.ParseQueryCommand(os.Args[1:])
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
@@ -310,6 +320,9 @@ func runQuerySubcommand() int {
 // because the mutate surface will grow (update / delete /
 // event create / tag-attach / etc.) and doesn't belong in
 // the cli_query.go file.
+//
+// Issue #597: lifecycle ctx is signal-aware on POSIX (see
+// runQuerySubcommand for the rationale).
 func runMutateSubcommand() int {
 	code, err := recoverExit5(func() (int, error) {
 		if dir := firstDataDir(os.Args[1:]); dir != "" {
@@ -320,7 +333,8 @@ func runMutateSubcommand() int {
 			return 3, fmt.Errorf("usage: dixiedata soldier create --from <path> | --from-stdin")
 		}
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
@@ -336,6 +350,9 @@ func runMutateSubcommand() int {
 // to RunExport, returns the exit code. Same lifecycle as
 // runQuerySubcommand. No Wails — bypasses the native SaveFileDialog
 // entirely (every command takes --out PATH).
+//
+// Issue #597: lifecycle ctx is signal-aware on POSIX (see
+// runQuerySubcommand for the rationale).
 func runExportSubcommand() int {
 	code, err := recoverExit5(func() (int, error) {
 		if dir := firstDataDir(os.Args[1:]); dir != "" {
@@ -346,7 +363,8 @@ func runExportSubcommand() int {
 			return 3, err
 		}
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
@@ -361,6 +379,9 @@ func runExportSubcommand() int {
 // runImportSubcommand mirrors runExportSubcommand. Same lifecycle.
 // No Wails — bypasses the native OpenFileDialog entirely (every
 // command takes --from PATH).
+//
+// Issue #597: lifecycle ctx is signal-aware on POSIX (see
+// runQuerySubcommand for the rationale).
 func runImportSubcommand() int {
 	if dir := firstDataDir(os.Args[1:]); dir != "" {
 		_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
@@ -371,7 +392,8 @@ func runImportSubcommand() int {
 			return 3, err
 		}
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
@@ -388,6 +410,9 @@ func runImportSubcommand() int {
 // Same lifecycle as runExport/Import. --data-dir is honoured
 // by setting DIXIEDATA_DATA_DIR before a.Startup() so
 // appdata.DefaultDir() picks it up.
+//
+// Issue #597: lifecycle ctx is signal-aware on POSIX (see
+// runQuerySubcommand for the rationale).
 func runAdminSubcommand() int {
 	code, err := recoverExit5(func() (int, error) {
 		args := os.Args[1:]
@@ -399,7 +424,8 @@ func runAdminSubcommand() int {
 			return 3, err
 		}
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
@@ -420,6 +446,9 @@ func runAdminSubcommand() int {
 // Debug subcommands are strictly read-only. They never accept
 // --yes and never touch the archive file. Useful for support
 // workflows where the GUI is unavailable.
+//
+// Issue #597: lifecycle ctx is signal-aware on POSIX (see
+// runQuerySubcommand for the rationale).
 func runDebugSubcommand() int {
 	code, err := recoverExit5(func() (int, error) {
 		opts, err := appshell.ParseDebugArgs(os.Args[1:])
@@ -430,7 +459,8 @@ func runDebugSubcommand() int {
 			return 3, err
 		}
 		a := appshell.NewApp()
-		ctx := context.Background()
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		a.Startup(ctx)
 		defer a.Shutdown(ctx)
 		opts.App = a
