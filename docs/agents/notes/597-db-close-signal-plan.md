@@ -39,7 +39,7 @@ Wails desktop binary remains the recommended Windows entry point.
 
 ## Slice plan
 
-### Slice 1 — RED test on a blocking verb + flip all 6 subcommand runners to `signal.NotifyContext`
+### Slice 1 (landed as `774eff9`) — RED test on a blocking verb + flip all 6 subcommand runners to `signal.NotifyContext`
 - **Subcommand shape:** the test fixture is `dixiedata logs --follow --data-dir <tmp>` (`runAdminSubcommand`). It opens the DB then blocks on a `select { case <-ctx.Done(): ... }` (`cli_admin.go:1008-1010`). It is the only existing verb that stays alive long enough for the test to inject a signal between "DB opened" and "deferred Shutdown fired." The blocking verb lives in admin, which means the per-runner test fixture is shared across runners — the test cannot pin a single runner in isolation. **Revised scope (vs. earlier draft):** Slice 1 flips **all 6** runners in one commit. Six identical 4-line edits across one file is one reviewable unit per `AGENTS.md` §Commits ("one commit = one reviewable unit; six near-identical edits ARE one reviewable unit"). Slice 2 adds defence-in-depth per-runner coverage.
 - **Files:**
   - `main.go` — flip all 6 subcommand runners (lines 287, 314, 340, 368, 392, 424) from `ctx := context.Background()` to `ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM); defer stop()`. Add `os/signal`, `syscall` imports as needed.

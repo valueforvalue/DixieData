@@ -198,7 +198,14 @@ func main() {
 		os.Exit(code)
 	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
-		_, code := appshell.RunSmoke(context.Background(), appshell.SmokeOptions{
+		// Issue #597: signal-aware ctx so SIGINT/SIGTERM cancel
+		// the smoke run cleanly and the deferred smokeShutdown
+		// inside RunSmoke actually fires (closes the DB).
+		// Mirrors the lifecycle pattern in the subcommand
+		// runners above.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		_, code := appshell.RunSmoke(ctx, appshell.SmokeOptions{
 			JSON: appshell.WantsSmokeJSON(os.Args[1:]),
 		})
 		os.Exit(code)
