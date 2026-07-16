@@ -11,6 +11,8 @@
 package templates
 
 import (
+	"fmt"
+
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
@@ -95,6 +97,7 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 						class="field-input mt-1 w-full font-mono text-sm"
 						placeholder="Write your article in Markdown. Use [Name](#person/D-00123) for Person Record references."
 						data-article-editor-source
+						data-article-id={ fmt.Sprint(article.ID) }
 					>{ article.BodyMD }</textarea>
 					<p class="mt-1 text-xs text-slate-500">Markdown syntax supported. Raw HTML is stripped at save time for safety.</p>
 				</div>

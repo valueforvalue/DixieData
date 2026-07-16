@@ -153,6 +153,9 @@ declare global {
     // Issue #612 slice 3: initializeImagePicker wires the
     // modal once per modal. Same pattern as __tableBuilderWired.
     __imagePickerWired?: boolean;
+    // Issue #612 slice 4: initializeArticleImagePasteDrop
+    // wires the textarea once.
+    __articleImagePasteDropWired?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;

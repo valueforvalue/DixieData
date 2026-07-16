@@ -4264,6 +4264,7 @@ function serializeDraftFields(form) {
     initializeEditorToolbar();
     initializeTableBuilder();
     initializeImagePicker();
+    initializeArticleImagePasteDrop();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -6426,6 +6427,162 @@ function onPrintRecordsFragmentReady(modal) {
         return;
       }
       insertImageAtCursor(url, name);
+    });
+  }
+
+  // initializeArticleImagePasteDrop wires paste-from-clipboard
+  // and drag-and-drop image upload for the article editor
+  // (issue #612 slice 4). Both paths upload via fetch POST
+  // to the slice-2 /articles/{id}/images/import endpoint and
+  // insert ![filename](url) at the cursor via the shared
+  // window.__dixieInsertTextAtCursor helper.
+  //
+  // Paste: intercepts the 'paste' event on the article body
+  // textarea. If the clipboard contains image files
+  // (event.clipboardData.files), each is uploaded. The
+  // response HTML fragment is parsed to extract the
+  // data-article-image-url of the first new image row; that
+  // URL is inserted as Markdown at the cursor. Non-image
+  // paste events (text, etc.) fall through to the browser's
+  // default behavior.
+  //
+  // Drag-and-drop: intercepts 'dragover' (prevent default to
+  // allow drop) and 'drop' on the textarea. Image files from
+  // the drop are uploaded the same way.
+  //
+  // Both paths are no-ops when the article doesn't exist yet
+  // (data-article-id is "0" or missing — the new-article
+  // form). A toast tells the user to save first.
+  //
+  // Idempotent via the per-textarea __articleImagePasteDropWired
+  // sentinel (mirrors __imagePickerWired / __tableBuilderWired).
+  function initializeArticleImagePasteDrop() {
+    const textarea = document.getElementById("article-body");
+    if (!(textarea instanceof HTMLTextAreaElement)) return;
+    if (textarea.__articleImagePasteDropWired === true) return;
+    textarea.__articleImagePasteDropWired = true;
+
+    var rawID = textarea.getAttribute("data-article-id");
+    var articleID = rawID ? (parseInt(rawID, 10) || 0) : 0;
+    if (articleID <= 0) return; // new article — no upload target
+
+    /**
+     * Upload a File to the article's image import endpoint,
+     * extract the first data-article-image-url from the
+     * response HTML fragment, and insert the Markdown at
+     * cursor.
+     * @param {File} file
+     * @returns {Promise<void>}
+     */
+    function uploadAndInsert(file) {
+      // Re-narrow textarea — the closure loses the
+      // instanceof narrowing from the outer scope.
+      if (!(textarea instanceof HTMLTextAreaElement)) return Promise.resolve();
+      /** @type {HTMLTextAreaElement} */
+      var textareaEl = textarea;
+      var formData = new FormData();
+      formData.append("images", file);
+      return fetch("/articles/" + articleID + "/images/import", {
+        method: "POST",
+        body: formData,
+      })
+        .then(function (resp) {
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          return resp.text();
+        })
+        .then(function (html) {
+          // Extract the first data-article-image-url from the
+          // fragment. The server returns an <ul> of <li> rows;
+          // the first row's Insert button carries the URL.
+          var match = html.match(/data-article-image-url="([^"]+)"/);
+          var url = match ? match[1] : "";
+          if (!url) {
+            showToast("Image uploaded but URL not found in response.", "error");
+            return;
+          }
+          var name = file.name || "image";
+          var md = "![" + name + "](" + url + ")";
+          var fn = window.__dixieInsertTextAtCursor;
+          if (!fn) {
+            if (typeof console !== "undefined" && typeof console.warn === "function") {
+              console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Paste/drop uses raw setRangeText fallback.");
+            }
+            var start = textareaEl.selectionStart;
+            var end = textareaEl.selectionEnd;
+            textareaEl.setRangeText(md, start, end, "end");
+            textareaEl.dispatchEvent(new Event("input", { bubbles: true }));
+            textareaEl.focus();
+          } else {
+            var ok = fn(textareaEl, md);
+            if (!ok) {
+              showToast("Could not insert image.", "error");
+              return;
+            }
+          }
+          showToast("Image uploaded.", "success");
+        })
+        .catch(function (err) {
+          showToast("Upload failed: " + (err.message || "unknown error"), "error");
+        });
+    }
+
+    // Paste handler: check clipboard for image files.
+    textarea.addEventListener("paste", function (event) {
+      var clipboardData = event.clipboardData;
+      if (!clipboardData || !clipboardData.files || clipboardData.files.length === 0) {
+        // No files — let the browser handle text paste normally.
+        return;
+      }
+      // Check that at least one file is an image.
+      var hasImage = false;
+      for (var i = 0; i < clipboardData.files.length; i += 1) {
+        if (clipboardData.files[i].type.startsWith("image/")) {
+          hasImage = true;
+          break;
+        }
+      }
+      if (!hasImage) return; // non-image file paste — let browser handle
+
+      event.preventDefault();
+      for (var i = 0; i < clipboardData.files.length; i += 1) {
+        var file = clipboardData.files[i];
+        if (file.type.startsWith("image/")) {
+          uploadAndInsert(file);
+        }
+      }
+    });
+
+    // Drag-and-drop handlers.
+    textarea.addEventListener("dragover", function (event) {
+      // Only intercept if there are image files being dragged.
+      var dt = event.dataTransfer;
+      if (!dt || !dt.types) return;
+      if (dt.types.indexOf("Files") < 0) return;
+      event.preventDefault();
+      if (dt.dropEffect) {
+        dt.dropEffect = "copy";
+      }
+    });
+
+    textarea.addEventListener("drop", function (event) {
+      var dt = event.dataTransfer;
+      if (!dt || !dt.files || dt.files.length === 0) return;
+      var hasImage = false;
+      for (var i = 0; i < dt.files.length; i += 1) {
+        if (dt.files[i].type.startsWith("image/")) {
+          hasImage = true;
+          break;
+        }
+      }
+      if (!hasImage) return;
+
+      event.preventDefault();
+      for (var i = 0; i < dt.files.length; i += 1) {
+        var file = dt.files[i];
+        if (file.type.startsWith("image/")) {
+          uploadAndInsert(file);
+        }
+      }
     });
   }
 
