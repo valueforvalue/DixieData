@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/releasehistory"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -66,69 +65,14 @@ func TestBuildAboutViewLicenseURL(t *testing.T) {
 	}
 }
 
-// TestBuildAboutViewCodenameOnlyOnCurrent pins the invariant:
-// the codename is filled for the LATEST release only. Older
-// releases carry an empty Codename field because the codename
-// is a property of the current version, not the historical
-// series (see docs/RELEASING.md §"codename rules"). The test
-// is conditional on baked being non-empty.
-func TestBuildAboutViewCodenameOnlyOnCurrent(t *testing.T) {
-	baked := releasehistory.Baked()
-	if len(baked) < 2 {
-		t.Skip("need at least 2 baked releases; skipping codename-locator test")
-	}
-	view := buildAboutView("abc123", "main", "2026-07-15T00:00:00Z")
-	if view.Releases[0].Codename == "" {
-		t.Errorf("current release (index 0) has empty codename; want %q", buildinfo.Codename())
-	}
-	for i := 1; i < len(view.Releases); i++ {
-		if view.Releases[i].Codename != "" {
-			t.Errorf("older release (index %d, %s) carries codename %q; want empty (codenames are current-only)",
-				i, view.Releases[i].Version, view.Releases[i].Codename)
-		}
-	}
-}
-
-// TestBuildAboutViewReleasesFlatten pins that every baked
-// entry becomes one ReleaseEntry with the same field shape
-// (no fields lost in the mapper). Conditional on baked being
-// non-empty.
-func TestBuildAboutViewReleasesFlatten(t *testing.T) {
-	baked := releasehistory.Baked()
-	if len(baked) == 0 {
-		t.Skip("baked releases empty; skipping flatten test")
-	}
-	view := buildAboutView("abc123", "main", "2026-07-15T00:00:00Z")
-	if len(view.Releases) != len(baked) {
-		t.Fatalf("Releases len = %d; want %d (one ReleaseEntry per baked Entry)", len(view.Releases), len(baked))
-	}
-	for i, want := range baked {
-		got := view.Releases[i]
-		if got.Version != want.Version {
-			t.Errorf("Releases[%d].Version = %q; want %q", i, got.Version, want.Version)
-		}
-		if got.Date != want.Date {
-			t.Errorf("Releases[%d].Date = %q; want %q", i, got.Date, want.Date)
-		}
-		if len(got.Added) != len(want.Added) {
-			t.Errorf("Releases[%d].Added len = %d; want %d", i, len(got.Added), len(want.Added))
-		}
-	}
-}
-
-// TestBuildAboutViewEmptyBakedKeepsNilReleases pins the
-// dev-build shape: when no bake has run, view.Releases is nil
-// (the templ partial renders an empty-state message).
-func TestBuildAboutViewEmptyBakedKeepsNilReleases(t *testing.T) {
-	baked := releasehistory.Baked()
-	if len(baked) > 0 {
-		t.Skip("baked is non-empty; skipping nil-Releases test")
-	}
-	view := buildAboutView("dev", "dev", "")
-	if view.Releases != nil {
-		t.Errorf("Releases = %v; want nil (no bake has run)", view.Releases)
-	}
-}
+// (Issue #598: TestBuildAboutViewCodenameOnlyOnCurrent,
+// TestBuildAboutViewReleasesFlatten, and
+// TestBuildAboutViewEmptyBakedKeepsNilReleases are removed.
+// The /about page no longer renders a Release history
+// section; the recent-commits section is the replacement.
+// The releasehistory package itself is still consumed by
+// scripts/bake-activity for the per-release Repository
+// activity rollup (#586).)
 
 // TestBuildAboutViewIsViewModel pins that the mapper's return
 // type is the viewmodel view (so the templ partial can render

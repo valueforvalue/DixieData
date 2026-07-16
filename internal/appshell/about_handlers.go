@@ -20,7 +20,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/activityhistory"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/presentation"
-	"github.com/valueforvalue/DixieData/internal/releasehistory"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -37,11 +36,16 @@ func (a *App) handleAbout(w http.ResponseWriter, r *http.Request) {
 
 // buildAboutView assembles the viewmodel.AboutView from the
 // buildinfo + releasehistory + activityhistory packages. Pure
-// function -- testable without an App instance. The current
-// release's Codename is filled from buildinfo.Codename()
-// (the baked entries do not carry codenames).
+// function -- testable without an App instance.
+//
+// Issue #598: the releasehistory.Baked() loop is gone —
+// the Release history section was removed from /about
+// (the recent-commits section, #594, is the replacement).
+// The releasehistory package itself is still used by
+// scripts/bake-activity/main.go for the per-release
+// Repository activity rollup (#586), so the import
+// stays.
 func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
-	baked := releasehistory.Baked()
 	view := viewmodel.AboutView{
 		AppName:    buildinfo.AppName,
 		Version:    buildinfo.AppVersion,
@@ -71,27 +75,6 @@ func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
 				Subject:   c.Subject,
 			})
 		}
-	}
-	for i, e := range baked {
-		re := viewmodel.ReleaseEntry{
-			Version:     e.Version,
-			Date:        e.Date,
-			Added:       e.Added,
-			Changed:     e.Changed,
-			Fixed:       e.Fixed,
-			Removed:     e.Removed,
-			Maintenance: e.Maintenance,
-			Docs:        e.Docs,
-		}
-		// Fill the codename for the current release only -- the
-		// CHANGELOG does not record per-release codenames (the
-		// codename is a property of the current version, not
-		// the historical series). See docs/RELEASING.md §"codename
-		// rules".
-		if i == 0 {
-			re.Codename = buildinfo.Codename()
-		}
-		view.Releases = append(view.Releases, re)
 	}
 	return view
 }

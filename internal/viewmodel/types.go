@@ -931,13 +931,17 @@ type ResearchPickerView struct {
 }
 
 // AboutView is the data shape the /about page renders
-// (issue #585 + #586 + #594). Identity carries the version/
-// codename/schema metadata; Releases is the baked release
-// history (nil in dev builds); Activity is the baked
+// (issue #585 + #586 + #594 + #598). Identity carries the
+// version/codename/schema metadata; Activity is the baked
 // repository-activity snapshot (nil in dev builds).
 // RecentCommits is the baked per-commit projection for
 // the new "Recent commits" section (nil in dev builds;
 // the templ renders an empty-state notice in that case).
+//
+// Issue #598: the Release history section was removed —
+// the recent-commits section is the replacement for
+// "what just landed." The Releases []ReleaseEntry field
+// and the ReleaseEntry struct are gone.
 type AboutView struct {
 	AppName       string
 	Version       string
@@ -947,27 +951,8 @@ type AboutView struct {
 	Branch        string
 	BuiltAt       string
 	LicenseURL    string
-	Releases      []ReleaseEntry
 	Activity      *ActivitySnapshotView
 	RecentCommits []RecentCommitView
-}
-
-// ReleaseEntry is a flat projection of releasehistory.Entry
-// (the templ partial cannot import releasehistory without
-// dragging the build-time bake machinery into every consuming
-// binary). Codename is filled for the current release only
-// (the baked entries do not carry codenames -- the CHANGELOG
-// does not store them).
-type ReleaseEntry struct {
-	Version     string
-	Codename    string
-	Date        string
-	Added       []string
-	Changed     []string
-	Fixed       []string
-	Removed     []string
-	Maintenance []string
-	Docs        []string
 }
 
 // ActivityView is the per-release-commit row the /about

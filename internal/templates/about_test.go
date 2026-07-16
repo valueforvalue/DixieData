@@ -28,7 +28,11 @@ import (
 // TestAboutViewRendersAllThreeSections pins the section
 // anchors. The in-page nav strip + the cross-section links
 // all rely on these IDs.
-func TestAboutViewRendersAllThreeSections(t *testing.T) {
+// TestAboutViewRendersFourSections pins the post-#598
+// surface: 4 sections, not 5. The Release history section
+// is gone (the recent-commits section, #594, replaces
+// "what just landed").
+func TestAboutViewRendersFourSections(t *testing.T) {
 	view := viewmodel.AboutView{
 		AppName:    "DixieData",
 		Version:    "1.1.4",
@@ -38,9 +42,6 @@ func TestAboutViewRendersAllThreeSections(t *testing.T) {
 		Branch:     "stable",
 		BuiltAt:    "2026-07-15T00:00:00Z",
 		LicenseURL: "https://github.com/valueforvalue/DixieData/blob/abc123/LICENSE",
-		Releases: []viewmodel.ReleaseEntry{
-			{Version: "v1.1.4", Codename: "First Manassas", Date: "2026-07-12", Added: []string{"first feature"}},
-		},
 	}
 	var buf bytes.Buffer
 	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
@@ -50,21 +51,27 @@ func TestAboutViewRendersAllThreeSections(t *testing.T) {
 	for _, want := range []string{
 		`id="about.identity"`,
 		`id="about.license"`,
-		`id="about.history"`,
+		`id="about.recent"`,
 		`id="about.activity"`,
 		`data-about-identity`,
 		`data-about-license`,
-		`data-about-history`,
+		`data-about-recent`,
 		`data-about-activity`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("about page missing %q", want)
 		}
 	}
+	// Defensive RED: the release history section is gone.
+	if strings.Contains(content, `id="about.history"`) {
+		t.Errorf("about page still renders the release history section — issue #598 (dropped)")
+	}
 }
 
 // TestAboutViewInPageNav pins the on-this-page nav strip.
-// Three anchor links to the section IDs.
+// Four anchor links to the section IDs (issue #598: Release
+// history section is gone; the recent-commits section
+// replaces "what just landed" in the nav).
 func TestAboutViewInPageNav(t *testing.T) {
 	view := viewmodel.AboutView{
 		AppName:  "DixieData",
@@ -81,11 +88,16 @@ func TestAboutViewInPageNav(t *testing.T) {
 		`data-about-in-page-nav`,
 		`href="#about.identity"`,
 		`href="#about.license"`,
-		`href="#about.history"`,
+		`href="#about.recent"`,
+		`href="#about.activity"`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("in-page nav missing %q", want)
 		}
+	}
+	// Defensive RED: the release history nav link is gone.
+	if strings.Contains(content, `href="#about.history"`) {
+		t.Errorf("in-page nav still links to #about.history — issue #598 (dropped)")
 	}
 }
 
@@ -156,125 +168,6 @@ func TestAboutViewCreditsList(t *testing.T) {
 // TestAboutViewEmptyStateWhenBakedNil pins the dev-build
 // empty-state copy. The About page renders a friendly
 // amber-tinted notice rather than crashing.
-func TestAboutViewEmptyStateWhenBakedNil(t *testing.T) {
-	view := viewmodel.AboutView{
-		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
-		Releases: nil,
-	}
-	var buf bytes.Buffer
-	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	content := buf.String()
-	if !strings.Contains(content, `data-about-history-empty`) {
-		t.Errorf("about page missing empty-state wrapper")
-	}
-	if !strings.Contains(content, "Release history not yet generated") {
-		t.Errorf("about page missing empty-state copy")
-	}
-	if !strings.Contains(content, "make tpl") {
-		t.Errorf("empty-state copy missing the `make tpl` instruction")
-	}
-}
-
-// TestAboutViewBakedReleaseRenders pins that the latest baked
-// release's version + date + first bullet land in the body
-// when Releases is non-nil. The preview shows the first 3
-// bullets of the first non-empty subsection; the 4th bullet
-// lives inside the <details> toggle (so the page does contain
-// the 4th bullet text, but it's gated by the expand widget).
-func TestAboutViewBakedReleaseRenders(t *testing.T) {
-	view := viewmodel.AboutView{
-		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
-		Releases: []viewmodel.ReleaseEntry{
-			{
-				Version:  "v1.1.4",
-				Codename: "First Manassas",
-				Date:     "2026-07-12",
-				Added: []string{
-					"a measurable feature",
-					"a second measurable feature",
-					"a third measurable feature",
-					"a fourth measurable feature (overflows the preview budget)",
-				},
-			},
-		},
-	}
-	var buf bytes.Buffer
-	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	content := buf.String()
-	if !strings.Contains(content, "v1.1.4") {
-		t.Errorf("about page missing latest release version")
-	}
-	if !strings.Contains(content, "2026-07-12") {
-		t.Errorf("about page missing latest release date")
-	}
-	if !strings.Contains(content, "a measurable feature") {
-		t.Errorf("about page missing first bullet")
-	}
-	// The expand widget is present so the 4th bullet has a
-	// surface to live in.
-	if !strings.Contains(content, `data-about-release-expand="v1.1.4"`) {
-		t.Errorf("about page missing the expand toggle for the overflow bullet")
-	}
-	if !strings.Contains(content, "Show all 4 bullets") {
-		t.Errorf("about page missing the 'Show all N bullets' summary")
-	}
-}
-
-// TestAboutViewMaxExpandedReleases pins the collapse behaviour:
-// with 12 baked releases, the first 10 render fully expanded
-// and releases 11-12 sit inside the "show all" <details>.
-func TestAboutViewMaxExpandedReleases(t *testing.T) {
-	releases := make([]viewmodel.ReleaseEntry, 12)
-	for i := range releases {
-		releases[i] = viewmodel.ReleaseEntry{
-			Version: "v0.0." + versionItoa(i+1),
-			Date:    "2026-01-01",
-			Added:   []string{"feature " + versionItoa(i+1)},
-		}
-	}
-	view := viewmodel.AboutView{
-		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
-		Releases: releases,
-	}
-	var buf bytes.Buffer
-	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	content := buf.String()
-	if !strings.Contains(content, `data-about-history-collapse`) {
-		t.Errorf("about page missing collapse wrapper for releases beyond the expanded count")
-	}
-	if !strings.Contains(content, "Show all 12 releases") {
-		t.Errorf("about page missing the 'show all N releases' summary")
-	}
-	// The 11th release must be inside the collapse, not at the
-	// top level (count top-level data-about-release anchors).
-	count := strings.Count(content, `data-about-release="v0.0.`)
-	if count != 12 {
-		// 10 expanded at top level + the 11th + 12th inside the
-		// collapse toggle = 12 total release cards.
-		t.Errorf("expected 12 release anchors; got %d", count)
-	}
-}
-
-// versionItoa is a tiny non-fmt helper for the test.
-func versionItoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	digits := ""
-	for n > 0 {
-		digits = string(rune('0'+n%10)) + digits
-		n /= 10
-	}
-	return digits
-}
-
-// TestAboutViewIdentityFieldsRender pins that every identity
 // field the viewmodel carries surfaces in the rendered HTML.
 func TestAboutViewIdentityFieldsRender(t *testing.T) {
 	view := viewmodel.AboutView{
@@ -493,9 +386,6 @@ func TestAboutViewRecentSectionBaked(t *testing.T) {
 func TestAboutViewNoReleaseHistorySection(t *testing.T) {
 	view := viewmodel.AboutView{
 		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
-		// Baked-state would be irrelevant after the drop;
-		// the templ does not consult view.Releases at all.
-		Releases: nil,
 	}
 	var buf bytes.Buffer
 	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
