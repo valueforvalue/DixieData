@@ -112,6 +112,17 @@ func TestSettingsDiagnosticsPageRenders(t *testing.T) {
 			t.Errorf("SettingsDiagnosticsPage missing %q", want)
 		}
 	}
+	// Issue #600: the Enable debug mode label uses
+	// `items-baseline` (not `items-center`) so the
+	// checkbox is vertically aligned with the label
+	// text baseline instead of floating in the middle of
+	// the form's vertical axis. Defensive: a future
+	// refactor that swaps back to `items-center` trips
+	// this assertion before the user sees the centered
+	// checkbox again.
+	if !strings.Contains(content, `class="flex items-baseline gap-2 text-sm"`) {
+		t.Errorf("Enable debug mode label uses items-center (or some other class) instead of items-baseline — issue #600 (centered-checkbox fix) regressed")
+	}
 }
 
 // TestSettingsIndexRendersFiveDestinations pins the

@@ -185,7 +185,7 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 			<p class="mt-2 text-sm text-slate-600">Toggles the in-app debug toolbox + the persistent dev page badge. The setting is per-user; turning it off hides both surfaces on the next navigation.</p>
 		</div>
 		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" class="space-y-4">
-			<label class="flex items-center gap-2 text-sm">
+			<label class="flex items-baseline gap-2 text-sm">
 				<input type="checkbox" name="enabled" value="1" class="field-input" if debugEnabled { checked } />
 				<span>Enable debug mode</span>
 			</label>
