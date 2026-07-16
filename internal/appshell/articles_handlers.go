@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
@@ -787,6 +789,175 @@ func (a *App) handleArticleRaw(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	_, _ = w.Write([]byte(article.BodyMD))
+}
+
+// handleImportArticleImages serves POST /articles/{id}/images/import
+// (issue #612 slice 2). Web-mode multipart upload + Wails
+// native dialog are both supported, mirroring the per-Person-Record
+// shape at handleImportSoldierImages. The imported files land
+// under dataDir/images/articles/<displayID>/ (a per-article
+// sibling directory — see appdata.ArticleImageDir) and the
+// metadata row carries article_id=<id> + kind='article' (the
+// slice-1 discriminator that lets the picker filter cleanly).
+//
+// The slice-3 picker modal is the primary consumer; the slice-4
+// paste/drag-drop path also routes through this endpoint. The
+// picker fragment at GET /articles/{id}/images is the read side
+// of the same contract.
+func (a *App) handleImportArticleImages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "/images/import")
+	if err != nil {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+
+	article, err := a.articles.GetByID(id)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+		return
+	}
+
+	// Web-mode branch: multipart upload with the file
+	// input's "images" field. We save each uploaded file
+	// to a temp path so the importArticleImages walker
+	// can copy it into the article's image directory.
+	uploadedPaths := readUploadedImagePaths(w, r)
+	if uploadedPaths != nil {
+		imported, importErr := a.importArticleImages(*article, uploadedPaths)
+		if importErr != nil {
+			slog.Error("appshell: article image import (web)", "audit", "respond-error", "article_id", id, "imported", imported, "err", importErr.Error())
+			respondInternal(w, r, "Could not import the uploaded images.", importErr)
+			return
+		}
+		setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
+		a.renderArticleImagesListFragment(w, r, id)
+		return
+	}
+
+	// Wails branch: native multi-file dialog with the
+	// per-call re-entry guard (see docs/agents/dialog-guard.md).
+	pathsOpts := runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
+		},
+	}
+	dupKey := guardedOpenMultipleFilesDialogKey("import_article_images", pathsOpts)
+	paths, admitted, ok := a.guardedOpenMultipleFilesDialog(dupKey, pathsOpts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
+		respondError(w, r, KindValidation, "Image import cancelled.", nil)
+		return
+	}
+	imported, importErr := a.importArticleImages(*article, paths)
+	if importErr != nil {
+		slog.Error("appshell: article image import (wails)", "audit", "respond-error", "article_id", id, "imported", imported, "err", importErr.Error())
+		respondInternal(w, r, "Could not import the uploaded images.", importErr)
+		return
+	}
+	setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
+	a.renderArticleImagesListFragment(w, r, id)
+}
+
+// handleArticleImagesList serves GET /articles/{id}/images
+// (issue #612 slice 2). The slice-3 picker modal's "Pick
+// existing" tab reads this fragment; the slice-3 upload tab
+// posts to the import endpoint above + re-fetches this
+// fragment on success. The fragment is the list of images
+// already attached to the article (kind='article' filter via
+// the slice-1 discriminator).
+func (a *App) handleArticleImagesList(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "/images")
+	if err != nil {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	a.renderArticleImagesListFragment(w, r, id)
+}
+
+// renderArticleImagesListFragment writes the image-list
+// fragment for the article picker modal. The fragment is a
+// plain HTML <ul> for slice 2; the slice-3 picker modal wraps
+// it with the tab UI.
+func (a *App) renderArticleImagesListFragment(w http.ResponseWriter, r *http.Request, articleID int64) {
+	images, err := a.articles.ImagesForArticle(articleID)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not load images for article %d.", articleID), err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := components.ArticleImagesListFragment(articleID, images).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not render images for article %d.", articleID), err)
+	}
+}
+
+// importArticleImages saves each source path into the
+// article's image directory + inserts a metadata row via
+// ArticleService.AddImage. Mirrors the per-Person-Record
+// importImagePaths shape: copies bytes, generates a unique
+// filename, records the relative path. The slice-2 contract:
+// the row carries article_id + kind='article' so the picker
+// query (ImagesForArticle) finds it.
+func (a *App) importArticleImages(article models.Article, paths []string) (int, error) {
+	recordDir, relativeDir := appdata.ArticleImageDir(a.dataDir, article.DisplayID)
+	if err := os.MkdirAll(recordDir, 0o755); err != nil {
+		return 0, fmt.Errorf("create image directory: %w", err)
+	}
+	namePrefix := filepath.Base(relativeDir)
+	nextSequence, err := nextStoredImageSequence(recordDir, namePrefix)
+	if err != nil {
+		return 0, fmt.Errorf("prepare image filenames: %w", err)
+	}
+
+	imported := 0
+	var issues []string
+	for _, sourcePath := range paths {
+		sourcePath = strings.TrimSpace(sourcePath)
+		if sourcePath == "" {
+			continue
+		}
+		fileName := filepath.Base(sourcePath)
+		if !isAllowedImageFile(fileName) {
+			issues = append(issues, fmt.Sprintf("unsupported image file: %s", fileName))
+			continue
+		}
+		info, err := os.Stat(sourcePath)
+		if err != nil {
+			issues = append(issues, fmt.Sprintf("read image file %s: %v", fileName, err))
+			continue
+		}
+		if info.IsDir() || info.Size() == 0 {
+			issues = append(issues, fmt.Sprintf("image file %s is empty", fileName))
+			continue
+		}
+
+		storedName := standardizedImageFileName(namePrefix, nextSequence, fileName)
+		absolutePath := filepath.Join(recordDir, storedName)
+		relativePath := filepath.Join(relativeDir, storedName)
+
+		if err := copyImageFile(sourcePath, absolutePath); err != nil {
+			issues = append(issues, err.Error())
+			continue
+		}
+		if err := a.articles.AddImage(article.ID, storedName, filepath.ToSlash(relativePath), ""); err != nil {
+			_ = os.Remove(absolutePath)
+			issues = append(issues, err.Error())
+			continue
+		}
+		imported++
+		nextSequence++
+	}
+
+	if len(issues) > 0 {
+		return imported, errors.New(strings.Join(issues, "; "))
+	}
+	return imported, nil
 }
 
 // slugifyTitle is a thin wrapper for the filename slug helper

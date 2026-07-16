@@ -1,0 +1,60 @@
+// article_images_list.templ — issue #612 slice 2
+// Fragment the article picker modal (slice 3) reads to
+// populate the "Pick existing" tab. Renders a plain <ul> of
+// <li> per image; the picker modal wraps it with the tab UI.
+// The fragment also matches the htmx fragment-swap contract
+// the per-Person-Record gallery uses, so the dispatcher can
+// POST the import + re-fetch this fragment in one round-trip.
+//
+// Per-row shape:
+//   - <button data-article-image-id="<id>"
+//            data-article-image-url="/media/<file_path>"
+//            data-article-image-name="<file_name>">...</button>
+//
+// The picker click handler reads the data-attrs and inserts
+// the markdown into the article body textarea via
+// window.__dixieInsertTextAtCursor (slice 2 of #610).
+package components
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/models"
+)
+
+// ArticleImagesListFragment renders the picker fragment
+// for the given article's existing images. If the article
+// has no images yet, renders an empty-state message so the
+// picker modal's "Pick existing" tab has something to show
+// (instead of an empty <ul>).
+templ ArticleImagesListFragment(articleID int64, images []models.Image) {
+	if len(images) == 0 {
+		<p class="text-sm text-slate-500" data-article-images-empty>
+			No images attached yet. Use the Upload tab to add one.
+		</p>
+		return
+	}
+	<ul
+		class="space-y-2"
+		data-article-images-list
+		data-article-id={ fmt.Sprint(articleID) }
+	>
+		for _, img := range images {
+			<li
+				class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
+				data-article-image-row
+				data-article-image-id={ fmt.Sprint(img.ID) }
+			>
+				<span class="font-mono text-xs text-slate-500" data-article-image-name>{ img.FileName }</span>
+				<button
+					type="button"
+					class="secondary-button shrink-0 px-3 py-1 text-xs"
+					data-article-image-insert
+					data-article-image-id={ fmt.Sprint(img.ID) }
+					data-article-image-url={ "/media/" + img.FilePath }
+					data-article-image-name={ img.FileName }
+				>Insert</button>
+			</li>
+		}
+	</ul>
+}

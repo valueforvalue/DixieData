@@ -119,6 +119,22 @@ func RecordImageDir(dataDir, displayID string) (string, string) {
 	return filepath.Join(dataDir, relative), relative
 }
 
+// ArticleImageDir returns the per-article image directory under dataDir (dataDir/images/articles/<display-id>).
+//
+// Issue #612: Articles have a separate image bucket from Person Records
+// so a chapter illustration and a soldier portrait never share a file path
+// even when their display IDs collide (article "ART-00001" + soldier
+// "ART-00001" would otherwise share images/AR/T/00001/). The sibling
+// `images/articles/<display-id>/` directory keeps the on-disk layout
+// flat (still under dataDir/images) so the existing /media/* serving
+// route and the orphan detector continue to work without changes.
+func ArticleImageDir(dataDir, displayID string) (string, string) {
+	safeDisplayID := sanitizePathComponent(displayID)
+	shards := imageShardSegments(safeDisplayID)
+	relative := filepath.Join(append([]string{"images", "articles"}, append(shards, safeDisplayID)...)...)
+	return filepath.Join(dataDir, relative), relative
+}
+
 func imageShardSegments(safeDisplayID string) []string {
 	upper := strings.ToUpper(strings.TrimSpace(safeDisplayID))
 	if upper == "" {

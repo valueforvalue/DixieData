@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -440,6 +441,92 @@ func (a *ArticleService) Delete(id int64) error {
 		return ErrArticleNotFound
 	}
 	return nil
+}
+
+// AddImage attaches an image to the given article. The caller
+// has already saved the file under dataDir/images/articles/<displayID>/
+// (via appdata.ArticleImageDir) + computed the relative path
+// (e.g. "images/articles/ART-00001/portrait-1.jpg"). This
+// method only inserts the metadata row + links it to the
+// article via the (article_id, kind='article') filter that
+// the picker modal reads.
+//
+// Issue #612 slice 2: the kind='article' discriminator + the
+// per-article file_path prefix are the slice-1 schema change
+// doing the actual work. Without them, an article picker
+// would either see every image in the archive (a UX disaster)
+// or the per-Person-Record queries would have to be retrofitted
+// with a NOT-EXISTS clause (a perf disaster). The single
+// WHERE article_id = ? AND kind = 'article' filter is
+// O(log n) thanks to the slice-1 index.
+func (a *ArticleService) AddImage(articleID int64, fileName, filePath, caption string) error {
+	imageSyncID, err := db.NewSyncID()
+	if err != nil {
+		return err
+	}
+	// Use sql.NullInt64 for the article_id so the column
+	// (which is nullable at the schema level for the legacy
+	// person_record_id path) maps cleanly.
+	var nid sql.NullInt64
+	if articleID > 0 {
+		nid = sql.NullInt64{Int64: articleID, Valid: true}
+	}
+	_, err = a.soldiers.db.Conn().Exec(
+		`INSERT INTO images (sync_id, article_id, kind, file_name, file_path, caption) VALUES (?, ?, 'article', ?, ?, ?)`,
+		imageSyncID,
+		nid,
+		fileName,
+		filePath,
+		caption,
+	)
+	return err
+}
+
+// ImagesForArticle returns the images attached to the given
+// article (kind='article'), ordered by is_primary DESC + id
+// (matches the per-Person-Record gallery sort). The picker
+// modal reads this query directly to populate the "Pick
+// existing" tab; the upload-tab path inserts via AddImage.
+//
+// The kind='article' filter is the slice-1 discriminator
+// doing the work: a Soldier's portrait never leaks into
+// the article picker, even though both rows live in the
+// same `images` table. The reverse (a chapter illustration
+// in the soldier gallery) is blocked by the legacy
+// per-Person-Record query's implicit person_record_id IS
+// NOT NULL filter + the same kind='person' filter the
+// slice-3 picker will add for symmetry.
+func (a *ArticleService) ImagesForArticle(articleID int64) ([]models.Image, error) {
+	rows, err := a.soldiers.db.Conn().Query(
+		`SELECT id, sync_id, person_record_id, person_sync_id, article_id, kind, file_name, file_path, caption, is_primary FROM images WHERE article_id = ? AND kind = 'article' ORDER BY is_primary DESC, id`,
+		articleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer debug.DeferCloseLog(rows, "ArticleService.ImagesForArticle.rows")
+	var out []models.Image
+	for rows.Next() {
+		var img models.Image
+		var personID sql.NullInt64
+		var personSyncID sql.NullString
+		var articleID sql.NullInt64
+		if err := rows.Scan(&img.ID, &img.SyncID, &personID, &personSyncID, &articleID, &img.Kind, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
+			return nil, err
+		}
+		if articleID.Valid {
+			id := articleID.Int64
+			img.ArticleID = &id
+		}
+		if personID.Valid {
+			img.PersonRecordID = personID.Int64
+		}
+		if personSyncID.Valid {
+			img.PersonSyncID = personSyncID.String
+		}
+		out = append(out, img)
+	}
+	return out, rows.Err()
 }
 
 // GetSnapshotByID returns the snapshot row with the given

@@ -176,6 +176,17 @@ func (a *App) setupRoutes() {
 	// + Content-Disposition: attachment.
 	r.Post("/articles/{id:[0-9]+}/pdf", a.handleArticlePDF)
 	r.Get("/articles/{id:[0-9]+}/raw", a.handleArticleRaw)
+	// Issue #612 slice 2: article-attached images. The POST
+	// handler is the upload endpoint (multipart in web
+	// mode, native OpenMultipleFilesDialog in Wails mode);
+	// the GET handler is the picker fragment the slice-3
+	// image picker modal reads to populate the "Pick
+	// existing" tab. Both routes pin kind='article' in
+	// the queries/inserts (via the slice-1 discriminator)
+	// so a Soldier's portrait never leaks into the article
+	// picker.
+	r.Post("/articles/{id:[0-9]+}/images/import", a.handleImportArticleImages)
+	r.Get("/articles/{id:[0-9]+}/images", a.handleArticleImagesList)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
