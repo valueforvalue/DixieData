@@ -53,6 +53,25 @@ func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
 		LicenseURL: licenseURL(commit),
 		Activity:   buildActivityView(activityhistory.Baked()),
 	}
+	// Issue #594: project the baked RecentCommits slice into
+	// the viewmodel. nil-safe: in dev builds (no bake) the
+	// slice is nil and the templ renders an empty-state
+	// notice ("Recent commits will appear after the next
+	// build."). The buildAboutView signature stays a pure
+	// function so the test file can call it with a fixture
+	// snapshot.
+	snap := activityhistory.Baked()
+	if snap != nil {
+		for _, c := range snap.RecentCommits {
+			view.RecentCommits = append(view.RecentCommits, viewmodel.RecentCommitView{
+				Hash:      c.Hash,
+				ShortHash: c.ShortHash,
+				Date:      c.Date,
+				Author:    c.Author,
+				Subject:   c.Subject,
+			})
+		}
+	}
 	for i, e := range baked {
 		re := viewmodel.ReleaseEntry{
 			Version:     e.Version,

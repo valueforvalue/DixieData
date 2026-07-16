@@ -137,3 +137,50 @@ func TestBuildAboutViewIsViewModel(t *testing.T) {
 	view := buildAboutView("dev", "dev", "")
 	var _ viewmodel.AboutView = view
 }
+
+// TestBuildAboutViewRecentCommitsShape pins the issue #594
+// projection: the new RecentCommits slice on AboutView carries
+// the same field shape as activityhistory.RecentCommit. In
+// dev builds (no bake) the slice is nil; the templ renders an
+// empty-state notice in that case. The contract: every field
+// the templ needs is on the view, in a form the templ can
+// render without importing activityhistory directly.
+func TestBuildAboutViewRecentCommitsShape(t *testing.T) {
+	view := buildAboutView("dev", "dev", "")
+	if view.RecentCommits == nil {
+		// Dev build (no bake). Shape is nil-slice, not
+		// zero-length slice. The templ handles nil safely.
+		return
+	}
+	// Baked build: at least one entry (in practice the
+	// recentCommitsCap is 25; the test asserts the shape
+	// of the first entry).
+	if len(view.RecentCommits) == 0 {
+		// Edge: bake ran but produced no commits (rare,
+		// but defensible on a fresh repo).
+		return
+	}
+	first := view.RecentCommits[0]
+	if first.Hash == "" {
+		t.Errorf("RecentCommits[0].Hash = empty; want 40-char SHA")
+	}
+	if first.ShortHash == "" {
+		t.Errorf("RecentCommits[0].ShortHash = empty; want 7-char prefix")
+	}
+	if first.Date == "" {
+		t.Errorf("RecentCommits[0].Date = empty; want YYYY-MM-DD")
+	}
+	if first.Author == "" {
+		t.Errorf("RecentCommits[0].Author = empty; want user.name")
+	}
+	if first.Subject == "" {
+		t.Errorf("RecentCommits[0].Subject = empty; want commit subject")
+	}
+	// ShortHash must be a prefix of Hash. Defensive: a
+	// future refactor might derive ShortHash incorrectly
+	// (e.g. via a separate field rather than a slice).
+	if len(first.Hash) >= 7 && first.ShortHash != first.Hash[:7] {
+		t.Errorf("RecentCommits[0].ShortHash = %q; want Hash[:7] = %q",
+			first.ShortHash, first.Hash[:7])
+	}
+}

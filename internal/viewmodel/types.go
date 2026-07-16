@@ -931,21 +931,25 @@ type ResearchPickerView struct {
 }
 
 // AboutView is the data shape the /about page renders
-// (issue #585 + #586). Identity carries the version/codename/
-// schema metadata; Releases is the baked release history
-// (nil in dev builds); Activity is the baked repository-
-// activity snapshot (nil in dev builds).
+// (issue #585 + #586 + #594). Identity carries the version/
+// codename/schema metadata; Releases is the baked release
+// history (nil in dev builds); Activity is the baked
+// repository-activity snapshot (nil in dev builds).
+// RecentCommits is the baked per-commit projection for
+// the new "Recent commits" section (nil in dev builds;
+// the templ renders an empty-state notice in that case).
 type AboutView struct {
-	AppName    string
-	Version    string
-	Codename   string
-	Schema     int
-	Commit     string
-	Branch     string
-	BuiltAt    string
-	LicenseURL string
-	Releases   []ReleaseEntry
-	Activity   *ActivitySnapshotView
+	AppName       string
+	Version       string
+	Codename      string
+	Schema        int
+	Commit        string
+	Branch        string
+	BuiltAt       string
+	LicenseURL    string
+	Releases      []ReleaseEntry
+	Activity      *ActivitySnapshotView
+	RecentCommits []RecentCommitView
 }
 
 // ReleaseEntry is a flat projection of releasehistory.Entry
@@ -997,6 +1001,31 @@ type ActivitySnapshotView struct {
 	TopContributors  []Contributor
 	PerRelease       []ActivityView
 	IssuesClosed     IssuesClosedView
+}
+
+// RecentCommitView is the viewmodel projection of
+// activityhistory.RecentCommit (the templ partial cannot
+// import activityhistory without dragging in the build-time
+// bake machinery). The view is flat: the templ renders
+// each field directly + builds the GitHub permalink URL
+// in the row template. Hash is the full 40-char SHA1; the
+// templ uses Hash for the permalink URL and ShortHash for
+// the visible hash text. Date is the YYYY-MM-DD slice of
+// the commit timestamp; the templ renders a relative date
+// (or ISO date fallback) via a small JS helper. Subject is
+// the first line of the commit message; the templ renders
+// it as the row's primary text + as the permalink anchor's
+// text.
+//
+// Issue #594: the per-commit projection lives next to the
+// ReleaseEntry projection in AboutView so the templ reads
+// both slices from one place.
+type RecentCommitView struct {
+	Hash      string
+	ShortHash string
+	Date      string
+	Author    string
+	Subject   string
 }
 
 // Contributor is the viewmodel projection of
