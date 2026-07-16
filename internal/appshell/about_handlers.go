@@ -19,6 +19,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/activityhistory"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/glossary"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -56,6 +57,7 @@ func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
 		BuiltAt:    builtAt,
 		LicenseURL: licenseURL(commit),
 		Activity:   buildActivityView(activityhistory.Baked()),
+		Glossary:   buildGlossaryView(),
 	}
 	// Issue #594: project the baked RecentCommits slice into
 	// the viewmodel. nil-safe: in dev builds (no bake) the
@@ -133,4 +135,32 @@ func licenseURL(commit string) string {
 		return "https://github.com/valueforvalue/DixieData/blob/dev/LICENSE"
 	}
 	return "https://github.com/valueforvalue/DixieData/blob/" + commit + "/LICENSE"
+}
+// buildGlossaryView projects the canonical term registry
+// into the viewmodel slice the templ partial consumes
+// (issue #564 slice 1). The glossary package is the
+// single source of truth; the viewmodel is a typed seam
+// because the templates package cannot import internal/
+// glossary without a cycle.
+//
+// The slice copies Term-for-Term (no transformation) so
+// the registry's contract (unique slugs, kebab anchors,
+// non-empty fields, related slugs all registered) is
+// preserved on the wire. /about renders every entry the
+// registry returns; the (future) disclosure popover on
+// a verified apply site reads the entry's Short via
+// glossary.LookupBySlug(slug).
+func buildGlossaryView() []viewmodel.GlossaryEntry {
+	reg := glossary.Registry()
+	out := make([]viewmodel.GlossaryEntry, 0, len(reg))
+	for _, t := range reg {
+		out = append(out, viewmodel.GlossaryEntry{
+			Slug:    t.Slug,
+			Term:    t.Term,
+			Short:   t.Short,
+			Full:    t.Full,
+			Related: t.Related,
+		})
+	}
+	return out
 }

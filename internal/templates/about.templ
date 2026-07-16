@@ -44,6 +44,7 @@ templ AboutView(view viewmodel.AboutView) {
 			@aboutInPageNav()
 			@aboutIdentitySection(view)
 			@aboutLicenseSection(view)
+			@aboutGlossarySection(view)
 			// Issue #598: aboutHistorySection removed — the
 			// recent-commits section (#594) is the replacement
 			// for "what just landed."
@@ -59,6 +60,7 @@ templ aboutInPageNav() {
 		<ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
 			<li><a href="#about.identity" class="text-[var(--theme-text-primary)] underline">App identity</a></li>
 			<li><a href="#about.license" class="text-[var(--theme-text-primary)] underline">License + credits</a></li>
+			<li><a href="#about.glossary" class="text-[var(--theme-text-primary)] underline" data-about-nav-glossary>Glossary</a></li>
 			<li><a href="#about.recent" class="text-[var(--theme-text-primary)] underline" data-about-nav-recent>Recent commits</a></li>
 			<li><a href="#about.activity" class="text-[var(--theme-text-primary)] underline">Repository activity</a></li>
 		</ul>
@@ -156,6 +158,38 @@ templ aboutLicenseSection(view viewmodel.AboutView) {
 				</ul>
 			</div>
 		</div>
+	</section>
+}
+
+// aboutGlossarySection renders the canonical term registry
+// (issue #564 slice 1). The section is the full-glossary
+// destination for users who land on /about and want the
+// project-wide definition list; in-context term mentions
+// on Person Record detail, Source Record panel, etc.
+// (slice 2) use a disclosure popover that reads the same
+// registry's Short field.
+//
+// Every term renders as a row with a stable kebab anchor
+// (#about.glossary-<slug>) the future related-term cross-
+// links land on. Sits between License + credits (#license)
+// and Recent commits (#recent) per the slice plan's
+// narrative flow: "what the app is" → "what the words
+// mean" → "what just landed" → "trend data".
+templ aboutGlossarySection(view viewmodel.AboutView) {
+	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="about.glossary" data-about-glossary>
+		@components.Heading(components.H2, "Glossary", "", nil)
+		<p class="text-sm text-slate-600">
+			Canonical domain vocabulary for DixieData. Mirrors <code class="font-mono">CONTEXT.md</code>; if the two drift, the registry wins (and the docs lint should flag the drift). Every term renders with a stable kebab anchor.
+		</p>
+		if len(view.Glossary) == 0 {
+			<p class="text-sm text-amber-700" data-about-glossary-empty>No terms registered.</p>
+		} else {
+			<dl class="space-y-3" data-about-glossary-list>
+				for _, entry := range view.Glossary {
+					@aboutGlossaryRow(entry)
+				}
+			</dl>
+		}
 	</section>
 }
 
@@ -370,4 +404,31 @@ func bucketColor(typeName string) string {
 		return "#6b6b6b" // dark grey
 	}
 	return "#cccccc"
+}
+// aboutGlossaryRow renders one term as a definition row.
+// The kebab anchor (`id="about.glossary-<slug>"`) is what
+// every related-term cross-link in this and other rows
+// navigates to. The `data-about-glossary-term` hook is
+// the click target the future disclosure popover (slice 2)
+// opens from. The Short line is the one-line definition
+// a glance reads; Full is the paragraph that follows.
+templ aboutGlossaryRow(entry viewmodel.GlossaryEntry) {
+	<div class="rounded-xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/40 p-4" id={ "about.glossary-" + entry.Slug } data-about-glossary-term={ entry.Slug }>
+		<dt class="font-mono text-base font-semibold text-[var(--theme-text-primary)]" data-about-glossary-term-name={ entry.Slug }>{ entry.Term }</dt>
+		<dd class="mt-2 space-y-2 text-sm text-slate-700">
+			<p class="text-[var(--theme-text-primary)]">{ entry.Short }</p>
+			<p class="text-slate-600">{ entry.Full }</p>
+			if len(entry.Related) > 0 {
+				<p class="text-xs text-slate-500">
+					<span class="font-semibold uppercase tracking-[0.18em]">See also:</span>
+					for i, rel := range entry.Related {
+						if i > 0 {
+							<span class="px-1">·</span>
+						}
+						<a href={ templ.SafeURL("#about.glossary-" + rel) } class="underline">[{ rel }]</a>
+					}
+				</p>
+			}
+		</dd>
+	</div>
 }

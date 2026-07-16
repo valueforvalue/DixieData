@@ -86,6 +86,13 @@ async function populatedProbe(page) {
     const recentRows = Array.from(
       document.querySelectorAll('[data-about-recent-row]'),
     );
+    // Issue #564 slice 1: Glossary section + nav link + rows.
+    const glossary = document.querySelector('[data-about-glossary]');
+    const glossaryNavLink = document.querySelector('[data-about-nav-glossary]');
+    const glossaryList = document.querySelector('[data-about-glossary-list]');
+    const glossaryTerms = Array.from(
+      document.querySelectorAll('[data-about-glossary-term]'),
+    ).map((el) => el.getAttribute('data-about-glossary-term'));
     // Pull the first row's hash + permalink so the assertion
     // can verify the GitHub URL format.
     const firstRowPermalink = recentRows.length > 0
@@ -116,6 +123,12 @@ async function populatedProbe(page) {
       recentNavLinkRendered: !!recentNavLink,
       recentRowCount: recentRows.length,
       firstRowPermalink,
+      // Issue #564 slice 1: Glossary section + rows.
+      glossaryRendered: !!glossary,
+      glossaryNavLinkRendered: !!glossaryNavLink,
+      glossaryListRendered: !!glossaryList,
+      glossaryTermCount: glossaryTerms.length,
+      glossaryTerms,
     };
   });
   await expect(state.pageRendered, 'about page renders', state);
@@ -217,6 +230,25 @@ async function populatedProbe(page) {
       state,
     );
   }
+  // Issue #564 slice 1: Glossary section + at least one row.
+  await expect(state.glossaryRendered, 'glossary section renders (#564 slice 1)', state);
+  await expect(
+    state.glossaryNavLinkRendered,
+    'in-page nav strip has a Glossary link (#564 slice 1)',
+    state,
+  );
+  await expect(state.glossaryListRendered, 'glossary list renders when terms present (#564 slice 1)', state);
+  // The full registry has 36 terms; this is a tight pin that
+  // catches drift between the registry and the rendered
+  // section without forcing the test to enumerate every
+  // slug. If a future term removal slips through, the
+  // assertion fires. If a future term addition slips
+  // through, ditto.
+  await expect(
+    state.glossaryTermCount === 36,
+    `glossary renders the canonical 36-term registry (got ${state.glossaryTermCount})`,
+    state,
+  );
 }
 
 async function main() {

@@ -28,11 +28,13 @@ import (
 // TestAboutViewRendersAllThreeSections pins the section
 // anchors. The in-page nav strip + the cross-section links
 // all rely on these IDs.
-// TestAboutViewRendersFourSections pins the post-#598
-// surface: 4 sections, not 5. The Release history section
-// is gone (the recent-commits section, #594, replaces
-// "what just landed").
-func TestAboutViewRendersFourSections(t *testing.T) {
+// TestAboutViewRendersFiveSections pins the post-#598 +
+// post-#564 slice 1 surface: 5 sections, not 4. The
+// Release history section is gone (the recent-commits
+// section, #594, replaces "what just landed"); the new
+// Glossary section renders the full canonical term
+// registry.
+func TestAboutViewRendersFiveSections(t *testing.T) {
 	view := viewmodel.AboutView{
 		AppName:    "DixieData",
 		Version:    "1.1.4",
@@ -51,10 +53,12 @@ func TestAboutViewRendersFourSections(t *testing.T) {
 	for _, want := range []string{
 		`id="about.identity"`,
 		`id="about.license"`,
+		`id="about.glossary"`,
 		`id="about.recent"`,
 		`id="about.activity"`,
 		`data-about-identity`,
 		`data-about-license`,
+		`data-about-glossary`,
 		`data-about-recent`,
 		`data-about-activity`,
 	} {
@@ -69,9 +73,9 @@ func TestAboutViewRendersFourSections(t *testing.T) {
 }
 
 // TestAboutViewInPageNav pins the on-this-page nav strip.
-// Four anchor links to the section IDs (issue #598: Release
-// history section is gone; the recent-commits section
-// replaces "what just landed" in the nav).
+// Five anchor links to the section IDs (issue #598: Release
+// history section is gone; issue #564: Glossary section is
+// added between License + credits and Recent commits).
 func TestAboutViewInPageNav(t *testing.T) {
 	view := viewmodel.AboutView{
 		AppName:  "DixieData",
@@ -88,6 +92,7 @@ func TestAboutViewInPageNav(t *testing.T) {
 		`data-about-in-page-nav`,
 		`href="#about.identity"`,
 		`href="#about.license"`,
+		`href="#about.glossary"`,
 		`href="#about.recent"`,
 		`href="#about.activity"`,
 	} {
