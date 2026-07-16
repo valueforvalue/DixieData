@@ -6236,15 +6236,19 @@ function onPrintRecordsFragmentReady(modal) {
         return;
       }
       const md = "![" + alt + "](" + url + ")";
+      const insertAt = textarea.selectionStart;
       const fn = window.__dixieInsertTextAtCursor;
       if (!fn) {
         if (typeof console !== "undefined" && typeof console.warn === "function") {
           console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Image picker uses raw setRangeText fallback.");
         }
-        const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        textarea.setRangeText(md, start, end, "end");
+        textarea.setRangeText(md, insertAt, end, "end");
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        // Select the alt text so the user can type a
+        // description immediately (issue #612 slice 5).
+        textarea.selectionStart = insertAt + 2;
+        textarea.selectionEnd = insertAt + 2 + alt.length;
         textarea.focus();
       } else {
         const ok = fn(textarea, md);
@@ -6252,8 +6256,13 @@ function onPrintRecordsFragmentReady(modal) {
           showToast("Could not insert image.", "error");
           return;
         }
+        // Select the alt text so the user can type a
+        // description immediately (issue #612 slice 5).
+        textarea.selectionStart = insertAt + 2;
+        textarea.selectionEnd = insertAt + 2 + alt.length;
+        textarea.focus();
       }
-      showToast("Image inserted.", "success");
+      showToast("Image inserted — type alt text.", "success");
       if (typeof hideOverlayModal === "function") {
         hideOverlayModal(modal);
       } else {
@@ -6502,15 +6511,17 @@ function onPrintRecordsFragmentReady(modal) {
           }
           var name = file.name || "image";
           var md = "![" + name + "](" + url + ")";
+          var insertAt = textareaEl.selectionStart;
           var fn = window.__dixieInsertTextAtCursor;
           if (!fn) {
             if (typeof console !== "undefined" && typeof console.warn === "function") {
               console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Paste/drop uses raw setRangeText fallback.");
             }
-            var start = textareaEl.selectionStart;
             var end = textareaEl.selectionEnd;
-            textareaEl.setRangeText(md, start, end, "end");
+            textareaEl.setRangeText(md, insertAt, end, "end");
             textareaEl.dispatchEvent(new Event("input", { bubbles: true }));
+            textareaEl.selectionStart = insertAt + 2;
+            textareaEl.selectionEnd = insertAt + 2 + name.length;
             textareaEl.focus();
           } else {
             var ok = fn(textareaEl, md);
@@ -6518,8 +6529,11 @@ function onPrintRecordsFragmentReady(modal) {
               showToast("Could not insert image.", "error");
               return;
             }
+            textareaEl.selectionStart = insertAt + 2;
+            textareaEl.selectionEnd = insertAt + 2 + name.length;
+            textareaEl.focus();
           }
-          showToast("Image uploaded.", "success");
+          showToast("Image uploaded — type alt text.", "success");
         })
         .catch(function (err) {
           showToast("Upload failed: " + (err.message || "unknown error"), "error");
