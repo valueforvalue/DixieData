@@ -99,6 +99,90 @@ async function populatedProbe(page) {
   );
   await expect(state.activeKinds.length === 5, 'all 5 kinds are active by default', state);
 
+  // Issue #595 slice 2: chart clip. The SVG's rendered width
+  // must not exceed the host's visible width; otherwise the
+  // line "runs off the visible image area" (the host is a flex
+  // child of a constrained card, the SVG declares a larger
+  // width, and the path — correctly drawn inside the SVG's
+  // viewBox — appears past the visible boundary).
+  const clipState = await page.evaluate(() => {
+    const host = document.querySelector('[data-inventory-metrics-svg-host]');
+    const svg = document.querySelector('[data-inventory-metrics-svg]');
+    if (!(host instanceof HTMLElement) || !(svg instanceof SVGElement)) {
+      return { ok: false };
+    }
+    const hostRect = host.getBoundingClientRect();
+    const declaredWidth = parseFloat(svg.getAttribute('width') || '0');
+    const viewBox = svg.getAttribute('viewBox') || '';
+    const viewBoxParts = viewBox.split(/\s+/).map((p) => parseFloat(p));
+    return {
+      ok: true,
+      hostWidth: hostRect.width,
+      declaredWidth,
+      viewBoxWidth: viewBoxParts[2] || 0,
+      overflow: declaredWidth - hostRect.width,
+    };
+  });
+  await expect(clipState.ok, 'clip selectors resolve (host + svg present)', clipState);
+  await expect(
+    clipState.declaredWidth <= clipState.hostWidth + 0.5,
+    'SVG declared width does not exceed host width (clip fix — issue #595 slice 2)',
+    clipState,
+  );
+  await expect(
+    Math.abs(clipState.declaredWidth - clipState.viewBoxWidth) < 0.5,
+    'SVG width attribute matches viewBox width (no internal aspect distortion)',
+    clipState,
+  );
+
+  // Issue #595 slice 3: hover tooltip. Hovering any data point
+  // surfaces a tooltip with the {date} · {count} · {kind label}
+  // triple. The probe asserts the tooltip element exists, is
+  // hidden by default, and shows the expected text on hover.
+  const hoverState = await page.evaluate(async () => {
+    const tooltip = document.querySelector('[data-inventory-metrics-tooltip]');
+    const firstPoint = document.querySelector('[data-inventory-metrics-points] [data-point]');
+    if (!(tooltip instanceof HTMLElement) || !(firstPoint instanceof Element)) {
+      return { ok: false };
+    }
+    const initialVisible = tooltip.getAttribute('data-inventory-metrics-tooltip-visible');
+    const initialText = tooltip.textContent || '';
+    // Synthesize a hover via a real event so the listener fires.
+    const evt = new MouseEvent('mouseover', { bubbles: true, clientX: 10, clientY: 10 });
+    firstPoint.dispatchEvent(evt);
+    // Give the handler a microtask to update the DOM.
+    await new Promise((r) => setTimeout(r, 0));
+    const afterVisible = tooltip.getAttribute('data-inventory-metrics-tooltip-visible');
+    const afterText = tooltip.textContent || '';
+    // Move away to clean up.
+    const leave = new MouseEvent('mouseout', { bubbles: true });
+    firstPoint.dispatchEvent(leave);
+    return {
+      ok: true,
+      initialVisible,
+      initialText,
+      afterVisible,
+      afterText,
+      payload: firstPoint.getAttribute('data-point'),
+    };
+  });
+  await expect(hoverState.ok, 'hover selectors resolve (tooltip + data point present)', hoverState);
+  await expect(
+    hoverState.initialVisible === 'false',
+    'tooltip is hidden by default (data-inventory-metrics-tooltip-visible="false")',
+    hoverState,
+  );
+  await expect(
+    hoverState.afterVisible === 'true',
+    'tooltip becomes visible on mouseover',
+    hoverState,
+  );
+  await expect(
+    /\d{4}-\d{2}-\d{2}.*·.*\d+.*·.*/.test(hoverState.afterText),
+    'tooltip text matches {date} · {count} · {kind label} shape',
+    { afterText: hoverState.afterText, payload: hoverState.payload },
+  );
+
   // Issue #583 slice 3 legend toggle: clicking a chip hides the
   // matching series path (display:none) and updates
   // data-active-kinds. Re-clicking restores visibility.
