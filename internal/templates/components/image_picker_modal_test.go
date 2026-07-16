@@ -29,11 +29,8 @@ func TestImagePickerModal_RendersWithTabs(t *testing.T) {
 	if !strings.Contains(got, `data-image-picker-tab="existing"`) {
 		t.Errorf("modal missing Pick existing tab\nfull render:\n%s", got)
 	}
-	if !strings.Contains(got, `name="images"`) {
-		t.Errorf("modal missing file input\nfull render:\n%s", got)
-	}
-	if !strings.Contains(got, `type="submit"`) {
-		t.Errorf("modal missing upload submit button\nfull render:\n%s", got)
+	if !strings.Contains(got, "Import from device") {
+		t.Errorf("modal missing import button\nfull render:\n%s", got)
 	}
 	if !strings.Contains(got, `data-image-picker-insert-url`) {
 		t.Errorf("modal missing manual URL insert button\nfull render:\n%s", got)

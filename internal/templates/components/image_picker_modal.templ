@@ -71,33 +71,23 @@ templ ImagePickerModal(articleID int64) {
 							data-image-picker-tab="existing"
 						>Pick existing</button>
 					</div>
-					// Upload tab panel — uses data-dixie-submit
-					// (not htmx) so the Wails dispatcher in
-					// frontend/app.js handles the multipart-to-
-					// urlencoded workaround on wails.localhost.
-					// The response (ArticleImagesListFragment)
-					// is written into the existing-list div via
-					// data-results-target.
+					// Upload tab panel — plain form with no
+					// file input. The server's Wails branch
+					// opens a native OpenMultipleFilesDialog;
+					// the web-mode branch falls through to an
+					// error (web users paste/drop instead).
 					<div class="mt-4" data-image-picker-panel="upload">
 						<form
 							action={ templ.URL("/articles/" + fmt.Sprint(articleID) + "/images/import") }
 							method="post"
-							enctype="multipart/form-data"
 							data-dixie-submit="true"
 							data-results-target={ fmt.Sprintf("[data-image-picker-existing-list][data-article-id='%d']", articleID) }
 						>
-							<input
-								type="file"
-								name="images"
-								accept="image/*"
-								multiple
-								class="field-input w-full text-sm"
-							/>
-							<p class="mt-1 mb-3 text-xs text-slate-500">Pick one or more image files to attach to this article.</p>
+							<p class="text-sm text-slate-600 mb-3">Import images from your device into this article's local archive.</p>
 							<button
 								type="submit"
 								class="primary-button"
-							>Upload</button>
+							>Import from device</button>
 						</form>
 					</div>
 					// Pick existing tab panel — htmx GET

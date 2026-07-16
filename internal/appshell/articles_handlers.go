@@ -840,6 +840,13 @@ func (a *App) handleImportArticleImages(w http.ResponseWriter, r *http.Request) 
 
 	// Wails branch: native multi-file dialog with the
 	// per-call re-entry guard (see docs/agents/dialog-guard.md).
+	// Only attempt when a Wails frontend is available;
+	// web-mode users should use the paste/drop flow or the
+	// manual URL input instead.
+	if !wailsHasFrontend(a.ctx) {
+		respondValidation(w, r, "Image import from device is only available in the desktop app. Use paste/drop or paste an image URL instead.", nil)
+		return
+	}
 	pathsOpts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
