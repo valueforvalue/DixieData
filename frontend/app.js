@@ -4247,8 +4247,161 @@ function serializeDraftFields(form) {
     installMegaMenus();
     installFloatingNavPanel();
     installTermDisclosures();
+    installAboutActivityHeatmap();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
+
+  // installAboutActivityHeatmap (issue #601) reads the
+  // per-day counts JSON the templ partial emits on
+  // [data-about-activity-heatmap-data], paints a 52-week
+  // x 7-day SVG grid into the host, and removes the
+  // "Loading heatmap..." placeholder paragraph.
+  //
+  // The render is idempotent across htmx:load re-renders
+  // via the `__aboutHeatmapPainted` guard — the JS skips
+  // hosts that have already been painted.
+  //
+  // Layout: 52 columns (oldest on the left) x 7 rows
+  // (Sun-Sat) so the grid reads like a calendar. Each
+  // day is a small rounded <rect> colored by
+  // count/rolling-max on a 5-stop sepia -> amber ramp.
+  // Empty days get the lowest tint so the user can
+  // visually scan where activity happened. The whole
+  // SVG carries role="img" + aria-label naming the
+  // heatmap's content so screen readers announce the
+  // heatmap once on land instead of per-cell.
+  //
+  // No tooltip in v1 — the issue body explicitly defers
+  // hover/tooltip behavior to a follow-up. Empty-state
+  // grid (no data): renders the all-empty grid silently.
+  function installAboutActivityHeatmap() {
+    const hosts = document.querySelectorAll("[data-about-activity-heatmap]");
+    hosts.forEach((host) => {
+      if (!(host instanceof HTMLElement)) return;
+      if (host.__aboutHeatmapPainted === true) return;
+      const raw = host.getAttribute("data-about-activity-heatmap-data");
+      if (!raw) return;
+      /** @type {Record<string, number>} */
+      let byDay = {};
+      try {
+        byDay = JSON.parse(raw);
+        if (!byDay || typeof byDay !== "object") {
+          byDay = {};
+        }
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("about activity heatmap: invalid JSON in data-about-activity-heatmap-data", err);
+        }
+        byDay = {};
+      }
+      paintAboutActivityHeatmap(/** @type {HTMLElement} */ (host), byDay);
+      host.__aboutHeatmapPainted = true;
+    });
+  }
+
+  // paintAboutActivityHeatmap (issue #601) writes the
+  // SVG grid into the host and removes the loading
+  // placeholder. The host's children are cleared first
+  // so the templ placeholder + any leftover artifacts
+  // from a prior abortive paint cannot leak through.
+  //
+  // 5-stop ramp: 0 -> faint sepia tint, 1 -> warm
+  // sepia, max/2 -> amber, max -> deep gold. The exact
+  // CSS-var tokens match the existing chart palette so
+  // the visual language stays consistent across surfaces.
+  /**
+   * @param {HTMLElement} host SVG mount host
+   * @param {Record<string, number>} byDay per-day commit counts
+   */
+  function paintAboutActivityHeatmap(host, byDay) {
+    // Compute the rolling max count across the visible
+    // window. byDay is `date(YYYY-MM-DD) -> count`;
+    // max-of-keys for the ramp stops.
+    let maxCount = 0;
+    for (const k of Object.keys(byDay)) {
+      const v = byDay[k];
+      if (typeof v === "number" && v > maxCount) maxCount = v;
+    }
+    // SVG layout: 52 cols, 7 rows (Sun-Sat). Cell size
+    // 12px wide, with 2px gap. Total grid width 720px
+    // (52*12 + 51*2). Total height 7*12 + 6*2 = 96px.
+    const cell = 12;
+    const gap = 2;
+    const cols = 52;
+    const rows = 7;
+    const width = cols * cell + (cols - 1) * gap;
+    const height = rows * cell + (rows - 1) * gap;
+    // Empty all host children (removes the loading
+    // placeholder + any stray leftovers). White-element
+    // assignment is the canonical DOM mutation — faster
+    // than innerHTML='' + appendChild on Chromium's SVG
+    // path.
+    while (host.firstChild) host.removeChild(host.firstChild);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Repository activity heatmap: " + Object.keys(byDay).length + " active days, max " + maxCount + " commits per day");
+    svg.classList.add("about-activity-heatmap-svg");
+    // Find the most recent date in byDay; the heatmap
+    // renders the 52 weeks ending at that date so the
+    // "today" column is on the right (the GitHub /
+    // GitLab convention).
+    let endDate = new Date();
+    const dateKeys = Object.keys(byDay);
+    if (dateKeys.length > 0) {
+      const latest = dateKeys.sort().slice(-1)[0];
+      // The parse assumes YYYY-MM-DD shape.
+      const parts = latest.split("-").map((p) => parseInt(p, 10));
+      if (parts.length === 3 && parts.every((p) => Number.isFinite(p))) {
+        endDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      }
+    }
+    for (let col = 0; col < cols; col++) {
+      for (let row = 0; row < rows; row++) {
+        const dayOffset = -(cols - 1 - col) * 7 + row;
+        const cellDate = new Date(endDate.getTime() + dayOffset * 86400000);
+        if (isNaN(cellDate.getTime())) continue;
+        const y = cellDate.getUTCFullYear();
+        const m = String(cellDate.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(cellDate.getUTCDate()).padStart(2, "0");
+        const dateKey = y + "-" + m + "-" + d;
+        const count = byDay[dateKey] || 0;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", String(col * (cell + gap)));
+        rect.setAttribute("y", String(row * (cell + gap)));
+        rect.setAttribute("width", String(cell));
+        rect.setAttribute("height", String(cell));
+        rect.setAttribute("rx", "2");
+        rect.setAttribute("fill", aboutActivityHeatmapFill(count, maxCount));
+        rect.setAttribute("data-about-activity-heatmap-cell", dateKey);
+        rect.setAttribute("data-about-activity-heatmap-count", String(count));
+        svg.appendChild(rect);
+      }
+    }
+    host.appendChild(svg);
+  }
+
+  // aboutActivityHeatmapFill maps a day count to a 5-stop
+  // ramp color. Empty (0 count) gets the faintest tint so
+  // the empty cells visually recede; active days scale
+  // toward warm gold.
+  /**
+   * @param {number} count commits per day
+   * @param {number} maxCount rolling max across all days
+   * @returns {string} CSS color value
+   */
+  function aboutActivityHeatmapFill(count, maxCount) {
+    if (count <= 0) return "rgba(125, 79, 45, 0.08)"; // faint sepia
+    if (maxCount <= 0) return "rgba(125, 79, 45, 0.08)";
+    const ratio = Math.min(count / maxCount, 1);
+    if (ratio <= 0.25) return "rgba(125, 79, 45, 0.30)"; // warm sepia
+    if (ratio <= 0.50) return "rgba(151, 105, 60, 0.55)"; // amber-mid
+    if (ratio <= 0.75) return "rgba(183, 133, 79, 0.78)"; // gold
+    return "#b6854f"; // peak gold
+  }
+
 
   // installTermDisclosures attaches click + Escape +
   // outside-click handlers to every [data-term-disclosure-trigger]

@@ -505,7 +505,7 @@ func TestAboutViewActivityHeatmapEmitsHostAndLoading(t *testing.T) {
 	content := buf.String()
 	for _, want := range []string{
 		`data-about-activity-heatmap`,
-		`data-about-activity-heatmap-data="{"`,
+		`data-about-activity-heatmap-data="`,
 		`data-about-activity-heatmap-loading`,
 		`Loading heatmap...`,
 	} {

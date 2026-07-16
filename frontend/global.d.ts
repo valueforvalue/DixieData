@@ -131,6 +131,11 @@ declare global {
     // can re-install without re-attaching; the guard mirrors
     // the __copyPathBound / __cheatsheetCopyBound pattern.
     __termDisclosureWired?: boolean;
+    // Issue #601: installAboutActivityHeatmap paints the
+    // 52-week commit-heatmap SVG once per host; the guard
+    // prevents double-painting on htmx:load re-renders
+    // (mirror of __inventoryChartPainted).
+    __aboutHeatmapPainted?: boolean;
   }
 }
 
