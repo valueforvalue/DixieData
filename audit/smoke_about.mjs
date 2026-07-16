@@ -141,6 +141,13 @@ async function populatedProbe(page) {
     const glossaryTerms = Array.from(
       document.querySelectorAll('[data-about-glossary-term]'),
     ).map((el) => el.getAttribute('data-about-glossary-term'));
+    // Issue #604: glossary list wraps in a bounded
+    // scroll viewport.
+    const glossaryListEl = document.querySelector('[data-about-glossary-list]');
+    const glossaryWrapper = glossaryListEl ? glossaryListEl.parentElement : null;
+    const glossaryWrapperClassList = glossaryWrapper
+      ? Array.from(glossaryWrapper.classList)
+      : [];
     // Pull the first row's hash + permalink so the assertion
     // can verify the GitHub URL format.
     const firstRowPermalink = recentRows.length > 0
@@ -206,6 +213,9 @@ async function populatedProbe(page) {
       glossaryNavLinkRendered: !!glossaryNavLink,
       glossaryListRendered: !!glossaryList,
       glossaryTermCount: glossaryTerms.length,
+      // Issue #604 fields.
+      glossaryWrapperClassList: glossaryWrapperClassList,
+      glossaryWrapperIsGlossaryListParent: glossaryListEl ? glossaryListEl.parentElement === glossaryWrapper : false,
       glossaryTerms,
     };
   });
@@ -409,6 +419,23 @@ async function populatedProbe(page) {
   await expect(
     state.glossaryTermCount === 36,
     `glossary renders the canonical 36-term registry (got ${state.glossaryTermCount})`,
+    state,
+  );
+  // Issue #604: the glossary list is wrapped in a
+  // bounded scroll viewport.
+  await expect(
+    state.glossaryWrapperClassList.includes('max-h-96'),
+    `glossary wrapper carries max-h-96 utility class (got ${state.glossaryWrapperClassList.join(' ')})`,
+    state,
+  );
+  await expect(
+    state.glossaryWrapperClassList.includes('overflow-y-auto'),
+    `glossary wrapper carries overflow-y-auto utility class (got ${state.glossaryWrapperClassList.join(' ')})`,
+    state,
+  );
+  await expect(
+    state.glossaryWrapperClassList.some((c) => c.startsWith('sm:max-h-')),
+    `glossary wrapper carries responsive sm:max-h-* utility class (got ${state.glossaryWrapperClassList.join(' ')})`,
     state,
   );
 }

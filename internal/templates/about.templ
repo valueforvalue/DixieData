@@ -184,11 +184,22 @@ templ aboutGlossarySection(view viewmodel.AboutView) {
 		if len(view.Glossary) == 0 {
 			<p class="text-sm text-amber-700" data-about-glossary-empty>No terms registered.</p>
 		} else {
-			<dl class="space-y-3" data-about-glossary-list>
-				for _, entry := range view.Glossary {
-					@aboutGlossaryRow(entry)
-				}
-			</dl>
+			// Issue #604: bounded height + inner scroll so
+			// the glossary does not push the rest of
+			// /about down. The 36-term registry renders
+			// ~2880px on a baked build; the cap surfaces
+			// ~5-6 terms at a glance + the user scrolls
+			// for the rest. The empty-state copy ("No
+			// terms registered.") sits outside the
+			// viewport — it's rare and reads better at
+			// full width.
+			<div class="max-h-96 overflow-y-auto sm:max-h-[32rem]">
+				<dl class="space-y-3" data-about-glossary-list>
+					for _, entry := range view.Glossary {
+						@aboutGlossaryRow(entry)
+					}
+				</dl>
+			</div>
 		}
 	</section>
 }

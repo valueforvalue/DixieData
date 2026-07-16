@@ -555,3 +555,43 @@ func TestAboutViewRecentListBoundedHeight(t *testing.T) {
 		}
 	}
 }
+
+// TestAboutViewGlossaryBoundedHeight pins the issue
+// #604 contract: the Glossary <dl> wraps in a bounded
+// height + inner scroll viewport so the registry's
+// 36 terms do not push the rest of /about down.
+//
+//   - The wrapper carries max-h-96 + sm:max-h-[32rem] +
+//     overflow-y-auto so it acts as the scroll viewport.
+//   - The data-about-glossary-list hook stays on the
+//     inner <dl> (audit invariant).
+//   - At least one kebab-anchor term reaches the DOM
+//     (the bounded container must not drop content).
+func TestAboutViewGlossaryBoundedHeight(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Glossary: []viewmodel.GlossaryEntry{
+			{Slug: "person-record", Term: "Person Record", Short: "A primary archive entry.", Full: "A primary archive entry for one person."},
+			{Slug: "display-id", Term: "Display ID", Short: "The canonical user-facing identifier.", Full: "The canonical user-facing identifier."},
+			{Slug: "shared-archive", Term: "Shared Archive", Short: "A merge-oriented archive package.", Full: "A merge-oriented archive package exchanged between users."},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`data-about-glossary-list`,
+		`max-h-96`,
+		`sm:max-h-[32rem]`,
+		`overflow-y-auto`,
+		`id="about.glossary-person-record"`,
+		`id="about.glossary-display-id"`,
+		`id="about.glossary-shared-archive"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about glossary wrapper missing %q (#604)", want)
+		}
+	}
+}
