@@ -237,6 +237,8 @@ async function main() {
   try {
     console.log('glossary: populated probe');
     await populatedProbe(page);
+    console.log('glossary: tags page probe');
+    await tagsPageProbe(page);
     console.log('glossary: all probes pass');
   } finally {
     await browser.close();
@@ -247,3 +249,28 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+async function tagsPageProbe(page) {
+  await page.goto(BASE + '/tags');
+  await page.waitForSelector('[data-term-disclosure-trigger="tag"]', { timeout: 5000 }).catch(() => null);
+  const state = await page.evaluate(() => {
+    const trigger = document.querySelector('[data-term-disclosure-trigger="tag"]');
+    const panel = document.querySelector('[data-term-disclosure-panel="tag"]');
+    const link = document.querySelector('[data-term-disclosure-read-in-glossary="tag"]');
+    return {
+      triggerRendered: !!trigger,
+      panelHidden: panel ? panel.hasAttribute('hidden') : null,
+      panelRendered: !!panel,
+      linkRendered: !!link,
+      linkHref: link ? link.getAttribute('href') : null,
+    };
+  });
+  await expect(state.triggerRendered, 'tags page renders TermDisclosure trigger for "tag" (#564 slice 4)', state);
+  await expect(state.panelRendered, 'tags page renders the "tag" panel (#564 slice 4)', state);
+  await expect(state.panelHidden, 'tags page "tag" panel is hidden baseline (#564 slice 4)', state);
+  await expect(
+    state.linkHref === '/about#about.glossary-tag',
+    `tags page Read in glossary href is /about#about.glossary-tag (got ${state.linkHref})`,
+    state,
+  );
+}

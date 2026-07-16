@@ -24,7 +24,7 @@ templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 	@Layout("Tags") {
 		<div class="relative mx-auto max-w-5xl space-y-6">
 			<div>
-				<h2 class="text-2xl gold font-bold">Tags</h2>
+				<h2 class="text-2xl gold font-bold">@components.TermDisclosure("tag", components.TermDisclosureTagShort(), templ.Raw("Tags"))</h2>
 				<p class="mt-2 text-sm text-slate-600">
 					Free-text labels grouping Person Records for ad-hoc
 					research scopes (virtual cemeteries, project groups).

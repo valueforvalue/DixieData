@@ -106,6 +106,8 @@ func termDisclosureShort(slug string) string {
 		return "A primary archive entry for one person (soldier, wife, widow, linked person, or event)."
 	case "source-record":
 		return "An attached evidence item that documents or supports a Person Record (pension, application, etc.)."
+	case "tag":
+		return "A user-defined free-text label applied to a Person Record for ad-hoc grouping."
 	case "claim":
 		return "An assertion about a person that is extracted from a Source Record."
 	case "finding":
@@ -135,6 +137,12 @@ func TermDisclosurePersonRecordShort() string {
 // hardcoding the literal.
 func TermDisclosureSourceRecordShort() string {
 	return termDisclosureShort("source-record")
+}
+
+// TermDisclosureTagShort exports the tag short string
+// for the Tags-page heading (slice 4). Wrap as needed.
+func TermDisclosureTagShort() string {
+	return termDisclosureShort("tag")
 }
 
 // TermDisclosureClaimShort exports the claim short

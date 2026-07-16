@@ -106,6 +106,9 @@ func TestTermDisclosureExportedWrappers(t *testing.T) {
 	if got := TermDisclosureSourceRecordShort(); got == "" {
 		t.Errorf("TermDisclosureSourceRecordShort returned empty")
 	}
+	if got := TermDisclosureTagShort(); got == "" {
+		t.Errorf("TermDisclosureTagShort returned empty")
+	}
 	if got := TermDisclosureClaimShort(); got == "" {
 		t.Errorf("TermDisclosureClaimShort returned empty")
 	}
@@ -122,6 +125,7 @@ func TestTermDisclosureShortLookup(t *testing.T) {
 		{slug: "display-id", want: "The canonical user-facing identifier for a Person Record."},
 		{slug: "person-record", want: "A primary archive entry for one person (soldier, wife, widow, linked person, or event)."},
 		{slug: "source-record", want: "An attached evidence item that documents or supports a Person Record (pension, application, etc.)."},
+		{slug: "tag", want: "A user-defined free-text label applied to a Person Record for ad-hoc grouping."},
 		{slug: "claim", want: "An assertion about a person that is extracted from a Source Record."},
 		{slug: "finding", want: "A researcher-endorsed conclusion reached by weighing one or more Claims."},
 		{slug: "definitely-not-a-real-slug", want: ""},
