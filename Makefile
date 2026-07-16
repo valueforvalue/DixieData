@@ -394,6 +394,40 @@ release-notes-bake: ## Parse CHANGELOG.md into releasehistory/baked.go
 activity-history-bake: ## Bake git log + closed issues into activityhistory/baked.go
 	go run ./scripts/bake-activity
 
+# verify-fresh-bake: pre-commit gate that proves the build
+# chain works from a clean tree (issue #589). The Makefile's
+# standard targets (make test, make tpl) all operate on the
+# current working tree, which means a contributor can land a
+# bake-style generator change with a stale gitignored
+# `baked.go` from a prior session masking a real compile
+# failure. This target deletes the gitignored generated
+# files, regenerates them via make tpl, then runs make test.
+# Any non-zero exit halts.
+#
+# Generated files deleted (must be re-baked):
+#   internal/templates/*_templ.go   (templ generate)
+#   internal/releasehistory/baked.go (release-notes-bake)
+#   internal/activityhistory/baked.go (activity-history-bake)
+#
+# Update this list when adding a new bake-style generator so
+# the gate stays accurate.
+verify-fresh-bake: ## Clean-tree gate: rm gitignored generated files + make tpl + make test (issue #589)
+	@echo "=== verify-fresh-bake: deleting gitignored generated files ==="
+	@rm -f internal/templates/*_templ.go
+	@rm -f internal/releasehistory/baked.go
+	@rm -f internal/activityhistory/baked.go
+	@echo "=== verify-fresh-bake: regenerating via make tpl ==="
+	@$(MAKE) --no-print-directory tpl
+	@echo "=== verify-fresh-bake: running make test ==="
+	@$(MAKE) --no-print-directory test
+	@echo "verify-fresh-bake: OK"
+
+# Alias for the verify-fresh-bake target. Same shape as
+# make probe-clean (issue #367) — short verb for the
+# filesystem analog.
+verify-clean: ## Alias of make verify-fresh-bake (issue #589)
+	@$(MAKE) --no-print-directory verify-fresh-bake
+
 # npm --silent suppresses npm's own chatter; tailwind output is short.
 css: ## Rebuild Tailwind bundle
 	npm run build:css --silent
@@ -417,6 +451,22 @@ lint-htmx-guard-strict: ## htmx-guard lint as a CI failure
 
 lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 	node audit/discover_htmx_guard.test.mjs
+
+# lint-bake-bootstrap (issue #591): a script under
+# scripts/bake-*/main.go must not import the package it is
+# responsible for generating. Catches the bootstrap-ordering
+# bug class documented in issue #588 (chicken-egg between
+# bake script's import + the gitignored baked.go file the
+# script is supposed to produce). Informational by default;
+# --strict flips to CI failure. Sibling to lint-htmx-guard.
+lint-bake-bootstrap: ## bake-script-imports-target lint (issue #591); docs/agents/issue-tracker.md
+	node audit/lint_bake_bootstrap.mjs
+
+lint-bake-bootstrap-strict: ## bake-script-imports-target lint as a CI failure
+	node audit/lint_bake_bootstrap.mjs --strict
+
+lint-bake-bootstrap-test: ## Run the lint_bake_bootstrap probe test suite
+	node audit/lint_bake_bootstrap.test.mjs
 
 lint-dispatcher-tdz-test: ## Run the dispatcher_tdz_fix regression test (slice-2 typecheck fix)
 	node audit/dispatcher_tdz_fix.test.mjs
@@ -461,6 +511,7 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-swallowed-errors
 	make lint-migration-columns
 	make lint-htmx-guard
+	make lint-bake-bootstrap
 	make lint-dialog-guard
 	make lint-microcopy
 	make lint-static-archive-microcopy-strict

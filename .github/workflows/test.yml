@@ -98,6 +98,26 @@ jobs:
           go test -race ./internal/dates/... -short -count=1 -args '-rapid.checks=500'
         timeout-minutes: 5
 
+      # Issue #591 — bake-bootstrap lint. Catches the
+      # bootstrap-ordering bug class from #588 by asserting
+      # every scripts/bake-*/main.go does NOT import the
+      # package it is responsible for generating. Cheap (~1s);
+      # informational probe + a 5s --strict gate so PRs that
+      # add a new bake-style generator can't reintroduce the
+      # chicken-egg between the bake script's import and the
+      # gitignored generated baked.go.
+      - name: lint-bake-bootstrap (informational)
+        shell: pwsh
+        run: |
+          node audit/lint_bake_bootstrap.mjs
+        timeout-minutes: 1
+
+      - name: lint-bake-bootstrap (strict gate)
+        shell: pwsh
+        run: |
+          node audit/lint_bake_bootstrap.mjs --strict
+        timeout-minutes: 1
+
       # Mirror the trace harness across both build-tag modes so the
       # //go:build debug and //go:build !debug files stay in sync.
       # Without this the no-op stub in trace_nodebug.go could rot

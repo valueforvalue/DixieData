@@ -296,6 +296,27 @@ is a separate ADR; this ADR explicitly preserves `main`.
   markup, run `node audit/smoke.mjs` against a live
   `dixiedata-web` server. `make audit` runs the full
   visual sweep.
+- **Bake-style generator discipline (issue #589 / #591):**
+  any PR that touches a script under `scripts/bake-*/` or
+  a package whose directory contains a gitignored
+  `baked*.go` MUST run `make verify-fresh-bake` before
+  `git commit`. That target deletes every gitignored
+  generated artifact (`internal/templates/*_templ.go`,
+  `internal/releasehistory/baked.go`,
+  `internal/activityhistory/baked.go`), regenerates them
+  via `make tpl`, then runs `make test`. Issue #588's
+  bootstrap-ordering bug class was missed by the standard
+  pre-push discipline because stale gitignored files on the
+  contributor's machine masked the real compile failure —
+  the clean-tree gate closes that gap. The deletion list
+  lives inline in the Makefile target; update it when adding
+  a new bake-style generator so the gate stays accurate.
+  The `make lint-bake-bootstrap` probe is the structural
+  counterpart: it walks every `scripts/bake-*/main.go` and
+  asserts no script imports the package it is responsible
+  for generating (the exact bug shape from #588). CI runs
+  the probe under `--strict` on every PR; a future PR that
+  reintroduces the direct import will fail the gate.
 - **CHANGELOG:** every user-visible change gets a bullet in `CHANGELOG.md` `[Unreleased]` under `### Added`, `### Changed`, `### Fixed`, or `### Maintenance` in the same commit that lands the change. Internal refactors that don't change user-visible behavior live under `### Maintenance`.
 - **Click-driven surfaces:** any new templ button that POSTs and expects navigation must follow the recipe in `internal/templates/components/conventions.md` ("Buttons that POST and expect navigation") AND grow a matching `audit/smoke.mjs` assertion that verifies both the response shape AND `page.url()` after the click. The response-only assertion is insufficient — that is how the htmx `hx-swap="none"` + 303 silent-swallow bug shipped (commit `70878ac` → caught in `3612dab`).
 

@@ -20,6 +20,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // Entry is one release as parsed from CHANGELOG.md. Date is
@@ -58,7 +60,7 @@ func ParseFile(path string) ([]Entry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("releasehistory/parse: open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "releasehistory-changelog")
 	return ParseReader(f)
 }
 
