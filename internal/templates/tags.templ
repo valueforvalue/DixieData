@@ -94,7 +94,7 @@ templ tagsRow(t records.Tag, allTags []records.Tag) {
 				</form>
 				<form action={ templ.SafeURL(routebuilder.TagMerge(t.ID)) } method="post" data-dixie-submit="true" class="flex items-center gap-1">
 					<select name="survivor_id" class="w-64 rounded border border-slate-300 px-2 py-1 text-sm" aria-label={ fmt.Sprintf("Merge tag %s into which tag", t.Name) }>
-						<option value="" disabled selected>Pick a survivor tag…</option>
+						<option value="" disabled selected>Merge into which tag…</option>
 						for _, other := range allTags {
 							if other.ID != t.ID {
 								<option value={ fmt.Sprintf("%d", other.ID) }>{ fmt.Sprintf("%d \u2014 %s (%d members)", other.ID, other.Name, other.MemberCount) }</option>
