@@ -150,6 +150,9 @@ declare global {
     // __articlePreviewWired / __termDisclosureWired (per-modal
     // not per-trigger).
     __tableBuilderWired?: boolean;
+    // Issue #612 slice 3: initializeImagePicker wires the
+    // modal once per modal. Same pattern as __tableBuilderWired.
+    __imagePickerWired?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;

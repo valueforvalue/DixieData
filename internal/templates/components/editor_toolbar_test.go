@@ -65,10 +65,12 @@ func TestEditorToolbar_TemplateValuesAreMarkdown(t *testing.T) {
 		"italic":   "*italic text*",
 		"heading":  "## Heading",
 		"link":     "[label](https://)",
-		"image":    "![alt](https://)",
 		"list":     "- item",
 		"code":     "`code`",
 		"quote":    "&gt; quote",
+		// image action does NOT carry a static template —
+		// the JS opens the image picker modal instead
+		// (issue #612 slice 3).
 		// table action does NOT carry a static template —
 		// the JS opens the modal which generates the
 		// template from user-supplied rows × cols.

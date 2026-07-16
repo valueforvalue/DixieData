@@ -4263,6 +4263,7 @@ function serializeDraftFields(form) {
     initializeMarkdownCheatsheet();
     initializeEditorToolbar();
     initializeTableBuilder();
+    initializeImagePicker();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -6155,6 +6156,277 @@ function onPrintRecordsFragmentReady(modal) {
     // the moment the modal opens. refreshPreview also runs on
     // every input change.
     refreshPreview();
+  }
+
+  // initializeImagePicker wires the article editor's image
+  // picker modal (issue #612 slice 3). The modal opens when
+  // the user clicks the toolbar's Image button. When the
+  // article exists (articleID > 0), two tabs are active:
+  // Upload (file input → fetch POST → fragment swap) and
+  // Pick existing (fetch GET the images fragment). When the
+  // article is new (articleID == 0), only the manual URL
+  // input is available.
+  //
+  // Upload tab flow:
+  //   1. User selects file(s) in the file input.
+  //   2. Clicks Upload → fetch POST multipart to
+  //      /articles/{id}/images/import.
+  //   3. Server returns the updated ArticleImagesListFragment
+  //      HTML. JS swaps it into the Pick existing panel.
+  //   4. JS switches to the Pick existing tab so the user
+  //      sees the newly-uploaded image row with its Insert
+  //      button.
+  //
+  // Pick existing tab flow:
+  //   1. On first tab activation: fetch GET
+  //      /articles/{id}/images, swap the fragment into the
+  //      panel.
+  //   2. Each image row has a data-article-image-insert
+  //      button. Click → insert ![name](url) at cursor,
+  //      close modal.
+  //
+  // Manual URL input flow (always available):
+  //   1. User pastes URL + types alt text.
+  //   2. Clicks Insert → insert ![alt](url) at cursor,
+  //      close modal.
+  //
+  // Idempotent via the per-modal __imagePickerWired sentinel.
+  function initializeImagePicker() {
+    const modal = document.querySelector("[data-image-picker-modal]");
+    if (!(modal instanceof HTMLElement)) return;
+    if (modal.__imagePickerWired === true) return;
+    modal.__imagePickerWired = true;
+
+    const closeBtn = modal.querySelector("[data-image-picker-close]");
+    const existingPanel = modal.querySelector("[data-image-picker-panel='existing']");
+    const existingList = modal.querySelector("[data-image-picker-existing-list]");
+    const uploadPanel = modal.querySelector("[data-image-picker-panel='upload']");
+    const uploadForm = modal.querySelector("[data-image-picker-upload-form]");
+    const fileInput = modal.querySelector("[data-image-picker-file-input]");
+    const uploadBtn = modal.querySelector("[data-image-picker-upload-btn]");
+    const uploadStatus = modal.querySelector("[data-image-picker-upload-status]");
+    const urlInput = modal.querySelector("[data-image-picker-url]");
+    const altInput = modal.querySelector("[data-image-picker-alt]");
+    const insertUrlBtn = modal.querySelector("[data-image-picker-insert-url]");
+    const tabButtons = modal.querySelectorAll("[data-image-picker-tab]");
+
+    if (!(closeBtn instanceof HTMLButtonElement)) return;
+
+    // Derive articleID from the upload form's data attr (set
+    // by the templ). For the new-article form, articleID is
+    // "0" and neither tab panel renders.
+    var articleID = 0;
+    if (uploadForm instanceof HTMLElement) {
+      var rawID = uploadForm.getAttribute("data-article-id");
+      if (rawID) {
+        articleID = parseInt(rawID, 10) || 0;
+      }
+    }
+
+    // Shared insert helper: takes url + alt, inserts at
+    // cursor in the article body textarea, shows toast,
+    // closes modal.
+    /** @param {string} url @param {string} alt */
+    function insertImageAtCursor(url, alt) {
+      if (!(modal instanceof HTMLElement)) return;
+      const textarea = document.getElementById("article-body");
+      if (!(textarea instanceof HTMLTextAreaElement)) {
+        showToast("Editor textarea not found.", "error");
+        return;
+      }
+      const md = "![" + alt + "](" + url + ")";
+      const fn = window.__dixieInsertTextAtCursor;
+      if (!fn) {
+        if (typeof console !== "undefined" && typeof console.warn === "function") {
+          console.warn("DixieData: window.__dixieInsertTextAtCursor missing. Image picker uses raw setRangeText fallback.");
+        }
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.setRangeText(md, start, end, "end");
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.focus();
+      } else {
+        const ok = fn(textarea, md);
+        if (!ok) {
+          showToast("Could not insert image.", "error");
+          return;
+        }
+      }
+      showToast("Image inserted.", "success");
+      if (typeof hideOverlayModal === "function") {
+        hideOverlayModal(modal);
+      } else {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+
+    // Close button
+    closeBtn.addEventListener("click", function (event) {
+      event.preventDefault();
+      if (typeof hideOverlayModal === "function") {
+        hideOverlayModal(modal);
+      } else {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    });
+
+    // Tab switching — only when articleID > 0 (the tabs
+    // don't render for the new-article form).
+    if (articleID > 0 && tabButtons.length > 0) {
+      var existingLoaded = false;
+      tabButtons.forEach(function (btn) {
+        if (!(btn instanceof HTMLElement)) return;
+        btn.addEventListener("click", function (event) {
+          event.preventDefault();
+          var tab = btn.getAttribute("data-image-picker-tab");
+
+          // Update aria-selected + visual state on all tabs
+          tabButtons.forEach(function (b) {
+            if (!(b instanceof HTMLElement)) return;
+            var isActive = b.getAttribute("data-image-picker-tab") === tab;
+            b.setAttribute("aria-selected", isActive ? "true" : "false");
+            if (isActive) {
+              b.classList.add("bg-slate-100");
+              b.classList.remove("text-slate-600", "hover:bg-slate-50");
+            } else {
+              b.classList.remove("bg-slate-100");
+              b.classList.add("text-slate-600", "hover:bg-slate-50");
+            }
+          });
+
+          // Show/hide panels
+          if (uploadPanel instanceof HTMLElement) {
+            if (tab === "upload") {
+              uploadPanel.classList.remove("hidden");
+            } else {
+              uploadPanel.classList.add("hidden");
+            }
+          }
+          if (existingPanel instanceof HTMLElement) {
+            if (tab === "existing") {
+              existingPanel.classList.remove("hidden");
+              // Lazy-load the existing images fragment on
+              // first activation.
+              if (!existingLoaded && articleID > 0 && existingList instanceof HTMLElement) {
+                existingLoaded = true;
+                fetch("/articles/" + articleID + "/images", {
+                  headers: { "Accept": "text/html" },
+                })
+                  .then(function (resp) {
+                    if (!resp.ok) throw new Error("HTTP " + resp.status);
+                    return resp.text();
+                  })
+                  .then(function (html) {
+                    if (existingList instanceof HTMLElement) {
+                      existingList.innerHTML = html;
+                    }
+                  })
+                  .catch(function () {
+                    if (existingList instanceof HTMLElement) {
+                      existingList.innerHTML =
+                        '<p class="text-sm text-red-600">Could not load images.</p>';
+                    }
+                  });
+              }
+            } else {
+              existingPanel.classList.add("hidden");
+            }
+          }
+        });
+      });
+
+      // Upload button: POST the file(s) to the import endpoint.
+      if (uploadBtn instanceof HTMLButtonElement && fileInput instanceof HTMLInputElement && uploadForm instanceof HTMLElement) {
+        uploadBtn.addEventListener("click", function (event) {
+          event.preventDefault();
+          var files = fileInput.files;
+          if (!files || files.length === 0) {
+            showToast("Select at least one image file.", "error");
+            return;
+          }
+          var formData = new FormData();
+          for (var i = 0; i < files.length; i += 1) {
+            formData.append("images", files[i]);
+          }
+          if (uploadStatus instanceof HTMLElement) {
+            uploadStatus.textContent = "Uploading…";
+            uploadStatus.classList.remove("hidden");
+          }
+          uploadBtn.disabled = true;
+          fetch("/articles/" + articleID + "/images/import", {
+            method: "POST",
+            body: formData,
+            headers: { "Accept": "text/html" },
+          })
+            .then(function (resp) {
+              if (!resp.ok) throw new Error("HTTP " + resp.status);
+              return resp.text();
+            })
+            .then(function (html) {
+              // Swap the updated fragment into the existing list.
+              if (existingList instanceof HTMLElement) {
+                existingList.innerHTML = html;
+              }
+              existingLoaded = true;
+              // Reset file input.
+              fileInput.value = "";
+              // Switch to the Pick existing tab so the user
+              // sees the newly-uploaded image.
+              tabButtons.forEach(function (b) {
+                if (!(b instanceof HTMLElement)) return;
+                if (b.getAttribute("data-image-picker-tab") === "existing") {
+                  b.click();
+                }
+              });
+              showToast("Image(s) uploaded.", "success");
+            })
+            .catch(function (err) {
+              showToast("Upload failed: " + (err.message || "unknown error"), "error");
+            })
+            .finally(function () {
+              uploadBtn.disabled = false;
+              if (uploadStatus instanceof HTMLElement) {
+                uploadStatus.classList.add("hidden");
+              }
+            });
+        });
+      }
+    }
+
+    // Manual URL insert button
+    if (insertUrlBtn instanceof HTMLButtonElement) {
+      insertUrlBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+        var url = (urlInput instanceof HTMLInputElement ? urlInput.value : "").trim();
+        var alt = (altInput instanceof HTMLInputElement ? altInput.value : "").trim();
+        if (!url) {
+          showToast("Enter an image URL.", "error");
+          return;
+        }
+        insertImageAtCursor(url, alt || "image");
+      });
+    }
+
+    // Delegate clicks on data-article-image-insert buttons
+    // inside the modal. These buttons come from the server
+    // fragment (both the initial GET and the upload response)
+    // so we use event delegation on the modal.
+    modal.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      var insertBtn = target.closest("[data-article-image-insert]");
+      if (!(insertBtn instanceof HTMLElement)) return;
+      event.preventDefault();
+      var url = insertBtn.getAttribute("data-article-image-url") || "";
+      var name = insertBtn.getAttribute("data-article-image-name") || "image";
+      if (!url) {
+        showToast("Image URL missing.", "error");
+        return;
+      }
+      insertImageAtCursor(url, name);
+    });
   }
 
   // ----- Dismiss button on /jobs/{id} (issue #249) -----

@@ -55,7 +55,7 @@ templ EditorToolbar() {
 		@editorToolbarButton("italic",   "I",       "*italic text*",   "Italic")
 		@editorToolbarButton("heading",  "H",       "## Heading",      "Heading")
 		@editorToolbarButton("link",     "Link",    "[label](https://)", "Link")
-		@editorToolbarButton("image",    "Image",   "![alt](https://)", "Image")
+		@editorToolbarButton("image",    "Image",   "",                "Image")
 		@editorToolbarButton("list",     "List",    "- item",          "List")
 		@editorToolbarButton("code",     "Code",    "`code`",          "Code")
 		@editorToolbarButton("quote",    "Quote",   "> quote",         "Quote")
@@ -80,7 +80,11 @@ templ editorToolbarButton(action, label, template, ariaLabel string) {
 		data-editor-toolbar-action={ action }
 		data-editor-toolbar-template={ template }
 		if template == "" {
-			data-editor-toolbar-opens-modal="table-builder-modal"
+			if action == "image" {
+				data-editor-toolbar-opens-modal="image-picker-modal"
+			} else {
+				data-editor-toolbar-opens-modal="table-builder-modal"
+			}
 		}
 		aria-label={ ariaLabel }
 		title={ ariaLabel }
