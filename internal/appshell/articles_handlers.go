@@ -865,7 +865,7 @@ func (a *App) handleImportArticleImages(w http.ResponseWriter, r *http.Request) 
 	imported, importErr := a.importArticleImages(*article, paths)
 	if importErr != nil {
 		slog.Error("appshell: article image import (wails)", "audit", "respond-error", "article_id", id, "imported", imported, "err", importErr.Error())
-		respondInternal(w, r, "Could not import the uploaded images.", importErr)
+		respondError(w, r, KindInternal, importErr.Error(), importErr)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))

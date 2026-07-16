@@ -6318,25 +6318,10 @@ function onPrintRecordsFragmentReady(modal) {
       });
 
       // After the Upload form submits (data-dixie-submit),
-      // switch to the Pick existing tab after a short delay
-      // so the dispatcher has time to write the response
-      // into data-results-target.
-      if (uploadPanel instanceof HTMLElement) {
-        var uploadForm = uploadPanel.querySelector("form");
-        if (uploadForm instanceof HTMLFormElement) {
-          uploadForm.addEventListener("submit", function () {
-            setTimeout(function () {
-              tabButtons.forEach(function (b) {
-                if (!(b instanceof HTMLElement)) return;
-                if (b.getAttribute("data-image-picker-tab") === "existing") {
-                  existingLoaded = true;
-                  b.click();
-                }
-              });
-            }, 200);
-          });
-        }
-      }
+      // the dispatcher writes the response into the
+      // data-results-target element. The user can switch to
+      // the Pick existing tab manually to see the results.
+      // (No auto-switch — it fires even on error responses.)
     }
 
     // Manual URL insert button
