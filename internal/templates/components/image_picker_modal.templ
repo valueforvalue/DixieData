@@ -7,35 +7,28 @@
 // window.__dixieInsertTextAtCursor helper (issue #610
 // slice 2).
 //
-// The modal matches the overlay vocabulary documented in
-// docs/ui-map/surfaces.md (overlay.* — fixed inset-0, role=
-// dialog, aria-modal="true") so it composes with the JS
-// showOverlayModal / hideOverlayModal helpers (the same
-// pattern the table-builder modal + article preview modal use).
+// The Upload tab uses htmx POST with multipart/form-data
+// encoding so the Wails dispatcher (dispatchDixieDataForm
+// in frontend/app.js) applies the multipart-to-urlencoded
+// workaround on wails.localhost — the file input is stripped
+// but the server falls through to the native
+// OpenMultipleFilesDialog path (same pattern as the existing
+// soldier image import, handleImportSoldierImages).
+// In web mode, the multipart body survives and the server
+// reads the files directly.
 //
-// When articleID == 0 (new-article form), the Upload and
-// Pick existing tabs show a "save first" message and the
-// manual URL input is the primary insertion path. When
-// articleID > 0 (edit form), both tabs are active and
-// htmx-powered.
+// The Pick existing tab uses htmx GET with a custom event
+// trigger (load-image-picker-existing) so it only loads when
+// the user switches to that tab, not on page load.
 //
-// Upload tab: file input + Upload button. htmx POST
-// multipart to /articles/{id}/images/import; the server
-// returns the updated ArticleImagesListFragment so the
-// newly-uploaded image row appears immediately with its
-// Insert button.
-//
-// Pick existing tab: htmx GET /articles/{id}/images loads
-// the ArticleImagesListFragment on tab activation. Each
-// image row carries a data-article-image-insert button
-// the JS initializer wires to insert + close.
-//
-// Manual URL input: always available. User pastes an
-// external image URL + types alt text, clicks Insert —
-// the JS inserts ![alt](url) at cursor.
+// The modal matches the overlay vocabulary: fixed inset-0,
+// role="dialog", aria-modal="true", showOverlayModal /
+// hideOverlayModal helpers.
 package components
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ImagePickerModal renders the image picker modal for the
 // article editor. Pass articleID=0 for the new-article form
@@ -78,11 +71,21 @@ templ ImagePickerModal(articleID int64) {
 							data-image-picker-tab="existing"
 						>Pick existing</button>
 					</div>
-					// Upload tab panel
+					// Upload tab panel — htmx POST with
+					// multipart encoding. The Wails dispatcher
+					// converts the multipart body to urlencoded
+					// on wails.localhost; the server falls
+					// through to the native file dialog.
+					// hx-target is the existing-list div so the
+					// server fragment (ArticleImagesListFragment)
+					// lands in the Pick existing tab.
 					<div class="mt-4" data-image-picker-panel="upload">
 						<form
-							data-image-picker-upload-form
-							data-article-id={ fmt.Sprint(articleID) }
+							hx-post={ templ.URL("/articles/" + fmt.Sprint(articleID) + "/images/import") }
+							hx-encoding="multipart/form-data"
+							hx-target={ fmt.Sprintf("[data-image-picker-existing-list][data-article-id='%d']", articleID) }
+							hx-swap="innerHTML"
+							data-dixie-submit="true"
 						>
 							<input
 								type="file"
@@ -90,39 +93,38 @@ templ ImagePickerModal(articleID int64) {
 								accept="image/*"
 								multiple
 								class="field-input w-full text-sm"
-								data-image-picker-file-input
 							/>
 							<p class="mt-1 mb-3 text-xs text-slate-500">Pick one or more image files to attach to this article.</p>
 							<button
-								type="button"
+								type="submit"
 								class="primary-button"
-								data-image-picker-upload-btn
 							>Upload</button>
-							<span class="ml-2 hidden text-xs text-slate-500" data-image-picker-upload-status></span>
 						</form>
 					</div>
-					// Pick existing tab panel (hidden by default;
-					// the tab switch JS unhides it + triggers the
-					// htmx load on first activation).
+					// Pick existing tab panel — htmx GET
+					// triggered by a custom event so it only
+					// loads on first tab activation, not on
+					// page load. The init JS fires the event
+					// when the user clicks the tab.
 					<div class="mt-4 hidden" data-image-picker-panel="existing">
 						<div
 							data-image-picker-existing-list
 							data-article-id={ fmt.Sprint(articleID) }
+							hx-get={ templ.URL("/articles/" + fmt.Sprint(articleID) + "/images") }
+							hx-trigger="load-image-picker-existing from:body"
+							hx-swap="innerHTML"
 						>
 							<p class="text-sm text-slate-500">Loading…</p>
 						</div>
 					</div>
 				} else {
 					// New-article form: neither tab works without
-					// an article row. Show a clear message +
-					// point the user to the manual URL input.
+					// an article row.
 					<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800" data-image-picker-no-article>
 						Save the article first to upload or pick images from the local archive. In the meantime, paste an external image URL below.
 					</div>
 				}
-				// Manual URL input — always available, fallback
-				// for external images or when the article doesn't
-				// exist yet.
+				// Manual URL input — always available.
 				<div class="mt-4 space-y-3">
 					<div>
 						<label for="image-picker-url" class="block text-sm font-semibold text-[color:var(--ink)]">Image URL</label>

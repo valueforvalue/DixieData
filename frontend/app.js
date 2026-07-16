@@ -6200,12 +6200,7 @@ function onPrintRecordsFragmentReady(modal) {
 
     const closeBtn = modal.querySelector("[data-image-picker-close]");
     const existingPanel = modal.querySelector("[data-image-picker-panel='existing']");
-    const existingList = modal.querySelector("[data-image-picker-existing-list]");
     const uploadPanel = modal.querySelector("[data-image-picker-panel='upload']");
-    const uploadForm = modal.querySelector("[data-image-picker-upload-form]");
-    const fileInput = modal.querySelector("[data-image-picker-file-input]");
-    const uploadBtn = modal.querySelector("[data-image-picker-upload-btn]");
-    const uploadStatus = modal.querySelector("[data-image-picker-upload-status]");
     const urlInput = modal.querySelector("[data-image-picker-url]");
     const altInput = modal.querySelector("[data-image-picker-alt]");
     const insertUrlBtn = modal.querySelector("[data-image-picker-insert-url]");
@@ -6213,20 +6208,9 @@ function onPrintRecordsFragmentReady(modal) {
 
     if (!(closeBtn instanceof HTMLButtonElement)) return;
 
-    // Derive articleID from the upload form's data attr (set
-    // by the templ). For the new-article form, articleID is
-    // "0" and neither tab panel renders.
-    var articleID = 0;
-    if (uploadForm instanceof HTMLElement) {
-      var rawID = uploadForm.getAttribute("data-article-id");
-      if (rawID) {
-        articleID = parseInt(rawID, 10) || 0;
-      }
-    }
-
     // Shared insert helper: takes url + alt, inserts at
-    // cursor in the article body textarea, shows toast,
-    // closes modal.
+    // cursor in the article body textarea, selects the alt
+    // text so the user can type a description, closes modal.
     /** @param {string} url @param {string} alt */
     function insertImageAtCursor(url, alt) {
       if (!(modal instanceof HTMLElement)) return;
@@ -6245,8 +6229,6 @@ function onPrintRecordsFragmentReady(modal) {
         const end = textarea.selectionEnd;
         textarea.setRangeText(md, insertAt, end, "end");
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        // Select the alt text so the user can type a
-        // description immediately (issue #612 slice 5).
         textarea.selectionStart = insertAt + 2;
         textarea.selectionEnd = insertAt + 2 + alt.length;
         textarea.focus();
@@ -6256,8 +6238,6 @@ function onPrintRecordsFragmentReady(modal) {
           showToast("Could not insert image.", "error");
           return;
         }
-        // Select the alt text so the user can type a
-        // description immediately (issue #612 slice 5).
         textarea.selectionStart = insertAt + 2;
         textarea.selectionEnd = insertAt + 2 + alt.length;
         textarea.focus();
@@ -6282,9 +6262,13 @@ function onPrintRecordsFragmentReady(modal) {
       }
     });
 
-    // Tab switching — only when articleID > 0 (the tabs
-    // don't render for the new-article form).
-    if (articleID > 0 && tabButtons.length > 0) {
+    // Tab switching — the Pick existing tab triggers htmx
+    // load via a custom event on first activation; subsequent
+    // switches don't reload (the existing list already has
+    // the fragment). The Upload tab uses htmx form submit;
+    // after a successful upload, we auto-switch to the Pick
+    // existing tab to show the results.
+    if (tabButtons.length > 0) {
       var existingLoaded = false;
       tabButtons.forEach(function (btn) {
         if (!(btn instanceof HTMLElement)) return;
@@ -6292,7 +6276,7 @@ function onPrintRecordsFragmentReady(modal) {
           event.preventDefault();
           var tab = btn.getAttribute("data-image-picker-tab");
 
-          // Update aria-selected + visual state on all tabs
+          // Update aria-selected + visual state
           tabButtons.forEach(function (b) {
             if (!(b instanceof HTMLElement)) return;
             var isActive = b.getAttribute("data-image-picker-tab") === tab;
@@ -6317,28 +6301,14 @@ function onPrintRecordsFragmentReady(modal) {
           if (existingPanel instanceof HTMLElement) {
             if (tab === "existing") {
               existingPanel.classList.remove("hidden");
-              // Lazy-load the existing images fragment on
-              // first activation.
-              if (!existingLoaded && articleID > 0 && existingList instanceof HTMLElement) {
+              // Fire htmx custom event to load the fragment
+              // on first activation. Subsequent switches
+              // just show the panel (already populated).
+              if (!existingLoaded) {
                 existingLoaded = true;
-                fetch("/articles/" + articleID + "/images", {
-                  headers: { "Accept": "text/html" },
-                })
-                  .then(function (resp) {
-                    if (!resp.ok) throw new Error("HTTP " + resp.status);
-                    return resp.text();
-                  })
-                  .then(function (html) {
-                    if (existingList instanceof HTMLElement) {
-                      existingList.innerHTML = html;
-                    }
-                  })
-                  .catch(function () {
-                    if (existingList instanceof HTMLElement) {
-                      existingList.innerHTML =
-                        '<p class="text-sm text-red-600">Could not load images.</p>';
-                    }
-                  });
+                document.body.dispatchEvent(
+                  new CustomEvent("load-image-picker-existing", { bubbles: true })
+                );
               }
             } else {
               existingPanel.classList.add("hidden");
@@ -6347,61 +6317,21 @@ function onPrintRecordsFragmentReady(modal) {
         });
       });
 
-      // Upload button: POST the file(s) to the import endpoint.
-      if (uploadBtn instanceof HTMLButtonElement && fileInput instanceof HTMLInputElement && uploadForm instanceof HTMLElement) {
-        uploadBtn.addEventListener("click", function (event) {
-          event.preventDefault();
-          var files = fileInput.files;
-          if (!files || files.length === 0) {
-            showToast("Select at least one image file.", "error");
-            return;
-          }
-          var formData = new FormData();
-          for (var i = 0; i < files.length; i += 1) {
-            formData.append("images", files[i]);
-          }
-          if (uploadStatus instanceof HTMLElement) {
-            uploadStatus.textContent = "Uploading…";
-            uploadStatus.classList.remove("hidden");
-          }
-          uploadBtn.disabled = true;
-          fetch("/articles/" + articleID + "/images/import", {
-            method: "POST",
-            body: formData,
-            headers: { "Accept": "text/html" },
-          })
-            .then(function (resp) {
-              if (!resp.ok) throw new Error("HTTP " + resp.status);
-              return resp.text();
-            })
-            .then(function (html) {
-              // Swap the updated fragment into the existing list.
-              if (existingList instanceof HTMLElement) {
-                existingList.innerHTML = html;
-              }
-              existingLoaded = true;
-              // Reset file input.
-              fileInput.value = "";
-              // Switch to the Pick existing tab so the user
-              // sees the newly-uploaded image.
-              tabButtons.forEach(function (b) {
-                if (!(b instanceof HTMLElement)) return;
-                if (b.getAttribute("data-image-picker-tab") === "existing") {
-                  b.click();
-                }
-              });
-              showToast("Image(s) uploaded.", "success");
-            })
-            .catch(function (err) {
-              showToast("Upload failed: " + (err.message || "unknown error"), "error");
-            })
-            .finally(function () {
-              uploadBtn.disabled = false;
-              if (uploadStatus instanceof HTMLElement) {
-                uploadStatus.classList.add("hidden");
+      // After the Upload form submits via htmx, switch to
+      // the Pick existing tab so the user sees the result.
+      if (uploadPanel instanceof HTMLElement) {
+        var uploadForm = uploadPanel.querySelector("form");
+        if (uploadForm instanceof HTMLElement) {
+          uploadForm.addEventListener("htmx:afterRequest", function () {
+            tabButtons.forEach(function (b) {
+              if (!(b instanceof HTMLElement)) return;
+              if (b.getAttribute("data-image-picker-tab") === "existing") {
+                existingLoaded = true; // mark loaded
+                b.click();
               }
             });
-        });
+          });
+        }
       }
     }
 
@@ -6420,9 +6350,7 @@ function onPrintRecordsFragmentReady(modal) {
     }
 
     // Delegate clicks on data-article-image-insert buttons
-    // inside the modal. These buttons come from the server
-    // fragment (both the initial GET and the upload response)
-    // so we use event delegation on the modal.
+    // inside the modal (from server fragment).
     modal.addEventListener("click", function (event) {
       var target = event.target;
       if (!(target instanceof HTMLElement)) return;
