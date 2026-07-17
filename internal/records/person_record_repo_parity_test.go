@@ -174,3 +174,58 @@ func itoaSlice1(n int) string {
 	}
 	return string(digits)
 }
+
+// TestPersonRecordRepo_Parity_CreateUpdateDelete is the
+// slice-2 service-level parity check. The full
+// Create → GetByID → Update → GetByID → Delete → GetByID
+// cycle exercises every slice-2 write path through the
+// service layer, which means every pre-DML normalization
+// path (audit fields, rank canonicalization, etc.) runs
+// against the slice-2 repo delegation. A regression here
+// would mean the new repo INSERT/UPDATE/DELETE broke
+// something the legacy inline SQL handled correctly.
+func TestPersonRecordRepo_Parity_CreateUpdateDelete(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	// Create.
+	created, err := svc.Create(models.Soldier{
+		FirstName: "Jeb",
+		LastName:  "Stuart",
+		Rank:      "Major General",
+		Unit:      "Cavalry",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// GetByID returns the row slice-2 just inserted.
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID after Create: %v", err)
+	}
+	if got.FirstName != "Jeb" {
+		t.Errorf("after Create: FirstName = %q, want %q", got.FirstName, "Jeb")
+	}
+
+	// Update modifies the row; GetByID returns the new shape.
+	got.Rank = "Lt. General"
+	if err := svc.Update(*got); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got2, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID after Update: %v", err)
+	}
+	if got2.Rank != "Lt. General" {
+		t.Errorf("after Update: Rank = %q, want %q", got2.Rank, "Lt. General")
+	}
+
+	// Delete removes the row; GetByID returns ErrSoldierNotFound.
+	if err := svc.Delete(created.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := svc.GetByID(created.ID); err == nil {
+		t.Errorf("GetByID after Delete: err = nil, want ErrSoldierNotFound")
+	}
+}

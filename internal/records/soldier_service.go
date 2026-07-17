@@ -231,14 +231,16 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 		soldier.CreatedByImportPath = "create_soldier"
 	}
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
-		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
-		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description, soldier.CreatedByVersion, soldier.CreatedByImportPath)
+	// Slice 2 of issue #613: the INSERT itself goes through
+	// the repository seam. The pre-INSERT normalization
+	// (Display ID generation, sync_id minting, audit
+	// timestamps, entry_type canonicalization) stays in
+	// this service layer — it composes domain rules; the
+	// repo just executes the SQL.
+	id, err := s.personRepo.Create(context.Background(), tx, soldier)
 	if err != nil {
 		return nil, err
 	}
-	id, _ := res.LastInsertId()
 	soldier.ID = id
 
 	if err := replaceRecords(tx, soldier.ID, soldier.SyncID, soldier.Records); err != nil {
@@ -407,10 +409,15 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 	stampUpdateAuditFields(s.currentAuditActor(), before, &soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, relationship_label=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, show_prefix_before_name=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, biography=?, pdf_excerpt_override=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=?, kind=?, begin_date=?, end_date=?, description=? WHERE id=?`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
-		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description, soldier.ID)
-	if err != nil {
+	// Slice 2 of issue #613: the UPDATE itself goes through
+	// the repository seam. Pre-UPDATE normalization (audit
+	// snapshot, rank canonicalization, display_id
+	// fallback, entry_type canonicalization) stays in this
+	// service layer. The legacy behavior — Update on a
+	// missing id is a silent no-op (rowsAffected=0, no
+	// error) — is preserved for backwards compatibility
+	// with existing callers (TestSoldierService_Update*).
+	if _, err := s.personRepo.Update(context.Background(), tx, soldier); err != nil {
 		return err
 	}
 
@@ -427,7 +434,12 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 
 // Delete removes the Soldier and (via cascade) the attached records, images, and tag-join rows.
 func (s *SoldierService) Delete(id int64) error {
-	if _, err := s.db.Conn().Exec(`DELETE FROM soldiers WHERE id = ?`, id); err != nil {
+	// Slice 2 of issue #613: the DELETE itself goes through
+	// the repository seam. Like Update, the legacy behavior
+	// (Delete on a missing id is a silent no-op) is preserved.
+	// Delete stands alone (no surrounding transaction), so
+	// the caller passes *sql.DB as the Execer.
+	if _, err := s.personRepo.Delete(context.Background(), s.db.Conn(), id); err != nil {
 		return err
 	}
 	s.invalidateFormSuggestions()

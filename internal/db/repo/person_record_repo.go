@@ -37,7 +37,19 @@ package repo
 import (
 	"context"
 	"database/sql"
+
+	"github.com/valueforvalue/DixieData/internal/models"
 )
+
+// Execer is the minimal interface the write methods need
+// from the caller's transaction context. Both *sql.DB and
+// *sql.Tx satisfy it, so callers can either pass a tx (when
+// composing multiple writes atomically) or a *sql.DB (when
+// the write stands alone, like the slice-2 Delete path
+// which is not part of any surrounding transaction).
+type Execer interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
 
 // PersonRecordRepo is the data-access seam for the Person Record
 // table (canonical table name: `soldiers`). Slice 1 covers the
@@ -62,4 +74,23 @@ type PersonRecordRepo interface {
 	// page (1-indexed) and pageSize. Returns *sql.Rows that
 	// the caller must Close.
 	List(ctx context.Context, page, pageSize int) (*sql.Rows, int, error)
+
+	// Create inserts a new Person Record and returns the
+	// generated primary-key id via LastInsertId. The caller
+	// supplies an Execer (typically *sql.Tx for atomicity
+	// with replaceRecords, but *sql.DB works too when the
+	// insert stands alone).
+	Create(ctx context.Context, ex Execer, s models.Soldier) (int64, error)
+
+	// Update modifies an existing Person Record identified
+	// by s.ID and returns the rows-affected count. A return
+	// of 0 with no error means no row matched; the service
+	// layer is responsible for translating that to
+	// ErrSoldierNotFound.
+	Update(ctx context.Context, ex Execer, s models.Soldier) (int64, error)
+
+	// Delete removes the Person Record identified by id
+	// and returns the rows-affected count. A return of 0
+	// with no error means no row matched.
+	Delete(ctx context.Context, ex Execer, id int64) (int64, error)
 }
