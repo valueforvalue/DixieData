@@ -1,12 +1,16 @@
 package records
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -50,13 +54,17 @@ type CalendarDay struct {
 // anniversary that day. Owns the per-month PDF dispatch (one
 // download endpoint per month). Constructed by NewCalendarService.
 type CalendarService struct {
-	db *db.DB
+	db        *db.DB
+	calItemRepo repo.CalendarItemRepo
 }
 
 // NewCalendarService constructs a CalendarService bound to the
 // given database.
 func NewCalendarService(database *db.DB) *CalendarService {
-	return &CalendarService{db: database}
+	return &CalendarService{
+		db:          database,
+		calItemRepo: sqliterepo.NewCalendarItemRepo(database),
+	}
 }
 
 // GetMonthSummary returns the per-month grid the calendar page renders: one CalendarDaySummary per day in the month.
@@ -145,11 +153,21 @@ func (c *CalendarService) CreateCalendarItem(month, day int, input CalendarItemI
 	if err != nil {
 		return models.CalendarItem{}, err
 	}
-	result, err := c.db.Conn().Exec(`INSERT INTO calendar_items (item_type, month, day, title, notes, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, itemType, month, day, title, notes)
-	if err != nil {
-		return models.CalendarItem{}, err
+	// Slice 6 of issue #613: the INSERT goes through the
+	// CalendarItemRepo seam. The legacy used
+	// CURRENT_TIMESTAMP in the SQL string; the parameterized
+	// repo path stamps updated_at in Go with the same
+	// timestamp the schema would have generated.
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	item := models.CalendarItem{
+		ItemType:  itemType,
+		Month:     month,
+		Day:       day,
+		Title:     title,
+		Notes:     notes,
+		UpdatedAt: now,
 	}
-	itemID, err := result.LastInsertId()
+	itemID, err := c.calItemRepo.Create(context.Background(), c.db.Conn(), item)
 	if err != nil {
 		return models.CalendarItem{}, err
 	}
@@ -165,11 +183,19 @@ func (c *CalendarService) UpdateCalendarItem(itemID int64, input CalendarItemInp
 	if err != nil {
 		return models.CalendarItem{}, err
 	}
-	result, err := c.db.Conn().Exec(`UPDATE calendar_items SET item_type = ?, title = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, itemType, title, notes, itemID)
-	if err != nil {
-		return models.CalendarItem{}, err
+	// Slice 6 of issue #613: the UPDATE goes through the
+	// CalendarItemRepo seam. The legacy used
+	// CURRENT_TIMESTAMP; the parameterized repo path stamps
+	// updated_at in Go.
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	item := models.CalendarItem{
+		ID:       itemID,
+		ItemType: itemType,
+		Title:    title,
+		Notes:    notes,
+		UpdatedAt: now,
 	}
-	updated, err := result.RowsAffected()
+	updated, err := c.calItemRepo.Update(context.Background(), c.db.Conn(), item)
 	if err != nil {
 		return models.CalendarItem{}, err
 	}
@@ -184,11 +210,9 @@ func (c *CalendarService) DeleteCalendarItem(itemID int64) error {
 	if itemID <= 0 {
 		return &CalendarValidationError{Message: "item_id must be greater than 0"}
 	}
-	result, err := c.db.Conn().Exec(`DELETE FROM calendar_items WHERE id = ?`, itemID)
-	if err != nil {
-		return err
-	}
-	deleted, err := result.RowsAffected()
+	// Slice 6 of issue #613: the DELETE goes through the
+	// CalendarItemRepo seam.
+	deleted, err := c.calItemRepo.Delete(context.Background(), c.db.Conn(), itemID)
 	if err != nil {
 		return err
 	}
@@ -202,10 +226,9 @@ func (c *CalendarService) listCalendarItems(month, day int) ([]models.CalendarIt
 	if day < 1 || day > 31 {
 		return nil, nil
 	}
-	rows, err := c.db.Conn().Query(`SELECT id, item_type, month, day, title, notes, created_at, updated_at
-		FROM calendar_items
-		WHERE month = ? AND day = ?
-		ORDER BY CASE item_type WHEN 'holiday' THEN 0 WHEN 'event' THEN 1 ELSE 2 END, LOWER(title), id`, month, day)
+	// Slice 6 of issue #613: the SELECT goes through the
+	// CalendarItemRepo seam.
+	rows, err := c.calItemRepo.ListForMonthDay(context.Background(), c.db.Conn(), month, day)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +245,13 @@ func (c *CalendarService) listCalendarItems(month, day int) ([]models.CalendarIt
 }
 
 func (c *CalendarService) getCalendarItem(itemID int64) (models.CalendarItem, error) {
-	item, err := scanCalendarItem(c.db.Conn().QueryRow(`SELECT id, item_type, month, day, title, notes, created_at, updated_at FROM calendar_items WHERE id = ?`, itemID))
+	// Slice 6 of issue #613: the SELECT goes through the
+	// CalendarItemRepo seam.
+	row, err := c.calItemRepo.GetByID(context.Background(), itemID)
+	if err != nil {
+		return models.CalendarItem{}, err
+	}
+	item, err := scanCalendarItem(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.CalendarItem{}, ErrCalendarItemNotFound
 	}
