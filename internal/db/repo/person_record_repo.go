@@ -56,8 +56,13 @@ type Execer interface {
 // *sql.Tx satisfy it. Slice 3's junction reads pass the
 // caller's tx (or *sql.DB for standalone reads) so the
 // read participates in the surrounding transaction.
+//
+// Slice 5's tag upsert path uses QueryRowContext for the
+// post-conflict id lookup (the INSERT OR IGNORE returns
+// LastInsertId=0 on a conflict).
 type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
 
 // DBExecQuerier combines Execer + Querier. Both *sql.DB and

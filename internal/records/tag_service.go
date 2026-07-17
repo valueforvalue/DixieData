@@ -15,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	internalDB "github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
@@ -48,13 +51,23 @@ type Tag struct {
 // TagService operates on the tags + person_record_tags tables:
 // the user-defined tag set for issue #183's Person Record tagging
 // surface. Construct via NewTagService(db).
+//
+// Slice 5 of issue #613: the 4 highest-traffic methods
+// (UpsertByName, Attach, Detach, List) delegate their SQL to
+// the TagRecordRepo seam. The lower-traffic methods
+// (Rename, MergeInto, Delete, Get) still use s.db directly;
+// they land in slice 6+ if at all.
 type TagService struct {
-	db *sql.DB
+	db    *sql.DB
+	tagRepo repo.TagRecordRepo
 }
 
 // NewTagService constructs a TagService bound to the given database.
-func NewTagService(db *sql.DB) *TagService {
-	return &TagService{db: db}
+func NewTagService(conn *sql.DB) *TagService {
+	return &TagService{
+		db:      conn,
+		tagRepo: sqliterepo.NewTagRecordRepo(internalDB.NewFromExisting(conn)),
+	}
 }
 
 // NormalizeTagName is the single source of truth for "what does the
@@ -79,34 +92,23 @@ func (s *TagService) UpsertByName(ctx context.Context, insertName string) (Tag, 
 	if normalized == "" {
 		return Tag{}, errors.New("tag name is required")
 	}
-	row := s.db.QueryRowContext(ctx, `
-		SELECT id FROM tags WHERE normalized_name = ?`, normalized)
-	var existingID int64
-	switch err := row.Scan(&existingID); err {
-	case nil:
-		return s.Get(ctx, existingID)
-	case sql.ErrNoRows:
-		// no existing row, fall through to insert
-	default:
-		return Tag{}, err
-	}
+	// Slice 5 of issue #613: the SELECT-or-INSERT goes
+	// through the TagRecordRepo seam. The repo's
+	// UpsertByName is INSERT OR IGNORE + post-conflict
+	// id lookup — same observable behavior as the legacy
+	// SELECT-then-INSERT-with-race-retry, but in one
+	// fewer round-trip on the conflict path.
 	display := strings.TrimSpace(insertName)
 	if display == "" {
 		display = normalized
 	}
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO tags (name, normalized_name) VALUES (?, ?)`,
-		display, normalized)
+	id, err := s.tagRepo.UpsertByName(ctx, s.db, display)
 	if err != nil {
 		if isUniqueConstraintError(err) {
 			// Lost a race against a concurrent UpsertByName.
 			// Re-read so the caller observes the winning row.
 			return s.UpsertByName(ctx, insertName)
 		}
-		return Tag{}, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
 		return Tag{}, err
 	}
 	return s.Get(ctx, id)
@@ -116,11 +118,12 @@ func (s *TagService) UpsertByName(ctx context.Context, insertName string) (Tag, 
 // repeat call is a no-op. Uses INSERT OR IGNORE so the membership
 // table never has duplicate (person_id, tag_id) pairs even under
 // racing UI submissions.
+//
+// Slice 5 of issue #613: the INSERT goes through the
+// TagRecordRepo seam. The repo's Attach is also INSERT OR IGNORE;
+// observable behavior matches the legacy inline SQL.
 func (s *TagService) Attach(ctx context.Context, tagID, personID int64) error {
-	_, err := s.db.ExecContext(ctx,
-		`INSERT OR IGNORE INTO person_record_tags (person_id, tag_id) VALUES (?, ?)`,
-		personID, tagID)
-	return err
+	return s.tagRepo.Attach(ctx, s.db, tagID, personID)
 }
 
 // AttachMany binds one tag to many Person Records. Useful for
@@ -164,10 +167,14 @@ func (s *TagService) AttachMany(ctx context.Context, tagID int64, personIDs []in
 
 // Detach removes a binding. Idempotent — re-running on a missing
 // row is a no-op (DELETE … WHERE returns 0 affected).
+// Detach removes the binding between a tag and a Person Record.
+// Idempotent (DELETE on a missing row is a no-op).
+//
+// Slice 5 of issue #613: the DELETE goes through the
+// TagRecordRepo seam. Observable behavior matches the legacy
+// inline SQL.
 func (s *TagService) Detach(ctx context.Context, tagID, personID int64) error {
-	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM person_record_tags WHERE tag_id = ? AND person_id = ?`,
-		tagID, personID)
+	_, err := s.tagRepo.Detach(ctx, s.db, tagID, personID)
 	return err
 }
 
