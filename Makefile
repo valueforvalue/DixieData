@@ -687,6 +687,17 @@ log-clean: ## Truncate build/log/*.log
 changelog-archive: ## Move entries older than current year to archive/CHANGELOG-{year}.md
 	$(PWSH) -NoLogo -NoProfile -File scripts/archive-changelog.ps1
 
+# CHANGELOG [Unreleased] sweep (issue #616). Compares commits
+# between the last release tag and HEAD against the
+# [Unreleased] block; reports issue-numbered commits that
+# lack a bullet. `--apply` mode auto-generates draft
+# bullets under ### Maintenance (operator should
+# re-categorize + reword before tagging a release).
+changelog-sweep: ## Sweep commits between last tag and HEAD for missing [Unreleased] bullets (issue #616)
+	@node scripts/release-changelog-sweep.mjs
+changelog-sweep-apply: ## Auto-insert draft bullets for missing [Unreleased] entries (issue #616)
+	@node scripts/release-changelog-sweep.mjs --apply
+
 # --- Release pipeline (interactive; output NOT logged) ---
 
 # Bump CurrentSchemaVersion in internal/versioninfo/versioninfo.go.
