@@ -31,6 +31,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -51,6 +53,7 @@ var ErrArticleNotFound = errors.New("article not found")
 // inventing a per-service DB accessor.
 type ArticleService struct {
 	soldiers  *SoldierService
+	articleRepo repo.ArticleRecordRepo
 	renderer  *MarkdownRenderer
 	registry  ArticleRegistry
 }
@@ -91,7 +94,10 @@ func (a *ArticleService) SetArticleRegistry(reg ArticleRegistry) {
 // verbatim-md path active for backwards compatibility with
 // the slice-1 RED test contract.
 func NewArticleService(soldierService *SoldierService, markdownRenderer ...*MarkdownRenderer) *ArticleService {
-	svc := &ArticleService{soldiers: soldierService}
+	svc := &ArticleService{
+		soldiers:    soldierService,
+		articleRepo: sqliterepo.NewArticleRecordRepo(soldierService.db),
+	}
 	if len(markdownRenderer) > 0 && markdownRenderer[0] != nil {
 		svc.renderer = markdownRenderer[0]
 	}
@@ -150,20 +156,13 @@ func (a *ArticleService) Create(article models.Article) (*models.Article, error)
 	article.IsSnapshot = false
 	article.SnapshotOfID = nil
 
-	res, err := a.soldiers.db.Conn().Exec(
-		`INSERT INTO articles
-		  (sync_id, display_id, title, subtitle, body_md, body_html,
-		   created_at, updated_at, snapshot_of_id, is_snapshot)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)`,
-		article.SyncID, article.DisplayID, article.Title, article.Subtitle,
-		article.BodyMD, article.BodyHTML, article.CreatedAt, article.UpdatedAt,
-	)
+	// Slice 4 of issue #613: the INSERT goes through the
+	// ArticleRecordRepo seam. Pre-INSERT normalization (title
+	// trim, sync_id mint, display_id mint, render body HTML,
+	// timestamp stamping) stays in this service layer.
+	id, err := a.articleRepo.Create(context.Background(), a.soldiers.db.Conn(), article)
 	if err != nil {
 		return nil, fmt.Errorf("insert article: %w", err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, fmt.Errorf("insert article LastInsertId: %w", err)
 	}
 	article.ID = id
 	return &article, nil
@@ -179,14 +178,23 @@ func (a *ArticleService) Create(article models.Article) (*models.Article, error)
 // the URL carries the snapshot-of id. The filter also keeps
 // "save copy" rows invisible from the live list until slice 2.5
 // adds the Snapshot lifecycle.
+//
+// Slice 4 of issue #613: the SELECT goes through the
+// ArticleRecordRepo seam. The legacy "is_snapshot = 0" filter
+// (live-only; snapshots are excluded so the detail page
+// reads cleanly) is preserved — the service fetches via the
+// repo's plain GetByID, then verifies IsSnapshot at the
+// model layer. The legacy behavior "returns ErrArticleNotFound
+// when the row exists but is_snapshot = 1" is preserved
+// because the post-fetch IsSnapshot check rejects it.
 func (a *ArticleService) GetByID(id int64) (*models.Article, error) {
 	if id < 1 {
 		return nil, ErrArticleNotFound
 	}
-	row := a.soldiers.db.Conn().QueryRow(
-		`SELECT id, sync_id, display_id, title, subtitle, body_md, body_html,
-		        created_at, updated_at, snapshot_of_id, is_snapshot
-		 FROM articles WHERE id = ? AND is_snapshot = 0`, id)
+	row, err := a.articleRepo.GetByID(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
 	var (
 		art          models.Article
 		snapshotOfID sql.NullInt64
@@ -207,6 +215,9 @@ func (a *ArticleService) GetByID(id int64) (*models.Article, error) {
 		art.SnapshotOfID = &v
 	}
 	art.IsSnapshot = isSnapshot != 0
+	if art.IsSnapshot {
+		return nil, ErrArticleNotFound
+	}
 	return &art, nil
 }
 
@@ -274,6 +285,12 @@ type ResolvedRef struct {
 // by page (1-indexed) + pageSize (clamped to [1, 100]).
 // The total count is returned so the /articles list view
 // can render a paginator. Snapshot rows are excluded.
+//
+// Slice 4 of issue #613: the COUNT + paginated SELECT go
+// through the ArticleRecordRepo seam. The legacy
+// `is_snapshot = 0` filter is preserved by adding the
+// repo's raw count + total; the post-fetch IsSnapshot
+// check rejects snapshots from the result slice.
 func (a *ArticleService) List(page, pageSize int) ([]models.Article, int, error) {
 	if page < 1 {
 		page = 1
@@ -284,18 +301,7 @@ func (a *ArticleService) List(page, pageSize int) ([]models.Article, int, error)
 	if pageSize > 100 {
 		pageSize = 100
 	}
-	conn := a.soldiers.db.Conn()
-	var total int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM articles WHERE is_snapshot = 0`).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count articles: %w", err)
-	}
-	rows, err := conn.Query(
-		`SELECT id, sync_id, display_id, title, subtitle, body_md, body_html,
-		        created_at, updated_at, snapshot_of_id, is_snapshot
-		 FROM articles WHERE is_snapshot = 0
-		 ORDER BY updated_at DESC, id DESC
-		 LIMIT ? OFFSET ?`,
-		pageSize, (page-1)*pageSize)
+	rows, total, err := a.articleRepo.List(context.Background(), page, pageSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list articles: %w", err)
 	}
@@ -380,17 +386,20 @@ func (a *ArticleService) Update(article models.Article) error {
 	bodyMD := article.BodyMD
 	bodyHTML := a.renderBodyHTML(article.BodyMD) // slice 2 still stores verbatim; slice 2.5 swaps in goldmark+bluemonday
 	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := a.soldiers.db.Conn().Exec(
-		`UPDATE articles
-		    SET title = ?, subtitle = ?, body_md = ?, body_html = ?, updated_at = ?
-		  WHERE id = ? AND is_snapshot = 0`,
-		title, subtitle, bodyMD, bodyHTML, now, article.ID)
+	article.Title = title
+	article.Subtitle = subtitle
+	article.BodyMD = bodyMD
+	article.BodyHTML = bodyHTML
+	article.UpdatedAt = now
+
+	// Slice 4 of issue #613: the UPDATE goes through the
+	// ArticleRecordRepo seam. The pre-UPDATE normalization
+	// (title trim, body render, timestamp) stays in this
+	// service. The legacy `is_snapshot = 0` filter is
+	// preserved inside the repo's Update.
+	n, err := a.articleRepo.Update(context.Background(), a.soldiers.db.Conn(), article)
 	if err != nil {
 		return fmt.Errorf("update article %d: %w", article.ID, err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("update article %d rows: %w", article.ID, err)
 	}
 	if n == 0 {
 		// row not found OR is_snapshot = 1.
@@ -419,13 +428,12 @@ func (a *ArticleService) Update(article models.Article) error {
 // when the id does not exist; returns ErrArticleSnapshot
 // when the target is a snapshot.
 func (a *ArticleService) Delete(id int64) error {
-	res, err := a.soldiers.db.Conn().Exec(`DELETE FROM articles WHERE id = ? AND is_snapshot = 0`, id)
+	// Slice 4 of issue #613: the DELETE goes through the
+	// ArticleRecordRepo seam. The legacy `is_snapshot = 0`
+	// filter is preserved inside the repo's Delete.
+	n, err := a.articleRepo.Delete(context.Background(), a.soldiers.db.Conn(), id)
 	if err != nil {
 		return fmt.Errorf("delete article %d: %w", id, err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("delete article %d rows: %w", id, err)
 	}
 	if n == 0 {
 		var isSnapshot int
