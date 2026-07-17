@@ -112,6 +112,10 @@ _Avoid_: Existing record, current record
 The Person Record arriving from a Shared Archive during Merge Review.
 _Avoid_: Shared record, new record
 
+**Insights**:
+The drilldown surface for repository-wide analytics. Replaces the deprecated Research Pack + Unit Camaraderie Graph surfaces (issue #455). Lives on `/insights` with per-area panels: Overview, Cemeteries, Homes, Pensions, Units, Chronology, Duplicate Audit.
+_Avoid_: Research pack, unit camaraderie graph
+
 **Soldier**:
 A Person Record subtype for the servicemember being researched.
 _Avoid_: Record, main record

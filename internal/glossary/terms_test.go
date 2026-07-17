@@ -1,5 +1,11 @@
 // Package glossary tests — issue #564 slice 1 regression net.
 //
+// One test (#620) asserts the registry stays in lock-step with
+// the canonical glossary headings in CONTEXT.md. The other
+// tests pin registry invariants (slug uniqueness, kebab case,
+// related-link integrity, alphabetical order, lookup
+// round-trip).
+//
 // Pins the registry's invariants that every slice in this
 // issue (and every future contributor) relies on:
 //
@@ -20,7 +26,12 @@
 package glossary
 
 import (
+	"bufio"
+	"bytes"
+	"os"
 	"regexp"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -155,6 +166,92 @@ func TestTermAnchorFull(t *testing.T) {
 	want := "about.glossary-person-record"
 	if got != want {
 		t.Errorf("AnchorFull() = %q, want %q — a refactor that changes this prefix breaks every /about#glossary cross-link", got, want)
+	}
+}
+
+// contextHeadingRE matches a glossary heading in CONTEXT.md.
+// The canonical shape is `**Term**:` on a line by itself
+// (followed by an indented definition block). Rejects prose
+// bold words like "release counter" (no colon) and "Floor
+// (regression gate, enforced by CI):" (parenthetical on
+// the same line).
+//
+// Captures the term text in group 1.
+var contextHeadingRE = regexp.MustCompile(`^\*\*([^*]+)\*\*:\s*$`)
+
+// TestRegistryMatchesContextMD — issue #620 regression net.
+//
+// Asserts every term in the Registry() is also a glossary
+// heading in CONTEXT.md (the single source of truth per
+// AGENTS.md). The reverse direction (every CONTEXT heading
+// appears in the registry) is not strictly required:
+// CONTEXT.md may contain prose-only references that the
+// registry has not yet absorbed (slice 2+ work).
+//
+// The check fires when a contributor adds a Term to
+// terms.go but forgets the matching heading in CONTEXT.md,
+// or vice versa. Without this test the drift is silent:
+// /about renders the term, but a future agent reading
+// CONTEXT.md misses it, and a future glossary audit
+// disagrees with the live page.
+func TestRegistryMatchesContextMD(t *testing.T) {
+	const contextPath = "../../CONTEXT.md"
+	raw, err := os.ReadFile(contextPath)
+	if err != nil {
+		t.Fatalf("read CONTEXT.md: %v — the registry sync test cannot run without the source-of-truth doc", err)
+	}
+
+	contextHeadings := make(map[string]bool)
+	scanner := bufio.NewScanner(bytes.NewReader(raw))
+	for scanner.Scan() {
+		line := scanner.Text()
+		match := contextHeadingRE.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+		term := strings.TrimSpace(match[1])
+		if term == "" {
+			continue
+		}
+		contextHeadings[term] = true
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("scan CONTEXT.md: %v", err)
+	}
+
+	registry := Registry()
+	missing := make([]string, 0)
+	for _, term := range registry {
+		if !contextHeadings[term.Term] {
+			missing = append(missing, term.Term)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		t.Fatalf("registry contains %d term(s) not present as `**Term**:` headings in CONTEXT.md: %v — fix by adding the missing heading(s) to CONTEXT.md or removing the term from the registry (per AGENTS.md, CONTEXT.md is the single source of truth)",
+			len(missing), missing)
+	}
+
+	// Informational: report CONTEXT-only headings (terms
+	// mentioned in CONTEXT.md that the registry has not
+	// absorbed). Not a failure — slice 2+ work absorbs
+	// these. Print via t.Logf so CI surfaces the delta.
+	var contextOnly []string
+	for term := range contextHeadings {
+		found := false
+		for _, reg := range registry {
+			if reg.Term == term {
+				found = true
+				break
+			}
+		}
+		if !found {
+			contextOnly = append(contextOnly, term)
+		}
+	}
+	if len(contextOnly) > 0 {
+		sort.Strings(contextOnly)
+		t.Logf("informational: CONTEXT.md has %d heading(s) not yet in the registry (slice 2+ backlog): %v", len(contextOnly), contextOnly)
 	}
 }
 
