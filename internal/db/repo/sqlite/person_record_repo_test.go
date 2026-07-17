@@ -102,6 +102,20 @@ func newTestDB(t *testing.T) *db.DB {
 			id INTEGER PRIMARY KEY,
 			person_record_id INTEGER NOT NULL DEFAULT 0
 		);
+		-- Slice 3: event_person_links junction (referenced by
+		-- EventRecordRepo.LinksForEvent + ListForPerson). Mirror
+		-- the canonical schema's column shape; tests don't
+		-- exercise every column.
+		CREATE TABLE event_person_links (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			event_id INTEGER NOT NULL DEFAULT 0,
+			person_id INTEGER NOT NULL DEFAULT 0,
+			sync_id TEXT NOT NULL DEFAULT '',
+			event_sync_id TEXT NOT NULL DEFAULT '',
+			person_sync_id TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL DEFAULT '',
+			UNIQUE (event_id, person_id)
+		);
 	`
 	if _, err := conn.Exec(schema); err != nil {
 		t.Fatalf("apply schema: %v", err)

@@ -51,6 +51,24 @@ type Execer interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
+// Querier is the minimal interface the read methods need
+// from the caller's transaction context. Both *sql.DB and
+// *sql.Tx satisfy it. Slice 3's junction reads pass the
+// caller's tx (or *sql.DB for standalone reads) so the
+// read participates in the surrounding transaction.
+type Querier interface {
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+}
+
+// DBExecQuerier combines Execer + Querier. Both *sql.DB and
+// *sql.Tx satisfy it; the slice-3 methods that compose reads
+// + writes in one call (rare in practice, but the LinksForEvent
+// path could grow one) use this combined interface.
+type DBExecQuerier interface {
+	Execer
+	Querier
+}
+
 // PersonRecordRepo is the data-access seam for the Person Record
 // table (canonical table name: `soldiers`). Slice 1 covers the
 // two read methods the browse + soldier-detail surfaces need;

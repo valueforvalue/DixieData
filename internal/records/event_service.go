@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -53,6 +55,7 @@ type EventWithLinks struct {
 // through the same tx pool as Person Record writes.
 type EventService struct {
 	soldiers *SoldierService
+	eventRepo repo.EventRecordRepo
 	registry EventRegistry
 }
 
@@ -63,7 +66,10 @@ type EventService struct {
 // normalizeSoldierEntry bypass for entry_type='event' makes
 // safe).
 func NewEventService(soldiers *SoldierService) *EventService {
-	return &EventService{soldiers: soldiers}
+	return &EventService{
+		soldiers:  soldiers,
+		eventRepo: sqliterepo.NewEventRecordRepo(soldiers.db),
+	}
 }
 
 // ListSourcesForEvent returns the Source Records attached to the
@@ -427,20 +433,13 @@ func (e *EventService) LookupPersonIDByName(nameFragment string) (int64, error) 
 // DESC. Excludes the linked-Person-Records subquery for
 // efficiency; callers that need the link set per event should
 // call GetEventByID for the visible rows.
+// ListEvents returns a paginated slice of Event Records,
+// ordered by updated_at DESC, id DESC. Slice 3 of issue
+// #613: the COUNT + paginated SELECT go through the
+// EventRecordRepo seam. Page/pageSize clamping moves to the
+// repo (the legacy inline service did the clamping inline).
 func (e *EventService) ListEvents(page, pageSize int) ([]models.Soldier, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 25
-	}
-	offset := (page - 1) * pageSize
-	conn := e.soldiers.db.Conn()
-
-	rows, err := conn.Query(
-		`SELECT `+soldierSelectColumns+` FROM soldiers WHERE entry_type = ? ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`,
-		models.EntryTypeEvent, pageSize, offset,
-	)
+	rows, _, err := e.eventRepo.ListEvents(context.Background(), page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -490,10 +489,17 @@ func (e *EventService) AttachEventToPerson(eventID, personID int64) (int64, erro
 	if err != nil {
 		return 0, err
 	}
-	res, err := tx.Exec(
-		`INSERT INTO event_person_links (event_id, person_id, sync_id, event_sync_id, person_sync_id) VALUES (?, ?, ?, (SELECT sync_id FROM soldiers WHERE id = ?), (SELECT sync_id FROM soldiers WHERE id = ?))`,
-		eventID, personID, syncID, eventID, personID,
-	)
+	// Look up the linked record sync_ids (the legacy INSERT
+	// used inline subqueries for these; the slice-3 repo
+	// takes pre-minted args so the service fetches them).
+	var eventSyncID, personSyncID string
+	if err := tx.QueryRow(`SELECT sync_id FROM soldiers WHERE id = ?`, eventID).Scan(&eventSyncID); err != nil {
+		return 0, err
+	}
+	if err := tx.QueryRow(`SELECT sync_id FROM soldiers WHERE id = ?`, personID).Scan(&personSyncID); err != nil {
+		return 0, err
+	}
+	id, err := e.eventRepo.AttachEventToPerson(context.Background(), tx, eventID, personID, syncID, eventSyncID, personSyncID)
 	if err != nil {
 		// SQLite UNIQUE constraint violation.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -501,7 +507,6 @@ func (e *EventService) AttachEventToPerson(eventID, personID int64) (int64, erro
 		}
 		return 0, err
 	}
-	id, _ := res.LastInsertId()
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
@@ -510,23 +515,23 @@ func (e *EventService) AttachEventToPerson(eventID, personID int64) (int64, erro
 
 // DetachEventFromPerson removes the event_person_links row. No
 // error if the row does not exist (idempotent).
+// DetachEventFromPerson removes the event_person_links row. No
+// error if the row does not exist (idempotent).
 func (e *EventService) DetachEventFromPerson(eventID, personID int64) error {
-	_, err := e.soldiers.db.Conn().Exec(
-		`DELETE FROM event_person_links WHERE event_id = ? AND person_id = ?`,
-		eventID, personID,
-	)
+	// Slice 3 of issue #613: the DELETE goes through the
+	// EventRecordRepo seam. Detach stands alone (no
+	// surrounding transaction); pass *sql.DB as the Execer.
+	_, err := e.eventRepo.DetachEventFromPerson(context.Background(), e.soldiers.db.Conn(), eventID, personID)
 	return err
 }
 
 // ListForPerson returns the Events linked to the given Person
 // Record (the Events tab on the Person Record detail page).
 func (e *EventService) ListForPerson(personID int64) ([]models.Soldier, error) {
-	rows, err := e.soldiers.db.Conn().Query(
-		`SELECT `+soldierSelectColumns+` FROM soldiers
-		 WHERE id IN (SELECT event_id FROM event_person_links WHERE person_id = ?)
-		 ORDER BY updated_at DESC, id DESC`,
-		personID,
-	)
+	// Slice 3 of issue #613: the SELECT goes through the
+	// EventRecordRepo seam. Standalone read (no surrounding
+	// transaction); pass *sql.DB as the Querier.
+	rows, err := e.eventRepo.ListForPerson(context.Background(), e.soldiers.db.Conn(), personID)
 	if err != nil {
 		return nil, err
 	}
@@ -622,16 +627,13 @@ func (e *EventService) LinkCount(eventID int64) (int, error) {
 // linksForEvent returns the per-link EventLink rows for the
 // given Event, joined with the linked Person's display_id for
 // the UI.
+//
+// Slice 3 of issue #613: the SELECT + JOIN goes through the
+// EventRecordRepo seam. The service scans the rows + returns
+// the typed EventLink slice (scan logic + slice materialization
+// stay here because they're domain-typed).
 func (e *EventService) linksForEvent(eventID int64) ([]EventLink, error) {
-	rows, err := e.soldiers.db.Conn().Query(
-		`SELECT epl.id, epl.event_id, COALESCE(e.sync_id, ''), epl.person_id, COALESCE(p.sync_id, ''), COALESCE(p.display_id, ''), COALESCE(epl.created_at, '')
-		 FROM event_person_links epl
-		 JOIN soldiers e ON e.id = epl.event_id
-		 JOIN soldiers p ON p.id = epl.person_id
-		 WHERE epl.event_id = ?
-		 ORDER BY p.display_id`,
-		eventID,
-	)
+	rows, err := e.eventRepo.LinksForEvent(context.Background(), e.soldiers.db.Conn(), eventID)
 	if err != nil {
 		return nil, err
 	}
