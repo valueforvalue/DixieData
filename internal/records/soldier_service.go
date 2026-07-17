@@ -17,6 +17,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
@@ -38,6 +40,7 @@ const (
 // *SoldierService for soldier lookups.
 type SoldierService struct {
 	db                *db.DB
+	personRepo        repo.PersonRecordRepo
 	events            EventTimelineQuerier
 	formSuggestionsMu sync.RWMutex
 	formSuggestions   *models.SoldierFormSuggestions
@@ -125,7 +128,10 @@ type ResearchCollectionDetail struct {
 // populated lazily on the first form-suggestions request and
 // refreshed when the soldier writes a new value.
 func NewSoldierService(database *db.DB) *SoldierService {
-	return &SoldierService{db: database}
+	return &SoldierService{
+		db:         database,
+		personRepo: sqliterepo.NewPersonRecordRepo(database),
+	}
 }
 
 // EventTimelineQuerier is the narrow seam SoldierService
@@ -265,13 +271,21 @@ func isFiveDigitGeneratedSuffix(value string) bool {
 
 // GetByID returns the Soldier with the given primary-key ID, or ErrSoldierNotFound.
 func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
-	conn := s.db.Conn()
-	row := conn.QueryRow(`SELECT `+soldierSelectColumns+` FROM soldiers WHERE id = ?`, id)
+	// Slice 1 of issue #613: base row fetch goes through the
+	// repository seam. Cross-table joins (records, images,
+	// spouse lookup) stay inline until their own repos land
+	// in slice 2+. The seam's value is proven on the single-
+	// table read; extending it later is mechanical.
+	row, err := s.personRepo.GetByID(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
 	soldier, err := scanSoldier(row)
 	if err != nil {
 		return nil, err
 	}
 
+	conn := s.db.Conn()
 	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY sort_order, id`, id)
 	if err != nil {
 		return nil, err
@@ -1187,23 +1201,12 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 
 // List returns all Soldiers, paginated, in display-ID order.
 func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error) {
-	conn := s.db.Conn()
-	var total int
-	if err := db.WithBusyRetry(3, func() error {
-		return conn.QueryRow(`SELECT COUNT(*) FROM soldiers`).Scan(&total)
-	}); err != nil {
-		return nil, 0, err
-	}
-	offset := (page - 1) * pageSize
-	var rows *sql.Rows
-	if err := db.WithBusyRetry(3, func() error {
-		r, qErr := conn.Query(`SELECT `+soldierListSelectColumns+` FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
-		if qErr != nil {
-			return qErr
-		}
-		rows = r
-		return nil
-	}); err != nil {
+	// Slice 1 of issue #613: paginated read goes through the
+	// repository seam. The legacy inline SQL (count + order +
+	// limit/offset) is now the SQLite repo's responsibility;
+	// this service method becomes pure orchestration.
+	rows, total, err := s.personRepo.List(context.Background(), page, pageSize)
+	if err != nil {
 		return nil, 0, err
 	}
 	defer debug.DeferCloseLog(rows, "List.rows")
