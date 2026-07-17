@@ -698,6 +698,18 @@ changelog-sweep: ## Sweep commits between last tag and HEAD for missing [Unrelea
 changelog-sweep-apply: ## Auto-insert draft bullets for missing [Unreleased] entries (issue #616)
 	@node scripts/release-changelog-sweep.mjs --apply
 
+# Repo-seam consistency lint (issue #621). Greps the Go
+# tree for inline SQL outside the repo seam. Information
+# by default; --strict exits non-zero on any offender.
+# Mirrors the lint-bake-bootstrap pattern (issues
+# #589/#591). Allowlist is in the probe itself.
+lint-repo-consistency: ## Lint: repo-seam consistency — flag inline SQL outside internal/db/repo/ (issue #621)
+	@node audit/lint_repo_consistency.mjs
+lint-repo-consistency-strict: ## Lint: strict mode — exit non-zero on any offender (issue #621)
+	@node audit/lint_repo_consistency.mjs --strict
+lint-repo-consistency-test: ## Lint: run the probe's regression net (issue #621)
+	@node audit/lint_repo_consistency.test.mjs
+
 # --- Release pipeline (interactive; output NOT logged) ---
 
 # Bump CurrentSchemaVersion in internal/versioninfo/versioninfo.go.

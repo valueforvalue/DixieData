@@ -271,6 +271,24 @@ jobs:
       # / fix(db) AND CurrentSchemaVersion is unchanged from the
       # base branch, fail with a drift message. The skip hatch
       # is a commit subject 'chore: skip-schema-bump' + reason
+      # Repo-seam consistency lint (issue #621). Greps the
+      # Go tree for inline SQL outside the repo seam. Run
+      # informational today (the probe flags 118+ legacy
+      # offenders that future slices will erode); flip to
+      # strict once the allowlist is clean enough.
+      - name: Repo-seam consistency lint (informational)
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          if (Get-Command node -ErrorAction SilentlyContinue) {
+            node audit/lint_repo_consistency.mjs
+            node audit/lint_repo_consistency.test.mjs
+          } else {
+            Write-Host "node not installed; skipping lint_repo_consistency"
+          }
+        continue-on-error: true
+        timeout-minutes: 2
+
       # Issue-estimate probe (issue #619): flags open issues
       # missing the canonical `## Estimate` header. Runs on
       # PRs so a PR that opens a new issue can be caught
