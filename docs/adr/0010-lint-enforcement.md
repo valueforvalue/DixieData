@@ -250,3 +250,8 @@ Negative:
   toolchain-policy ADR)
 - ADR 0004 — Option C dispatcher (precedent for an
   enforcement-via-test-harness ADR)
+
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

@@ -71,3 +71,7 @@ If any criterion fails, keep `slog.Debug`. Migration is a deliberate, per-call d
 - `trace.Log` signature: `func Log(msg string, attrs ...any)`. The variadic tail accepts the standard `slog` attribute shape: `"key", value` pairs. No `context.Context` parameter.
 - The `//go:build !debug` stub file uses the literal empty function body — Go's compiler dead-code-eliminates every call site at the `call` instruction, not at a runtime guard. Verified with `go test -tags debug ./internal/debug/trace/...` (3 tests pass) and `go test ./internal/debug/trace/...` (3 tests pass).
 - Trace entries count toward the 500-entry ring buffer cap. A debug-mode session that triggers many entry/exit events per request could roll older entries off the console; use the JSONL file at `~/.dixiedata-logs/app.log.jsonl` for full fidelity. If a future debug session finds ring-buffer pressure from trace calls, the cap is a single constant in `internal/debug/log.go` (`RingSize`).
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

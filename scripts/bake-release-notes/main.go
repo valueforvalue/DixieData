@@ -100,7 +100,7 @@ var baked = []Entry{
 		writeBullets(&buf, "Fixed", e.Fixed)
 		writeBullets(&buf, "Removed", e.Removed)
 		writeBullets(&buf, "Maintenance", e.Maintenance)
-		writeBullets(&buf, "Documentation", e.Docs)
+		writeBullets(&buf, "Docs", e.Docs)
 		buf.WriteString("\t},\n")
 	}
 	buf.WriteString("}\n")

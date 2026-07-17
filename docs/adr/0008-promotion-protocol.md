@@ -326,3 +326,8 @@ regression is its first run)
   CONTEXT.md)
 - Issue #296 — `BackupManifest` carries U + N explicitly
   (commit forthcoming)
+
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

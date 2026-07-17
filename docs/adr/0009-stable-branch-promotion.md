@@ -399,3 +399,7 @@ move "main" to a different name, and Alt 1 is rejected).
   become the first `dev → stable` promotion.
 - Commit `56e31f0` — the current `main` HEAD. Frozen by this
   ADR as the legacy production record.
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

@@ -8,3 +8,7 @@ DixieData's frontend used a 4,102-line `frontend/app.js` whose core (~115 lines)
 - `node audit/smoke.mjs` against `dixiedata-web` (the dev server binary, headless Chromium via Playwright) — 46/46 assertions pass. Exercises the dispatcher end-to-end on every share-page button, the print-config modal, the browse filter change handler, the search input, the debug-mode toggle, and the polling fragments.
 - `node audit/discover_export_buttons.test.mjs` — 7/7 tests pass.
 - Wails desktop (`DixieData.exe` in WebView2): not verified end-to-end in this environment. The agent runs in a headless session without a display; WebView2 needs a window manager. The build produces a valid binary (the launch produced no Go panics or templ compilation errors; only WebView2's renderer failed to attach to a non-existent display). Manual verification on a developer machine is the remaining gap. The handler code is shared 1:1 between `dixiedata-web` and `DixieData.exe`, so the dev-server smoke covers the dispatcher behavior; the only Wails-specific surface is `runtime.OpenFileDialog` calls which aren't on the redirect path.
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

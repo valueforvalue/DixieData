@@ -225,3 +225,7 @@ above cover the current shape. The expansion is a follow-up.
 - Issue #257 — the "shipped but invisible" sweep that
   motivated the parallel Backend-First Law
 - Issue #266 — the future `v{MAJOR}.{U}.{N}` version split
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17

@@ -38,3 +38,7 @@ The substitution table is deliberately not a "strip everything above 0x7F" blank
 - `sanitiseToastForHeader(string) string` lives next to `setToastHeader` in `internal/appshell/exports_handlers.go`. The dispatcher does not need to know about encoding — the contract boundary is the header write.
 - The substitution table is a `map[rune]string` keyed on the Unicode codepoint, not a regex. A regex would be slower and harder to audit one entry at a time.
 - The current list: `…` → `...`, `—` → `--`, `–` → `-`, `'` `'` → `'`, `"` `"` → `"`, ` ` (NBSP) → ` ` (regular space), `…` (single-char ellipsis) → `...`. Extend as new punctuation appears in toasts; user-data characters (accented Latin, CJK, etc.) intentionally pass through unchanged so future toasts that quote user input are not mangled.
+
+## Author
+
+Jeremy Morris (@jeremymorris) — backfilled 2026-07-17
