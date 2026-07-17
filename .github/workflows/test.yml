@@ -271,6 +271,24 @@ jobs:
       # / fix(db) AND CurrentSchemaVersion is unchanged from the
       # base branch, fail with a drift message. The skip hatch
       # is a commit subject 'chore: skip-schema-bump' + reason
+      # Issue-estimate probe (issue #619): flags open issues
+      # missing the canonical `## Estimate` header. Runs on
+      # PRs so a PR that opens a new issue can be caught
+      # before merge. The probe is informational — it never
+      # fails the build; the durable signal is the
+      # `needs-info` label the operator adds after triage.
+      - name: Issue-estimate probe (informational)
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          if (Get-Command gh -ErrorAction SilentlyContinue) {
+            node audit/probe_issue_estimates.mjs
+          } else {
+            Write-Host "gh CLI not installed; skipping probe_issue_estimates"
+          }
+        continue-on-error: true
+        timeout-minutes: 2
+
       # in the body, used for cases like a performance-only
       # index change that doesn't need a bump.
       - name: Schema-touching bump detector

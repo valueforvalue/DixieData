@@ -71,6 +71,23 @@ shape, list the options and recommend one.>
 this is unknown, file the issue with just Symptom +
 Repro and label `needs-triage`.>
 
+## Estimate
+PERT: O=<optimistic days> / A=<most likely days> / N=<pessimistic days>
+P = (O + 4A + N) / 6
+Confidence: <low|medium|high>
+
+The PERT formula is the canonical estimate form for
+DixieData features (locked decision in the 2026-07
+pragmatic-programmer audit, Estimation row 3/10). O is
+the optimistic case (everything goes right); A is the
+most likely case (typical friction); N is the pessimistic
+case (unknown unknowns). The weighted mean P is the
+number to record in the estimation log. Confidence is a
+calibration signal: low = "I've never done this before";
+high = "I've shipped 5 of these." Issues missing the
+header get a `needs-info` label by the
+`audit/probe_issue_estimates.mjs` probe.
+
 ## Regression net
 <Bulleted list: unit test name(s), audit smoke probe
 filename(s), or a manual smoke step. If the regression
