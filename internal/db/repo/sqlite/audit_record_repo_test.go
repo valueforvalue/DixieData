@@ -40,6 +40,13 @@ func newAuditTestDB(t *testing.T) *db.DB {
 			last_detected_at DATETIME,
 			resolved_at      DATETIME
 		);
+		-- soldiers table for the slice-8 JOIN-shaped read.
+		-- Minimal column shape (id + display_id is all the
+		-- legacy ListResolvedFindings LEFT JOIN needs).
+		CREATE TABLE soldiers (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			display_id TEXT NOT NULL DEFAULT ''
+		);
 	`
 	// Shared cache so multiple connections in the *sql.DB
 	// pool see the same database.
@@ -90,7 +97,7 @@ func TestAuditRecordRepo_FindingsForRecordIDs_OnlyMatching(t *testing.T) {
 	_ = seedFinding(t, d, 42)
 	_ = seedFinding(t, d, 99)
 
-	rows, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{42})
+	rows, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{42}, "")
 	if err != nil {
 		t.Fatalf("FindingsForRecordIDs: %v", err)
 	}
@@ -120,7 +127,7 @@ func TestAuditRecordRepo_FindingsForRecordIDs_MatchBothSides(t *testing.T) {
 	// [99] should match (right side).
 	_ = seedFindingPair(t, d, 42, 99)
 
-	rows, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{99})
+	rows, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{99}, "")
 	if err != nil {
 		t.Fatalf("FindingsForRecordIDs: %v", err)
 	}
@@ -135,6 +142,109 @@ func TestAuditRecordRepo_FindingsForRecordIDs_MatchBothSides(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("rows iterated = %d, want 1 (record 99 on right side)", count)
+	}
+}
+
+// TestAuditRecordRepo_FindingsForRecordIDs_StatusFilter
+// asserts the statusFilter argument scopes the result set
+// to a single status value.
+func TestAuditRecordRepo_FindingsForRecordIDs_StatusFilter(t *testing.T) {
+	d := newAuditTestDB(t)
+	r := NewAuditRecordRepo(d)
+	conn := d.Conn()
+
+	// Seed 2 findings: 1 open (default), 1 resolved.
+	_ = seedFindingPair(t, d, 42, 43) // open
+	_ = seedFindingPair(t, d, 44, 45) // resolved below
+	if _, err := conn.Exec(
+		`UPDATE duplicate_audit_findings SET status = 'resolved' WHERE left_record_id = 44`,
+	); err != nil {
+		t.Fatalf("mark resolved: %v", err)
+	}
+
+	// Verify the update took effect.
+	var nOpen, nResolved int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM duplicate_audit_findings WHERE status = 'open'`).Scan(&nOpen); err != nil {
+		t.Fatalf("verify open: %v", err)
+	}
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM duplicate_audit_findings WHERE status = 'resolved'`).Scan(&nResolved); err != nil {
+		t.Fatalf("verify resolved: %v", err)
+	}
+	if nOpen != 1 || nResolved != 1 {
+		t.Fatalf("after update: open=%d resolved=%d, want 1/1", nOpen, nResolved)
+	}
+
+	// Query for only the open record's id with the "open" filter.
+	rows, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{42, 43}, "open")
+	if err != nil {
+		t.Fatalf("FindingsForRecordIDs(open): %v", err)
+	}
+	defer rows.Close()
+	count := 0
+	for rows.Next() {
+		var id int64
+		var status string
+		// AuditRecordSelectColumns order: id, pair_key,
+		// left_record_id, right_record_id, finding_type,
+		// reason, highlight_fields, status, created_at,
+		// last_detected_at, resolved_at. last_detected_at
+		// is nullable in the schema — use NullString.
+		if err := rows.Scan(
+			&id, new(string), new(int64), new(int64),
+			new(string), new(string), new(string),
+			&status, new(string), new(sql.NullString), new(sql.NullString),
+		); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if status != "open" {
+			t.Errorf("open filter row %d has status %q, want %q", id, status, "open")
+		}
+		count++
+	}
+	if count != 1 {
+		t.Errorf("open filter: rows iterated = %d, want 1", count)
+	}
+
+	// Query for the resolved record's id with the "resolved" filter.
+	rows2, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{44, 45}, "resolved")
+	if err != nil {
+		t.Fatalf("FindingsForRecordIDs(resolved): %v", err)
+	}
+	defer rows2.Close()
+	count = 0
+	for rows2.Next() {
+		var id int64
+		var status string
+		if err := rows2.Scan(
+			&id, new(string), new(int64), new(int64),
+			new(string), new(string), new(string),
+			&status, new(string), new(sql.NullString), new(sql.NullString),
+		); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if status != "resolved" {
+			t.Errorf("resolved filter row %d has status %q, want %q", id, status, "resolved")
+		}
+		count++
+	}
+	if count != 1 {
+		t.Errorf("resolved filter: rows iterated = %d, want 1", count)
+	}
+
+	// Cross-check: querying for the open record's id with the
+	// "resolved" filter should return 0 rows (the record is
+	// open, not resolved).
+	rows3, err := r.FindingsForRecordIDs(context.Background(), conn, []int64{42, 43}, "resolved")
+	if err != nil {
+		t.Fatalf("FindingsForRecordIDs(resolved-on-open): %v", err)
+	}
+	defer rows3.Close()
+	count = 0
+	for rows3.Next() {
+		count++
+	}
+	if count != 0 {
+		t.Errorf("resolved filter on open record: rows = %d, want 0", count)
 	}
 }
 
@@ -171,5 +281,89 @@ func TestAuditRecordRepo_ListResolvedFindings_Pagination(t *testing.T) {
 	}
 	if count != 3 {
 		t.Errorf("page 1 row count = %d, want 3", count)
+	}
+}
+
+// TestAuditRecordRepo_ListResolvedFindingsEnriched_JOINedDisplayIDs
+// asserts the JOIN-shaped read returns the 8-col legacy
+// shape with the LEFT JOINed display_id columns populated.
+func TestAuditRecordRepo_ListResolvedFindingsEnriched_JOINedDisplayIDs(t *testing.T) {
+	d := newAuditTestDB(t)
+	r := NewAuditRecordRepo(d)
+	conn := d.Conn()
+
+	// Seed 2 soldiers (for the LEFT JOIN).
+	if _, err := conn.Exec(
+		`INSERT INTO soldiers (id, display_id) VALUES (1, 'DXD-00001'), (2, 'DXD-00002')`,
+	); err != nil {
+		t.Fatalf("seed soldiers: %v", err)
+	}
+
+	// Seed 1 open + 1 resolved finding. Different pair
+	// keys so the UNIQUE constraint doesn't collide.
+	_ = seedFindingPair(t, d, 1, 2) // open
+	resolvedID := seedFindingPair(t, d, 3, 4) // resolved below
+	if resolvedID == 0 {
+		t.Fatalf("seedFindingPair returned 0")
+	}
+	// Mark the second as resolved.
+	if _, err := conn.Exec(
+		`UPDATE duplicate_audit_findings SET status = 'resolved', resolved_at = '2026-07-17 12:00:00' WHERE id = ?`,
+		resolvedID,
+	); err != nil {
+		t.Fatalf("mark resolved: %v", err)
+	}
+
+	// Add 2 more soldiers for the resolved finding's IDs.
+	if _, err := conn.Exec(
+		`INSERT INTO soldiers (id, display_id) VALUES (3, 'DXD-00003'), (4, 'DXD-00004')`,
+	); err != nil {
+		t.Fatalf("seed extra soldiers: %v", err)
+	}
+
+	rows, total, err := r.ListResolvedFindingsEnriched(context.Background(), conn, 1, 10)
+	if err != nil {
+		t.Fatalf("ListResolvedFindingsEnriched: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1 (resolved only)", total)
+	}
+	defer rows.Close()
+
+	// Iterate + scan the 8-col legacy shape.
+	count := 0
+	for rows.Next() {
+		var (
+			id                                                       int64
+			leftRecordID, rightRecordID                              int64
+			leftDisplayID, rightDisplayID                            string
+			findingType, reason, resolvedAt                          string
+		)
+		if err := rows.Scan(
+			&id, &leftRecordID, &rightRecordID,
+			&leftDisplayID, &rightDisplayID,
+			&findingType, &reason, &resolvedAt,
+		); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if id != resolvedID {
+			t.Errorf("row id = %d, want %d (the resolved one)", id, resolvedID)
+		}
+		if leftRecordID != 3 || rightRecordID != 4 {
+			t.Errorf("LEFT/RIGHT record ids = (%d, %d), want (3, 4)", leftRecordID, rightRecordID)
+		}
+		if leftDisplayID != "DXD-00003" {
+			t.Errorf("left display_id = %q, want %q", leftDisplayID, "DXD-00003")
+		}
+		if rightDisplayID != "DXD-00004" {
+			t.Errorf("right display_id = %q, want %q", rightDisplayID, "DXD-00004")
+		}
+		if resolvedAt != "2026-07-17 12:00:00" {
+			t.Errorf("resolved_at = %q, want %q", resolvedAt, "2026-07-17 12:00:00")
+		}
+		count++
+	}
+	if count != 1 {
+		t.Errorf("rows iterated = %d, want 1", count)
 	}
 }

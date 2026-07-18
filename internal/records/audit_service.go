@@ -1,6 +1,7 @@
 package records
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sort"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/agnivade/levenshtein"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/db/repo"
+	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
@@ -26,7 +29,8 @@ const (
 // (merge) or dismiss (keep separate). Constructed by
 // NewAuditService.
 type AuditService struct {
-	db *db.DB
+	db        *db.DB
+	auditRepo repo.AuditRecordRepo
 }
 
 // DuplicateAuditSummary is a records-layer type used by the matching service.
@@ -111,7 +115,10 @@ type duplicateAuditFindingCandidate struct {
 // database. Duplicate detection runs on demand (the user clicks
 // "Re-scan" on the Insights page); no background scheduler.
 func NewAuditService(database *db.DB) *AuditService {
-	return &AuditService{db: database}
+	return &AuditService{
+		db:        database,
+		auditRepo: sqliterepo.NewAuditRecordRepo(database),
+	}
 }
 
 // SimilarityThreshold is the name-similarity cutoff above which two Soldiers are flagged as duplicate candidates.
@@ -350,28 +357,13 @@ func (s *AuditService) ListResolvedFindings(page, pageSize int) ([]ResolvedFindi
 	if pageSize < 1 {
 		pageSize = 50
 	}
-	conn := s.db.Conn()
-	var total int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM duplicate_audit_findings WHERE status = 'resolved'`).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	offset := (page - 1) * pageSize
-	rows, err := conn.Query(`
-		SELECT
-			d.id,
-			d.left_record_id,
-			d.right_record_id,
-			COALESCE(l.display_id, ''),
-			COALESCE(r.display_id, ''),
-			d.finding_type,
-			d.reason,
-			COALESCE(d.resolved_at, '')
-		FROM duplicate_audit_findings d
-		LEFT JOIN soldiers l ON l.id = d.left_record_id
-		LEFT JOIN soldiers r ON r.id = d.right_record_id
-		WHERE d.status = 'resolved'
-		ORDER BY COALESCE(d.resolved_at, d.created_at) DESC, d.id DESC
-		LIMIT ? OFFSET ?`, pageSize, offset)
+	// Slice 1 of issue #622: the paginated COUNT + JOIN'd
+	// SELECT go through the AuditRecordRepo seam. The repo
+	// emits the same 8-col row shape the legacy inline
+	// SQL produced (id, left_record_id, right_record_id,
+	// left_display_id, right_display_id, finding_type,
+	// reason, resolved_at), so the scan dest is a 1:1 swap.
+	rows, total, err := s.auditRepo.ListResolvedFindingsEnriched(context.Background(), s.db.Conn(), page, pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -392,18 +384,17 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 	if len(soldierIDs) == 0 {
 		return map[int64][]DuplicateAuditFindingSummary{}, nil
 	}
-	placeholders := make([]string, len(soldierIDs))
-	args := make([]any, 0, len(soldierIDs)*2)
-	for index, soldierID := range soldierIDs {
-		placeholders[index] = "?"
-		args = append(args, soldierID)
+	// Slice 3 of issue #622: the OR-clause SELECT goes through
+	// the AuditRecordRepo seam. The repo emits the same
+	// AuditRecordSelectColumns (11 cols) the legacy inline
+	// query used; the service scans the 4 cols it needs
+	// (id, left_record_id, right_record_id, reason) and
+	// discards the rest via discard destinations. The repo
+	// filters on status='open' to match the legacy SQL.
+	rows, err := s.auditRepo.FindingsForRecordIDs(context.Background(), s.db.Conn(), soldierIDs, "open")
+	if err != nil {
+		return nil, err
 	}
-	args = append(args, args[:len(soldierIDs)]...)
-	rows, err := s.db.Conn().Query(`
-		SELECT id, left_record_id, right_record_id, reason
-		FROM duplicate_audit_findings
-		WHERE status = 'open' AND (left_record_id IN (`+strings.Join(placeholders, ",")+`) OR right_record_id IN (`+strings.Join(placeholders, ",")+`))
-		ORDER BY id ASC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +410,22 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 	lookupIDs := map[int64]struct{}{}
 	for rows.Next() {
 		var row findingRow
-		if err := rows.Scan(&row.ID, &row.LeftID, &row.RightID, &row.Reason); err != nil {
+		// AuditRecordSelectColumns is 11 cols; we only
+		// need 4 (id, left_record_id, right_record_id,
+		// reason). The remaining 7 are discarded.
+		if err := rows.Scan(
+			&row.ID,                  // col 0: id
+			new(string),              // col 1: pair_key
+			&row.LeftID,              // col 2: left_record_id
+			&row.RightID,             // col 3: right_record_id
+			new(string),              // col 4: finding_type
+			&row.Reason,              // col 5: reason
+			new(string),              // col 6: highlight_fields
+			new(string),              // col 7: status
+			new(string),              // col 8: created_at
+			new(sql.NullString),      // col 9: last_detected_at (nullable DATETIME)
+			new(sql.NullString),      // col 10: resolved_at (nullable DATETIME)
+		); err != nil {
 			return nil, err
 		}
 		findings = append(findings, row)
