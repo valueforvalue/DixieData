@@ -137,10 +137,14 @@ function main() {
   console.log('\n--apply: generating draft bullets...');
 
   // Group by section. The probe doesn't know the issue
-  // category without a labels round-trip; for slice 1, we
-  // default to Maintenance (the safest catch-all for
-  // uncategorized work) and let the operator re-categorize
-  // during the next human edit.
+  // category without a labels round-trip; we default to
+  // Maintenance (the safest catch-all for uncategorized
+  // work) and let the operator re-categorize by hand per
+  // the commit-subject prefix (feat / fix / chore / docs /
+  // bench / perf / refactor / test). Doing this in the
+  // script would require a labels round-trip per issue,
+  // which the maintainer does in 15-30 minutes for the
+  // typical 50-100 bullet backlog.
   const drafts = [];
   for (const m of missing) {
     let title = `issue #${m.issue}`;
@@ -165,13 +169,30 @@ function main() {
   // reword each bullet before tagging a release.
   const changelogPath = path.join(ROOT, 'CHANGELOG.md');
   let changelog = fs.readFileSync(changelogPath, 'utf8');
-  const sectionHeader = '### Maintenance';
-  const lastMaintenanceIdx = changelog.lastIndexOf(sectionHeader);
-  if (lastMaintenanceIdx < 0) {
-    console.error('Could not locate ### Maintenance section in CHANGELOG.md; aborting apply.');
+
+  // Find the [Unreleased] block first, then the first
+  // ### Maintenance section WITHIN that block. Using
+  // lastIndexOf would land on the most recent historical
+  // release's Maintenance section (e.g. v1.2.28), which is
+  // the wrong target.
+  const unreleasedStart = changelog.indexOf('## [Unreleased]');
+  if (unreleasedStart < 0) {
+    console.error('Could not locate `## [Unreleased]` section in CHANGELOG.md; aborting apply.');
     process.exit(2);
   }
-  // Find the next `###` or `## [` after the last Maintenance header.
+  // End of the [Unreleased] block = start of the next `## [`
+  // heading (e.g. `## v1.2.28 - 2026-05-30`).
+  const afterUnreleased = changelog.slice(unreleasedStart);
+  const endOfUnreleased = afterUnreleased.indexOf('\n## [', '## [Unreleased]'.length);
+  const unreleasedBlock = afterUnreleased.slice(0, endOfUnreleased < 0 ? afterUnreleased.length : endOfUnreleased);
+  const maintenanceInUnreleased = unreleasedBlock.indexOf('### Maintenance');
+  if (maintenanceInUnreleased < 0) {
+    console.error('Could not locate ### Maintenance section within [Unreleased] block; aborting apply.');
+    process.exit(2);
+  }
+  const lastMaintenanceIdx = unreleasedStart + maintenanceInUnreleased;
+  // Find the next `###` or `## [` after the Maintenance header
+  // within the [Unreleased] block.
   const afterMaintenance = changelog.slice(lastMaintenanceIdx);
   const nextSection = afterMaintenance.search(/\n(### |## \[)/);
   const insertAt = lastMaintenanceIdx + (nextSection < 0 ? afterMaintenance.length : nextSection);
