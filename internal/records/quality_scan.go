@@ -1,7 +1,7 @@
 package records
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"regexp"
 	"sort"
@@ -169,23 +169,19 @@ func (s *SoldierService) ApplyDataQualityFindingsToReviewQueue(ids []int64) (Dat
 	uniqueIDs := dedupePositiveIDs(ids)
 	result.Selected = len(uniqueIDs)
 	for _, id := range uniqueIDs {
-		var (
-			needsReview bool
-			reason      string
-		)
-		err := s.db.Conn().QueryRow(`SELECT needs_review, COALESCE(review_reason, '') FROM soldiers WHERE id = ?`, id).Scan(&needsReview, &reason)
+		needsReview, reason, found, err := s.qualityRepo.ReviewStateForSoldier(context.Background(), s.db.Conn(), id)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				result.NotFound++
-				continue
-			}
 			return DataQualityApplyResult{}, err
+		}
+		if !found {
+			result.NotFound++
+			continue
 		}
 
 		nextReason := mergeQualityReviewReason(reason)
 		if needsReview {
 			if strings.TrimSpace(nextReason) != strings.TrimSpace(reason) {
-				if _, err := s.db.Conn().Exec(`UPDATE soldiers SET review_reason = ? WHERE id = ?`, nextReason, id); err != nil {
+				if _, err := s.qualityRepo.SetReviewReason(context.Background(), s.db.Conn(), id, nextReason); err != nil {
 					return DataQualityApplyResult{}, err
 				}
 				if err := s.touchAuditFields(id, "review_status"); err != nil {
@@ -232,14 +228,7 @@ func dedupePositiveIDs(ids []int64) []int64 {
 }
 
 func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, error) {
-	rows, err := s.db.Conn().Query(`
-		SELECT id, display_id, entry_type, COALESCE(spouse_soldier_id, 0),
-		       COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''),
-		       COALESCE(birth_date, ''), COALESCE(death_date, ''),
-		       COALESCE(birth_info, ''), COALESCE(buried_in, ''),
-		       COALESCE(description, ''),
-		       COALESCE(created_by_import_path, ''), COALESCE(restored_at, '')
-		FROM soldiers`)
+	rows, err := s.qualityRepo.CandidatesForScan(context.Background(), s.db.Conn())
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +253,7 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 }
 
 func (s *SoldierService) loadEntryTypesByID() (map[int64]string, error) {
-	rows, err := s.db.Conn().Query(`SELECT id, COALESCE(entry_type, 'soldier') FROM soldiers`)
+	rows, err := s.qualityRepo.EntryTypesByID(context.Background(), s.db.Conn())
 	if err != nil {
 		return nil, err
 	}
@@ -282,15 +271,7 @@ func (s *SoldierService) loadEntryTypesByID() (map[int64]string, error) {
 }
 
 func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, error) {
-	rows, err := s.db.Conn().Query(`
-		SELECT s.id, COALESCE(s.display_id, ''), COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COUNT(r.id),
-		       COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
-		FROM soldiers s
-		JOIN records r ON r.person_record_id = s.id
-		WHERE TRIM(COALESCE(r.record_type, '')) = ''
-		  AND TRIM(COALESCE(r.app_id, '')) = ''
-		  AND TRIM(COALESCE(r.details, '')) = ''
-		GROUP BY s.id, s.display_id, s.first_name, s.middle_name, s.last_name, s.created_by_import_path, s.restored_at`)
+	rows, err := s.qualityRepo.AdvancedSourceRecordIssues(context.Background(), s.db.Conn())
 	if err != nil {
 		return nil, err
 	}
@@ -343,15 +324,7 @@ func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, e
 // offending record's record_type + app_id so the user can find
 // the row from the review queue.
 func (s *SoldierService) loadSourceRecordMarkupNoiseIssues() ([]DataQualityIssue, error) {
-	rows, err := s.db.Conn().Query(`
-		SELECT s.id, COALESCE(s.display_id, ''),
-		       COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''),
-		       COALESCE(s.entry_type, 'soldier'),
-		       COALESCE(r.record_type, ''), COALESCE(r.app_id, ''), COALESCE(r.details, ''),
-		       COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
-		FROM records r
-		JOIN soldiers s ON s.id = r.person_record_id
-		WHERE TRIM(COALESCE(r.details, '')) != ''`)
+	rows, err := s.qualityRepo.SourceRecordMarkupNoise(context.Background(), s.db.Conn())
 	if err != nil {
 		return nil, err
 	}
@@ -762,15 +735,7 @@ func markupIssueShape(code string) (severity, summary, detail string) {
 // name (Events have no Person Record name parts). The Display
 // ID still uses the EVT-NNNNN namespace.
 func (s *SoldierService) loadEventZeroLinkIssues() ([]DataQualityIssue, error) {
-	rows, err := s.db.Conn().Query(
-		`SELECT s.id, s.display_id, s.kind, s.begin_date, s.end_date,
-		        COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
-		 FROM soldiers s
-		 LEFT JOIN event_person_links epl ON epl.event_id = s.id
-		 WHERE s.entry_type = ? AND epl.id IS NULL
-		 ORDER BY s.updated_at DESC, s.id DESC`,
-		models.EntryTypeEvent,
-	)
+	rows, err := s.qualityRepo.EventZeroLinkIssues(context.Background(), s.db.Conn())
 	if err != nil {
 		return nil, err
 	}
