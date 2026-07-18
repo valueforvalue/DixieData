@@ -697,6 +697,8 @@ changelog-sweep: ## Sweep commits between last tag and HEAD for missing [Unrelea
 	@node scripts/release-changelog-sweep.mjs
 changelog-sweep-apply: ## Auto-insert draft bullets for missing [Unreleased] entries (issue #616)
 	@node scripts/release-changelog-sweep.mjs --apply
+changelog-recategorize: ## Auto-categorize the auto-sweep dump into Added/Fixed/Maintenance (issue #624 follow-up)
+	@node scripts/release-changelog-recategorize.mjs
 
 # Repo-seam consistency lint (issue #621). Greps the Go
 # tree for inline SQL outside the repo seam. Information
