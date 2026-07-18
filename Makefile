@@ -712,6 +712,13 @@ lint-repo-consistency-strict: ## Lint: strict mode — exit non-zero on any offe
 lint-repo-consistency-test: ## Lint: run the probe's regression net (issue #621)
 	@node audit/lint_repo_consistency.test.mjs
 
+# Wails-runtime web-mode guard probe (issue #614, scoped down).
+# Boots a real dixiedata-web binary, hits a route that calls
+# a Wails dialog API in the GUI binary, asserts the response
+# does NOT contain a Go panic stack-trace signature.
+probe-runtime-guard: ## Probe: Wails-runtime web-mode contract (issue #614 scoped down)
+	@node audit/probe_runtime_guard.mjs
+
 # --- Release pipeline (interactive; output NOT logged) ---
 
 # Bump CurrentSchemaVersion in internal/versioninfo/versioninfo.go.
