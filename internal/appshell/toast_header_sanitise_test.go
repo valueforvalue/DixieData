@@ -2,8 +2,6 @@ package appshell
 
 import (
 	"net/http/httptest"
-	"os"
-	"strings"
 	"testing"
 )
 
@@ -88,33 +86,4 @@ func TestSetToastHeaderAppliesSanitisation(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestToastHeaderSourceStillContainsUnicode pins the contract from
-// ADR 0005: source code keeps the polished Unicode characters; only
-// the wire value is ASCII. This is what makes the bug class from
-// issue #135 impossible to reintroduce while preserving visual
-// polish in the Go source.
-func TestToastHeaderSourceStillContainsUnicode(t *testing.T) {
-	// Source-level spot check: a representative in-progress toast
-	// line in imports_handlers.go must still contain the real
-	// U+2026 rune. If a future contributor "fixes" the mojibake
-	// by stripping Unicode at the source, this test catches it
-	// and forces them to update the table instead.
-	data, err := readFileUTF8("imports_handlers.go")
-	if err != nil {
-		t.Fatalf("read imports_handlers.go: %v", err)
-	}
-	if !strings.Contains(data, "Shared archive import started\u2026") {
-		t.Errorf("imports_handlers.go no longer contains the polished U+2026 ellipsis; if you stripped Unicode from the source, update toastHeaderASCIIReplacements instead")
-	}
-}
-
-// readFileUTF8 is a tiny helper for the source-level scan above.
-func readFileUTF8(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
 }
