@@ -48,7 +48,7 @@ type Term struct {
 	Anchor  string
 }
 
-// Anchor is the full HTML id for a term's section on /about.
+// AnchorFull is the full HTML id for a term's section on /about.
 func (t Term) AnchorFull() string { return "about.glossary-" + t.Slug }
 
 // registry is the unexported package-level term list, sorted

@@ -136,9 +136,9 @@ jobs:
           # pwsh '='-splitting fix and the exit-code propagation
           # workaround.
           $env:CGO_ENABLED = '1'
-          go test -race ./... -count=1
+          go test -race ./... -count=1 -timeout 20m
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go test -race ./internal/dates/... -count=1 -args '-rapid.checks=500'
+          go test -race ./internal/dates/... -count=1 -timeout 10m -args '-rapid.checks=500'
         timeout-minutes: 25
 
   stress-harness:
