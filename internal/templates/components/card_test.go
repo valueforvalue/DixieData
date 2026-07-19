@@ -9,48 +9,60 @@ import (
 	"github.com/a-h/templ"
 )
 
-// TestCard_DefaultClass verifies the simplest call produces exactly
-// <div class="card">. This is the byte-stability anchor for sites
-// that previously wrote <div class="card"> manually.
-func TestCard_DefaultClass(t *testing.T) {
-	var buf bytes.Buffer
-	err := Card("").Render(templ.WithChildren(context.Background(), templ.NopComponent), &buf)
-	if err != nil {
-		t.Fatalf("Render: %v", err)
+// TestCardVariants consolidates the per-shape card snapshot tests into
+// one table-driven case. Each row pins a different Card call shape
+// (default class, extra class, children) against its expected render.
+// This is the byte-stability anchor for sites that previously wrote
+// <div class="card ..."> manually.
+func TestCardVariants(t *testing.T) {
+	cases := []struct {
+		name      string
+		extraCls  string
+		children  templ.Component
+		wantExact string   // when set, asserts byte-equality
+		wantHas   []string // when set, asserts each substring is present
+	}{
+		{
+			// Simplest call produces exactly <div class="card"></div>.
+			name:      "default_class",
+			wantExact: `<div class="card"></div>`,
+		},
+		{
+			// Extra class is appended after the "card" base class with
+			// a single space. Covers `<div class="card rounded-3xl p-6">`.
+			name:      "extra_class",
+			extraCls:  "rounded-3xl p-6",
+			wantExact: `<div class="card rounded-3xl p-6"></div>`,
+		},
+		{
+			// Caller-supplied children render inside the card.
+			name:     "with_children",
+			children: templ.Raw(`<p>hello</p>`),
+			wantHas:  []string{`<div class="card">`, `<p>hello</p>`},
+		},
 	}
-	if got, want := buf.String(), `<div class="card"></div>`; got != want {
-		t.Fatalf("default card snapshot drift:\n got: %q\nwant: %q", got, want)
-	}
-}
-
-// TestCard_ExtraClass verifies that extraClass is appended after the
-// "card" base class with a single space. Covers the most common
-// existing pattern: `<div class="card rounded-3xl p-6">`.
-func TestCard_ExtraClass(t *testing.T) {
-	var buf bytes.Buffer
-	err := Card("rounded-3xl p-6").Render(templ.WithChildren(context.Background(), templ.NopComponent), &buf)
-	if err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	if got, want := buf.String(), `<div class="card rounded-3xl p-6"></div>`; got != want {
-		t.Fatalf("extra class card snapshot drift:\n got: %q\nwant: %q", got, want)
-	}
-}
-
-// TestCard_WithChildren verifies that caller-supplied children render
-// inside the card. The snapshot shows <p>hello</p> nested in <div>.
-func TestCard_WithChildren(t *testing.T) {
-	var buf bytes.Buffer
-	inner := templ.Raw(`<p>hello</p>`)
-	err := Card("").Render(templ.WithChildren(context.Background(), inner), &buf)
-	if err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	got := buf.String()
-	if !strings.Contains(got, `<div class="card">`) {
-		t.Fatalf("missing card wrapper:\n%s", got)
-	}
-	if !strings.Contains(got, `<p>hello</p>`) {
-		t.Fatalf("missing child content:\n%s", got)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			child := c.children
+			if child == nil {
+				child = templ.NopComponent
+			}
+			var buf bytes.Buffer
+			err := Card(c.extraCls).Render(templ.WithChildren(context.Background(), child), &buf)
+			if err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+			got := buf.String()
+			if c.wantExact != "" {
+				if got != c.wantExact {
+					t.Fatalf("%s snapshot drift:\n got: %q\nwant: %q", c.name, got, c.wantExact)
+				}
+			}
+			for _, needle := range c.wantHas {
+				if !strings.Contains(got, needle) {
+					t.Fatalf("%s missing %q\nfull: %s", c.name, needle, got)
+				}
+			}
+		})
 	}
 }

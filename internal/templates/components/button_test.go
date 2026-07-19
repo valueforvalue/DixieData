@@ -9,51 +9,54 @@ import (
 	"github.com/a-h/templ"
 )
 
-// TestButton_PrimarySnapshot asserts that @Button("Save", ButtonPrimary, nil)
-// renders byte-equivalent HTML to the legacy inline
-// <button type="button" class="primary-button">Save</button> form. The
-// byte-stability rule is the load-bearing contract: every site that
-// swaps a legacy class for @Button must keep its existing snapshot tests
-// green, so the rendered surface is provably unchanged.
-func TestButton_PrimarySnapshot(t *testing.T) {
-	var buf bytes.Buffer
-	if err := Button("Save", ButtonPrimary, "", nil).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
+// TestButtonVariants consolidates the per-kind snapshot tests into one
+// table-driven case. Each row pins the rendered HTML for one
+// ButtonKind → CSS class pairing. The byte-stability rule is the
+// load-bearing contract: every site that swaps a legacy class for
+// @Button must keep its existing snapshot tests green, so the
+// rendered surface is provably unchanged.
+func TestButtonVariants(t *testing.T) {
+	cases := []struct {
+		name string
+		kind ButtonKind
+		text string
+		want string
+	}{
+		{
+			name: "primary",
+			kind: ButtonPrimary,
+			text: "Save",
+			want: `<button type="button" class="primary-button">Save</button>`,
+		},
+		{
+			name: "secondary",
+			kind: ButtonSecondary,
+			text: "Cancel",
+			want: `<button type="button" class="secondary-button">Cancel</button>`,
+		},
+		{
+			name: "ghost",
+			kind: ButtonGhost,
+			text: "Help",
+			want: `<button type="button" class="ghost-link">Help</button>`,
+		},
+		{
+			name: "danger",
+			kind: ButtonDanger,
+			text: "Delete",
+			want: `<button type="button" class="danger-button">Delete</button>`,
+		},
 	}
-	got := buf.String()
-	want := `<button type="button" class="primary-button">Save</button>`
-	if got != want {
-		t.Fatalf("primary button snapshot drift:\n got: %q\nwant: %q", got, want)
-	}
-}
-
-func TestButton_SecondarySnapshot(t *testing.T) {
-	var buf bytes.Buffer
-	if err := Button("Cancel", ButtonSecondary, "", nil).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	if got, want := buf.String(), `<button type="button" class="secondary-button">Cancel</button>`; got != want {
-		t.Fatalf("secondary button snapshot drift:\n got: %q\nwant: %q", got, want)
-	}
-}
-
-func TestButton_GhostSnapshot(t *testing.T) {
-	var buf bytes.Buffer
-	if err := Button("Help", ButtonGhost, "", nil).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	if got, want := buf.String(), `<button type="button" class="ghost-link">Help</button>`; got != want {
-		t.Fatalf("ghost button snapshot drift:\n got: %q\nwant: %q", got, want)
-	}
-}
-
-func TestButton_DangerSnapshot(t *testing.T) {
-	var buf bytes.Buffer
-	if err := Button("Delete", ButtonDanger, "", nil).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	if got, want := buf.String(), `<button type="button" class="danger-button">Delete</button>`; got != want {
-		t.Fatalf("danger button snapshot drift:\n got: %q\nwant: %q", got, want)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := Button(c.text, c.kind, "", nil).Render(context.Background(), &buf); err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+			if got := buf.String(); got != c.want {
+				t.Fatalf("%s button snapshot drift:\n got: %q\nwant: %q", c.name, got, c.want)
+			}
+		})
 	}
 }
 
@@ -76,11 +79,11 @@ func TestButton_ExtraClass(t *testing.T) {
 func TestButton_AttrsPassThrough(t *testing.T) {
 	var buf bytes.Buffer
 	err := Button("Submit Form", ButtonPrimary, "", templ.Attributes{
-		"type":     "submit",
-		"name":     "save",
-		"data-id":  "42",
-		"hx-post":  "/soldiers",
-		"hx-target": "#main",
+		"type":       "submit",
+		"name":       "save",
+		"data-id":    "42",
+		"hx-post":    "/soldiers",
+		"hx-target":  "#main",
 		"aria-label": "Save soldier record",
 	}).Render(context.Background(), &buf)
 	if err != nil {

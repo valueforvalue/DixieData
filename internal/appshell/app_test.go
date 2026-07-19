@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
-"github.com/valueforvalue/DixieData/internal/testtemp"
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/db"
-	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/update"
-"github.com/valueforvalue/DixieData/internal/archive"
 )
 
 type scratchpadStub struct {
@@ -1002,80 +1002,116 @@ func TestSelectedRecordImagesUsesSelectedIDs(t *testing.T) {
 	}
 }
 
-func TestImageExportFolderNameUsesDisplayID(t *testing.T) {
-	name := imageExportFolderName(models.Soldier{DisplayID: "PENSION 42"})
-	if name != "PENSION-42_Images" {
-		t.Fatalf("folder name = %q", name)
+// TestFilenameSuffixes consolidates the standalone filename-suffix
+// tests into one table-driven case. Each case invokes the production
+// helper, asserts the exact string, and pins the contract that
+// site-level callers rely on (e.g. month names, date formatting,
+// orientation tokens).
+// TestFilenameSuffixes consolidates the standalone filename-suffix
+// tests into one table-driven case. Each row invokes the production
+// helper and pins the contract that site-level callers rely on
+// (e.g. month names, date formatting, orientation tokens). Rows
+// with wantHas assert that every listed substring is present in
+// the output (used by exportLinkMarkup, which renders HTML and
+// embeds a file:// URL, an external-link flag, and the display
+// path); the remaining rows assert byte-equality.
+func TestFilenameSuffixes(t *testing.T) {
+	fixedDate := time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name    string
+		fn      func() string
+		want    string
+		wantHas []string
+	}{
+		{
+			name: "image_export_folder_uses_display_id",
+			fn:   func() string { return imageExportFolderName(models.Soldier{DisplayID: "PENSION 42"}) },
+			want: "PENSION-42_Images",
+		},
+		{
+			name: "image_screenshot_name_uses_image_file_name",
+			fn:   func() string { return imageScreenshotName("record 42 front.png") },
+			want: "record-42-front-screenshot.png",
+		},
+		{
+			name: "soldier_pdf_name_uses_display_id",
+			fn: func() string {
+				return soldierPDFName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", IncludeImages: true})
+			},
+			want: "DD-100-landscape.pdf",
+		},
+		{
+			name: "soldier_jpg_name_includes_pdf_option_suffix",
+			fn: func() string {
+				return soldierJPGName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: false})
+			},
+			want: "DD-100-printer-friendly-landscape-no-images.jpg",
+		},
+		{
+			name: "soldier_pdf_name_no_images_uses_display_id",
+			fn:   func() string { return soldierPDFNameNoImages(models.Soldier{DisplayID: "DD 100"}) },
+			want: "DD-100-landscape-no-images.pdf",
+		},
+		{
+			name: "month_pdf_name_uses_month_name",
+			fn:   func() string { return monthPDFName(4, archive.PDFOptions{Orientation: "P"}) },
+			want: "April-report-portrait.pdf",
+		},
+		{
+			name: "pdf_option_filename_suffix_includes_printer_friendly_landscape",
+			fn: func() string {
+				return pdfOptionFilenameSuffix(archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: true}, false)
+			},
+			want: "printer-friendly-landscape",
+		},
+		{
+			name: "printable_archive_pdf_name_includes_printer_friendly_landscape",
+			fn: func() string {
+				return printableArchivePDFName(archive.PrintSettings{Orientation: "L", PrinterFriendly: true})
+			},
+			want: "dixiedata-printable-archive-printer-friendly-landscape.pdf",
+		},
+		{
+			name: "printable_archive_pdf_name_includes_full_biography_suffix",
+			fn: func() string {
+				return printableArchivePDFName(archive.PrintSettings{Orientation: "L", FullBiographyPage: true})
+			},
+			want: "dixiedata-printable-archive-landscape-full-biography.pdf",
+		},
+		{
+			name: "backup_archive_name_includes_date",
+			fn:   func() string { return backupArchiveName(fixedDate) },
+			want: "dixiedata-backup-2026-04-28.ddbak",
+		},
+		{
+			name: "shared_archive_name_includes_date",
+			fn:   func() string { return sharedArchiveName(fixedDate) },
+			want: "dixiedata-shared-2026-04-28.ddshare",
+		},
+		{
+			name: "export_link_markup_includes_file_url",
+			fn: func() string {
+				return exportLinkMarkup("PDF ready:", `C:\Development\DixieData\build\bin\DixieData.pdf`)
+			},
+			wantHas: []string{
+				`file:///C:/Development/DixieData/build/bin/DixieData.pdf`,
+				`data-open-external="true"`,
+				`C:\Development\DixieData\build\bin\DixieData.pdf`,
+			},
+		},
 	}
-}
-
-func TestImageScreenshotNameUsesImageFileName(t *testing.T) {
-	name := imageScreenshotName("record 42 front.png")
-	if name != "record-42-front-screenshot.png" {
-		t.Fatalf("screenshot name = %q", name)
-	}
-}
-
-func TestSoldierPDFNameUsesDisplayID(t *testing.T) {
-	name := soldierPDFName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", IncludeImages: true})
-	if name != "DD-100-landscape.pdf" {
-		t.Fatalf("soldier pdf name = %q", name)
-	}
-}
-
-func TestSoldierJPGNameIncludesPDFOptionSuffix(t *testing.T) {
-	name := soldierJPGName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: false})
-	if name != "DD-100-printer-friendly-landscape-no-images.jpg" {
-		t.Fatalf("soldier jpg name = %q", name)
-	}
-}
-
-func TestSoldierPDFNameNoImagesUsesDisplayID(t *testing.T) {
-	name := soldierPDFNameNoImages(models.Soldier{DisplayID: "DD 100"})
-	if name != "DD-100-landscape-no-images.pdf" {
-		t.Fatalf("soldier pdf name = %q", name)
-	}
-}
-
-func TestMonthPDFNameUsesMonthName(t *testing.T) {
-	name := monthPDFName(4, archive.PDFOptions{Orientation: "P"})
-	if name != "April-report-portrait.pdf" {
-		t.Fatalf("month pdf name = %q", name)
-	}
-}
-
-func TestPDFOptionFilenameSuffixIncludesPrinterFriendlyLandscape(t *testing.T) {
-	suffix := pdfOptionFilenameSuffix(archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: true}, false)
-	if suffix != "printer-friendly-landscape" {
-		t.Fatalf("suffix = %q", suffix)
-	}
-}
-
-func TestPrintableArchivePDFNameIncludesPrinterFriendlyLandscape(t *testing.T) {
-	name := printableArchivePDFName(archive.PrintSettings{Orientation: "L", PrinterFriendly: true})
-	if name != "dixiedata-printable-archive-printer-friendly-landscape.pdf" {
-		t.Fatalf("printable archive pdf name = %q", name)
-	}
-}
-
-func TestPrintableArchivePDFNameIncludesFullBiographySuffix(t *testing.T) {
-	name := printableArchivePDFName(archive.PrintSettings{Orientation: "L", FullBiographyPage: true})
-	if name != "dixiedata-printable-archive-landscape-full-biography.pdf" {
-		t.Fatalf("printable archive pdf name = %q", name)
-	}
-}
-
-func TestBackupArchiveNameIncludesDate(t *testing.T) {
-	name := backupArchiveName(time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC))
-	if name != "dixiedata-backup-2026-04-28.ddbak" {
-		t.Fatalf("backup archive name = %q", name)
-	}
-}
-
-func TestSharedArchiveNameIncludesDate(t *testing.T) {
-	name := sharedArchiveName(time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC))
-	if name != "dixiedata-shared-2026-04-28.ddshare" {
-		t.Fatalf("shared archive name = %q", name)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := c.fn()
+			if c.want != "" && got != c.want {
+				t.Fatalf("%s = %q, want %q", c.name, got, c.want)
+			}
+			for _, needle := range c.wantHas {
+				if !strings.Contains(got, needle) {
+					t.Fatalf("%s missing %q\nfull: %s", c.name, needle, got)
+				}
+			}
+		})
 	}
 }
 
@@ -1122,19 +1158,6 @@ func recorderBodyForPath(t *testing.T, app *App, path string) string {
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	return rec.Body.String()
-}
-
-func TestExportLinkMarkupIncludesFileURL(t *testing.T) {
-	markup := exportLinkMarkup("PDF ready:", `C:\Development\DixieData\build\bin\DixieData.pdf`)
-	if !strings.Contains(markup, `file:///C:/Development/DixieData/build/bin/DixieData.pdf`) {
-		t.Fatalf("markup missing file URL: %q", markup)
-	}
-	if !strings.Contains(markup, `data-open-external="true"`) {
-		t.Fatalf("markup missing external-link flag: %q", markup)
-	}
-	if !strings.Contains(markup, `C:\Development\DixieData\build\bin\DixieData.pdf`) {
-		t.Fatalf("markup missing display path: %q", markup)
-	}
 }
 
 func TestNormalizeChromeOpenTarget(t *testing.T) {
@@ -2372,8 +2395,6 @@ func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
 // deleted. The Insights drilldown (scope=unit) takes over the
 // use case, and the soldier_card tile routes there.
 
-
-
 func TestHandleServiceTimelineShowsChronology(t *testing.T) {
 	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
@@ -2474,14 +2495,10 @@ func TestHandleResearchLogShowsTasks(t *testing.T) {
 // surfaces on the Review Queue Resolved tab (slice-4
 // follow-up work) or in bulk on /review-queue?tab=resolved.
 
-
-
 // Issue #455 slice 3: TestHandleResearchPackShowsRelatedRecords
 // removed; the /soldiers/{id}/research-pack/{state|county} route
 // is being deleted. The same Top Units / Top Cemeteries /
 // Related Person Records data lives on Insights.
-
-
 
 func TestHandleResearchCollectionsShowsHub(t *testing.T) {
 	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")

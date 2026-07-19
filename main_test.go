@@ -115,23 +115,38 @@ func TestVersionOutputFormat(t *testing.T) {
 	<-doneCh
 }
 
-// TestHelpFlag verifies that help / --help / -h produces the
-// help text. The no-args case (`dixiedata` with no
-// subcommand) intentionally returns requested=false so the
-// Wails GUI launch path is reachable — see handleHelpFlag
-// doc comment. Issue #277.
-func TestHelpFlag(t *testing.T) {
-	cases := [][]string{
-		{"dixiedata", "help"},
-		{"dixiedata", "--help"},
-		{"dixiedata", "-h"},
-		{"dixiedata", "--help", "garbage"},
+// TestHelpFlagDispatch verifies that handleHelpFlag routes the
+// help request correctly. Rows with wantHelp=true assert the help
+// text is produced (header + every subcommand listed); rows with
+// wantHelp=false assert that handleHelpFlag returned
+// requested=false so downstream dispatch (Wails GUI launch, the
+// subcommand dispatcher) is reachable. Issue #277.
+func TestHelpFlagDispatch(t *testing.T) {
+	cases := []struct {
+		name     string
+		args     []string
+		wantHelp bool
+	}{
+		{name: "help_subcommand", args: []string{"dixiedata", "help"}, wantHelp: true},
+		{name: "long_help_flag", args: []string{"dixiedata", "--help"}, wantHelp: true},
+		{name: "short_help_flag", args: []string{"dixiedata", "-h"}, wantHelp: true},
+		{name: "help_flag_with_extra_arg", args: []string{"dixiedata", "--help", "garbage"}, wantHelp: true},
+		{name: "subcommand_only", args: []string{"dixiedata", "doctor"}, wantHelp: false},
+		{name: "subcommand_with_flag", args: []string{"dixiedata", "doctor", "--check=data_dir"}, wantHelp: false},
+		// No-args case: must return requested=false so the Wails
+		// GUI launch path runs. Regression net for the bug where
+		// a bare `dixiedata` invocation printed the help text and
+		// exited 0 instead of opening the app window.
+		{name: "no_args_must_not_block_gui_launch", args: []string{"dixiedata"}, wantHelp: false},
 	}
-	for _, argv := range cases {
-		t.Run(strings.Join(argv[1:], "_"), func(t *testing.T) {
-			output, requested := handleHelpFlag(argv)
-			if !requested {
-				t.Fatalf("expected requested=true for %v", argv)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			output, requested := handleHelpFlag(c.args)
+			if requested != c.wantHelp {
+				t.Fatalf("handleHelpFlag(%v) requested=%v, want %v", c.args, requested, c.wantHelp)
+			}
+			if !c.wantHelp {
+				return
 			}
 			if !strings.Contains(output, "DixieData CLI") {
 				t.Errorf("output missing header: %q", output)
@@ -142,30 +157,6 @@ func TestHelpFlag(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// TestHelpFlagAbsent verifies that without help / --help /
-// -h AND with at least one subcommand, handleHelpFlag
-// returns requested=false. Also covers the no-args case
-// (`dixiedata` with no subcommand) which MUST return
-// requested=false so the GUI launch path runs.
-func TestHelpFlagAbsent(t *testing.T) {
-	_, requested := handleHelpFlag([]string{"dixiedata", "doctor"})
-	if requested {
-		t.Error("expected requested=false when a subcommand is provided")
-	}
-	_, requested = handleHelpFlag([]string{"dixiedata", "doctor", "--check=data_dir"})
-	if requested {
-		t.Error("expected requested=false when subcommand + flags provided")
-	}
-	// No-args case: must return requested=false so the Wails
-	// GUI launch path runs. Regression net for the bug where
-	// a bare `dixiedata` invocation printed the help text and
-	// exited 0 instead of opening the app window.
-	_, requested = handleHelpFlag([]string{"dixiedata"})
-	if requested {
-		t.Error("expected requested=false on no-args (must not block GUI launch)")
 	}
 }
 

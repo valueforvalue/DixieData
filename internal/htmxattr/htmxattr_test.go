@@ -7,56 +7,141 @@ import (
 	"github.com/valueforvalue/DixieData/internal/htmlids"
 )
 
-func TestMuxZeroValueEmitsNothing(t *testing.T) {
-	got := Mux{}.Attrs()
-	if len(got) != 0 {
-		t.Fatalf("zero-value Mux should emit no attributes, got %v", got)
+// TestMuxAttributes consolidates the per-field Mux tests into one
+// table-driven case. Each row exercises one Mux field → one
+// attribute mapping. Rows that need richer assertions (panic
+// recovery, len/typed value checks, attribute-omission checks)
+// use the optional check function.
+func TestMuxAttributes(t *testing.T) {
+	cases := []struct {
+		name string
+		mux  Mux
+		// wantAttr is the attribute name to inspect in got.
+		// Empty for rows that check overall behavior (zero-value,
+		// omission, panic).
+		wantAttr string
+		// wantValue is the expected string value for wantAttr.
+		// Empty when the assertion is non-value-shaped.
+		wantValue string
+		// check runs after the basic wantAttr/wantValue comparison
+		// when the row needs richer assertions (typed value,
+		// omission, panic recovery). It receives the Attrs() map.
+		check func(t *testing.T, got map[string]any)
+	}{
+		{
+			name: "zero_value_emits_nothing",
+			mux:  Mux{},
+			check: func(t *testing.T, got map[string]any) {
+				if len(got) != 0 {
+					t.Fatalf("zero-value Mux should emit no attributes, got %v", got)
+				}
+			},
+		},
+		{
+			name:      "get_only",
+			mux:       Mux{Get: "/jobs/active"},
+			wantAttr:  "hx-get",
+			wantValue: "/jobs/active",
+			check: func(t *testing.T, got map[string]any) {
+				if len(got) != 1 {
+					t.Fatalf("expected 1 attribute, got %d: %v", len(got), got)
+				}
+				// Plain string, NOT templ.SafeURL. SafeURL is silently dropped
+				// by templ.RenderAttributes' type switch — see Attrs() comment.
+				if _, ok := got["hx-get"].(string); !ok {
+					t.Fatalf("hx-get should be string, got %T", got["hx-get"])
+				}
+			},
+		},
+		{
+			name:      "post_only",
+			mux:       Mux{Post: "/soldiers"},
+			wantAttr:  "hx-post",
+			wantValue: "/soldiers",
+			check: func(t *testing.T, got map[string]any) {
+				if _, ok := got["hx-post"].(string); !ok {
+					t.Fatalf("hx-post should be string, got %T", got["hx-post"])
+				}
+			},
+		},
+		{
+			name:      "target_emitted_verbatim",
+			mux:       Mux{Target: "#browse-results"},
+			wantAttr:  "hx-target",
+			wantValue: "#browse-results",
+		},
+		{
+			name:      "trigger_emitted",
+			mux:       Mux{Trigger: "load, every 3s"},
+			wantAttr:  "hx-trigger",
+			wantValue: "load, every 3s",
+		},
+		{
+			name:      "confirm_emitted",
+			mux:       Mux{Confirm: "Are you sure?"},
+			wantAttr:  "hx-confirm",
+			wantValue: "Are you sure?",
+		},
+		{
+			// Use a selector that's registered in htmlids so the
+			// dev-build panic does not fire — this row verifies
+			// Select rendering, not target validation.
+			name:      "select_emitted",
+			mux:       Mux{Select: "#browse-results"},
+			wantAttr:  "hx-select",
+			wantValue: "#browse-results",
+		},
+		{
+			name: "swap_empty_omits_attribute",
+			mux:  Mux{Get: "/x", Swap: ""},
+			check: func(t *testing.T, got map[string]any) {
+				if _, ok := got["hx-swap"]; ok {
+					t.Fatalf("hx-swap should be omitted when empty")
+				}
+			},
+		},
+		{
+			name: "empty_values_omitted",
+			mux: Mux{
+				Get:     "/x",
+				Post:    "", // empty
+				Target:  "", // empty
+				Swap:    "", // empty
+				Trigger: "", // empty
+				Select:  "", // empty
+				Confirm: "", // empty
+			},
+			check: func(t *testing.T, got map[string]any) {
+				if len(got) != 1 {
+					t.Fatalf("expected 1 attribute, got %d: %v", len(got), got)
+				}
+				if _, ok := got["hx-get"]; !ok {
+					t.Fatal("hx-get missing")
+				}
+			},
+		},
+		{
+			name: "whitespace_treated_as_empty",
+			mux:  Mux{Get: "   "},
+			check: func(t *testing.T, got map[string]any) {
+				if _, ok := got["hx-get"]; ok {
+					t.Fatalf("hx-get should be omitted when whitespace-only")
+				}
+			},
+		},
 	}
-}
-
-func TestMuxGetOnly(t *testing.T) {
-	got := Mux{Get: "/jobs/active"}.Attrs()
-	if len(got) != 1 {
-		t.Fatalf("expected 1 attribute, got %d: %v", len(got), got)
-	}
-	v, ok := got["hx-get"]
-	if !ok {
-		t.Fatal("hx-get missing")
-	}
-	// Plain string, NOT templ.SafeURL. SafeURL is silently dropped
-	// by templ.RenderAttributes' type switch — see Attrs() comment.
-	s, ok := v.(string)
-	if !ok {
-		t.Fatalf("hx-get should be string, got %T", v)
-	}
-	if s != "/jobs/active" {
-		t.Fatalf("hx-get = %q, want /jobs/active", s)
-	}
-}
-
-func TestMuxPostOnly(t *testing.T) {
-	got := Mux{Post: "/soldiers"}.Attrs()
-	v, ok := got["hx-post"]
-	if !ok {
-		t.Fatal("hx-post missing")
-	}
-	s, ok := v.(string)
-	if !ok {
-		t.Fatalf("hx-post should be string, got %T", v)
-	}
-	if s != "/soldiers" {
-		t.Fatalf("hx-post = %q, want /soldiers", s)
-	}
-}
-
-func TestMuxTargetEmittedVerbatim(t *testing.T) {
-	got := Mux{Target: "#browse-results"}.Attrs()
-	v, ok := got["hx-target"]
-	if !ok {
-		t.Fatal("hx-target missing")
-	}
-	if v != "#browse-results" {
-		t.Fatalf("hx-target = %q, want #browse-results", v)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := c.mux.Attrs()
+			if c.wantAttr != "" {
+				if got[c.wantAttr] != c.wantValue {
+					t.Fatalf("%s = %v, want %q", c.wantAttr, got[c.wantAttr], c.wantValue)
+				}
+			}
+			if c.check != nil {
+				c.check(t, got)
+			}
+		})
 	}
 }
 
@@ -71,13 +156,6 @@ func TestMuxSwapAllowedValues(t *testing.T) {
 	}
 }
 
-func TestMuxSwapEmptyOmitsAttribute(t *testing.T) {
-	got := Mux{Get: "/x", Swap: ""}.Attrs()
-	if _, ok := got["hx-swap"]; ok {
-		t.Fatalf("hx-swap should be omitted when empty")
-	}
-}
-
 func TestMuxSwapInvalidPanics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -87,55 +165,6 @@ func TestMuxSwapInvalidPanics(t *testing.T) {
 		}
 	}()
 	Mux{Swap: "nonsense"}.Attrs()
-}
-
-func TestMuxTriggerEmitted(t *testing.T) {
-	got := Mux{Trigger: "load, every 3s"}.Attrs()
-	if got["hx-trigger"] != "load, every 3s" {
-		t.Fatalf("hx-trigger = %v, want 'load, every 3s'", got["hx-trigger"])
-	}
-}
-
-func TestMuxConfirmEmitted(t *testing.T) {
-	got := Mux{Confirm: "Are you sure?"}.Attrs()
-	if got["hx-confirm"] != "Are you sure?" {
-		t.Fatalf("hx-confirm = %v", got["hx-confirm"])
-	}
-}
-
-func TestMuxSelectEmitted(t *testing.T) {
-	// Use a selector that's registered in htmlids so the dev-build
-	// panic does not fire — this test verifies Select rendering,
-	// not target validation.
-	got := Mux{Select: "#browse-results"}.Attrs()
-	if got["hx-select"] != "#browse-results" {
-		t.Fatalf("hx-select = %v, want #browse-results", got["hx-select"])
-	}
-}
-
-func TestMuxEmptyValuesOmitted(t *testing.T) {
-	got := Mux{
-		Get:     "/x",
-		Post:    "",  // empty
-		Target:  "",  // empty
-		Swap:    "",  // empty
-		Trigger: "",  // empty
-		Select:  "",  // empty
-		Confirm: "",  // empty
-	}.Attrs()
-	if len(got) != 1 {
-		t.Fatalf("expected 1 attribute, got %d: %v", len(got), got)
-	}
-	if _, ok := got["hx-get"]; !ok {
-		t.Fatal("hx-get missing")
-	}
-}
-
-func TestMuxWhitespaceTreatedAsEmpty(t *testing.T) {
-	got := Mux{Get: "   "}.Attrs()
-	if _, ok := got["hx-get"]; ok {
-		t.Fatalf("hx-get should be omitted when whitespace-only")
-	}
 }
 
 func TestMuxTargetFromRegistryResolvesCleanly(t *testing.T) {

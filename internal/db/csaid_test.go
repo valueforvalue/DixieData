@@ -1,98 +1,77 @@
 package db
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
-func TestNextDXDID_Format(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
+// TestNextDXDID consolidates the per-shape NextDXDID tests into one
+// table-driven case. Each row seeds the database with a different
+// starting state and asserts the next-minted id. Seeds are SQL
+// fragments so the rows stay close to the production schema.
+func TestNextDXDID(t *testing.T) {
+	cases := []struct {
+		name  string
+		seeds []string
+		want  string
+	}{
+		{
+			name:  "format",
+			seeds: nil,
+			want:  "DXD-00001",
+		},
+		{
+			name: "increment",
+			seeds: []string{
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00001', 1)`,
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00002', 1)`,
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00003', 1)`,
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00004', 1)`,
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00005', 1)`,
+			},
+			want: "DXD-00006",
+		},
+		{
+			// Non-generated soldier (pension ID) — must not affect count.
+			name: "non_generated_ignored",
+			seeds: []string{
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('PENSION-12345', 0)`,
+			},
+			want: "DXD-00001",
+		},
+		{
+			// Existing DXD- rows without the generated flag still
+			// count for the next-id calculation.
+			name: "uses_existing_dxd_ids_without_generated_flag",
+			seeds: []string{
+				`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00007', 0)`,
+			},
+			want: "DXD-00008",
+		},
 	}
-	defer d.Close()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			d, err := Open(testtemp.New(t).Path())
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer d.Close()
 
-	id, err := d.NextDXDID()
-	if err != nil {
-		t.Fatalf("NextDXDID: %v", err)
-	}
-	if id != "DXD-00001" {
-		t.Errorf("expected DXD-00001, got %s", id)
-	}
-}
+			for _, seed := range c.seeds {
+				if _, err := d.conn.Exec(seed); err != nil {
+					t.Fatalf("seed %q: %v", seed, err)
+				}
+			}
 
-func TestNextDXDID_Increment(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer d.Close()
-
-	// Insert some generated soldiers
-	for i := 0; i < 5; i++ {
-		displayID := fmt.Sprintf("DXD-%05d", i+1)
-		_, err := d.conn.Exec(
-			`INSERT INTO soldiers (display_id, is_generated) VALUES (?, 1)`,
-			displayID,
-		)
-		if err != nil {
-			t.Fatalf("insert soldier %d: %v", i+1, err)
-		}
-	}
-
-	id, err := d.NextDXDID()
-	if err != nil {
-		t.Fatalf("NextDXDID: %v", err)
-	}
-	if id != "DXD-00006" {
-		t.Errorf("expected DXD-00006, got %s", id)
-	}
-}
-
-func TestNextDXDID_NonGeneratedIgnored(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer d.Close()
-
-	// Insert a non-generated soldier (pension ID) — should not affect count
-	_, err = d.conn.Exec(
-		`INSERT INTO soldiers (display_id, is_generated) VALUES ('PENSION-12345', 0)`,
-	)
-	if err != nil {
-		t.Fatalf("insert pension soldier: %v", err)
-	}
-
-	id, err := d.NextDXDID()
-	if err != nil {
-		t.Fatalf("NextDXDID: %v", err)
-	}
-	if id != "DXD-00001" {
-		t.Errorf("expected DXD-00001 (non-generated ignored), got %s", id)
-	}
-}
-
-func TestNextDXDID_UsesExistingDXDIDsWithoutGeneratedFlag(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer d.Close()
-
-	_, err = d.conn.Exec(`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00007', 0)`)
-	if err != nil {
-		t.Fatalf("insert legacy dxd soldier: %v", err)
-	}
-
-	id, err := d.NextDXDID()
-	if err != nil {
-		t.Fatalf("NextDXDID: %v", err)
-	}
-	if id != "DXD-00008" {
-		t.Fatalf("expected DXD-00008, got %s", id)
+			id, err := d.NextDXDID()
+			if err != nil {
+				t.Fatalf("NextDXDID: %v", err)
+			}
+			if id != c.want {
+				t.Errorf("got %s, want %s", id, c.want)
+			}
+		})
 	}
 }
 
@@ -138,82 +117,68 @@ func TestIdentitySetupRequiredForFreshDatabase(t *testing.T) {
 	}
 }
 
-// TestNextEventID_Format (issue #320) verifies that NextEventID mints
-// EVT-00001 on a fresh archive. Mirrors TestNextDXDID_Format.
-func TestNextEventID_Format(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
+// TestNextEventID (issue #320) consolidates the per-shape NextEventID
+// tests into one table-driven case. Each row seeds the database with a
+// different starting state and asserts the next-minted id. The EVT-
+// namespace counter must stay independent of the DXD- counter
+// (mirrors TestNextDXDID_NonGeneratedIgnored for cross-namespace
+// isolation).
+func TestNextEventID(t *testing.T) {
+	cases := []struct {
+		name  string
+		seeds []string
+		want  string
+	}{
+		{
+			name:  "format",
+			seeds: nil,
+			want:  "EVT-00001",
+		},
+		{
+			name: "increment",
+			seeds: []string{
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('EVT-00001', 1, 'event')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('EVT-00002', 1, 'event')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('EVT-00003', 1, 'event')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('EVT-00004', 1, 'event')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('EVT-00005', 1, 'event')`,
+			},
+			want: "EVT-00006",
+		},
+		{
+			// Person Records in the DXD- namespace must not bump the
+			// EVT- counter.
+			name: "namespace_independent",
+			seeds: []string{
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('DXD-00001', 1, 'soldier')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('DXD-00002', 1, 'soldier')`,
+				`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES ('DXD-00003', 1, 'soldier')`,
+			},
+			want: "EVT-00001",
+		},
 	}
-	defer d.Close()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			d, err := Open(testtemp.New(t).Path())
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer d.Close()
 
-	id, err := d.NextEventID()
-	if err != nil {
-		t.Fatalf("NextEventID: %v", err)
-	}
-	if id != "EVT-00001" {
-		t.Errorf("expected EVT-00001, got %s", id)
-	}
-}
+			for _, seed := range c.seeds {
+				if _, err := d.conn.Exec(seed); err != nil {
+					t.Fatalf("seed %q: %v", seed, err)
+				}
+			}
 
-// TestNextEventID_Increment verifies that NextEventID advances past
-// pre-existing EVT-NNNNN rows.
-func TestNextEventID_Increment(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer d.Close()
-
-	// Insert some pre-existing EVT- rows
-	for i := 0; i < 5; i++ {
-		displayID := fmt.Sprintf("EVT-%05d", i+1)
-		_, err := d.conn.Exec(
-			`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES (?, 1, 'event')`,
-			displayID,
-		)
-		if err != nil {
-			t.Fatalf("insert event %d: %v", i+1, err)
-		}
-	}
-
-	id, err := d.NextEventID()
-	if err != nil {
-		t.Fatalf("NextEventID: %v", err)
-	}
-	if id != "EVT-00006" {
-		t.Errorf("expected EVT-00006, got %s", id)
-	}
-}
-
-// TestNextEventID_NamespaceIndependent verifies that DXD- rows do not
-// affect the EVT- counter. Mirrors TestNextDXDID_NonGeneratedIgnored
-// for cross-namespace isolation.
-func TestNextEventID_NamespaceIndependent(t *testing.T) {
-	d, err := Open(testtemp.New(t).Path())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer d.Close()
-
-	// Insert Person Records in the DXD- namespace
-	for i := 0; i < 3; i++ {
-		displayID := fmt.Sprintf("DXD-%05d", i+1)
-		_, err := d.conn.Exec(
-			`INSERT INTO soldiers (display_id, is_generated, entry_type) VALUES (?, 1, 'soldier')`,
-			displayID,
-		)
-		if err != nil {
-			t.Fatalf("insert soldier %d: %v", i+1, err)
-		}
-	}
-
-	id, err := d.NextEventID()
-	if err != nil {
-		t.Fatalf("NextEventID: %v", err)
-	}
-	if id != "EVT-00001" {
-		t.Errorf("expected EVT-00001 (DXD- rows do not affect EVT- counter), got %s", id)
+			id, err := d.NextEventID()
+			if err != nil {
+				t.Fatalf("NextEventID: %v", err)
+			}
+			if id != c.want {
+				t.Errorf("got %s, want %s", id, c.want)
+			}
+		})
 	}
 }
 
