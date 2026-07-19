@@ -15,16 +15,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-"github.com/valueforvalue/DixieData/internal/testtemp"
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/uiids"
-"github.com/valueforvalue/DixieData/internal/appdata"
 )
+
 func TestHandleEventsEmptyList(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
@@ -506,6 +507,7 @@ func TestHandlePersonEventsTab(t *testing.T) {
 		t.Errorf("fragment missing 'linked' count label")
 	}
 }
+
 // (issue #320 v1). The test substitutes the Wails native
 // save dialog with a temp file via saveFileDialogOverride so
 // the render path is exercised end-to-end without a desktop
@@ -686,13 +688,13 @@ func createSoldier(t *testing.T, app *App, label string) models.Soldier {
 		t.Fatalf("NextDXDID: %v", err)
 	}
 	s, err := app.soldiers.Create(models.Soldier{
-		DisplayID:     id,
-		EntryType:     models.EntryTypeSoldier,
-		FirstName:     "Test",
-		LastName:      label,
-		RankOut:       "PVT",
-		RankIn:        "PVT",
-		PensionState:  "Not Applicable",
+		DisplayID:    id,
+		EntryType:    models.EntryTypeSoldier,
+		FirstName:    "Test",
+		LastName:     label,
+		RankOut:      "PVT",
+		RankIn:       "PVT",
+		PensionState: "Not Applicable",
 	})
 	if err != nil {
 		t.Fatalf("soldier.Create: %v", err)
@@ -787,6 +789,7 @@ func waitForEventPDFJob(t *testing.T, app *App, outPath string) {
 	}
 	t.Fatalf("event PDF job did not produce a non-empty file at %q within 60s", outPath)
 }
+
 // extractDisplayID was a placeholder helper kept for
 // earlier test scaffolding. The CreateEvent test now
 // recovers the row id from the redirect URL directly via
@@ -921,6 +924,7 @@ func get(t *testing.T, server *httptest.Server, path string) string {
 	defer resp.Body.Close()
 	return readAll(t, resp)
 }
+
 // TestHandleBrowseEventsFilter covers issue #320 slice #327:
 // selecting "Event" in the browse entry-type filter must
 // return a list of Event rows whose row URL points at
@@ -1066,6 +1070,7 @@ func TestHandleEventResearchLog(t *testing.T) {
 		}
 	}
 }
+
 // TestHandleEventSourcesAndScratchpad covers issue #320 slots
 // #329 + #330: the per-Event Sources panel + Open Scratch Pad
 // button. Seeds an Event, GETs /sources (panel renders "No
@@ -1145,6 +1150,7 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 		t.Errorf("event detail missing tags list wrapper id; got %q", detailBody)
 	}
 }
+
 // TestHandleEventTags covers issue #320 slot #333 (per-Event
 // Tags chips) and issue #341 (fragment-vs-redirect wiring).
 // Seeds an Event + a tag, GETs the panel (empty), attaches the
@@ -1371,7 +1377,6 @@ func TestHandleEventImages(t *testing.T) {
 		t.Errorf("after delete want 1 image, got %d", len(afterDelete.Event.Images))
 	}
 }
-
 
 // TestHandleEventLinksAttachDetachByDisplayID pins slice 2 of
 // #361: the Event editor's Linked Persons section posts to
@@ -1652,126 +1657,70 @@ func TestHandleEventLinksAttachByName(t *testing.T) {
 	}
 }
 
-// TestHandleEventsListRendersPageWrapper pins the
-// PageEventList UIID (issue #396). The /events browse
-// page must render the canonical `id="page.event.list"`
-// wrapper around the main content area. Mirrors the
-// soldier-side #397 pattern: Page* wrappers scope the
-// main content area only, NOT the body.
-func TestHandleEventsListRendersPageWrapper(t *testing.T) {
+// TestEventsPagesRenderUIIDs is the consolidated table-driven
+// UIID pin for the four Event page wrappers (issue #396 +
+// parallel of the soldier-side #397 wide.*). The four prior
+// tests it replaced each booted newStressApp +
+// httptest.NewServer + createEvent to GET one path and assert
+// one anchor; sharing the App + event across the four
+// subtests cuts 3 cold boots from the CI hot path.
+//
+// Page wrapper UIIDs PageEventList / PageEventDetail /
+// PageEventNew / PageEventEdit are asserted via the same
+// `id="..."` substring pattern the prior tests used. The
+// detail + edit subtests share one createEvent seed
+// (mirroring the prior standalone tests).
+func TestEventsPagesRenderUIIDs(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
 	defer server.Close()
 
-	resp, err := http.Get(server.URL + "/events")
-	if err != nil {
-		t.Fatalf("GET /events: %v", err)
-	}
-	body := readAll(t, resp)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /events status = %d, want 200", resp.StatusCode)
+	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "UIIDTest")
+
+	cases := []struct {
+		name  string
+		path  string
+		uiids []string
+	}{
+		{
+			name:  "list",
+			path:  "/events",
+			uiids: []string{uiids.PageEventList},
+		},
+		{
+			name:  "detail",
+			path:  "/events/" + strconv.FormatInt(e.ID, 10),
+			uiids: []string{uiids.PageEventDetail},
+		},
+		{
+			name:  "new",
+			path:  "/events/new",
+			uiids: []string{uiids.PageEventNew},
+		},
+		{
+			name:  "edit",
+			path:  "/events/" + strconv.FormatInt(e.ID, 10) + "/edit",
+			uiids: []string{uiids.PageEventEdit},
+		},
 	}
 
-	want := fmt.Sprintf(`id="%s"`, uiids.PageEventList)
-	if !strings.Contains(body, want) {
-		t.Errorf(
-			"/events missing #%s wrapper anchor; got %q",
-			uiids.PageEventList,
-			bodyExtract(body, "Event Records", 200),
-		)
-	}
-}
-
-// TestHandleEventByIDRendersDetailPageWrapper pins the
-// PageEventDetail UIID. GET /events/{id} renders
-// EventDetail (event_detail.templ); the wrapper anchors
-// the page-level main content area.
-func TestHandleEventByIDRendersDetailPageWrapper(t *testing.T) {
-	app := newStressApp(t)
-	server := httptest.NewServer(app)
-	defer server.Close()
-
-	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "DetailPageWrapper")
-	resp, err := http.Get(server.URL + "/events/" + strconv.FormatInt(e.ID, 10))
-	if err != nil {
-		t.Fatalf("GET /events/%d: %v", e.ID, err)
-	}
-	body := readAll(t, resp)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /events/%d status = %d, want 200", e.ID, resp.StatusCode)
-	}
-
-	want := fmt.Sprintf(`id="%s"`, uiids.PageEventDetail)
-	if !strings.Contains(body, want) {
-		t.Errorf(
-			"/events/%d missing #%s wrapper anchor; got %q",
-			e.ID,
-			uiids.PageEventDetail,
-			bodyExtract(body, "Edit Event", 200),
-		)
-	}
-}
-
-// TestHandleNewEventRendersPageWrapper pins the PageEventNew
-// UIID on /events/new. EventForm/EventFormWithError share
-// the same EventFormFragment body (mirroring soldier's
-// entry_form shape), so the page wrapper conditional-renders
-// via templ's if isEdit { ... } else { ... } block.
-func TestHandleNewEventRendersPageWrapper(t *testing.T) {
-	app := newStressApp(t)
-	server := httptest.NewServer(app)
-	defer server.Close()
-
-	resp, err := http.Get(server.URL + "/events/new")
-	if err != nil {
-		t.Fatalf("GET /events/new: %v", err)
-	}
-	body := readAll(t, resp)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /events/new status = %d, want 200", resp.StatusCode)
-	}
-
-	want := fmt.Sprintf(`id="%s"`, uiids.PageEventNew)
-	if !strings.Contains(body, want) {
-		t.Errorf(
-			"/events/new missing #%s wrapper anchor; got %q",
-			uiids.PageEventNew,
-			bodyExtract(body, "EVT-", 200),
-		)
-	}
-}
-
-// TestHandleEditEventRendersEditPageWrapper pins the
-// PageEventEdit UIID on /events/{id}/edit. Mirrors the
-// Edit-soldier-page test from #397 wide.3 — the Edit-page
-// wrapper must render and the New-page wrapper must NOT
-// render (mutual exclusion via templ's if/else).
-func TestHandleEditEventRendersEditPageWrapper(t *testing.T) {
-	app := newStressApp(t)
-	server := httptest.NewServer(app)
-	defer server.Close()
-
-	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "EditPageWrapper")
-	resp, err := http.Get(server.URL + "/events/" + strconv.FormatInt(e.ID, 10) + "/edit")
-	if err != nil {
-		t.Fatalf("GET /events/%d/edit: %v", e.ID, err)
-	}
-	body := readAll(t, resp)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /events/%d/edit status = %d, want 200", e.ID, resp.StatusCode)
-	}
-
-	want := fmt.Sprintf(`id="%s"`, uiids.PageEventEdit)
-	if !strings.Contains(body, want) {
-		t.Errorf(
-			"/events/%d/edit missing #%s wrapper anchor; got %q",
-			e.ID,
-			uiids.PageEventEdit,
-			bodyExtract(body, "EVT-", 200),
-		)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := http.Get(server.URL + tc.path)
+			if err != nil {
+				t.Fatalf("GET %s: %v", tc.path, err)
+			}
+			body := readAll(t, resp)
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("GET %s status = %d, want 200", tc.path, resp.StatusCode)
+			}
+			for _, id := range tc.uiids {
+				want := fmt.Sprintf(`id="%s"`, id)
+				if !strings.Contains(body, want) {
+					t.Errorf("%s missing #%s anchor", tc.path, id)
+				}
+			}
+		})
 	}
 }
