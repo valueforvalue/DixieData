@@ -182,8 +182,14 @@ if ($VerifyOnly) {
         }
     }
 
-    # Doc references use the new v{MAJOR}.{U}.{N} shape.
-    $appVer = "1.$currentUpdateFlow.$currentSchema"
+    # Doc references use the canonical v{MAJOR}.{U}.{N} shape
+    # from AppVersion() in versioninfo.go. N is the release
+    # counter (CurrentAppVersionInt), NOT the schema version —
+    # the two diverged in issue #266. Using $currentSchema here
+    # was a bug that produced v1.1.68 (a hybrid that matched no
+    # real version string); the correct value is v1.1.4 (U=1,
+    # N=4) per AppVersion().
+    $appVer = "1.$currentUpdateFlow.$currentRelease"
     $docFiles = @(
         "docs\user-manual.md",
         "docs\implementation-and-features.md",
@@ -215,7 +221,7 @@ if ($VerifyOnly) {
         exit 1
     }
     Write-Host "VERIFY OK: schema $currentSchema, update_flow $currentUpdateFlow, release $currentRelease / codename: $currentReleaseName" -ForegroundColor Green
-    Write-Host "  app version: 1.$currentUpdateFlow.$currentSchema"
+    Write-Host "  app version: 1.$currentUpdateFlow.$currentRelease"
     Write-Host "  doc + changelog references intact"
     exit 0
 }

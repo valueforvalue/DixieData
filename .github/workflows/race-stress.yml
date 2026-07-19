@@ -75,6 +75,18 @@ jobs:
           go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
         timeout-minutes: 5
 
+      - name: Bake release-history + activity-history files
+        shell: pwsh
+        run: |
+          # internal/activityhistory/baked.go +
+          # internal/releasehistory/baked.go are gitignored.
+          # `go test -race ./...` compiles the full tree which
+          # imports activityhistory + releasehistory → fails
+          # with `undefined: baked` if these aren't generated.
+          go run ./scripts/bake-release-notes
+          go run ./scripts/bake-activity
+        timeout-minutes: 5
+
       - name: Restore Typst binary for render tests
         shell: pwsh
         run: |

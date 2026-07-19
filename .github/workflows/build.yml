@@ -30,6 +30,20 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
           wails doctor
 
+      - name: Regenerate templ + bake files
+        shell: pwsh
+        run: |
+          # internal/templates/*_templ.go + internal/activityhistory/baked.go
+          # + internal/releasehistory/baked.go are gitignored generated
+          # files. CI must regenerate them before `wails build` compiles
+          # the full tree (appshell imports activityhistory which
+          # references `baked`). `make tpl` runs templ generate + both
+          # bake steps.
+          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+          go run ./scripts/bake-release-notes
+          go run ./scripts/bake-activity
+        timeout-minutes: 5
+
       - name: Generate Typst + PDFium binaries
         shell: pwsh
         run: |

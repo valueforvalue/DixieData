@@ -46,19 +46,19 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
-      - name: Regenerate templ files
-        # internal/templates/*_templ.go is gitignored (generated
-        # from .templ source files), so a fresh CI checkout has
-        # only the .templ files plus the plain .go files. The plain
-        # .go files (e.g. internal/templates/linked_text_support.go)
-        # call helpers like `isSoldierEntry` that are defined in
-        # the generated `*_templ.go` files. Without this step the
-        # go build below fails with "undefined: isSoldierEntry".
-        # The test workflow already runs this step; audit was
-        # missing it. (Discovered 2026-06-29 when verifying the
-        # pkg/render build-tag fix on dev.)
+      - name: Regenerate templ + bake files
+        # internal/templates/*_templ.go + internal/activityhistory/baked.go
+        # + internal/releasehistory/baked.go are gitignored generated
+        # files. CI must regenerate them before building dixiedata-web
+        # (appshell imports activityhistory which references `baked`).
+        # The plain .go files (e.g. internal/templates/linked_text_support.go)
+        # call helpers like `isSoldierEntry` that are defined in the
+        # generated `*_templ.go` files. Without this step the go build
+        # below fails with "undefined: isSoldierEntry" or "undefined: baked".
         run: |
           go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+          go run ./scripts/bake-release-notes
+          go run ./scripts/bake-activity
         timeout-minutes: 5
 
       - name: Build dixiedata-web + seed-data
