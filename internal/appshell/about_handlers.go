@@ -24,6 +24,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+var _ viewmodel.AboutView = viewmodel.AboutView{}
+
 // handleAbout serves GET /about. Renders the templ AboutView
 // inside the standard Layout. The release history is read from
 // the package-level `baked` slice (nil in dev builds; the
@@ -136,6 +138,7 @@ func licenseURL(commit string) string {
 	}
 	return "https://github.com/valueforvalue/DixieData/blob/" + commit + "/LICENSE"
 }
+
 // buildGlossaryView projects the canonical term registry
 // into the viewmodel slice the templ partial consumes
 // (issue #564 slice 1). The glossary package is the

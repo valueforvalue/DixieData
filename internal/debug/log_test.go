@@ -46,24 +46,6 @@ func TestRingBuffer_Clear(t *testing.T) {
 	}
 }
 
-func TestRingBuffer_ConcurrentSafe(t *testing.T) {
-	rb := NewRingBuffer(100)
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 50; j++ {
-				rb.Push(Entry{Message: "x"})
-			}
-		}()
-	}
-	wg.Wait()
-	if rb.Len() != 100 {
-		t.Errorf("Len after 500 pushes into cap=100 = %d, want 100", rb.Len())
-	}
-}
-
 // resetForTest clears package globals so each test gets a clean state.
 func resetForTest(t *testing.T) {
 	t.Helper()

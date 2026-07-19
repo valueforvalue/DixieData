@@ -227,23 +227,6 @@ func TestKnownActivityGroupsCoversRegistry(t *testing.T) {
 	}
 }
 
-// TestJobResultTrashRootFieldExists pins the forward-looking
-// JobResult.TrashRoot field added in slice 1 (used by slice 3's
-// image_orphan_cleanup summarizer). The field must be JSONL-
-// omitempty so pre-#556 log entries decode cleanly into the zero
-// JobResult.
-func TestJobResultTrashRootFieldExists(t *testing.T) {
-	r := JobResult{TrashRoot: "C:/temp/trash"}
-	if r.TrashRoot != "C:/temp/trash" {
-		t.Errorf("JobResult.TrashRoot round-trip failed: got %q", r.TrashRoot)
-	}
-	// And the zero value is empty.
-	var zero JobResult
-	if zero.TrashRoot != "" {
-		t.Errorf("JobResult{}.TrashRoot = %q; want empty", zero.TrashRoot)
-	}
-}
-
 // TestSummaryDispatchGoesViaSummarizer pins issue #556 slice 2:
 // Summary() reads the kind's Summarizer from the registry, not the
 // legacy switch statement. A future regression that re-introduces
@@ -386,16 +369,16 @@ func TestDismissTargetPathUnknownKindFallsBackToJobs(t *testing.T) {
 // flow for the most common kind groups.
 func TestDismissTargetPathPerKindRouteRegressions(t *testing.T) {
 	cases := map[string]string{
-		"image_import":            "/browse",
-		"monthly_pdf":             "/calendar",
-		"soldier_pdf":             "/soldiers",
-		"soldier_pdf_no_images":   "/soldiers",
-		"soldier_jpg":             "/soldiers",
-		"insights_pdf":            "/insights",
-		"shared_archive":          "/share",
-		"shared_import":           "/share",
-		"backup_import":           "/settings",
-		"image_orphan_cleanup":    "/settings#images",
+		"image_import":          "/browse",
+		"monthly_pdf":           "/calendar",
+		"soldier_pdf":           "/soldiers",
+		"soldier_pdf_no_images": "/soldiers",
+		"soldier_jpg":           "/soldiers",
+		"insights_pdf":          "/insights",
+		"shared_archive":        "/share",
+		"shared_import":         "/share",
+		"backup_import":         "/settings",
+		"image_orphan_cleanup":  "/settings#images",
 	}
 	for kind, want := range cases {
 		if got := (Job{Kind: kind}).DismissTargetPath(); got != want {

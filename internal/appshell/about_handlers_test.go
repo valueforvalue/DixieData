@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 // TestBuildAboutViewIdentityFields pins the identity surface:
@@ -73,14 +72,6 @@ func TestBuildAboutViewLicenseURL(t *testing.T) {
 // The releasehistory package itself is still consumed by
 // scripts/bake-activity for the per-release Repository
 // activity rollup (#586).)
-
-// TestBuildAboutViewIsViewModel pins that the mapper's return
-// type is the viewmodel view (so the templ partial can render
-// it without importing buildinfo or releasehistory).
-func TestBuildAboutViewIsViewModel(t *testing.T) {
-	view := buildAboutView("dev", "dev", "")
-	var _ viewmodel.AboutView = view
-}
 
 // TestBuildAboutViewRecentCommitsShape pins the issue #594
 // projection: the new RecentCommits slice on AboutView carries

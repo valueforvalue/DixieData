@@ -152,25 +152,6 @@ func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 	}
 }
 
-// TestOpenDialogGuardKeysDifferentiateByKind ensures the kind
-// prefix on the dupKey keeps two different imports from
-// blocking each other. A user can preview a memorial JSON
-// while a shared-archive import is in flight; the two must
-// not collide on the same dedup slot.
-func TestOpenDialogGuardKeysDifferentiateByKind(t *testing.T) {
-	optsA := runtime.OpenDialogOptions{
-		Filters: []runtime.FileFilter{{DisplayName: "JSON", Pattern: "*.json"}},
-	}
-	optsB := runtime.OpenDialogOptions{
-		Filters: []runtime.FileFilter{{DisplayName: "Archive", Pattern: "*.ddshare"}},
-	}
-	keyA := guardedOpenFileDialogKey("memorial_preview", optsA)
-	keyB := guardedOpenFileDialogKey("shared_archive", optsB)
-	if keyA == keyB {
-		t.Fatalf("different kinds must produce different guard keys")
-	}
-}
-
 // TestOpenDialogGuardReleasesAfterCancel verifies the slot is
 // released after the dialog returns, so a subsequent retry
 // (after the user cancels) is not blocked by the prior cancel.

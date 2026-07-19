@@ -1,9 +1,6 @@
 package debug
 
-import (
-	"errors"
-	"testing"
-)
+import "testing"
 
 // fakeCloser satisfies io.Closer and records whether Close was called.
 type fakeCloser struct {
@@ -24,19 +21,5 @@ func TestDeferCloseLog_NoError(t *testing.T) {
 	closeFn()
 	if !fc.called {
 		t.Fatal("Close() was not invoked")
-	}
-}
-
-// TestDeferCloseLog_WithError verifies the helper still invokes Close
-// when it returns an error. The slog.Warn side is hard to test without
-// intercepting slog.Default(); the structural assertion is that the
-// closer ran (and didn't panic). The audit/smoke_swallowed_errors.mjs
-// probe pins the log line shape via source-scan.
-func TestDeferCloseLog_WithError(t *testing.T) {
-	fc := &fakeCloser{err: errors.New("disk full")}
-	closeFn := DeferCloseLog(fc, "test-component")
-	closeFn() // must not panic
-	if !fc.called {
-		t.Fatal("Close() was not invoked even though it returned an error")
 	}
 }

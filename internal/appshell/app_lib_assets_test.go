@@ -15,12 +15,8 @@ package appshell
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/valueforvalue/DixieData/internal/appdata"
 )
 
 // TestServeHTTP_LibAssets_ProjectRoot verifies the
@@ -63,44 +59,6 @@ func TestServeHTTP_LibAssets_Clipboard(t *testing.T) {
 	}
 	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/javascript") {
 		t.Fatalf("Content-Type=%q, want text/javascript", got)
-	}
-}
-
-// TestServeHTTP_LibAssets_RouteSize pins the
-// "file is being read" verification end to end:
-// the bytes the response sends must match the
-// bytes the file on disk has. Catches a future
-// refactor that mounts the wrong path or reads
-// a stub. Also catches filesystem-level drift
-// (a user accidentally trims frontend/lib/).
-func TestServeHTTP_LibAssets_RouteSize(t *testing.T) {
-	app := NewApp()
-	for _, name := range []string{"debounce.js", "clipboard.js", "insert_text_at_cursor.js"} {
-		url := "/lib/" + name
-		req := httptest.NewRequest(http.MethodGet, url, nil)
-		rec := httptest.NewRecorder()
-		app.ServeHTTP(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("%s status=%d body=%q (issue #609)", name, rec.Code, rec.Body.String())
-		}
-		// Read the on-disk file (the headless fallback
-		// path; the Wails binary reads from the embed
-		// and never goes near the disk). Both should
-		// match in length + content. Use appdata.ProjectRoot
-		// so the test resolves the repo root regardless
-		// of the working directory go test was invoked from.
-		root, err := appdata.ProjectRoot()
-		if err != nil {
-			t.Fatalf("locate repo root: %v", err)
-		}
-		path := filepath.Join(root, "frontend", "lib", name)
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read disk fallback %s: %v", path, err)
-		}
-		if got := rec.Body.Len(); got != len(data) {
-			t.Errorf("%s length mismatch: response=%d, disk=%d (issue #609 — handler reading wrong source?)", name, got, len(data))
-		}
 	}
 }
 

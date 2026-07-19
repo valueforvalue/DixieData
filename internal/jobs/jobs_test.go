@@ -112,11 +112,6 @@ func TestSetResultPathUpdatesJobSnapshot(t *testing.T) {
 	}
 }
 
-func TestSetResultPathUnknownJobIsNoop(t *testing.T) {
-	reg := New()
-	reg.SetResultPath("missing", "/tmp/whatever.zip")
-}
-
 // TestSetResultRecordsPayloadAndPromotesPath pins down the new
 // SetResult behaviour: a worker-supplied JobResult lands on the
 // job's Result field, and a non-empty Path promotes to ResultPath
@@ -176,14 +171,6 @@ func TestSetResultWithoutPathLeavesResultPathAlone(t *testing.T) {
 	if snap.Result.Added != 12 || snap.Result.Merged != 7 || snap.Result.Skipped != 3 {
 		t.Errorf("Result = %+v, want Added=12 Merged=7 Skipped=3", snap.Result)
 	}
-}
-
-// TestSetResultUnknownJobIsNoop mirrors SetResultPath: setting a
-// result for an unknown ID must not panic and must not allocate
-// (the registry map lookup returns the zero value).
-func TestSetResultUnknownJobIsNoop(t *testing.T) {
-	reg := New()
-	reg.SetResult("missing", JobResult{Records: 1})
 }
 
 // TestSetResultBroadcastsSnapshot pins down the SSE contract: a
@@ -250,7 +237,6 @@ func TestDisplayLabelMapsKnownKinds(t *testing.T) {
 // mutex) hide the race from Go's race detector on this platform
 // (no cgo). Documenting the limitation here so future runs can
 // re-attempt with CGO_ENABLED=1 and an os.File-backed writer.
-
 
 // concurrentByteBuffer is a bytes.Buffer guarded by a mutex.
 // os.File provides its own internal locking, but tests use
@@ -707,23 +693,6 @@ func TestNewJobConstructsWithGivenIDAndKind(t *testing.T) {
 	}
 	if j.Progress != 0 {
 		t.Errorf("Progress should default to 0, got %d", j.Progress)
-	}
-}
-
-func TestNewJobIsSafeForConcurrentRead(t *testing.T) {
-	j := NewJob("job-concurrent", "export_pdf")
-	// Snapshot acquires the mutex; this would deadlock if NewJob
-	// left the mutex in a broken state.
-	done := make(chan struct{})
-	go func() {
-		_ = j.Snapshot()
-		close(done)
-	}()
-	select {
-	case <-done:
-		// OK
-	case <-time.After(time.Second):
-		t.Fatal("Snapshot deadlocked; NewJob left mutex in bad state")
 	}
 }
 

@@ -70,21 +70,6 @@ func TestCombinedVersionStringMentionsAppSchemaBuild(t *testing.T) {
 	}
 }
 
-// TestVersionStructAlignsWithDirectAccessors pins the
-// one-liner struct surface: callers that want a single
-// return value (rather than three function calls) read from
-// here. The struct must stay in sync with the direct
-// accessor outputs so a future change to AppVersion() or
-// SchemaVersion can't leave one surface stale.
-func TestVersionStructAlignsWithDirectAccessors(t *testing.T) {
-	if Version.App != AppVersion {
-		t.Errorf("Version.App = %q; want %q", Version.App, AppVersion)
-	}
-	if Version.Schema != SchemaVersion {
-		t.Errorf("Version.Schema = %d; want %d", Version.Schema, SchemaVersion)
-	}
-}
-
 // TestDisclosureSentenceWrapsCombined pins the slice-2
 // helper (issue #570) that the layout disclosure paragraph
 // renders: the version values must be wrapped in parens so

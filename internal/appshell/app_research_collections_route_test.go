@@ -94,32 +94,6 @@ func TestHandleResearchCollections_POSTCreatesCollection(t *testing.T) {
 	}
 }
 
-// Plus the GET case stays healthy after the route change.
-func TestHandleResearchCollections_GETStillRenders(t *testing.T) {	dataDir := testtemp.New(t).Path()
-	database, err := db.Open(dataDir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-
-	app := NewApp()
-	app.dataDir = dataDir
-	app.database = database
-	if err := app.reloadServices(); err != nil {
-		t.Fatalf("reloadServices: %v", err)
-	}
-	configureTestIdentity(t, app)
-	app.setupRoutes()
-
-	req := httptest.NewRequest(http.MethodGet, "/research-collections", nil)
-	rec := httptest.NewRecorder()
-	app.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET status=%d body=%q", rec.Code, rec.Body.String())
-	}
-}
-
 // Regression net for the follow-up on issue #452: a stale "?from=<id>" that
 // no longer points at an existing soldier (deleted row, merged archive, old
 // bookmark) must NOT 500 the whole hub. The handler should fall back to

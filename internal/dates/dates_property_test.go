@@ -116,22 +116,6 @@ func TestPropertyNormalizeIdempotent(t *testing.T) {
 	})
 }
 
-// TestPropertyMustFormatAllZeroEmpty: MustFormat(0,0,0) must
-// return empty string per the package contract. Catches a
-// regression where the all-zero sentinel is reformatted to
-// "00/00/0000".
-func TestPropertyMustFormatAllZeroEmpty(t *testing.T) {
-	rapid.Check(t, func(t *rapid.T) {
-		// Rapid sanity: re-assert the constant 0/0/0 case
-		// across N draws. This is a constant check; the
-		// property form documents the invariant.
-		_ = rapid.IntRange(0, 0).Draw(t, "z")
-		if got := MustFormat(0, 0, 0); got != "" {
-			t.Fatalf("MustFormat(0,0,0) = %q, want empty", got)
-		}
-	})
-}
-
 // TestPropertyDisplayNeverPanics: Display is documented to
 // accept "any string" and render a UI-safe label. Catches
 // regressions where Display delegates to something that

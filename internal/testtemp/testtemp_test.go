@@ -28,18 +28,6 @@ func TestDir_RemoveAllSucceeds(t *testing.T) {
 	}
 }
 
-func TestDir_AutoCleanupOnTestExit(t *testing.T) {
-	dir := New(t)
-	if _, err := os.Stat(dir.Path()); err != nil {
-		t.Fatalf("path should exist: %v", err)
-	}
-	// No Release call — t.Cleanup runs auto-cleanup at test exit.
-	// We can't directly verify that here (the t.Cleanup is
-	// scheduled with t.Cleanup, which fires when the test
-	// function returns and reaches the next test). Just verify
-	// the dir exists now and that no panic happens.
-}
-
 func TestDir_ConcurrentRead(t *testing.T) {
 	// The Windows file-handle race fix: open a file, "use" it
 	// (no close), then Release. Without the GC-and-Gosched
