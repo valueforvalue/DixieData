@@ -163,7 +163,7 @@ templ SettingsDataPanel(confirmationWord string) {
 	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="settings-data-panel" data-settings-data-panel>
 		<div>
 			<h3 class="text-xl gold font-bold">Initialize Local Archive</h3>
-			<p class="mt-2 text-sm text-slate-600">Erase every Person Record, Event Record, Article, and Tag from the Local Archive and restore the empty-archive state. The scratch folder's database file is replaced with a fresh copy; image files are kept.</p>
+			<p class="mt-2 text-sm text-slate-600">Replaces the database with a fresh copy; image files are kept.</p>
 		</div>
 		<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } method="post" data-dixie-submit="true" class="space-y-4">
 			<label class="block text-sm text-slate-700">
@@ -182,7 +182,7 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 	<section class="card rounded-3xl p-5 sm:p-8 space-y-4" id="settings-diagnostics-panel" data-settings-diagnostics-panel>
 		<div>
 			<h3 class="text-xl gold font-bold">Debug Mode</h3>
-			<p class="mt-2 text-sm text-slate-600">Toggles the in-app debug toolbox + the persistent dev page badge. The setting is per-user; turning it off hides both surfaces on the next navigation.</p>
+			<p class="mt-2 text-sm text-slate-600">Per-user; turning it off hides both surfaces on next navigation.</p>
 		</div>
 		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" class="space-y-4">
 			<label class="flex items-baseline gap-2 text-sm">
