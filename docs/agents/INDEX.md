@@ -16,6 +16,7 @@ or [`AGENTS.md`](../../AGENTS.md). Load at session start.
 | [`CHANGELOG.md`](../../CHANGELOG.md) | What's shipped; what's `[Unreleased]`. |
 | [`docs/agents/feature-protocol.md`](feature-protocol.md) | The feature add protocol. Load for any feature work. |
 | [`docs/agents/tdd.md`](tdd.md) | TDD discipline — RED test pins slice acceptance criterion BEFORE code lands. Cross-cuts every feature and every bug fix. Load alongside `feature-protocol.md`. |
+| [`docs/agents/testing-philosophy.md`](testing-philosophy.md) | Which tests to keep, which to cut. Pragmatic Programmer principles + Go-specific guidance. Load when auditing a test suite or deciding whether a test earns its place. |
 | [`docs/agents/rpci.md`](rpci.md) | Research → Plan → Critique → Implement flow. |
 | [`docs/agents/issue-tracker.md`](issue-tracker.md) | Bug + feature issue templates, label taxonomy. |
 | [`docs/agents/triage-labels.md`](triage-labels.md) | The 6-axis label spec. |
