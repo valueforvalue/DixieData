@@ -56,11 +56,11 @@ build: SCRIPT := scripts/build-debug.ps1
 build: TARGET := build
 build: ARGS :=
 build: ## Build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
-	@$(PWSH) -NoLogo -NoProfile -File scripts/probe-clean.ps1
+	@$(PWSH) -File scripts/probe-clean.ps1
 	$(LOG_RECIPE)
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
-	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
+	@$(PWSH) -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
 	@mkdir -p build/bin
 	go build -tags debug -o $(SEED_BIN) ./cmd/seed-data
 	@mkdir -p build/bin
@@ -72,11 +72,11 @@ debug: SCRIPT := scripts/build-debug.ps1
 debug: TARGET := debug
 debug: ARGS :=
 debug: ## Debug build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
-	@$(PWSH) -NoLogo -NoProfile -File scripts/probe-clean.ps1
+	@$(PWSH) -File scripts/probe-clean.ps1
 	$(LOG_RECIPE)
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
-	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
+	@$(PWSH) -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
 	@mkdir -p build/bin
 	go build -tags debug -o $(SEED_BIN) ./cmd/seed-data
 	@mkdir -p build/bin
@@ -97,7 +97,7 @@ debug: ## Debug build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
 web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
-	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
+	@$(PWSH) -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
 
 # Seed tool (bootstraps .scratch/webmode for audit harness).
 seed: ## Build cmd/seed-data (audit harness fixture seeder)

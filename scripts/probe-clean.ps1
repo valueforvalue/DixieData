@@ -1,4 +1,4 @@
-# probe-clean.ps1 — kill any straggler dixiedata-* processes from a
+# probe-clean.ps1 -- kill any straggler dixiedata-* processes from a
 # previous probe run, then verify the file handles are released so
 # the next `make debug` doesn't fail with:
 #
@@ -30,7 +30,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Process names to terminate. Lowercase comparison is intentional
-# — Windows process names are case-insensitive but the tasklist
+# -- Windows process names are case-insensitive but the tasklist
 # output preserves the original image name. Match both casings
 # via the matching helper below.
 $targets = @(
@@ -46,7 +46,7 @@ function Test-ProcessAlive([string]$name) {
         -ErrorAction SilentlyContinue
     if ($null -eq $proc) { return @() }
     # Filter to processes whose MainModule filename matches the
-    # target (Get-Process -Name is a prefix match — `dixiedata`
+    # target (Get-Process -Name is a prefix match -- `dixiedata`
     # would also match `dixiedata-web`).
     return @($proc | Where-Object {
         try {
@@ -69,13 +69,13 @@ foreach ($name in $targets) {
     Write-Host "  killing $name (PIDs: $($before.Id -join ', '))"
     # /F = force, /T = tree (children too). Exit 128 = no match
     # (which shouldn't happen here since we just confirmed alive),
-    # exit 1 = access denied. We treat both as a retry signal —
+    # exit 1 = access denied. We treat both as a retry signal --
     # see verify loop below.
     & taskkill.exe /F /IM $name /T 2>&1 | Out-Null
     $killed += $name
 }
 
-# Verify loop. Single retry after a short delay — the second pass
+# Verify loop. Single retry after a short delay -- the second pass
 # almost always succeeds when the first didn't (handle release
 # latency, AV scan completion, etc.). If it still fails after the
 # retry, surface the survivors so the operator knows what's stuck.
@@ -112,14 +112,14 @@ if ($killed.Count -gt 0) {
 
 if ($survivors.Count -gt 0) {
     Write-Host ""
-    Write-Host "probe-clean: FAILED — these processes survived the kill:" -ForegroundColor Red
+    Write-Host "probe-clean: FAILED -- these processes survived the kill:" -ForegroundColor Red
     foreach ($entry in $survivors) {
         Write-Host ("  {0} (PIDs: {1})" -f $entry.Name, ($entry.PIds -join ', ')) -ForegroundColor Red
     }
     Write-Host ""
     Write-Host "Likely causes:" -ForegroundColor Yellow
     Write-Host "  - Antivirus quarantined the binary and is holding the handle"
-    Write-Host "  - A debugger (VS, dlv) is attached to the process"
+    Write-Host '  - A debugger (VS, dlv) is attached to the process'
     Write-Host "  - The process re-spawns immediately (a watcher service)"
     Write-Host ""
     Write-Host "Try: wait a few seconds and re-run, or kill manually via Task Manager."
