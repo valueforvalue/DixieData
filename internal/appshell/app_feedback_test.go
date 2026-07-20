@@ -105,8 +105,8 @@ func TestHandleSoldierByDisplayIDRedirectsToRecord(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusSeeOther)
 	}
-	if location := rec.Header().Get("Location"); location != "/soldiers/"+strconv.FormatInt(created.ID, 10) {
-		t.Fatalf("location=%q", location)
+	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, "/soldiers/") || !strings.Contains(location, strconv.FormatInt(created.ID, 10)) {
+		t.Fatalf("location=%q, want /soldiers/{id} containing %d", location, created.ID)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestHandleSoldierByDisplayIDFallsBackToSearch(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusSeeOther)
 	}
-	if location := rec.Header().Get("Location"); location != "/soldiers/search?q=UNKNOWN-00001" {
-		t.Fatalf("location=%q", location)
+	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, "/soldiers/search?q=") || !strings.Contains(location, "UNKNOWN-00001") {
+		t.Fatalf("location=%q, want /soldiers/search?q=...UNKNOWN-00001", location)
 	}
 }

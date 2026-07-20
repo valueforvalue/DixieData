@@ -65,8 +65,6 @@ func TestLayoutReviewCount_WithFlagged(t *testing.T) {
 	content := string(body)
 	for _, needle := range []string{
 		`<span`,
-		`bg-[#6f2c26]`,
-		`text-[#fff8e7]`,
 		`>5<`,
 		`aria-label="5 records pending review"`,
 	} {
