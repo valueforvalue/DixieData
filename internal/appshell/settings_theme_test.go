@@ -62,8 +62,8 @@ func TestHandleSettingsTheme_PersistsAndUpdatesInMemoryStore(t *testing.T) {
 	if rec.Code < 200 || rec.Code >= 300 {
 		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/settings" {
-		t.Errorf("X-DixieData-Redirect = %q, want %q", got, "/settings")
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/settings/appearance" {
+		t.Errorf("X-DixieData-Redirect = %q, want %q", got, "/settings/appearance")
 	}
 	// In-memory store updated.
 	if v, _ := app.theme.Load().(string); v != records.ThemeHighContrast {

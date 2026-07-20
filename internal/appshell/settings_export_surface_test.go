@@ -47,8 +47,8 @@ func TestHandleSettingsExportSurface_PersistsAndUpdatesInMemoryStore(t *testing.
 	if rec.Code < 200 || rec.Code >= 300 {
 		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/settings" {
-		t.Errorf("X-DixieData-Redirect = %q, want %q", got, "/settings")
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/settings/appearance" {
+		t.Errorf("X-DixieData-Redirect = %q, want %q", got, "/settings/appearance")
 	}
 	if v, _ := app.exportSurface.Load().(string); v != "toast-only" {
 		t.Errorf("in-memory exportSurface = %q, want %q", v, "toast-only")

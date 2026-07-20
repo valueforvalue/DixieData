@@ -170,8 +170,8 @@ func (a *App) handleSettingsTheme(w http.ResponseWriter, r *http.Request) {
 	setToastHeader(w, fmt.Sprintf("Theme set to %s.", themeDisplayName(picked)))
 	// The form is dispatched via the JS dispatcher; respond with the
 	// standard X-DixieData-Redirect so the browser navigates back to
-	// /settings and the new theme is reflected on the next paint.
-	writeExportRedirect(w, "/settings")
+	// /settings/appearance and the new theme is reflected on the next paint.
+	writeExportRedirect(w, "/settings/appearance")
 }
 
 // themeDisplayName maps the persisted theme value to the user-facing
@@ -236,9 +236,9 @@ func (a *App) handleSettingsExportSurface(w http.ResponseWriter, r *http.Request
 	log := debug.FromContext(r.Context())
 	log.Info("export surface preference changed via settings", "surface", picked)
 	setToastHeader(w, fmt.Sprintf("After export: %s.", exportSurfaceDisplayName(picked)))
-	// Same redirect-back-to-/settings shape as the theme
+	// Same redirect-back-to-/settings/appearance shape as the theme
 	// handler so the user sees the radio update immediately.
-	writeExportRedirect(w, "/settings")
+	writeExportRedirect(w, "/settings/appearance")
 }
 
 // exportSurfaceDisplayName maps the persisted value to the
