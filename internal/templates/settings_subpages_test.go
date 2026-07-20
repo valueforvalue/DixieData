@@ -104,9 +104,12 @@ func TestSettingsDiagnosticsPageRenders(t *testing.T) {
 		`id="page.settings.diagnostics"`,
 		`Diagnostics`,
 		`id="settings-diagnostics-panel"`,
-		`Support & Diagnostics`,
+		`Support &amp; Diagnostics`,
 		`Export Feedback Log`,
-		`Report a Bug`,
+		`Export Bug Report Bundle`,
+		`data-action="/export/feedback-log"`,
+		`action="/export/bug-report"`,
+		`data-include-images-checkbox="true"`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("SettingsDiagnosticsPage missing %q", want)

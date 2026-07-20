@@ -192,11 +192,30 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 			@components.Button("Save", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
 		<div class="border-t border-[rgb(var(--theme-sepia-rgb)/0.25)] pt-4">
-			<h3 class="text-xl gold font-bold">Support & Diagnostics</h3>
+			<h3 class="text-xl gold font-bold">Support &amp; Diagnostics</h3>
 			<p class="mt-2 text-sm text-slate-600">Export the feedback log for an email attachment, or file a bug report directly.</p>
 			<div class="flex flex-wrap gap-3">
-				<a href="/share/feedback-log" class="secondary-button w-full sm:w-auto">Export Feedback Log</a>
-				<a href="/share/report-bug" class="secondary-button w-full sm:w-auto">Report a Bug</a>
+				@components.ButtonContent(components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+					"data-action":       "/export/feedback-log",
+					"data-dixie-submit": "true",
+				}) {
+					<div class="font-bold">Export Feedback Log</div>
+					<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
+				}
+				<form action="/export/bug-report" method="post" data-dixie-submit="true" class="flex w-full flex-col items-stretch gap-2 sm:w-auto">
+					<label class="flex items-center gap-2 text-xs text-slate-600">
+						<input
+							type="checkbox"
+							name="include_images"
+							value="true"
+							checked
+							data-include-images-checkbox="true"
+							class="h-4 w-4 rounded border-slate-300 text-[var(--theme-accent-strong)] focus:ring-[#8d7440]"
+						/>
+						<span>Include image bytes <span class="text-slate-400">(uncheck to drop ~100-250 MB; stubs replace real bytes)</span></span>
+					</label>
+					@components.Button("Export Bug Report Bundle", components.ButtonSecondary, "w-full justify-start text-left", templ.Attributes{"type": "submit"})
+				</form>
 			</div>
 		</div>
 	</section>

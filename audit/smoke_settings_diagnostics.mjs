@@ -54,7 +54,7 @@ try {
   record("settings-has-bug-report-form-action", settingsHtml.includes('action="/export/bug-report"'), {});
   record("settings-has-include-images-checkbox", /name="include_images"[^>]*checked/.test(settingsHtml), {});
   record("settings-has-include-images-data-attr", settingsHtml.includes('data-include-images-checkbox="true"'), {});
-  record("settings-has-bug-report-action", settingsHtml.includes('data-action="/export/bug-report"'), {});
+  record("settings-has-bug-report-form", settingsHtml.includes('action="/export/bug-report"'), {});
 
   // Step 2: /share no longer renders the card (only the
   // eyebrow text appears in the page footer as a navigation
