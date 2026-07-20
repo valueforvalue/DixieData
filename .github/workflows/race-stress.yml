@@ -121,25 +121,38 @@ jobs:
           go test -race -count=1 -run 'TestCLIContractSnapshots|TestArchiveContractSnapshots' ./internal/exportcontract/
         timeout-minutes: 15
 
-      - name: Go test (race detector, full suite)
+      - name: Go test (race detector, appshell batch)
         shell: pwsh
         run: |
-          # Same two-pass shape as .github/workflows/test.yml —
-          # run the unscoped suite first (catches everything
-          # except the dates-only rapid flags), then run the
-          # dates package with -rapid.checks=500 forwarded via
-          # -args. The fail-fast $LASTEXITCODE check between
-          # the two runs is required because pwsh does not
-          # auto-propagate exit codes between commands; without
-          # it, the dates-only run's exit code would mask the
-          # unscoped run's failures. See #417 for the original
-          # pwsh '='-splitting fix and the exit-code propagation
-          # workaround.
+          # Split the full `go test -race ./...` into two batches
+          # so each gets its own Go test timeout (issue #479).
+          # The appshell package has ~511 test functions; under
+          # -race it takes ~8-10min. The rest of the repo is
+          # ~200 tests across 30+ packages; each package gets its
+          # own timeout so the aggregate is fast.
+          #
+          # Batching avoids the per-package timeout cliff: a
+          # single `go test -race ./...` gives every package the
+          # same timeout, but the appshell package dominates. By
+          # splitting, appshell gets 12m (comfortable headroom
+          # for ~8-10min actual) and the rest gets 10m.
           $env:CGO_ENABLED = '1'
-          go test -race ./... -count=1 -timeout 20m
+          go test -race ./internal/appshell/ -count=1 -timeout 12m
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        timeout-minutes: 15
+
+      - name: Go test (race detector, rest-of-repo batch)
+        shell: pwsh
+        run: |
+          # Second batch: every package EXCEPT appshell. Each
+          # package gets its own 10min timeout (the default);
+          # no single package here takes more than ~2min under
+          # -race. Plus the dates rapid-test pass.
+          $env:CGO_ENABLED = '1'
+          go test -race $(go list ./... | Where-Object { $_ -notmatch 'internal/appshell' }) -count=1 -timeout 10m
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go test -race ./internal/dates/... -count=1 -timeout 10m -args '-rapid.checks=500'
-        timeout-minutes: 25
+        timeout-minutes: 15
 
   stress-harness:
     name: tests/stress harness
