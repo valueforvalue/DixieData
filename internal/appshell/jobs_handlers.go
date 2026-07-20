@@ -175,14 +175,14 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 	// the manual-job entry's cancel callback which does the same
 	// thing plus forgets the entry so a subsequent /confirm call
 	// returns ErrNotFound.
-	err := a.cancelManualJob(id)
+	err := a.cancelManualCallback(id)
 	if errors.Is(err, jobs.ErrNotFound) {
 		// Not a manual job; fall through to the registry.
 		err = a.jobs.Cancel(id)
 	}
 	switch {
 	case err == nil:
-		a.forgetManualJob(id)
+		a.forgetManualCallback(id)
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
 	case errors.Is(err, jobs.ErrNotFound):
 		http.NotFound(w, r)
@@ -216,10 +216,10 @@ func (a *App) confirmJob(w http.ResponseWriter, r *http.Request, id string) {
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
 		return
 	}
-	err := a.releaseManualJob(id)
+	err := a.releaseManualCallback(id)
 	switch {
 	case err == nil:
-		a.forgetManualJob(id)
+		a.forgetManualCallback(id)
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
 	case errors.Is(err, jobs.ErrNotFound):
 		// Not a manual job — the /confirm endpoint is bound to

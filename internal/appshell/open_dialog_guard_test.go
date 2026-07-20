@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -20,6 +21,7 @@ import (
 // but for the open-pickers.
 func TestOpenDialogGuardRejectsConcurrentDuplicates(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 	var invocations atomic.Int32
 	// Simulate a held slot by entering the same dupKey the
 	// guarded function will use. This deterministically
@@ -36,11 +38,11 @@ func TestOpenDialogGuardRejectsConcurrentDuplicates(t *testing.T) {
 	}
 	dupKey := guardedOpenFileDialogKey("shared_archive", opts)
 
-	admittedFirst, heldEntry := app.enterInFlight(dupKey)
-	if !admittedFirst || heldEntry == nil {
-		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
+	release, admittedFirst := app.guardDialog(dupKey)
+	if !admittedFirst {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v", admittedFirst, )
 	}
-	defer app.leaveInFlight(dupKey, heldEntry)
+	defer release()
 
 	// Override is unused in this test — the second call's
 	// dup-check must return false before reaching the dialog.
@@ -71,6 +73,7 @@ func TestOpenDialogGuardRejectsConcurrentDuplicates(t *testing.T) {
 // directory picker variant of the guard.
 func TestOpenDirectoryGuardRejectsConcurrentDuplicates(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 	// OpenDirectoryDialog does not currently expose an override
 	// hook in internal/appshell/runtime.go, so we exercise the
 	// guard by holding the in-flight slot manually. The dup-check
@@ -80,9 +83,9 @@ func TestOpenDirectoryGuardRejectsConcurrentDuplicates(t *testing.T) {
 	})
 
 	// First admit holds the slot.
-	admittedFirst, entry := app.enterInFlight(dupKey)
-	if !admittedFirst || entry == nil {
-		t.Fatalf("expected first admit; got admitted=%v entry=%v", admittedFirst, entry)
+	release, admittedFirst := app.guardDialog(dupKey)
+	if !admittedFirst {
+		t.Fatalf("expected first admit; got admitted=%v", admittedFirst)
 	}
 
 	// Second goroutine races the dup check while the slot is held.
@@ -103,7 +106,7 @@ func TestOpenDirectoryGuardRejectsConcurrentDuplicates(t *testing.T) {
 		}
 	}
 	// Release so test cleanup doesn't see a stuck slot.
-	app.leaveInFlight(dupKey, entry)
+	release()
 }
 
 // TestOpenMultipleFilesGuardRejectsConcurrentDuplicates covers
@@ -113,6 +116,7 @@ func TestOpenDirectoryGuardRejectsConcurrentDuplicates(t *testing.T) {
 // dup-hit signal is `admitted=false`, not `ok=false`.
 func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 	var invocations atomic.Int32
 	// See TestOpenDialogGuardRejectsConcurrentDuplicates for the
 	// rationale. Hold the dupKey manually, then assert the
@@ -126,11 +130,11 @@ func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 	}
 	dupKey := guardedOpenMultipleFilesDialogKey("import_images", opts)
 
-	admittedFirst, heldEntry := app.enterInFlight(dupKey)
-	if !admittedFirst || heldEntry == nil {
-		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
+	release, admittedFirst := app.guardDialog(dupKey)
+	if !admittedFirst {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v", admittedFirst, )
 	}
-	defer app.leaveInFlight(dupKey, heldEntry)
+	defer release()
 
 	app.SetOpenMultipleFilesDialogOverride(func(_ any) ([]string, error) {
 		invocations.Add(1)
@@ -157,6 +161,7 @@ func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 // (after the user cancels) is not blocked by the prior cancel.
 func TestOpenDialogGuardReleasesAfterCancel(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
 		return "", nil // simulate cancel
 	})
@@ -200,6 +205,7 @@ func TestOpenDialogGuardReleasesAfterCancel(t *testing.T) {
 // 2-value fails this regression net.
 func TestGuardedOpenDialogRecorders(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
 		return "/tmp/example.ddshare", nil
 	})
@@ -242,6 +248,7 @@ func TestGuardedOpenDialogRecorders(t *testing.T) {
 // short-circuit before we hit the dialog.
 func TestHandleImportBackupDialogGuard(t *testing.T) {
 	app := NewApp()
+	app.jobs = jobs.NewWithConcurrency(1)
 
 	// The handler builds the dupKey from the same dialogOpts
 	// shape every time. We hold the slot manually so the
@@ -260,9 +267,9 @@ func TestHandleImportBackupDialogGuard(t *testing.T) {
 	if dupKey == "" {
 		t.Fatal("guardedOpenFileDialogKey must produce a non-empty key")
 	}
-	admittedFirst, heldEntry := app.enterInFlight(dupKey)
-	if !admittedFirst || heldEntry == nil {
-		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
+	release, admittedFirst := app.guardDialog(dupKey)
+	if !admittedFirst {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v", admittedFirst, )
 	}
 
 	// One POST to /import/backup. The slot is held, so the
@@ -284,7 +291,7 @@ func TestHandleImportBackupDialogGuard(t *testing.T) {
 	// by default, which the handler turns into a 400 with toast.
 	// What matters is that it is NOT a dup-hit (no
 	// X-DixieData-Redirect).
-	app.leaveInFlight(dupKey, heldEntry)
+	release()
 
 	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
 		return "", nil

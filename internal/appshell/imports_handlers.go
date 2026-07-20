@@ -31,18 +31,10 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 
 	// Only one .ddbak restore can run at a time because the
 	// import replaces the SQLite file the rest of the app is
-	// reading. Refuse a second concurrent request with a 503
-	// + toast that points at the existing /jobs/{id} so the user
-	// can monitor the in-flight restore.
-	if a.importInFlight.Load() {
-		if jobID := a.importInFlightJobID(); jobID != "" {
-			// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
-			writeExportRedirect(w, "/jobs/"+jobID)
-			return
-		}
-		respondError(w, r, KindUnavailable, "A backup restore is already in progress; please wait for it to finish.", nil)
-		return
-	}
+	// reading. The guardDialog claim above already covers this;
+	// the claim is held until the worker goroutine finishes.
+	// If another request arrives while the restore is running,
+	// guardDialog returns false and we respond with a toast.
 
 	// Dialog-guard per CONTEXT.md "Laws (non-negotiable)" and
 	// docs/agents/dialog-guard.md: a rapid double-click on the
@@ -59,13 +51,13 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedOpenFileDialogKey("backup_import", dialogOpts)
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleImportBackup dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.OpenFileDialog(dialogOpts)
 	if err != nil || path == "" {
@@ -107,10 +99,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	jobIDCh := make(chan string, 1)
 	jobID := a.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
 		id := <-jobIDCh
-		a.importInFlight.Store(true)
-		a.importInFlightJobIDSet(id)
-		defer a.importInFlight.Store(false)
-		defer a.importInFlightJobIDClear()
+		defer release()
 		p.Set(5, "Closing database")
 		if a.database != nil {
 			a.database.Close()
@@ -313,11 +302,11 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 
 	// The closure captures `id` by reference, but `id` is not in
 	// scope until after StartManual returns. Pass it via a tiny
-	// indirection so the deferred SetResult / forgetManualJob
+	// indirection so the deferred SetResult / forgetManualCallback
 	// Issue #419: closure-capture race on id (the same shape as
 	// enqueueExport / enqueueExportWithResult). StartManual returns
 	// the id tuple BEFORE the worker goroutine is fully wired up,
-	// but the deferred SetResult + forgetManualJob calls inside the
+	// but the deferred SetResult + forgetManualCallback calls inside the
 	// worker reference the outer-scope `id`. Channel handoff: send
 	// id from the outer assignment into a buffered channel; worker
 	// reads via `<-idCh`. Channel send happens-before channel receive
@@ -327,7 +316,7 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	var id string
 	id, release, cancel := a.jobs.StartManual("memorial_import", summary, func(ctx context.Context, p *jobs.Progress) error {
 		id := <-idCh
-		defer a.forgetManualJob(id)
+		defer a.forgetManualCallback(id)
 		p.Set(20, "Reading Memorial archive")
 		import_summary, err := a.soldiers.ImportMemorialArchive(path)
 		if err != nil {
@@ -349,7 +338,7 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	})
 	idCh <- id
 	_ = cancel
-	a.rememberManualJob(id, release, cancel)
+	a.rememberManualCallback(id, release, cancel)
 	setInfoToastHeader(w, "Memorial JSON import queued. Confirm on the status page to proceed.")
 	writeExportRedirect(w, "/jobs/"+id)
 }

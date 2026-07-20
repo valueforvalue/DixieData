@@ -437,6 +437,12 @@ type Registry struct {
 	concurrency int
 	sem         chan struct{}
 
+	// claims deduplicates in-flight operations (one export dialog
+	// at a time, one backup restore at a time, etc.). TryClaim is
+	// the public API; the sync.Map zero value is usable without
+	// explicit init.
+	claims sync.Map // map[string]struct{}
+
 	// workerWG tracks in-flight worker goroutines. Shutdown waits on
 	// it after cancelling every active job so the appshell exit path
 	// does not leak file handles or panic on closed channels. Each

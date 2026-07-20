@@ -105,9 +105,7 @@ type App struct {
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
 	openDirectoryDialogOverride func(opts any) (string, error)
 	browserOpenURLOverride      func(rawURL string) error
-	inFlight               sync.Map // map[string]*inFlightEntry — dedupes in-flight native dialog calls
-	importInFlight         atomic.Bool // true while a .ddbak restore is replacing the data dir; handlers can 503 instead of crashing on a stale DB handle
-	manualJobs             sync.Map // map[string]*manualJobEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs
+	manualCallbacks             sync.Map // map[string]*manualCallbackEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs
 	startupErr              error
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
@@ -180,139 +178,89 @@ func (a *App) clearPendingLaunchState() error {
 	return nil
 }
 
-// importInFlightJobID is the JobID of the currently-running
-// .ddbak restore, used by handleImportBackup's duplicate-request
-// guard to redirect to the in-flight /jobs/{id} page instead of
-// returning a generic 503. Empty when no restore is running.
-var importInFlightJobID atomic.Value // string
-
-func (a *App) importInFlightJobIDSet(id string) {
-	importInFlightJobID.Store(id)
-}
-
-func (a *App) importInFlightJobIDClear() {
-	importInFlightJobID.Store("")
-}
-
-func (a *App) importInFlightJobID() string {
-	if v := importInFlightJobID.Load(); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
-}
-
-// inFlightEntry is the value stored under each dedup key in
-// (*App).inFlight. The JobID field is populated by enqueueExport
-// once the background job has been started, so a duplicate
-// request that arrives after the user has picked a save target
-// (or after the dialog has been dismissed) can be redirected to
-// the existing /jobs/{id} status page instead of an error page.
-// When the dedup key only covers the still-open dialog (no JobID
-// yet) the handler falls back to the legacy friendly-error
-// response so the second click is rejected without crashing the
-// native dialog.
+// inFlightEntry is the value stored under each dedup key. Retained
+// as a marker type for test files that reference it; the inFlight
+// sync.Map was replaced by a.jobs.TryClaim (issue #615).
 type inFlightEntry struct {
 	JobID string
 }
 
-// enterInFlight admits the caller as the active owner of dupKey.
-// On admit, returns (true, newly-created-entry). When another
-// request already holds the key, returns (false, the existing
-// entry) so the caller can inspect JobID for redirect.
-// The entry pointer return is the value to pass into
-// leaveInFlight so the release is exact (no key collisions
-// between unrelated callers).
-func (a *App) enterInFlight(dupKey string) (bool, *inFlightEntry) {
-	entry := &inFlightEntry{}
-	actual, loaded := a.inFlight.LoadOrStore(dupKey, entry)
-	if loaded {
-		if existing, ok := actual.(*inFlightEntry); ok {
-			return false, existing
+// guardDialog wraps a.jobs.TryClaim for the native-dialog dedup
+// guard. Returns a release function and true if the caller is the
+// active owner. When false, another caller already holds the key
+// (second click on an export button while the dialog is still open).
+// Falls back to a package-level sync.Map when a.jobs is nil (test
+// harnesses that create App without initializing the jobs registry).
+func (a *App) guardDialog(dupKey string) (release func(), admitted bool) {
+	if a.jobs == nil {
+		var done atomic.Bool
+		if _, loaded := guardFallback.LoadOrStore(dupKey, struct{}{}); loaded {
+			return nil, false
 		}
-		return false, nil
+		release = func() {
+			if done.CompareAndSwap(false, true) {
+				guardFallback.Delete(dupKey)
+			}
+		}
+		return release, true
 	}
-	return true, entry
+	release, ok := a.jobs.TryClaim(dupKey)
+	return release, ok
 }
 
-// leaveInFlight releases the dedup key iff the caller still owns
-// it (matches the entry pointer from enterInFlight). The pointer
-// check prevents a stale release from a different generation of
-// the same key from clearing a fresh admission.
-func (a *App) leaveInFlight(dupKey string, entry *inFlightEntry) {
-	if entry == nil {
-		return
-	}
-	if actual, loaded := a.inFlight.Load(dupKey); loaded {
-		if existing, ok := actual.(*inFlightEntry); ok && existing == entry {
-			a.inFlight.Delete(dupKey)
-		}
-	}
-}
+// guardFallback is the in-flight dedup map used when a.jobs is nil
+// (test-only path — production always has a.jobs set).
+var guardFallback sync.Map
 
-// inFlightJobID returns the JobID associated with dupKey, or "" if
-// no entry exists or the entry has not yet recorded a JobID.
-// Used by the duplicate-request guard to issue a 303 redirect to
-// the existing /jobs/{id} status page.
-func (a *App) inFlightJobID(dupKey string) string {
-	if actual, loaded := a.inFlight.Load(dupKey); loaded {
-		if entry, ok := actual.(*inFlightEntry); ok {
-			return entry.JobID
-		}
-	}
-	return ""
-}
-
-// rememberManualJob stores the release/cancel callbacks for a
+// rememberManualCallback stores the release/cancel callbacks for a
 // jobs.Registry.StartManual confirm-before-run job in a sync.Map
 // keyed by job ID. The /jobs/{id}/confirm and /jobs/{id}/cancel
 // endpoints look these up. Entries are kept until the job
 // transitions to a terminal status (worker goroutine clears it
 // on exit). /confirm and /cancel return jobs.ErrAlreadyTerminal
 // semantics if the entry has been cleared.
-func (a *App) rememberManualJob(jobID string, release func() error, cancel func() error) {
-	a.manualJobs.Store(jobID, &manualJobEntry{release: release, cancel: cancel})
+func (a *App) rememberManualCallback(jobID string, release func() error, cancel func() error) {
+	a.manualCallbacks.Store(jobID, &manualCallbackEntry{release: release, cancel: cancel})
 }
 
-// forgetManualJob drops the callbacks after the job reaches a
+// forgetManualCallback drops the callbacks after the job reaches a
 // terminal status, so /confirm and /cancel can return a meaningful
 // "already terminal" response. Safe to call multiple times.
-func (a *App) forgetManualJob(jobID string) {
-	a.manualJobs.Delete(jobID)
+func (a *App) forgetManualCallback(jobID string) {
+	a.manualCallbacks.Delete(jobID)
 }
 
-// releaseManualJob invokes the StartManual release callback for
+// releaseManualCallback invokes the StartManual release callback for
 // the given job ID, transitioning it from StatusQueued to
 // StatusRunning. Returns jobs.ErrNotFound if no manual-job entry
 // exists (e.g. the job was already released or never was manual).
-func (a *App) releaseManualJob(jobID string) error {
-	v, ok := a.manualJobs.Load(jobID)
+func (a *App) releaseManualCallback(jobID string) error {
+	v, ok := a.manualCallbacks.Load(jobID)
 	if !ok {
 		return jobs.ErrNotFound
 	}
-	entry := v.(*manualJobEntry)
+	entry := v.(*manualCallbackEntry)
 	return entry.release()
 }
 
-// cancelManualJob invokes the StartManual cancel callback for the
+// cancelManualCallback invokes the StartManual cancel callback for the
 // given job ID, flipping StatusQueued to StatusCancelled without
 // running the worker.
-func (a *App) cancelManualJob(jobID string) error {
-	v, ok := a.manualJobs.Load(jobID)
+func (a *App) cancelManualCallback(jobID string) error {
+	v, ok := a.manualCallbacks.Load(jobID)
 	if !ok {
 		// Not a manual job (or already terminal). Fall through to
 		// the registry's standard Cancel path.
 		return a.jobs.Cancel(jobID)
 	}
-	entry := v.(*manualJobEntry)
+	entry := v.(*manualCallbackEntry)
 	return entry.cancel()
 }
 
-// manualJobEntry bundles the two callbacks a StartManual job
+// manualCallbackEntry bundles the two callbacks a StartManual job
 // exposes. The release/cancel fields are exactly-once; calling
 // them twice returns jobs.ErrAlreadyTerminal from the registry.
-type manualJobEntry struct {
+type manualCallbackEntry struct {
 	release func() error
 	cancel  func() error
 }
@@ -327,12 +275,11 @@ type manualJobEntry struct {
 // modal/page stays put instead of being replaced by an error
 // body.
 func (a *App) respondDuplicateInFlight(w http.ResponseWriter, r *http.Request, dupKey string) {
-	if jobID := a.inFlightJobID(dupKey); jobID != "" {
-		debug.FromContext(r.Context()).Debug("redirecting duplicate request to existing job", "dupKey", dupKey, "jobID", jobID)
-		// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
-		writeExportRedirect(w, "/jobs/"+jobID)
-		return
-	}
+	// Issue #615: with TryClaim, the claim itself is the guard.
+	// A duplicate request that arrives while the dialog is still
+	// open gets a friendly toast on the current page. The legacy
+	// JobID redirect was dropped because TryClaim does not carry
+	// a JobID — the claim key alone is sufficient for dedup.
 	debug.FromContext(r.Context()).Debug("duplicate request rejected", "dupKey", dupKey)
 	// Dialog is still open — bounce the user back to their page so
 	// the modal is not replaced by an error body. Option C: 200 +
@@ -809,13 +756,13 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	options := parsePDFOptionsRequest(r, "L", true)
 
 	dupKey := fmt.Sprintf("soldier-pdf|%d|%s|%s", id, options.Orientation, soldierPDFName(*soldier, options))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleSoldierPDF dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFName(*soldier, options),
@@ -854,13 +801,13 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 	}
 
 	dupKey := fmt.Sprintf("soldier-pdf-noimg|%d|%s", id, soldierPDFNameNoImages(*soldier))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleSoldierPDFNoImages dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFNameNoImages(*soldier),
@@ -901,13 +848,13 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 	options := parsePDFOptionsRequest(r, "L", true)
 
 	dupKey := fmt.Sprintf("soldier-jpg|%d|%s|%s", id, options.Orientation, soldierJPGName(*soldier, options))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleSoldierJPG dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierJPGName(*soldier, options),
@@ -961,13 +908,13 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	// user see a toast and prevents the second click from racing
 	// with the first.
 	dupKey := fmt.Sprintf("cal-pdf|%d|%s|%s", month, options.Orientation, monthPDFName(month, options))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleCalendarPDF dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
@@ -1016,13 +963,13 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dupKey := fmt.Sprintf("screenshot|%s", imageScreenshotName(payload.FileName))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("handleImageScreenshot dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: imageScreenshotName(payload.FileName),

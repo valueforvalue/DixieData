@@ -42,6 +42,7 @@ type SoldierService struct {
 	db                *db.DB
 	personRepo        repo.PersonRecordRepo
 	qualityRepo       repo.QualityScanRepo
+	memorialRepo      repo.MemorialImportRepo
 	events            EventTimelineQuerier
 	formSuggestionsMu sync.RWMutex
 	formSuggestions   *models.SoldierFormSuggestions
@@ -130,9 +131,10 @@ type ResearchCollectionDetail struct {
 // refreshed when the soldier writes a new value.
 func NewSoldierService(database *db.DB) *SoldierService {
 	return &SoldierService{
-		db:          database,
-		personRepo:  sqliterepo.NewPersonRecordRepo(database),
-		qualityRepo: sqliterepo.NewQualityScanRepo(database),
+		db:           database,
+		personRepo:   sqliterepo.NewPersonRecordRepo(database),
+		qualityRepo:  sqliterepo.NewQualityScanRepo(database),
+		memorialRepo: sqliterepo.NewMemorialImportRepo(database),
 	}
 }
 

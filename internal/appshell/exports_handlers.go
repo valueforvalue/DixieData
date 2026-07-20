@@ -95,11 +95,11 @@ func (a *App) guardedSaveFileDialog(dupKey string, opts runtime.SaveDialogOption
 	if dupKey == "" {
 		dupKey = guardedSaveFileDialogKey("export", opts)
 	}
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		return "", SaveOutcomeDuplicated
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 	path, err := a.SaveFileDialog(opts)
 	if err != nil {
 		// Native dialog is unavailable (web-mode with no override
@@ -141,11 +141,11 @@ func (a *App) guardedOpenFileDialog(dupKey string, opts runtime.OpenDialogOption
 	if dupKey == "" {
 		dupKey = guardedOpenFileDialogKey("open", opts)
 	}
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		return "", false, false
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 	path, err := a.OpenFileDialog(opts)
 	if err != nil || path == "" {
 		return "", true, false
@@ -168,11 +168,11 @@ func (a *App) guardedOpenDirectoryDialog(dupKey string, opts runtime.OpenDialogO
 	if dupKey == "" {
 		dupKey = guardedOpenDirectoryDialogKey("opendir", opts)
 	}
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		return "", false, false
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 	path, err := a.OpenDirectoryDialog(opts)
 	if err != nil || path == "" {
 		return "", true, false
@@ -194,11 +194,11 @@ func (a *App) guardedOpenMultipleFilesDialog(dupKey string, opts runtime.OpenDia
 	if dupKey == "" {
 		dupKey = guardedOpenMultipleFilesDialogKey("openmulti", opts)
 	}
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		return nil, false, false
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 	paths, err := a.OpenMultipleFilesDialog(opts)
 	if err != nil || len(paths) == 0 {
 		return nil, true, false
@@ -268,13 +268,6 @@ func (a *App) enqueueExport(dupKey, kind string, work func(ctx context.Context, 
 		return err
 	})
 	jobIDCh <- jobID
-	if dupKey != "" {
-		if actual, loaded := a.inFlight.Load(dupKey); loaded {
-			if entry, ok := actual.(*inFlightEntry); ok {
-				entry.JobID = jobID
-			}
-		}
-	}
 	writeExportRedirect(w, "/jobs/"+jobID, opts...)
 }
 
@@ -309,13 +302,6 @@ func (a *App) enqueueExportWithResult(dupKey, kind string, work func(ctx context
 		return err
 	})
 	jobIDCh <- jobID
-	if dupKey != "" {
-		if actual, loaded := a.inFlight.Load(dupKey); loaded {
-			if entry, ok := actual.(*inFlightEntry); ok {
-				entry.JobID = jobID
-			}
-		}
-	}
 	writeExportRedirect(w, "/jobs/"+jobID, opts...)
 }
 
@@ -565,18 +551,11 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 // ExportFullDatabasePDF renders every Person Record in the database
 // into a single PDF using the supplied print settings, returning the
 // path to the generated file. Refuses with errExportInFlight if a
-// previous export is still running; the inFlight dialog-guard law
+// previous export is still running; the dialog-guard law
 // in CONTEXT.md §Laws applies.
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
-	path, dupKey, err := a.exportFullDatabasePDFPath(settings)
+	path, _, err := a.exportFullDatabasePDFPath(settings)
 	if errors.Is(err, errExportInFlight) {
-		// A duplicate request hit the guard. If a job is already in
-		// flight under the same key, surface a status link so the
-		// user can monitor it instead of being told to wait for a
-		// dialog that has already been dismissed.
-		if jobID := a.inFlightJobID(dupKey); jobID != "" {
-			return fmt.Sprintf("Printable PDF export already in progress. <a href=\"/jobs/%s\">View status</a>.", jobID), nil
-		}
 		return "Printable PDF export already in progress; please wait for the save dialog.", nil
 	}
 	if err != nil {
@@ -609,12 +588,12 @@ func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, err
 func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string, string, error) {
 	settings = settings.Normalize()
 	dupKey := fmt.Sprintf("db-pdf|%s", printableArchivePDFName(settings))
-	admitted, entry := a.enterInFlight(dupKey)
+	release, admitted := a.guardDialog(dupKey)
 	if !admitted {
 		trace.Log("exportFullDatabasePDFPath dup_reject")
 		return "", dupKey, errExportInFlight
 	}
-	defer a.leaveInFlight(dupKey, entry)
+	defer release()
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{

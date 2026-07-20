@@ -1,12 +1,11 @@
 package records
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -124,7 +123,7 @@ func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPrev
 			preview.WouldSkip++
 			continue
 		}
-		exists, existsErr := memorialIDExists(conn, memorialID)
+		exists, existsErr := s.memorialRepo.MemorialIDExists(context.Background(), conn, memorialID)
 		if existsErr != nil {
 			preview.WouldFail++
 			preview.Issues = append(preview.Issues, importIssue(row, entry, existsErr))
@@ -159,7 +158,7 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 		return MemorialImportSummary{}, err
 	}
 	summary.BatchID = batchID
-	if err := ensureImportBatchRecord(s.db.Conn(), batchID, path); err != nil {
+	if err := s.memorialRepo.EnsureImportBatch(context.Background(), s.db.Conn(), batchID, path); err != nil {
 		return MemorialImportSummary{}, err
 	}
 	seen := map[string]struct{}{}
@@ -177,7 +176,7 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 			summary.Skipped++
 			continue
 		}
-		exists, existsErr := memorialIDExists(conn, memorialID)
+		exists, existsErr := s.memorialRepo.MemorialIDExists(context.Background(), conn, memorialID)
 		if existsErr != nil {
 			summary.Failed++
 			summary.Issues = append(summary.Issues, importIssue(row, entry, existsErr))
@@ -200,7 +199,7 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 			summary.Issues = append(summary.Issues, importIssue(row, entry, createErr))
 			continue
 		}
-		if err := setSoldierImportBatch(conn, created.ID, batchID); err != nil {
+		if err := s.memorialRepo.SetSoldierImportBatch(context.Background(), conn, created.ID, batchID); err != nil {
 			_ = s.Delete(created.ID)
 			summary.Failed++
 			summary.Issues = append(summary.Issues, importIssue(row, entry, err))
@@ -420,34 +419,6 @@ func importIssue(row int, entry memorialArchiveEntry, err error) MemorialImportI
 		Name:       strings.TrimSpace(entry.Name),
 		Error:      strings.TrimSpace(err.Error()),
 	}
-}
-
-func memorialIDExists(conn *sql.DB, memorialID string) (bool, error) {
-	trimmed := strings.TrimSpace(memorialID)
-	if trimmed == "" {
-		return false, fmt.Errorf("memorial_id is required")
-	}
-	var count int
-	if err := conn.QueryRow(
-		`SELECT COUNT(*) FROM records WHERE LOWER(TRIM(record_type)) = LOWER(TRIM(?)) AND TRIM(app_id) = ?`,
-		memorialRecordType, trimmed,
-	).Scan(&count); err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func ensureImportBatchRecord(conn *sql.DB, batchID, archivePath string) error {
-	_, err := conn.Exec(`INSERT OR IGNORE INTO import_batches (id, archive_path) VALUES (?, ?)`, strings.TrimSpace(batchID), filepath.Clean(strings.TrimSpace(archivePath)))
-	return err
-}
-
-func setSoldierImportBatch(conn *sql.DB, soldierID int64, batchID string) error {
-	if soldierID < 1 {
-		return fmt.Errorf("invalid soldier id")
-	}
-	_, err := conn.Exec(`UPDATE soldiers SET import_batch_id = ? WHERE id = ?`, strings.TrimSpace(batchID), soldierID)
-	return err
 }
 
 // memorialFormatWarnings returns the user-facing warning strings
