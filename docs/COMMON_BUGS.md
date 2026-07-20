@@ -717,6 +717,42 @@ Drop the folder-of-PDFs code path.
 **Real example:** `75afe81 fix(export): bulk export emits single
 sorted PDF instead of folder of PDFs (issue #64)`.
 
+### 2.6 Template split regression — section text copied, button wiring missed
+
+**Symptom:** After a page is split into sub-routes (or a section
+is extracted to its own templ partial), the new template renders
+with the correct section headings but the buttons/links point to
+non-existent URLs. Clicking them produces 404.
+
+**Why it happens:** The developer hand-copies the section heading
+text from the old inline template but invents new URLs for the
+action buttons instead of copying the existing `data-action`,
+`action`, or `href` attributes. The old template had working
+button wiring; the new template has cosmetic parity (headings +
+labels match) but broken navigation.
+
+**Find it:**
+```bash
+# After any template split or section extraction, diff the old
+# and new templates for button/link attributes:
+git diff HEAD~1 -- internal/templates/ | grep -E 'href=|action=|data-action=' | grep -v routebuilder
+git grep -n 'href="/share/' internal/templates/   # fictional /share/ routes
+```
+Also check `.dixiedata-logs/app.log.jsonl` for 404s on paths
+that should be registered in routes.go.
+
+**Fix:** Copy the exact `data-action="..."` + `data-dixie-submit`
+(or `<form action="...">`) attributes from the old template. Do
+not hand-write new URLs. If the new template needs a different
+button shape (e.g. `ButtonContent` vs `<a href>`), keep the core
+attribute values verbatim.
+
+**Real example:**
+- `266db08` (this session) — #584 settings split wrote
+  `href="/share/feedback-log"` and `href="/share/report-bug"`
+  instead of copying `data-action="/export/feedback-log"` +
+  `<form action="/export/bug-report">` from entry_form.templ.
+
 ---
 
 ## 3. Frontend JS / CSS bugs
