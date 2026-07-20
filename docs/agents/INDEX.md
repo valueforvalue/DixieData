@@ -103,13 +103,6 @@ explicit user direction names them.
 | [`docs/audit/static-web-archive-audit-2026-06.md`](../audit/static-web-archive-audit-2026-06.md) | Resolved before the resolved/ convention existed. Still at the audit/ root for visibility. |
 | [`docs/renderings/README.md`](../renderings/README.md) | The PDF rendering iteration workflow (Tier 1; the per-surface `review.md` files are Tier 2 once past the latest round). |
 
-## Retention
-
-The `docs/historical/` tree holds files retained for traceability
-but not loaded by default. See [`docs/historical/README.md`](../../historical/README.md)
-for the retention rule (latest 3 rounds in the working tree;
-older rounds under `docs/historical/`).
-
 ## How to use this index
 
 1. Read Tier 0 at session start. Stop. Do not load Tier 1 yet.
