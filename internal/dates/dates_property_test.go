@@ -167,6 +167,61 @@ func TestPropertyParseBirthInfoExtractsYear(t *testing.T) {
 	})
 }
 
+// TestPropertyDisplayStability: for any valid PartialDate,
+// Display(Format(d)) is stable — calling Display twice on
+// the same formatted output returns the same result.
+// Catches the class where Display mutates internal state
+// or where ParseCanonical → Display has a divergent
+// normalization path.
+func TestPropertyDisplayStability(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		p := validDate().Draw(t, "date")
+		s := p.Format()
+		first := Display(s)
+		second := Display(s)
+		if first != second {
+			t.Fatalf("Display not stable: %q → %q → %q", s, first, second)
+		}
+	})
+}
+
+// TestPropertyCrossFormatConsistency: ParseCanonical accepts
+// the output of Format for any valid PartialDate. Catches
+// the class where Format produces a string that ParseCanonical
+// cannot re-parse (e.g. a missing leading zero that a future
+// refactor strips).
+func TestPropertyCrossFormatConsistency(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		p := validDate().Draw(t, "date")
+		s := p.Format()
+		parsed, err := ParseCanonical(s)
+		if err != nil {
+			t.Fatalf("ParseCanonical rejected Format output %q: %v", s, err)
+		}
+		if parsed != p {
+			t.Fatalf("Parse(Format(d)) != d: %+v → %q → %+v", p, s, parsed)
+		}
+	})
+}
+
+// TestPropertyDisplayNeverPanicsOnValid: Display must never
+// panic on a valid formatted date string. (The existing
+// TestPropertyDisplayNeverPanics covers random strings;
+// this one covers valid dates specifically, so shrinking
+// converges on the simplest valid-date that triggers.)
+func TestPropertyDisplayNeverPanicsOnValid(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		p := validDate().Draw(t, "date")
+		s := p.Format()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("Display(%q) panicked: %v", s, r)
+			}
+		}()
+		_ = Display(s)
+	})
+}
+
 // itoa is a small helper to avoid pulling strconv into the
 // generator scope. rapid's IntRange already returns int; we
 // only need it for the year assertion.
