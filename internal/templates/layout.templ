@@ -86,6 +86,9 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		<script>
 			window.DIXIEDATA_DEVTOOLS = {{ debug.IsDebugMode(ctx) }};
 		</script>
+		<script>
+			window.__dixieConfig = {{ layoutConfigJSON(ctx) }};
+		</script>
 		<script defer src="/debug.js"></script>
 		<script defer src="/debug-toolbox.js"></script>
 		<!-- Issue #609: shared frontend utilities. Order

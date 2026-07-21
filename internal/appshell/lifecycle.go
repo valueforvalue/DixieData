@@ -20,6 +20,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -186,6 +187,16 @@ func (a *App) startup(ctx context.Context) {
 		// Issue #534: same default story for export-surface.
 		a.exportSurface.Store(records.ResolvedExportSurface(""))
 	}
+
+	// Load application config (issues #636-#639). Missing file →
+	// Defaults(). Partial files merge with defaults. Read-only
+	// after startup; handlers read from a.cfg.*.
+	if appCfg, err := config.Load(a.dataDir); err != nil {
+		fmt.Printf("warning: could not load app config, using defaults: %v\n", err)
+		a.cfg = config.Defaults()
+	} else {
+		a.cfg = appCfg
+	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
 	// reloads and app restarts.
@@ -287,11 +298,11 @@ func (a *App) shutdown(ctx context.Context) {
 	_ = debug.Close()
 	// Drain background jobs BEFORE closing the database, since
 	// several workers read from the DB mid-export. Bound the wait by
-	// a 5s deadline so a stuck worker cannot hang app exit. If the
-	// deadline expires the workers are abandoned (they finish on
-	// their own unless blocked on I/O).
+	// the configured shutdown timeout so a stuck worker cannot hang
+	// app exit. If the deadline expires the workers are abandoned
+	// (they finish on their own unless blocked on I/O).
 	if a.jobs != nil {
-		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(ctx, time.Duration(a.cfg.Timing.ShutdownTimeoutS)*time.Second)
 		if err := a.jobs.Shutdown(shutdownCtx); err != nil {
 			slog.Warn("jobs shutdown timed out", "err", err)
 		}
@@ -597,6 +608,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		exportSurface = records.ResolvedExportSurface("")
 	}
 	ctx = templates.WithLayoutExportSurface(ctx, exportSurface)
+	// Issues #636-#639: inject client config into every page
+	// so window.__dixieConfig is available to frontend JS.
+	clientCfg := a.cfg.ForClient()
+	ctx = templates.WithLayoutConfig(ctx, clientCfg)
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

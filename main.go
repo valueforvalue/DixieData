@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -230,10 +232,20 @@ func main() {
 
 	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
 
+	// Load application config early so window size is honored
+	// before Wails.Run opens the OS window (issues #636-#639).
+	// Data dir resolution matches appdata.DefaultDir().
+	appCfg := config.Defaults()
+	if loaded, err := config.Load(appdata.DefaultDir()); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not load app config, using defaults: %v\n", err)
+	} else {
+		appCfg = loaded
+	}
+
 	err = wails.Run(&options.App{
 		Title:  windowTitle(),
-		Width:  1280,
-		Height: 800,
+		Width:  appCfg.Window.Width,
+		Height: appCfg.Window.Height,
 		Bind: []interface{}{
 			app,
 		},

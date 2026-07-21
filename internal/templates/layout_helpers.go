@@ -1,6 +1,11 @@
 package templates
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/valueforvalue/DixieData/internal/config"
+)
 
 // pagePathCtxKey + layoutHasOpenReviewCtxKey are the unexported
 // context keys for the per-render page path + open-review flag.
@@ -175,4 +180,41 @@ func layoutExportSurface(ctx context.Context) string {
 		return s
 	}
 	return "jobs-page"
+}
+
+// layoutConfigCtxKey is the context key for the client-side config
+// blob injected as window.__dixieConfig in the layout template.
+type layoutConfigCtxKey struct{}
+
+// WithLayoutConfig tags ctx with the client config for the
+// current request. The appshell calls this in ServeHTTP before
+// the mux dispatches. Pair with LayoutConfigJSON to render the
+// <script> tag.
+func WithLayoutConfig(ctx context.Context, cfg config.ClientConfig) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, layoutConfigCtxKey{}, cfg)
+}
+
+// LayoutConfigFromContext returns the client config tagged onto
+// ctx. Returns zero-value ClientConfig when not set.
+func LayoutConfigFromContext(ctx context.Context) config.ClientConfig {
+	if ctx == nil {
+		return config.ClientConfig{}
+	}
+	v, _ := ctx.Value(layoutConfigCtxKey{}).(config.ClientConfig)
+	return v
+}
+
+// layoutConfigJSON is the templ-callable shim. Returns the
+// client config serialized as a JSON blob for injection into
+// a <script> tag. Returns "{}" when no config is set.
+func layoutConfigJSON(ctx context.Context) string {
+	cfg := LayoutConfigFromContext(ctx)
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }

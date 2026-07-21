@@ -1,0 +1,79 @@
+{
+  "window": {
+    "width": 1280,
+    "height": 800
+  },
+  "ui": {
+    "toast_duration_ms": 4000,
+    "landing_page": "/calendar"
+  },
+  "limits": {
+    "browse_default_page_size": 100,
+    "browse_max_page_size": 250,
+    "list_default_page_size": 50,
+    "recent_records_cap": 10,
+    "research_recents_cap": 10,
+    "back_stack_depth": 8,
+    "max_retained_backups": 5,
+    "max_restore_points": 2,
+    "orphan_trash_retention_days": 30,
+    "feedback_retention_days": 365,
+    "duplicate_audit_threshold": 2,
+    "jobs_concurrency": 2,
+    "notes_preview_chars": 260
+  },
+  "timing": {
+    "jobs_poll_ms": 3000,
+    "review_badge_poll_ms": 30000,
+    "job_status_poll_ms": 2000,
+    "undo_redo_poll_ms": 500,
+    "browse_filter_debounce_ms": 200,
+    "print_preview_debounce_ms": 150,
+    "update_check_timeout_s": 45,
+    "shutdown_timeout_s": 5
+  },
+  "pdf": {
+    "paper": "us-letter",
+    "margins": {
+      "top": "0.4in",
+      "bottom": "0.4in",
+      "left": "0.63in",
+      "right": "0.63in"
+    }
+  },
+  "google": {
+    "calendar_name": "DixieData",
+    "test_calendar_name": "DixieData Test"
+  },
+  "theme": {
+    "palette": {
+      "accent": "#8d7440",
+      "accent_strong": "#a88a46",
+      "text_primary": "#22303d",
+      "text_secondary": "#445260",
+      "text_muted": "#71808e",
+      "link": "#4A90E2",
+      "danger": "#54211d",
+      "divider": "#8d7440",
+      "panel_fill": "#fff8e7"
+    },
+    "type_scale": {
+      "section_title": { "size_pt": 9, "line_pt": 6 },
+      "field_label":   { "size_pt": 8, "line_pt": 4.5 },
+      "field_value":   { "size_pt": 9, "line_pt": 4.5 },
+      "body":          { "size_pt": 9, "line_pt": 5 },
+      "biography":     { "size_pt": 11, "line_pt": 6 },
+      "header":        { "size_pt": 10 },
+      "footer":        { "size_pt": 8 }
+    },
+    "fonts": {
+      "body_sans": "Arial",
+      "body_serif": ["Times New Roman", "Liberation Serif", "DejaVu Serif"],
+      "mono": "DejaVu Sans Mono"
+    },
+    "branding": {
+      "header_suffix": "'s Civil War Research Archive",
+      "footer_template": "Made with DixieData | Version: {app_version} | Build: {build_identity}"
+    }
+  }
+}

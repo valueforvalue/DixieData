@@ -32,6 +32,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
@@ -64,6 +65,11 @@ var embeddedQuotes []byte
 // runner, and the domain layer. Nothing in internal/{records,models,
 // viewmodel,archive,...} imports appshell; appshell imports them.
 type App struct {
+	// cfg is the user-tunable application configuration loaded
+	// from config.json at startup (issues #636-#639). Missing
+	// file → Defaults(). Read-only after Startup; handlers
+	// read from a.cfg.*, not from hard-coded constants.
+	cfg                     config.Config
 	ctx                     context.Context
 	database                *db.DB
 	soldiers                *records.SoldierService
