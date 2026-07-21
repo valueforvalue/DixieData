@@ -217,11 +217,17 @@ func copyFeedbackLog(sourcePath, destinationPath string) error {
 	return os.WriteFile(destinationPath, data, 0o644)
 }
 
-// defaultFeedbackRetentionDays is the default prune window when no
-// settings file specifies otherwise. Older entries are dropped on
-// startup so the feedback log does not grow without bound on a
-// long-running desktop session. Issue #121.
-const defaultFeedbackRetentionDays = 365
+// defaultFeedbackRetentionDays is the default prune window. Override
+// via SetFeedbackRetentionDays from config.json at startup.
+var defaultFeedbackRetentionDays = 365
+
+// SetFeedbackRetentionDays overrides the feedback log retention
+// window from config.json.
+func SetFeedbackRetentionDays(days int) {
+	if days > 0 {
+		defaultFeedbackRetentionDays = days
+	}
+}
 
 // pruneFeedbackLogOnStartup rewrites the feedback JSONL so it only
 // contains entries newer than the retention window. Best-effort: a

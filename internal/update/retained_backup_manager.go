@@ -18,7 +18,6 @@ const (
 	preSchemaUpgradeBackupKind   = "pre-schema-upgrade"
 	preSchemaDowngradeBackupKind = "pre-schema-downgrade"
 	retainedBackupIndexVersion   = 1
-	defaultMaxRetainedBackups    = 5
 
 	// directionUpgrade / directionDowngrade are the values
 	// persisted in RetainedBackupRecord.Direction (added in
@@ -38,6 +37,16 @@ const (
 	snapshotFileNameUpgrade   = "dixiedata-pre-upgrade.db"
 	snapshotFileNameDowngrade = "dixiedata-pre-downgrade.db"
 )
+
+var defaultMaxRetainedBackups = 5
+
+// SetMaxRetainedBackups overrides the default max retained
+// backup count from config.json. Called by appshell at startup.
+func SetMaxRetainedBackups(n int) {
+	if n > 0 {
+		defaultMaxRetainedBackups = n
+	}
+}
 
 type SnapshotWriter func(outputPath string) error
 

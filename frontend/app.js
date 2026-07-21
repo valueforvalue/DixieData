@@ -43,13 +43,29 @@
   const calendarAnniversaryDensityStorageKey = "dixiedata.calendar.anniversaryDensity";
   const layoutModeStorageKey = "dixiedata.layout.mode";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
+
+  // readConfig reads a value from window.__dixieConfig (injected
+  // by the server at page render). Returns the provided fallback
+  // when the config key is missing, zero, or window.__dixieConfig
+  // is unavailable (script injection failed, test harness, etc.).
+  // Issues #636-#639 follow-up.
+  function readConfig(key, fallback) {
+    try {
+      var cfg = window.__dixieConfig;
+      if (cfg && typeof cfg[key] !== 'undefined' && cfg[key] !== null) {
+        return cfg[key];
+      }
+    } catch (_) { /* config unavailable */ }
+    return fallback;
+  }
+
   const splitScreenBreakpointPx = 1000;
   // Toast auto-dismiss timing. success + info kinds fade out after
   // this delay; warning + error stay until the user clicks Dismiss
   // (issue #54 contract). Tuning this constant is the single source
   // of truth for both the inline showToast call and the
   // sessionStorage-restore path.
-  const toastAutoDismissMs = 4000;
+  const toastAutoDismissMs = readConfig('toastDurationMs', 4000);
   // Toast fade-out animation length, kept in sync with the
   // .toast-card CSS opacity transition + the remove() defer in
   // showToast's dismiss helper. Set to the visible fade duration
@@ -96,7 +112,7 @@
         window.sessionStorage.removeItem(backStackStorageKey);
         return;
       }
-      window.sessionStorage.setItem(backStackStorageKey, JSON.stringify(stack.slice(-8)));
+      window.sessionStorage.setItem(backStackStorageKey, JSON.stringify(stack.slice(-readConfig('backStackDepth', 8))));
     } catch (error) {
       // Ignore storage failures and fall back to browser history.
     }
@@ -115,7 +131,7 @@
   /** @param {unknown} ids */
   function saveRecentRecords(ids) {
     try {
-      const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, 10);
+      const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, readConfig('recentRecordsCap', 10));
       if (normalized.length === 0) {
         window.localStorage.removeItem(recentRecordsStorageKey);
         return;
@@ -557,7 +573,7 @@
     if (!Number.isInteger(id) || id < 1) {
       return;
     }
-    const next = [id].concat(loadRecentRecords().filter((value) => value !== id)).slice(0, 10);
+    const next = [id].concat(loadRecentRecords().filter((value) => value !== id)).slice(0, readConfig('recentRecordsCap', 10));
     saveRecentRecords(next);
   }
 
@@ -567,7 +583,7 @@
   // saveRecentRecords shape above so the storage policy is
   // consistent across both recent lists.
   const researchRecentsStorageKey = "dixiedata.research.recents";
-  const researchRecentsStorageCap = 10;
+  const researchRecentsStorageCap = readConfig('researchRecentsCap', 10);
   const researchRecentsHydrationState = { token: 0 };
 
   function loadResearchRecents() {

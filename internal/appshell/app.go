@@ -2110,6 +2110,13 @@ func (a *App) reloadServices() error {
 	soldierSvc := records.NewSoldierService(a.database)
 	// Apply configured list page size from config.json (#639).
 	soldierSvc.SetListPageSize(a.cfg.Limits.ListDefaultPageSize)
+	// Apply configured browse page sizes.
+	records.SetBrowsePageSizes(a.cfg.Limits.BrowseDefaultPageSize, a.cfg.Limits.BrowseMaxPageSize)
+	// Apply configured retention caps from config.json (#639).
+	update.SetMaxRetainedBackups(a.cfg.Limits.MaxRetainedBackups)
+	update.SetMaxRestorePoints(a.cfg.Limits.MaxRestorePoints)
+	archive.SetOrphanTrashRetentionDays(a.cfg.Limits.OrphanTrashRetentionDays)
+	SetFeedbackRetentionDays(a.cfg.Limits.FeedbackRetentionDays)
 	a.soldiers = soldierSvc
 	// v60 (issue #320): wire the Event Service immediately after
 	// the SoldierService so the constructor's "borrows

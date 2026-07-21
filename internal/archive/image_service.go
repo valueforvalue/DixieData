@@ -14,7 +14,15 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 )
 
-const orphanTrashRetention = 30 * 24 * time.Hour
+var orphanTrashRetention = 30 * 24 * time.Hour
+
+// SetOrphanTrashRetentionDays overrides the orphan trash retention
+// from config.json. Called by appshell at startup.
+func SetOrphanTrashRetentionDays(days int) {
+	if days > 0 {
+		orphanTrashRetention = time.Duration(days) * 24 * time.Hour
+	}
+}
 
 // ImageService manages the on-disk image library: import, scrub,
 // orphan detection, and re-attach to soldiers. Constructed by

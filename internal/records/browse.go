@@ -19,7 +19,9 @@ const (
 	BrowseSortNameAsc        = "name_asc"
 	BrowseSortLastEditedDesc = "last_edited_desc"
 	BrowseSortCreatedDesc    = "created_desc"
+)
 
+var (
 	defaultBrowsePageSize = 100
 	maxBrowsePageSize     = 250
 )
@@ -36,6 +38,17 @@ type BrowseRequest struct {
 	ReviewStatus          string
 	ConfederateHomeStatus string
 	Tags                  []string
+}
+
+// SetBrowsePageSizes overrides the browse page size defaults
+// from config.json. Called by appshell at startup.
+func SetBrowsePageSizes(defaultSize, maxSize int) {
+	if defaultSize > 0 {
+		defaultBrowsePageSize = defaultSize
+	}
+	if maxSize > 0 {
+		maxBrowsePageSize = maxSize
+	}
 }
 
 func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {

@@ -15,11 +15,20 @@ import (
 const (
 	restorePointIndexVersion = 1
 	restorePointStateVersion = 1
-	defaultMaxRestorePoints  = 2
 
 	RestorePointLaunchPrepared = "prepared"
 	RestorePointLaunchStarting = "starting"
 )
+
+var defaultMaxRestorePoints = 2
+
+// SetMaxRestorePoints overrides the default max restore point
+// count from config.json. Called by appshell at startup.
+func SetMaxRestorePoints(n int) {
+	if n > 0 {
+		defaultMaxRestorePoints = n
+	}
+}
 
 type RestorePointArchiveWriter func(outputPath string) error
 type InstalledBuildSnapshotWriter func(outputDir string) error
