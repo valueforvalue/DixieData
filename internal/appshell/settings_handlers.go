@@ -12,6 +12,7 @@ package appshell
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -68,7 +69,26 @@ func resolvedBootTheme(a *App) string {
 	return theme
 }
 
-// handleBootThemeScript serves a tiny JS snippet that stamps the
+// handleBootConfigScript serves a tiny JS snippet that injects
+// window.__dixieConfig before the static index.html shell paints
+// and redirects to the configured landing page when on root.
+// Mirrors handleBootThemeScript: blocking, no-store, runs before
+// htmx triggers hx-get on the body. Issue #638.
+func (a *App) handleBootConfigScript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	clientCfg := a.cfg.ForClient()
+	cfgJSON, err := json.Marshal(clientCfg)
+	if err != nil {
+		cfgJSON = []byte("{}")
+	}
+	fmt.Fprintf(w, "window.__dixieConfig=%s;\n", cfgJSON)
+	fmt.Fprintf(w, "(function(){var lp=window.__dixieConfig&&window.__dixieConfig.landingPage;if(lp&&lp!=='/'&&(window.location.pathname==='/'||window.location.pathname===''))window.location.replace(lp);})();\n")
+}
 // persisted theme on document.documentElement before the static
 // index.html shell paints. See resolvedBootTheme for the full
 // rationale. The response is no-store so a theme change in /settings

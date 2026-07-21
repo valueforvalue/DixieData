@@ -46,6 +46,7 @@ type TypstRenderer struct {
 	rootDir      string
 	fontDirs     []string
 	outputFormat string // "" or "pdf" (default), "svg"
+	themeJSON    []byte // config-theme injected as theme.json (#637)
 }
 
 // NewTypstRenderer constructs a TypstRenderer that shells out to the
@@ -60,7 +61,13 @@ func NewTypstRenderer(binPath, rootDir string) *TypstRenderer {
 	}
 }
 
-// SetOutputFormat switches the renderer between PDF (default),
+// SetTheme stores the theme config that will be written as
+// theme.json into every typst workdir. Call before rendering
+// to inject palette, type-scale, fonts, and branding from
+// app config (#637). themeJSON must be valid JSON.
+func (t *TypstRenderer) SetTheme(themeJSON []byte) {
+	t.themeJSON = themeJSON
+}
 // native SVG, and per-page PNG output. Passing an empty string
 // resets to PDF. The format is read by Render on every call so
 // the same renderer instance can produce multiple formats across
@@ -180,6 +187,20 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		return fmt.Errorf("write data: %w", err)
 	}
 	phaseEnd("write_data", writeDataStart)
+
+	// Write theme.json when the caller has injected a theme config
+	// (#637). Typst templates can then read `#let theme =
+	// json("theme.json")` as a single source of truth for
+	// palette, type-scale, fonts, and branding.
+	// When no theme was set (tests, direct renderer usage), write
+	// the hard-coded defaults so templates always find the file.
+	if len(t.themeJSON) == 0 {
+		t.themeJSON = defaultThemeJSON()
+	}
+	themePath := filepath.Join(workDir, "theme.json")
+	if err := os.WriteFile(themePath, t.themeJSON, 0o644); err != nil {
+		return fmt.Errorf("write theme: %w", err)
+	}
 
 	// Run typst compile. Output format is taken from the render
 	// options: PDF (default) writes out.pdf; SVG and PNG both use
@@ -765,4 +786,42 @@ func openFile(path string) io.Reader {
 // disk without producing a PDF.
 func (t *TypstRenderer) StageImages(workDir string, data map[string]any) error {
 	return stageSoldierImages(workDir, data)
+}
+
+// defaultThemeJSON returns the hard-coded theme defaults that
+// match config.Defaults().Theme. Used when no theme was injected
+// via SetTheme (tests, direct renderer usage). Templates read
+// this as theme.json via json("theme.json"). (#637)
+func defaultThemeJSON() []byte {
+	return []byte(`{
+  "palette": {
+    "accent": "#8d7440",
+    "accent_strong": "#a88a46",
+    "text_primary": "#22303d",
+    "text_secondary": "#445260",
+    "text_muted": "#71808e",
+    "link": "#4A90E2",
+    "danger": "#54211d",
+    "divider": "#8d7440",
+    "panel_fill": "#fff8e7"
+  },
+  "type_scale": {
+    "section_title": { "size_pt": 9, "line_pt": 6 },
+    "field_label":   { "size_pt": 8, "line_pt": 4.5 },
+    "field_value":   { "size_pt": 9, "line_pt": 4.5 },
+    "body":          { "size_pt": 9, "line_pt": 5 },
+    "biography":     { "size_pt": 11, "line_pt": 6 },
+    "header":        { "size_pt": 10 },
+    "footer":        { "size_pt": 8 }
+  },
+  "fonts": {
+    "body_sans": "Arial",
+    "body_serif": ["Times New Roman", "Liberation Serif", "DejaVu Serif"],
+    "mono": "DejaVu Sans Mono"
+  },
+  "branding": {
+    "header_suffix": "'s Civil War Research Archive",
+    "footer_template": "Made with DixieData | Version: {app_version} | Build: {build_identity}"
+  }
+}`)
 }

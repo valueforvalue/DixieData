@@ -38,6 +38,7 @@ func (a *App) setupRoutes() {
 	r.Get("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
 	r.Get("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
 	r.Get("/boot-theme.js", a.handleBootThemeScript)
+	r.Get("/boot-config.js", a.handleBootConfigScript)
 	// Issue #609: frontend/index.html loads the shared
 	// lib scripts at /lib/debounce.js +
 	// /lib/clipboard.js before app.js so window.__dixieDebounce
@@ -350,6 +351,7 @@ func (a *App) setupRoutes() {
 	// for build info. The route is gone; the panel + sub-page
 	// + mega-menu item are dropped in slice 3.
 	r.Get("/settings/diagnostics", a.handleSettingsDiagnostics)
+	r.Get("/settings/config", a.handleSettingsConfig)
 
 	// Issue #585: new /about page (app identity + license + release
 	// history). Renders the baked releasehistory entries; the dev

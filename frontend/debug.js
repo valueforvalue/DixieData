@@ -16,9 +16,22 @@
   if (window.__dixieDebugDisabled) return;
   if (window.__dixieDebug) return; // already installed
 
-  const FLUSH_INTERVAL_MS = 2000;
-  const FLUSH_THRESHOLD = 50;
-  const MAX_BUFFER = 500;
+  // Read from window.__dixieConfig (injected inline before any
+  // scripts) or fall back to defaults. debug.js loads before
+  // app.js so it can't use the readConfig helper.
+  function readDebugConfig(key, fallback) {
+    try {
+      var cfg = window.__dixieConfig;
+      if (cfg && typeof cfg[key] !== 'undefined' && cfg[key] !== null) {
+        return cfg[key];
+      }
+    } catch (_) { /* config unavailable */ }
+    return fallback;
+  }
+
+  const FLUSH_INTERVAL_MS = readDebugConfig('clientLogFlushMs', 2000);
+  const FLUSH_THRESHOLD = readDebugConfig('clientLogFlushThreshold', 50);
+  const MAX_BUFFER = readDebugConfig('clientLogMaxBuffer', 500);
   // sendBeacon payload cap is ~64 KB on most browsers; batch below
   // 32 KB to leave headroom and avoid silent drops.
   const MAX_BEACON_BYTES = 32 * 1024;

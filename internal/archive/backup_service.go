@@ -153,8 +153,15 @@ func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID 
 // guard law (CONTEXT.md §Laws) because the native SaveFileDialog
 // cannot run concurrently with itself.
 type BackupService struct {
-	db      *db.DB
-	soldier *SoldierService
+	db                     *db.DB
+	soldier                *SoldierService
+	mergeConflictsPageSize int
+}
+
+// SetMergeConflictsPageSize configures the default page size for
+// the resolved-merge-conflicts list (issue #639).
+func (b *BackupService) SetMergeConflictsPageSize(n int) {
+	b.mergeConflictsPageSize = n
 }
 
 type backupContents struct {
@@ -2325,7 +2332,10 @@ func (b *BackupService) ListResolvedConflicts(page, pageSize int) ([]models.Merg
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = b.mergeConflictsPageSize
+		if pageSize <= 0 {
+			pageSize = 50
+		}
 	}
 	conn := b.db.Conn()
 	var total int

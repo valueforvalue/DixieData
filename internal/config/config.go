@@ -63,6 +63,9 @@ type LimitsConfig struct {
 	BrowseDefaultPageSize    int `json:"browse_default_page_size"`
 	BrowseMaxPageSize        int `json:"browse_max_page_size"`
 	ListDefaultPageSize      int `json:"list_default_page_size"`
+	ArticlePageSize          int `json:"article_page_size"`
+	AuditPageSize            int `json:"audit_page_size"`
+	MergeConflictsPageSize   int `json:"merge_conflicts_page_size"`
 	RecentRecordsCap         int `json:"recent_records_cap"`
 	ResearchRecentsCap       int `json:"research_recents_cap"`
 	BackStackDepth           int `json:"back_stack_depth"`
@@ -77,14 +80,17 @@ type LimitsConfig struct {
 
 // TimingConfig controls polling intervals and debounce delays.
 type TimingConfig struct {
-	JobsPollMs           int `json:"jobs_poll_ms"`
-	ReviewBadgePollMs    int `json:"review_badge_poll_ms"`
-	JobStatusPollMs      int `json:"job_status_poll_ms"`
-	UndoRedoPollMs       int `json:"undo_redo_poll_ms"`
-	BrowseFilterDebounceMs int `json:"browse_filter_debounce_ms"`
-	PrintPreviewDebounceMs int `json:"print_preview_debounce_ms"`
-	UpdateCheckTimeoutS    int `json:"update_check_timeout_s"`
-	ShutdownTimeoutS       int `json:"shutdown_timeout_s"`
+	JobsPollMs              int `json:"jobs_poll_ms"`
+	ReviewBadgePollMs       int `json:"review_badge_poll_ms"`
+	JobStatusPollMs         int `json:"job_status_poll_ms"`
+	UndoRedoPollMs          int `json:"undo_redo_poll_ms"`
+	BrowseFilterDebounceMs  int `json:"browse_filter_debounce_ms"`
+	PrintPreviewDebounceMs  int `json:"print_preview_debounce_ms"`
+	UpdateCheckTimeoutS     int `json:"update_check_timeout_s"`
+	ShutdownTimeoutS        int `json:"shutdown_timeout_s"`
+	ClientLogFlushMs        int `json:"client_log_flush_ms"`
+	ClientLogFlushThreshold int `json:"client_log_flush_threshold"`
+	ClientLogMaxBuffer      int `json:"client_log_max_buffer"`
 }
 
 // PDFConfig controls PDF export defaults.
@@ -156,6 +162,9 @@ func Defaults() Config {
 			BrowseDefaultPageSize:    100,
 			BrowseMaxPageSize:        250,
 			ListDefaultPageSize:      50,
+			ArticlePageSize:          25,
+			AuditPageSize:            25,
+			MergeConflictsPageSize:   50,
 			RecentRecordsCap:         10,
 			ResearchRecentsCap:       10,
 			BackStackDepth:           8,
@@ -168,14 +177,17 @@ func Defaults() Config {
 			NotesPreviewChars:        260,
 		},
 		Timing: TimingConfig{
-			JobsPollMs:            3000,
-			ReviewBadgePollMs:     30000,
-			JobStatusPollMs:       2000,
-			UndoRedoPollMs:        500,
+			JobsPollMs:             3000,
+			ReviewBadgePollMs:      30000,
+			JobStatusPollMs:        2000,
+			UndoRedoPollMs:         500,
 			BrowseFilterDebounceMs: 200,
 			PrintPreviewDebounceMs: 150,
 			UpdateCheckTimeoutS:    45,
 			ShutdownTimeoutS:       5,
+			ClientLogFlushMs:       2000,
+			ClientLogFlushThreshold: 50,
+			ClientLogMaxBuffer:     500,
 		},
 		PDF: PDFConfig{
 			Paper: "us-letter",
@@ -299,6 +311,15 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.Limits.ListDefaultPageSize != 0 {
 		dst.Limits.ListDefaultPageSize = src.Limits.ListDefaultPageSize
 	}
+	if src.Limits.ArticlePageSize != 0 {
+		dst.Limits.ArticlePageSize = src.Limits.ArticlePageSize
+	}
+	if src.Limits.AuditPageSize != 0 {
+		dst.Limits.AuditPageSize = src.Limits.AuditPageSize
+	}
+	if src.Limits.MergeConflictsPageSize != 0 {
+		dst.Limits.MergeConflictsPageSize = src.Limits.MergeConflictsPageSize
+	}
 	if src.Limits.RecentRecordsCap != 0 {
 		dst.Limits.RecentRecordsCap = src.Limits.RecentRecordsCap
 	}
@@ -352,6 +373,15 @@ func mergeConfig(dst *Config, src *Config) {
 	}
 	if src.Timing.ShutdownTimeoutS != 0 {
 		dst.Timing.ShutdownTimeoutS = src.Timing.ShutdownTimeoutS
+	}
+	if src.Timing.ClientLogFlushMs != 0 {
+		dst.Timing.ClientLogFlushMs = src.Timing.ClientLogFlushMs
+	}
+	if src.Timing.ClientLogFlushThreshold != 0 {
+		dst.Timing.ClientLogFlushThreshold = src.Timing.ClientLogFlushThreshold
+	}
+	if src.Timing.ClientLogMaxBuffer != 0 {
+		dst.Timing.ClientLogMaxBuffer = src.Timing.ClientLogMaxBuffer
 	}
 	if src.PDF.Paper != "" {
 		dst.PDF.Paper = src.PDF.Paper
@@ -418,6 +448,9 @@ type ClientConfig struct {
 	UndoRedoPollMs          int    `json:"undoRedoPollMs"`
 	BrowseFilterDebounceMs  int    `json:"browseFilterDebounceMs"`
 	PrintPreviewDebounceMs  int    `json:"printPreviewDebounceMs"`
+	ClientLogFlushMs        int    `json:"clientLogFlushMs"`
+	ClientLogFlushThreshold int    `json:"clientLogFlushThreshold"`
+	ClientLogMaxBuffer      int    `json:"clientLogMaxBuffer"`
 	PDFPaper                string `json:"pdfPaper"`
 	GoogleCalendarName      string `json:"googleCalendarName"`
 	GoogleTestCalendarName  string `json:"googleTestCalendarName"`
@@ -427,21 +460,24 @@ type ClientConfig struct {
 // consumption via window.__dixieConfig.
 func (c Config) ForClient() ClientConfig {
 	return ClientConfig{
-		ToastDurationMs:        c.UI.ToastDurationMs,
-		LandingPage:            c.UI.LandingPage,
-		CalendarTimezone:       c.Calendar.Timezone,
-		RecentRecordsCap:       c.Limits.RecentRecordsCap,
-		ResearchRecentsCap:     c.Limits.ResearchRecentsCap,
-		BackStackDepth:         c.Limits.BackStackDepth,
-		NotesPreviewChars:      c.Limits.NotesPreviewChars,
-		JobsPollMs:             c.Timing.JobsPollMs,
-		ReviewBadgePollMs:      c.Timing.ReviewBadgePollMs,
-		JobStatusPollMs:        c.Timing.JobStatusPollMs,
-		UndoRedoPollMs:         c.Timing.UndoRedoPollMs,
-		BrowseFilterDebounceMs: c.Timing.BrowseFilterDebounceMs,
-		PrintPreviewDebounceMs: c.Timing.PrintPreviewDebounceMs,
-		PDFPaper:               c.PDF.Paper,
-		GoogleCalendarName:     c.Google.CalendarName,
-		GoogleTestCalendarName: c.Google.TestCalendarName,
+		ToastDurationMs:         c.UI.ToastDurationMs,
+		LandingPage:             c.UI.LandingPage,
+		CalendarTimezone:        c.Calendar.Timezone,
+		RecentRecordsCap:        c.Limits.RecentRecordsCap,
+		ResearchRecentsCap:      c.Limits.ResearchRecentsCap,
+		BackStackDepth:          c.Limits.BackStackDepth,
+		NotesPreviewChars:       c.Limits.NotesPreviewChars,
+		JobsPollMs:              c.Timing.JobsPollMs,
+		ReviewBadgePollMs:       c.Timing.ReviewBadgePollMs,
+		JobStatusPollMs:         c.Timing.JobStatusPollMs,
+		UndoRedoPollMs:          c.Timing.UndoRedoPollMs,
+		BrowseFilterDebounceMs:  c.Timing.BrowseFilterDebounceMs,
+		PrintPreviewDebounceMs:  c.Timing.PrintPreviewDebounceMs,
+		ClientLogFlushMs:        c.Timing.ClientLogFlushMs,
+		ClientLogFlushThreshold: c.Timing.ClientLogFlushThreshold,
+		ClientLogMaxBuffer:      c.Timing.ClientLogMaxBuffer,
+		PDFPaper:                c.PDF.Paper,
+		GoogleCalendarName:      c.Google.CalendarName,
+		GoogleTestCalendarName:  c.Google.TestCalendarName,
 	}
 }

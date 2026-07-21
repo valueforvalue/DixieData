@@ -73,7 +73,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					<div>
 						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-accent-strong)]" for="page_size">Page Size</label>
 						<select name="page_size" data-browse-filter-input class="field-input mt-2" id="page_size">
-							for _, option := range []int{25, 50, 100, 150, 200, 250} {
+							for _, option := range state.PageSizeOptions {
 								<option value={ fmt.Sprintf("%d", option) } if option == state.PageSize { selected }>{ fmt.Sprintf("%d", option) }</option>
 							}
 						</select>

@@ -29,8 +29,24 @@ const (
 // (merge) or dismiss (keep separate). Constructed by
 // NewAuditService.
 type AuditService struct {
-	db        *db.DB
-	auditRepo repo.AuditRecordRepo
+	db                       *db.DB
+	auditRepo                repo.AuditRecordRepo
+	similarityThreshold      int
+	resolvedFindingsPageSize int
+}
+
+// SetDuplicateSimilarityThreshold configures the Levenshtein
+// distance threshold for duplicate-detection (issue #639).
+// Defaults to 2 when unset or zero.
+func (s *AuditService) SetDuplicateSimilarityThreshold(n int) {
+	s.similarityThreshold = n
+}
+
+// SetResolvedFindingsPageSize configures the default page size
+// for the resolved-duplicate-findings list (issue #639).
+// Defaults to 50 when unset or zero.
+func (s *AuditService) SetResolvedFindingsPageSize(n int) {
+	s.resolvedFindingsPageSize = n
 }
 
 // DuplicateAuditSummary is a records-layer type used by the matching service.
@@ -123,6 +139,10 @@ func NewAuditService(database *db.DB) *AuditService {
 
 // SimilarityThreshold is the name-similarity cutoff above which two Soldiers are flagged as duplicate candidates.
 func (s *AuditService) SimilarityThreshold() (int, error) {
+	// Config-level setting (issue #639) takes priority over DB override.
+	if s.similarityThreshold > 0 {
+		return s.similarityThreshold, nil
+	}
 	threshold := defaultDuplicateAuditSimilarityThreshold
 	var raw string
 	err := s.db.Conn().QueryRow(`SELECT value FROM system_config WHERE key = 'duplicate_audit_similarity_threshold'`).Scan(&raw)
@@ -355,7 +375,10 @@ func (s *AuditService) ListResolvedFindings(page, pageSize int) ([]ResolvedFindi
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = s.resolvedFindingsPageSize
+		if pageSize <= 0 {
+			pageSize = 50
+		}
 	}
 	// Slice 1 of issue #622: the paginated COUNT + JOIN'd
 	// SELECT go through the AuditRecordRepo seam. The repo

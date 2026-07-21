@@ -6002,7 +6002,7 @@ function onPrintRecordsFragmentReady(modal) {
     const toolbarRoot = document.querySelector("[data-editor-toolbar]");
     if (toolbarRoot instanceof HTMLElement && !toolbarRoot.__undoRedoPollerBound) {
       toolbarRoot.__undoRedoPollerBound = true;
-      setInterval(refreshUndoRedoState, 500);
+      setInterval(refreshUndoRedoState, readConfig('undoRedoPollMs', 500));
       // Re-check on every input event in the article body
       // textarea so the buttons react immediately.
       const body = document.getElementById("article-body");
@@ -7099,7 +7099,7 @@ async function refreshShareQueuePresetsPage(panel) {
     if (!debounce) return;
     const trigger = debounce(() => {
       refreshPrintConfigPreview();
-    }, 150);
+    }, readConfig('printPreviewDebounceMs', 150));
     form.addEventListener("change", trigger);
     form.addEventListener("input", trigger);
     const refreshButton = modal.querySelector("[data-print-config-preview-refresh]");
@@ -8415,7 +8415,7 @@ async function refreshShareQueuePresetsPage(panel) {
                 showToast("Browse refresh failed.", "error");
               }
             })();
-          }, 200);
+          }, readConfig('browseFilterDebounceMs', 200));
         }
         window.__dixieBrowseFilterDebounce(form, url, targetSelector);
       }

@@ -1130,7 +1130,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 		if strings.TrimSpace(s.Notes) != "" {
 			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.3)] bg-[rgb(var(--theme-ink-deep-rgb)/0.04)] px-4 py-4">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--theme-accent-strong)]">Notes Preview</p>
-				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, 260) }</p>
+				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, configNotesPreviewChars(ctx)) }</p>
 			</div>
 		}
 		if s.NeedsReview {

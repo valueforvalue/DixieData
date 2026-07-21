@@ -13,10 +13,12 @@
 package viewmodel
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
@@ -413,6 +415,7 @@ func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
 		ReviewStatus:          input.ReviewStatus,
 		ConfederateHomeStatus: input.ConfederateHomeStatus,
 		SelectedTagSet:        selected,
+		PageSizeOptions:       records.BrowsePageSizeOptions(),
 	}
 }
 
@@ -889,4 +892,88 @@ func ResearchPickerFromContext(currentPerson *models.Soldier, recents []models.S
 		view.RecentPersons = PersonRecordsFromModels(recents)
 	}
 	return view
+}
+
+// ConfigViewFromDomain converts a config.Config into its
+// viewmodel projection for the /settings/config sub-page (#638).
+func ConfigViewFromDomain(cfg config.Config) ConfigView {
+	str := func(v int) string { return fmt.Sprintf("%d", v) }
+	return ConfigView{
+		Sections: []ConfigSection{
+			{
+				Title: "Window",
+				Fields: []ConfigField{
+					{Label: "Width", Value: str(cfg.Window.Width)},
+					{Label: "Height", Value: str(cfg.Window.Height)},
+				},
+			},
+			{
+				Title: "UI",
+				Fields: []ConfigField{
+					{Label: "Toast duration (ms)", Value: str(cfg.UI.ToastDurationMs)},
+					{Label: "Landing page", Value: cfg.UI.LandingPage},
+				},
+			},
+			{
+				Title: "Calendar",
+				Fields: []ConfigField{
+					{Label: "Timezone", Value: cfg.Calendar.Timezone},
+				},
+			},
+			{
+				Title: "Limits",
+				Fields: []ConfigField{
+					{Label: "Browse default page size", Value: str(cfg.Limits.BrowseDefaultPageSize)},
+					{Label: "Browse max page size", Value: str(cfg.Limits.BrowseMaxPageSize)},
+					{Label: "List default page size", Value: str(cfg.Limits.ListDefaultPageSize)},
+					{Label: "Article page size", Value: str(cfg.Limits.ArticlePageSize)},
+					{Label: "Audit page size", Value: str(cfg.Limits.AuditPageSize)},
+					{Label: "Merge conflicts page size", Value: str(cfg.Limits.MergeConflictsPageSize)},
+					{Label: "Recent records cap", Value: str(cfg.Limits.RecentRecordsCap)},
+					{Label: "Research recents cap", Value: str(cfg.Limits.ResearchRecentsCap)},
+					{Label: "Back-stack depth", Value: str(cfg.Limits.BackStackDepth)},
+					{Label: "Max retained backups", Value: str(cfg.Limits.MaxRetainedBackups)},
+					{Label: "Max restore points", Value: str(cfg.Limits.MaxRestorePoints)},
+					{Label: "Orphan trash retention (days)", Value: str(cfg.Limits.OrphanTrashRetentionDays)},
+					{Label: "Feedback retention (days)", Value: str(cfg.Limits.FeedbackRetentionDays)},
+					{Label: "Duplicate audit threshold", Value: str(cfg.Limits.DuplicateAuditThreshold)},
+					{Label: "Jobs concurrency", Value: str(cfg.Limits.JobsConcurrency)},
+					{Label: "Notes preview chars", Value: str(cfg.Limits.NotesPreviewChars)},
+				},
+			},
+			{
+				Title: "Timing",
+				Fields: []ConfigField{
+					{Label: "Jobs poll (ms)", Value: str(cfg.Timing.JobsPollMs)},
+					{Label: "Review badge poll (ms)", Value: str(cfg.Timing.ReviewBadgePollMs)},
+					{Label: "Job status poll (ms)", Value: str(cfg.Timing.JobStatusPollMs)},
+					{Label: "Undo/redo poll (ms)", Value: str(cfg.Timing.UndoRedoPollMs)},
+					{Label: "Browse filter debounce (ms)", Value: str(cfg.Timing.BrowseFilterDebounceMs)},
+					{Label: "Print preview debounce (ms)", Value: str(cfg.Timing.PrintPreviewDebounceMs)},
+					{Label: "Update check timeout (s)", Value: str(cfg.Timing.UpdateCheckTimeoutS)},
+					{Label: "Shutdown timeout (s)", Value: str(cfg.Timing.ShutdownTimeoutS)},
+					{Label: "Client log flush (ms)", Value: str(cfg.Timing.ClientLogFlushMs)},
+					{Label: "Client log flush threshold", Value: str(cfg.Timing.ClientLogFlushThreshold)},
+					{Label: "Client log max buffer", Value: str(cfg.Timing.ClientLogMaxBuffer)},
+				},
+			},
+			{
+				Title: "PDF",
+				Fields: []ConfigField{
+					{Label: "Paper", Value: cfg.PDF.Paper},
+					{Label: "Margin top", Value: cfg.PDF.Margins.Top},
+					{Label: "Margin bottom", Value: cfg.PDF.Margins.Bottom},
+					{Label: "Margin left", Value: cfg.PDF.Margins.Left},
+					{Label: "Margin right", Value: cfg.PDF.Margins.Right},
+				},
+			},
+			{
+				Title: "Google",
+				Fields: []ConfigField{
+					{Label: "Calendar name", Value: cfg.Google.CalendarName},
+					{Label: "Test calendar name", Value: cfg.Google.TestCalendarName},
+				},
+			},
+		},
+	}
 }

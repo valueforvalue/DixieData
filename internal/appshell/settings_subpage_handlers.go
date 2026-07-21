@@ -24,6 +24,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 // handleSettingsAppearance serves GET /settings/appearance.
@@ -63,6 +64,14 @@ func (a *App) handleSettingsData(w http.ResponseWriter, r *http.Request) {
 // handleSettingsDiagnostics serves GET /settings/diagnostics.
 func (a *App) handleSettingsDiagnostics(w http.ResponseWriter, r *http.Request) {
 	if err := presentation.SettingsDiagnosticsView(a.debugMode.Load()).Render(r.Context(), w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// handleSettingsConfig serves GET /settings/config.
+func (a *App) handleSettingsConfig(w http.ResponseWriter, r *http.Request) {
+	view := viewmodel.ConfigViewFromDomain(a.cfg)
+	if err := presentation.SettingsConfigView(view).Render(r.Context(), w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

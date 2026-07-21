@@ -52,8 +52,14 @@ type QueryOptions struct {
 
 // queryDefaults returns the default limit/page when the user
 // didn't specify them. Centralised so list and search stay in
-// sync.
-func queryDefaults() (limit, page int) { return 50, 1 }
+// sync. Reads from app config when available; falls back to
+// hard-coded defaults (issue #639).
+func queryDefaults(app *App) (limit, page int) {
+	if app != nil && app.cfg.Limits.ListDefaultPageSize > 0 {
+		return app.cfg.Limits.ListDefaultPageSize, 1
+	}
+	return 50, 1
+}
 
 // RunQuery dispatches to the right handler based on
 // opts.Command. Returns exit code (0 success, 1 not-found,
@@ -62,7 +68,7 @@ func RunQuery(ctx context.Context, opts QueryOptions) (int, error) {
 	if opts.Writer == nil {
 		opts.Writer = os.Stdout
 	}
-	defaultLimit, defaultPage := queryDefaults()
+	defaultLimit, defaultPage := queryDefaults(opts.App)
 	if opts.Limit <= 0 {
 		opts.Limit = defaultLimit
 	}

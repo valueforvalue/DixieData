@@ -148,6 +148,13 @@ func NewService(config configStore, dataDir string, archiveWriter RestorePointAr
 	return service
 }
 
+// SetHTTPTimeout replaces the HTTP client timeout used for update
+// checks. Call after NewService if the timeout should be read from
+// app config (issue #636).
+func (s *Service) SetHTTPTimeout(d time.Duration) {
+	s.client.Timeout = d
+}
+
 func (s *Service) Settings() (SettingsState, error) {
 	rawURL, effectiveURL, usingDefault, err := s.sourceSettings()
 	if err != nil {

@@ -261,3 +261,13 @@ func configJobStatusPoll(ctx context.Context) string {
 	}
 	return "2s"
 }
+
+// configNotesPreviewChars returns the notes-preview character
+// limit from config. Returns 260 by default (issue #639).
+func configNotesPreviewChars(ctx context.Context) int {
+	cfg := LayoutConfigFromContext(ctx)
+	if cfg.NotesPreviewChars > 0 {
+		return cfg.NotesPreviewChars
+	}
+	return 260
+}

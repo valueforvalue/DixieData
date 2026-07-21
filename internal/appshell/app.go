@@ -2129,10 +2129,13 @@ func (a *App) reloadServices() error {
 	// events-for-timeline JOIN to EventService.
 	soldierSvc.SetEvents(a.events)
 	a.articles = records.NewArticleService(soldierSvc, records.NewMarkdownRenderer())
+	a.articles.SetPageSizes(a.cfg.Limits.ArticlePageSize, a.cfg.Limits.ArticlePageSize*4)
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)
 	a.audit = records.NewAuditService(a.database)
+	a.audit.SetDuplicateSimilarityThreshold(a.cfg.Limits.DuplicateAuditThreshold)
+	a.audit.SetResolvedFindingsPageSize(a.cfg.Limits.AuditPageSize)
 	a.exportTemplates = records.NewExportTemplateService(a.database.Conn())
 	a.shareQueuePresets = records.NewShareQueuePresetService(a.database.Conn())
 	a.tags = records.NewTagService(a.database.Conn())
@@ -2140,6 +2143,7 @@ func (a *App) reloadServices() error {
 	a.images = archive.NewImageService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
+	a.backup.SetMergeConflictsPageSize(a.cfg.Limits.MergeConflictsPageSize)
 	// Preserve the existing jobs Registry when one is already
 	// wired. reloadServices() runs in two contexts that MUST NOT
 	// clobber an in-flight job's registry:
@@ -2206,6 +2210,7 @@ func (a *App) reloadServices() error {
 		_, err := a.backup.Export(outputPath, a.dataDir)
 		return err
 	})
+	a.updater.SetHTTPTimeout(time.Duration(a.cfg.Timing.UpdateCheckTimeoutS) * time.Second)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir, a.database)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
@@ -2257,6 +2262,15 @@ func (a *App) buildRenderRegistry() (*render.Registry, string, error) {
 		return nil, "", err
 	}
 	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
+	// Inject theme config as theme.json into every typst workdir
+	// (#637). When the config file is missing or the theme block is
+	// unset (tests, first-run), the renderer's own defaultThemeJSON
+	// fallback provides the hard-coded palette.
+	if a.cfg.Theme.Palette != nil && len(a.cfg.Theme.Palette) > 0 {
+		if themeJSON, err := json.Marshal(a.cfg.Theme); err == nil {
+			typstRenderer.SetTheme(themeJSON)
+		}
+	}
 	reg := render.NewRegistry(typstRenderer, templatesDir)
 	return reg, templatesDir, nil
 }

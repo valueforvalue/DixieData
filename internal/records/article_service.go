@@ -52,13 +52,21 @@ var ErrArticleNotFound = errors.New("article not found")
 // keeps Article CRUD on the same SQLite connection without
 // inventing a per-service DB accessor.
 type ArticleService struct {
-	soldiers  *SoldierService
+	soldiers    *SoldierService
 	articleRepo repo.ArticleRecordRepo
-	renderer  *MarkdownRenderer
-	registry  ArticleRegistry
+	renderer    *MarkdownRenderer
+	registry    ArticleRegistry
+
+	defaultPageSize int
+	maxPageSize     int
 }
 
-// ArticleRegistry is the slice-4 surface the ArticleService
+// SetPageSizes configures the default and maximum page sizes for
+// the article list view (issue #639). Call during service wiring.
+func (a *ArticleService) SetPageSizes(defaultSize, maxSize int) {
+	a.defaultPageSize = defaultSize
+	a.maxPageSize = maxSize
+}
 // uses to pre-render the article's PDF. The contract is a
 // subset of *render.Registry; the Render method takes a
 // record-type string + data map + writer and the impl
@@ -295,11 +303,19 @@ func (a *ArticleService) List(page, pageSize int) ([]models.Article, int, error)
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 {
-		pageSize = 25
+	defSz := a.defaultPageSize
+	if defSz <= 0 {
+		defSz = 25
 	}
-	if pageSize > 100 {
-		pageSize = 100
+	maxSz := a.maxPageSize
+	if maxSz <= 0 {
+		maxSz = 100
+	}
+	if pageSize < 1 {
+		pageSize = defSz
+	}
+	if pageSize > maxSz {
+		pageSize = maxSz
 	}
 	rows, total, err := a.articleRepo.List(context.Background(), page, pageSize)
 	if err != nil {

@@ -51,6 +51,24 @@ func SetBrowsePageSizes(defaultSize, maxSize int) {
 	}
 }
 
+// BrowsePageSizeOptions returns the page-size dropdown options
+// for the browse filter bar. Generated from maxBrowsePageSize
+// (config-driven, issue #639). Falls back to the legacy hard-
+// coded list when max is unconfigured.
+func BrowsePageSizeOptions() []int {
+	max := maxBrowsePageSize
+	if max <= 0 {
+		max = 250
+	}
+	// Build from 25 up to max in steps of 50, plus the max itself.
+	var opts []int
+	for n := 25; n < max; n += 50 {
+		opts = append(opts, n)
+	}
+	opts = append(opts, max)
+	return opts
+}
+
 func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
 	if request.Page < 1 {
 		request.Page = 1

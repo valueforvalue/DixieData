@@ -1,36 +1,62 @@
 // templates/common/theme.typ
 //
-// Centralized design tokens for all DixieData Typst templates. Every
-// template imports this file and uses the named values for colors,
-// fonts, margins, and the type scale. Changing a value here updates
-// every template that imports it.
+// Centralized design tokens for all DixieData Typst templates.
+// Reads from theme.json (injected by the Go renderer at #637)
+// so palette, type-scale, fonts, and branding have ONE source
+// of truth shared with the CSS build.
 //
-// The values mirror the audit's theme.json deliverable (see
-// docs/audit/layout-theming-token-schema.md). The PDF triplet and the
-// CSS hex resolve to the same color in the render package.
+// When theme.json is absent (e.g. running typst directly for
+// template development), the file read will error — use the
+// Go render pipeline or copy config.default.json's theme block
+// into the workdir as theme.json.
+
+#let _cfg = json("../theme.json")
+
+// Exported as module-level variables so templates can write
+//   theme.palette.accent
+//   theme.type-scale.field_label.size
+//   theme.fonts.body_sans
+// etc. (the module is imported as `theme` because the file
+// is named theme.typ).
+
+// Convenience: convert palette hex strings to typst colors.
+// json() returns strings; rgb() expects a hex string, so this
+// is a thin wrapper that makes theme.palette.accent a color.
+#let _hex(c) = rgb(c)
 
 #let palette = (
-  accent:         rgb("#8d7440"),
-  accent_strong:  rgb("#a88a46"),
-  text_primary:   rgb("#22303d"),
-  text_secondary: rgb("#445260"),
-  text_muted:     rgb("#71808e"),
-  link:           rgb("#4A90E2"),
-  danger:         rgb("#54211d"),
-  divider:        rgb("#8d7440"),
-  panel_fill:     rgb("#fff8e7"),
+  accent:        _hex(_cfg.palette.accent),
+  accent_strong: _hex(_cfg.palette.accent_strong),
+  text_primary:  _hex(_cfg.palette.text_primary),
+  text_secondary: _hex(_cfg.palette.text_secondary),
+  text_muted:    _hex(_cfg.palette.text_muted),
+  link:          _hex(_cfg.palette.link),
+  danger:        _hex(_cfg.palette.danger),
+  divider:       _hex(_cfg.palette.divider),
+  panel_fill:    _hex(_cfg.palette.panel_fill),
 )
+// Convert JSON numbers to typst lengths for type-scale entries.
+#let _pt(n) = n * 1pt
 
 #let type-scale = (
-  section_title: (size: 9pt, line: 6pt),
-  field_label:   (size: 8pt, line: 4.5pt),
-  field_value:   (size: 9pt, line: 4.5pt),
-  body:          (size: 9pt, line: 5pt),
+  section_title: (size: _pt(_cfg.type_scale.section_title.size_pt), line: _pt(_cfg.type_scale.section_title.line_pt)),
+  field_label:   (size: _pt(_cfg.type_scale.field_label.size_pt),   line: _pt(_cfg.type_scale.field_label.line_pt)),
+  field_value:   (size: _pt(_cfg.type_scale.field_value.size_pt),   line: _pt(_cfg.type_scale.field_value.line_pt)),
+  body:          (size: _pt(_cfg.type_scale.body.size_pt),          line: _pt(_cfg.type_scale.body.line_pt)),
+  biography:     (size: _pt(_cfg.type_scale.biography.size_pt),     line: _pt(_cfg.type_scale.biography.line_pt)),
+  header:        (size: _pt(_cfg.type_scale.header.size_pt)),
+  footer:        (size: _pt(_cfg.type_scale.footer.size_pt)),
   image_label:   (size: 8pt, line: 4pt),
-  header:        (size: 10pt),
-  footer:        (size: 8pt),
-  biography:     (size: 11pt, line: 6pt),
 )
+#let fonts     = _cfg.fonts
+#let branding  = _cfg.branding
+
+// Geometry is NOT in theme.json — these are template-specific
+// layout constants, not user-tunable design tokens. They stay
+// hard-coded here so templates that need them can reference
+//   theme.geometry.page_margin
+//   theme.geometry.column_gap
+// etc. by importing this file (see #637 scope).
 
 #let geometry = (
   page_margin:    (top: 0.75in, bottom: 0.75in, left: 0.75in, right: 0.75in),
@@ -38,17 +64,5 @@
   section_gap:    4mm,
   field_row_gap:  1mm,
   record_card_left_ratio: 52%,
-  // The image panel is sized to fit at the top of a right column on
-  // a Letter page. 40mm keeps the panel compact enough that the
-  // household + records sections below it can stay on the same page
-  // for soldiers with up to ~6 records. fpdf uses 64mm here; the
-  // typst number is smaller because typst's text is rendered with a
-  // slightly larger effective line height and we want to keep the
-  // right column from overflowing the page.
   image_panel_height: 50mm,
-)
-
-#let branding = (
-  header_suffix: "'s Civil War Research Archive",
-  footer_template: "Made with DixieData | Version: {app_version} | Build: {build_identity}",
 )

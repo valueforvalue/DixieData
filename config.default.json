@@ -14,6 +14,9 @@
     "browse_default_page_size": 100,
     "browse_max_page_size": 250,
     "list_default_page_size": 50,
+    "article_page_size": 25,
+    "audit_page_size": 25,
+    "merge_conflicts_page_size": 50,
     "recent_records_cap": 10,
     "research_recents_cap": 10,
     "back_stack_depth": 8,
@@ -33,7 +36,10 @@
     "browse_filter_debounce_ms": 200,
     "print_preview_debounce_ms": 150,
     "update_check_timeout_s": 45,
-    "shutdown_timeout_s": 5
+    "shutdown_timeout_s": 5,
+    "client_log_flush_ms": 2000,
+    "client_log_flush_threshold": 50,
+    "client_log_max_buffer": 500
   },
   "pdf": {
     "paper": "us-letter",

@@ -495,6 +495,11 @@ func SettingsDiagnosticsView(debugEnabled bool) templ.Component {
 	return templates.SettingsDiagnosticsPage(debugEnabled)
 }
 
+// SettingsConfigView wraps the config sub-page templ (#638).
+func SettingsConfigView(cfg viewmodel.ConfigView) templ.Component {
+	return templates.SettingsConfigPage(cfg)
+}
+
 // ResearchPickerRecent wraps the recents-only fragment returned by
 // the /research/recent endpoint (issue #378 slice 3, option C1). JS
 // reads localStorage dixiedata.research.recents, fetches the

@@ -386,6 +386,9 @@ type BrowseState struct {
 	// checked-state pill. Always at least an empty (not-nil) map
 	// so templates can index without nil checks.
 	SelectedTagSet map[string]bool
+	// PageSizeOptions is the dropdown option list for the
+	// browse page-size selector, driven by config.json (#639).
+	PageSizeOptions []int
 }
 
 // PersonRecordFormSuggestions is the autocomplete payload the
@@ -1063,4 +1066,23 @@ type IssuesClosedView struct {
 type TypeBucket struct {
 	Type  string
 	Count int
+}
+
+// ConfigView is the viewmodel projection of the application
+// config for the /settings/config sub-page (#638).
+type ConfigView struct {
+	Sections []ConfigSection
+}
+
+// ConfigSection is one config group (Window, UI, Limits, etc.)
+// rendered as a card on the config sub-page.
+type ConfigSection struct {
+	Title  string
+	Fields []ConfigField
+}
+
+// ConfigField is one key-value row in a config section.
+type ConfigField struct {
+	Label string
+	Value string
 }

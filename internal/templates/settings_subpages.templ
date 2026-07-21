@@ -122,7 +122,6 @@ templ SettingsDiagnosticsPage(debugEnabled bool) {
 		</div>
 	}
 }
-
 // SettingsMaintenancePanel renders the maintenance section:
 // image orphan scan + cleanup + data quality scan + apply.
 // Lifted from the inline content of the original SettingsView
@@ -219,4 +218,35 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 			</div>
 		</div>
 	</section>
+}
+
+// SettingsConfigPage renders the read-only application config
+// view at /settings/config (#638).
+templ SettingsConfigPage(cfg viewmodel.ConfigView) {
+	@Layout("Settings") {
+		<div class="relative mx-auto max-w-4xl space-y-6" id="page.settings.config" data-page-about="settings-config">
+			<header class="space-y-2">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Settings</h1>
+				@settingsBreadcrumb("Config")
+			</header>
+			<p class="text-sm text-slate-500">These values are read from <code class="text-xs bg-slate-100 px-1 rounded">config.json</code> at startup. Restart DixieData to apply changes.</p>
+			for _, section := range cfg.Sections {
+				<section class="card rounded-3xl p-5 sm:p-8 space-y-3">
+					<h2 class="text-lg font-semibold text-[var(--theme-accent-strong)]">{ section.Title }</h2>
+					<div class="overflow-hidden rounded-xl border border-slate-200">
+						<table class="min-w-full text-sm">
+							<tbody>
+								for _, field := range section.Fields {
+									<tr class="border-t border-slate-100 first:border-t-0">
+										<td class="px-4 py-2.5 font-medium text-slate-600 w-64">{ field.Label }</td>
+										<td class="px-4 py-2.5 text-slate-900 font-mono text-xs">{ field.Value }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</section>
+			}
+		</div>
+	}
 }
