@@ -7,6 +7,9 @@
     "toast_duration_ms": 4000,
     "landing_page": "/calendar"
   },
+  "calendar": {
+    "timezone": "America/Chicago"
+  },
   "limits": {
     "browse_default_page_size": 100,
     "browse_max_page_size": 250,

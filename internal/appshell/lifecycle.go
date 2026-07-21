@@ -197,6 +197,8 @@ func (a *App) startup(ctx context.Context) {
 	} else {
 		a.cfg = appCfg
 	}
+	// Apply calendar timezone from config (#638).
+	buildinfo.SetCalendarTimeZone(a.cfg.Calendar.Timezone)
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
 	// reloads and app restarts.

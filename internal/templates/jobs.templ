@@ -170,7 +170,7 @@ templ jobStatusBody(job jobs.Job) {
 			hx-trigger="none"
 		} else {
 			hx-get={ templ.SafeURL(routebuilder.JobStatus(job.ID)) }
-			hx-trigger="every 2s"
+			hx-trigger={ "every "+configJobStatusPoll(ctx) }
 			hx-swap="outerHTML"
 			hx-target="#job-status-body"
 		}>

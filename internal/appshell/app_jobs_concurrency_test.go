@@ -23,7 +23,7 @@ func TestJobsConcurrencyFromEnvHonoursValue(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Setenv("DIXIEDATA_JOBS_CONCURRENCY", c.raw)
-			if got := jobsConcurrencyFromEnv(); got != c.want {
+			if got := jobsConcurrencyFromEnv(0); got != c.want {
 				t.Fatalf("jobsConcurrencyFromEnv(%q) = %d, want %d", c.raw, got, c.want)
 			}
 		})

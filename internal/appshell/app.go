@@ -2108,6 +2108,8 @@ func findChromeExecutable() (string, error) {
 
 func (a *App) reloadServices() error {
 	soldierSvc := records.NewSoldierService(a.database)
+	// Apply configured list page size from config.json (#639).
+	soldierSvc.SetListPageSize(a.cfg.Limits.ListDefaultPageSize)
 	a.soldiers = soldierSvc
 	// v60 (issue #320): wire the Event Service immediately after
 	// the SoldierService so the constructor's "borrows
@@ -2156,7 +2158,7 @@ func (a *App) reloadServices() error {
 	// and call reloadServices() on a fresh App still get a
 	// working empty registry.
 	if a.jobs == nil {
-		a.jobs = jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
+		a.jobs = jobs.NewWithConcurrency(jobsConcurrencyFromEnv(a.cfg.Limits.JobsConcurrency))
 	}
 
 	// Wire the Typst-backed Registry into the export service. Per
@@ -2192,6 +2194,7 @@ func (a *App) reloadServices() error {
 	a.export.SetDataDir(a.dataDir)
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
+	integrations.SetCalendarNames(a.cfg.Google.CalendarName, a.cfg.Google.TestCalendarName)
 	a.updater = update.NewService(a.database, a.dataDir, func(outputPath string) error {
 		_, err := a.backup.Export(outputPath, a.dataDir)
 		return err
@@ -2826,15 +2829,21 @@ func isAllowedImageFile(name string) bool {
 // environment variable and falls back to jobs.DefaultConcurrency when it
 // is unset, empty, or not a positive integer. Clamps to a sane upper
 // bound (16) so a typo or runaway script cannot exhaust the host.
-func jobsConcurrencyFromEnv() int {
+func jobsConcurrencyFromEnv(cfgDefault int) int {
 	const envKey = "DIXIEDATA_JOBS_CONCURRENCY"
 	const upperBound = 16
 	raw := strings.TrimSpace(os.Getenv(envKey))
 	if raw == "" {
+		if cfgDefault > 0 {
+			return cfgDefault
+		}
 		return jobs.DefaultConcurrency
 	}
 	n, err := strconv.Atoi(raw)
 	if err != nil || n < 1 {
+		if cfgDefault > 0 {
+			return cfgDefault
+		}
 		return jobs.DefaultConcurrency
 	}
 	if n > upperBound {

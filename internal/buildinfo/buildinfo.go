@@ -13,12 +13,19 @@ const (
 	// surface, CLI banner, and exported PDF header. Stable since
 	// 2024; not versioned.
 	AppName = "DixieData"
+)
+
+var (
 	// CalendarTimeZone is the IANA tz the calendar + anniversaries
 	// surface assumes for "today" + "this month" semantics. All
 	// anniversaries are stored as month/day (no year) so the tz
 	// affects only the today-vs-occurred split, not the dates
-	// themselves.
+	// themselves. Override with SetCalendarTimeZone at startup
+	// from config.json.
 	CalendarTimeZone = "America/Chicago"
+)
+
+const (
 	// JSONExportVersion is bumped every time the JSON export shape
 	// (internal/models.Soldier + Records + Images) changes. Read
 	// back at JSON import time to gate compatibility.
@@ -217,6 +224,15 @@ func ReleaseLabel() string {
 // Issue #462.
 func Codename() string {
 	return versioninfo.CurrentReleaseName
+}
+
+// SetCalendarTimeZone overrides the default calendar timezone.
+// Called by appshell at startup from config.json. Empty string
+// is ignored (keeps default).
+func SetCalendarTimeZone(tz string) {
+	if tz != "" {
+		CalendarTimeZone = tz
+	}
 }
 
 // Version is the consolidated version snapshot callers can

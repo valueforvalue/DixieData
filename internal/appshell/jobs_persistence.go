@@ -110,7 +110,7 @@ func copyFileContents(src, dst string) error {
 // than a few dozen entries per session.
 func openJobsRegistry(dataDir string) *jobs.Registry {
 	if dataDir == "" {
-		return jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
+		return jobs.NewWithConcurrency(jobsConcurrencyFromEnv(0))
 	}
 	// Ensure the data directory exists before opening the jobs log.
 	// lifecycle.startup() calls openJobsRegistry(a.dataDir) before
@@ -141,7 +141,7 @@ func openJobsRegistry(dataDir string) *jobs.Registry {
 		// Non-fatal: log to stderr and start empty so the desktop app
 		// still works on a partially-corrupted data dir.
 		fmt.Fprintf(os.Stderr, "jobs: rehydrate %s failed: %v\n", logPath, err)
-		reg = jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
+		reg = jobs.NewWithConcurrency(jobsConcurrencyFromEnv(0))
 	}
 
 	writer, err := openJobsLogWriter(logPath)
@@ -159,7 +159,7 @@ func rehydrateJobsFromLog(path string) (*jobs.Registry, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return jobs.NewWithConcurrency(jobsConcurrencyFromEnv()), nil
+			return jobs.NewWithConcurrency(jobsConcurrencyFromEnv(0)), nil
 		}
 		return nil, err
 	}

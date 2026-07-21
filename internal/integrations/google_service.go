@@ -32,9 +32,23 @@ const (
 	googleDefaultsFile     = "google-oauth-defaults.json"
 	googleSettingsFile     = "google-settings.json"
 	googleTokenFile        = "google-token.json"
+)
+
+var (
 	managedCalendarName    = "DixieData"
 	testCalendarName       = "DixieData Test"
 )
+
+// SetCalendarNames overrides the default Google Calendar
+// display names. Called by appshell at startup from config.json.
+func SetCalendarNames(managed, test string) {
+	if managed != "" {
+		managedCalendarName = managed
+	}
+	if test != "" {
+		testCalendarName = test
+	}
+}
 
 // GoogleCalendarSyncState is the on-disk JSON record of which
 // Google Calendar the DixieData anniversaries are synced to.

@@ -46,6 +46,7 @@ type SoldierService struct {
 	events            EventTimelineQuerier
 	formSuggestionsMu sync.RWMutex
 	formSuggestions   *models.SoldierFormSuggestions
+	listPageSize      int // default page size for List/Search operations (configurable via config.json)
 }
 
 // ServiceTimeline returns the per-soldier chronological service timeline (enlistment, transfer, wound, discharge, death).
@@ -135,6 +136,7 @@ func NewSoldierService(database *db.DB) *SoldierService {
 		personRepo:   sqliterepo.NewPersonRecordRepo(database),
 		qualityRepo:  sqliterepo.NewQualityScanRepo(database),
 		memorialRepo: sqliterepo.NewMemorialImportRepo(database),
+		listPageSize: 50, // default; override via SetListPageSize
 	}
 }
 
@@ -172,6 +174,15 @@ type EventTimelineQuerier interface {
 // the timeline (Birth / Death / records / etc.) still renders.
 func (s *SoldierService) SetEvents(events EventTimelineQuerier) {
 	s.events = events
+}
+
+// SetListPageSize overrides the default page size (50) for
+// List/Search/ReviewQueue operations. Called by appshell at
+// startup from config.json limits.list_default_page_size.
+func (s *SoldierService) SetListPageSize(n int) {
+	if n > 0 {
+		s.listPageSize = n
+	}
 }
 
 // Create persists a new Soldier and returns the assigned ID. Sets CreatedAt + UpdatedAt; the caller is responsible for the display ID.
@@ -733,7 +744,7 @@ func (s *SoldierService) ReviewQueue(page, pageSize int) ([]models.Soldier, int,
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = s.listPageSize
 	}
 	conn := s.db.Conn()
 	var total int
@@ -779,7 +790,7 @@ func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = s.listPageSize
 	}
 
 	query = strings.TrimSpace(query)
@@ -993,7 +1004,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = s.listPageSize
 	}
 
 	search.DisplayID = strings.TrimSpace(search.DisplayID)
@@ -1236,7 +1247,7 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = s.listPageSize
 	}
 	normalized := make([]string, 0, len(entryTypes))
 	for _, entryType := range entryTypes {

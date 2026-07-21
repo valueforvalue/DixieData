@@ -132,7 +132,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 				<div class="jobs-progress-overlay" data-jobs-progress-region { htmxattr.Mux{
 					Get:     routebuilder.ActiveJobs(),
 					Swap:    "innerHTML",
-					Trigger: "load, every 3s",
+					Trigger: "load, every "+configJobsPoll(ctx),
 				}.Attrs()... }></div>
 			}
 			<div class="app-shell">
@@ -196,7 +196,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// mega-menu trigger button; the wire shape (span
 					// + hx-get + hx-trigger + hx-swap + hx-target=
 					// "this") is byte-identical.
-					@components.MegaMenuWithBadge("Share & Review", uiids.LayoutShareReviewMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`), []components.MegaGroup{
+					@components.MegaMenuWithBadge("Share & Review", uiids.LayoutShareReviewMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every `+configReviewBadgePoll(ctx)+`" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`), []components.MegaGroup{
 						// Column 1: Review & Research. The 5 items mirror
 						// the pre-#380 R&R foldout (issue #378 slice 2)
 						// + the standalone Insights pill that used to

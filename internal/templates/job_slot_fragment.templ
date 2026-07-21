@@ -43,7 +43,7 @@ templ JobStatusSlotFragment(job jobs.Job) {
 			hx-trigger="none"
 		} else {
 			hx-get={ templ.SafeURL(routebuilder.JobStatusSlot(job.ID)) }
-			hx-trigger="every 2s"
+			hx-trigger={ "every "+configJobStatusPoll(ctx) }
 			hx-swap="innerHTML"
 			hx-target="[data-jobs-progress-region]"
 		}>

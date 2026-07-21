@@ -31,13 +31,14 @@ import (
 // config file is missing. Zero-value Config is NOT valid — always
 // use Defaults() or Load().
 type Config struct {
-	Window  WindowConfig  `json:"window"`
-	UI      UIConfig      `json:"ui"`
-	Limits  LimitsConfig  `json:"limits"`
-	Timing  TimingConfig  `json:"timing"`
-	PDF     PDFConfig     `json:"pdf"`
-	Google  GoogleConfig  `json:"google"`
-	Theme   ThemeConfig   `json:"theme"`
+	Window   WindowConfig   `json:"window"`
+	UI       UIConfig       `json:"ui"`
+	Calendar CalendarConfig `json:"calendar"`
+	Limits   LimitsConfig   `json:"limits"`
+	Timing   TimingConfig   `json:"timing"`
+	PDF      PDFConfig      `json:"pdf"`
+	Google   GoogleConfig   `json:"google"`
+	Theme    ThemeConfig    `json:"theme"`
 }
 
 // WindowConfig controls the OS window at launch.
@@ -50,6 +51,11 @@ type WindowConfig struct {
 type UIConfig struct {
 	ToastDurationMs int    `json:"toast_duration_ms"`
 	LandingPage     string `json:"landing_page"`
+}
+
+// CalendarConfig controls calendar display preferences.
+type CalendarConfig struct {
+	Timezone string `json:"timezone"`
 }
 
 // LimitsConfig controls caps and retention policies.
@@ -142,6 +148,9 @@ func Defaults() Config {
 		UI: UIConfig{
 			ToastDurationMs: 4000,
 			LandingPage:     "/calendar",
+		},
+		Calendar: CalendarConfig{
+			Timezone: "America/Chicago",
 		},
 		Limits: LimitsConfig{
 			BrowseDefaultPageSize:    100,
@@ -278,6 +287,9 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.UI.LandingPage != "" {
 		dst.UI.LandingPage = src.UI.LandingPage
 	}
+	if src.Calendar.Timezone != "" {
+		dst.Calendar.Timezone = src.Calendar.Timezone
+	}
 	if src.Limits.BrowseDefaultPageSize != 0 {
 		dst.Limits.BrowseDefaultPageSize = src.Limits.BrowseDefaultPageSize
 	}
@@ -395,6 +407,7 @@ func mergeConfig(dst *Config, src *Config) {
 type ClientConfig struct {
 	ToastDurationMs         int    `json:"toastDurationMs"`
 	LandingPage             string `json:"landingPage"`
+	CalendarTimezone        string `json:"calendarTimezone"`
 	RecentRecordsCap        int    `json:"recentRecordsCap"`
 	ResearchRecentsCap      int    `json:"researchRecentsCap"`
 	BackStackDepth          int    `json:"backStackDepth"`
@@ -416,6 +429,7 @@ func (c Config) ForClient() ClientConfig {
 	return ClientConfig{
 		ToastDurationMs:        c.UI.ToastDurationMs,
 		LandingPage:            c.UI.LandingPage,
+		CalendarTimezone:       c.Calendar.Timezone,
 		RecentRecordsCap:       c.Limits.RecentRecordsCap,
 		ResearchRecentsCap:     c.Limits.ResearchRecentsCap,
 		BackStackDepth:         c.Limits.BackStackDepth,

@@ -3,6 +3,7 @@ package templates
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/config"
 )
@@ -217,4 +218,46 @@ func layoutConfigJSON(ctx context.Context) string {
 		return "{}"
 	}
 	return string(data)
+}
+
+// configJobsPoll returns the hx-trigger poll interval for the
+// jobs overlay. Returns "3s" by default when no config is set.
+func configJobsPoll(ctx context.Context) string {
+	cfg := LayoutConfigFromContext(ctx)
+	if cfg.JobsPollMs > 0 {
+		ms := cfg.JobsPollMs
+		if ms%1000 == 0 {
+			return fmt.Sprintf("%ds", ms/1000)
+		}
+		return fmt.Sprintf("%dms", ms)
+	}
+	return "3s"
+}
+
+// configReviewBadgePoll returns the hx-trigger poll interval for
+// the review-count badge. Returns "30s" by default.
+func configReviewBadgePoll(ctx context.Context) string {
+	cfg := LayoutConfigFromContext(ctx)
+	if cfg.ReviewBadgePollMs > 0 {
+		ms := cfg.ReviewBadgePollMs
+		if ms%1000 == 0 {
+			return fmt.Sprintf("%ds", ms/1000)
+		}
+		return fmt.Sprintf("%dms", ms)
+	}
+	return "30s"
+}
+
+// configJobStatusPoll returns the hx-trigger poll interval for
+// job status fragments. Returns "2s" by default.
+func configJobStatusPoll(ctx context.Context) string {
+	cfg := LayoutConfigFromContext(ctx)
+	if cfg.JobStatusPollMs > 0 {
+		ms := cfg.JobStatusPollMs
+		if ms%1000 == 0 {
+			return fmt.Sprintf("%ds", ms/1000)
+		}
+		return fmt.Sprintf("%dms", ms)
+	}
+	return "2s"
 }
