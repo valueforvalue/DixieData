@@ -153,8 +153,11 @@ lint-runtime-microcopy-test:
 # Existing lint aggregate. Individual recipes remain independently runnable.
 lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
 
-audit:
-    npm run audit
+audit-build:
+    go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+    go run ./scripts/bake-release-notes
+    go run ./scripts/bake-activity
+    bash -euc 'mkdir -p build/bin && go build -o build/bin/dixiedata-web ./cmd/dixiedata-web && go build -o build/bin/seed-data ./cmd/seed-data'
 
 clean:
     pwsh -NoLogo -NoProfile -Command "Remove-Item build -Recurse -Force -ErrorAction SilentlyContinue"
