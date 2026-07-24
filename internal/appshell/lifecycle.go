@@ -28,7 +28,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/update"
 )
 
-
 // --- bufferedResponseWriter + methods ---
 type bufferedResponseWriter struct {
 	header     http.Header
@@ -500,18 +499,17 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/recovery", http.StatusSeeOther)
 		return
 	}
-	if a.startupErr != nil {
-		// Issue #214: an htmx fragment request during a startupErr
-		// state used to get a 500 with a text/plain body containing
-		// the raw Go error message. htmx would swap it into the swap
-		// target's innerHTML, showing the error text in the badge
-		// wrapper. See blockIfFragment in fragment_guard.go for the
-		// contract; full-page nav still gets the 500 with the error
-		// text.
-		if blockIfFragment(w, r, "/recovery") {
+	if a.startupErr != nil && r.URL.Path != "/startup-error" {
+		// Keep fragment targets clean, but send the browser to a
+		// DB-independent full-page error surface. The ordinary recovery
+		// route belongs to updater Restore Points and cannot render a
+		// normal startupErr.
+		if blockIfFragment(w, r, "/startup-error") {
 			return
 		}
-		http.Error(w, a.startupErr.Error(), http.StatusInternalServerError)
+		a.respondErrorPage(w, r, KindUnavailable,
+			"DixieData could not open this Local Archive. The archive may need a schema migration or recovery.",
+			a.startupErr)
 		return
 	}
 	if a.setupRequired && !setupRequestAllowed(r.URL.Path) {
