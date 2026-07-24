@@ -64,6 +64,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install frontend dependencies
+        shell: pwsh
+        run: npm ci
+
       - name: Install Just
         uses: extractions/setup-just@v2
         with:
@@ -73,30 +77,11 @@ jobs:
         shell: pwsh
         run: just --version
 
-      - name: Build CSS (frontend/app.css)
+      - name: Generate shared inputs
         shell: pwsh
-        run: |
-          npm ci
-          npx tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify
+        run: just generate
         timeout-minutes: 5
 
-      - name: Regenerate templ files
-        shell: pwsh
-        run: |
-          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
-        timeout-minutes: 5
-
-      - name: Bake release-history + activity-history files
-        shell: pwsh
-        run: |
-          # internal/activityhistory/baked.go +
-          # internal/releasehistory/baked.go are gitignored.
-          # `go test -race ./...` compiles the full tree which
-          # imports activityhistory + releasehistory → fails
-          # with `undefined: baked` if these aren't generated.
-          go run ./scripts/bake-release-notes
-          go run ./scripts/bake-activity
-        timeout-minutes: 5
 
       - name: Restore Typst binary for render tests
         shell: pwsh
@@ -174,15 +159,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-node@v4
         with:
-          go-version: '1.25'
-          cache: true
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Regenerate templ files
+      - name: Install frontend dependencies
         shell: pwsh
-        run: |
-          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+        run: npm ci
+
+      - name: Install Just
+        uses: extractions/setup-just@v2
+        with:
+          just-version: 1.57.0
+
+      - name: Verify Just
+        shell: pwsh
+        run: just --version
+
+      - name: Generate shared inputs
+        shell: pwsh
+        run: just generate
         timeout-minutes: 5
 
       - name: Go test (stress harness)

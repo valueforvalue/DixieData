@@ -40,18 +40,11 @@ jobs:
         shell: pwsh
         run: just --version
 
-      - name: Build CSS (frontend/app.css)
+      - name: Generate shared inputs
         shell: pwsh
-        run: |
-          npm ci
-          npx tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify
+        run: just generate
         timeout-minutes: 5
 
-      - name: Regenerate templ files
-        shell: pwsh
-        run: |
-          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
-        timeout-minutes: 5
 
       - name: Restore Typst binary for render tests
         shell: pwsh
