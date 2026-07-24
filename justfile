@@ -153,7 +153,50 @@ lint-runtime-microcopy-test:
 # Existing lint aggregate. Individual recipes remain independently runnable.
 lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
 
-audit-build:
+tune:
+    pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"
+    pwsh -NoLogo -NoProfile -Command "Set-Location tools/tune; go build -o bin/dixiedata-tune.exe ."
+
+tune-smoke:
+    pwsh -NoLogo -NoProfile -Command "if (-not (Test-Path .dixiedata)) { throw 'no .dixiedata/ directory; run the appshell once first' }; Set-Location tools/tune; go build -o bin/dixiedata-tune.exe .; Set-Location ../..; ./tools/tune/bin/dixiedata-tune.exe --db .dixiedata render --template bulk_soldier --mode bulk --out (Join-Path (Get-Location) 'build/log/tune-smoke.pdf')"
+
+render-round:
+    pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round 1
+
+render-round-ONE ROUND='1' SURFACE='single-soldier-landscape' KEEP='1' RECORD='1':
+    pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round {{ROUND}} -Only {{SURFACE}} -KeepRounds {{KEEP}} -Record {{RECORD}}
+
+update-snapshots-ONE:
+    pwsh -NoLogo -NoProfile -Command "$env:UPDATE_SNAPSHOTS='1'; go test -count=1 -run ('TestArchiveContractSnapshots/' + $env:SURFACE) ./internal/exportcontract/ -timeout 120s"
+
+tune-snapshots:
+    pwsh -NoLogo -NoProfile -Command "$env:UPDATE_SNAPSHOTS='1'; go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s"
+
+render-svg:
+    pwsh -NoLogo -NoProfile -Command "if (Test-Path /c/Users/value/bin/render-svg.sh) { /c/Users/value/bin/render-svg.sh all 4 } else { Write-Host 'render-svg helper unavailable; skipping' }"
+
+lint-migration-columns:
+    node audit/smoke_migration_columns.mjs
+lint-defer-close:
+    pwsh -NoLogo -NoProfile -Command "Set-Location tools/lintrules; go build -o bin/lintrules.exe ./cmd/lintrules; Set-Location ../..; New-Item -ItemType Directory -Force build/log | Out-Null; go vet -vettool=tools/lintrules/bin/lintrules.exe ./..."
+lint-bare-templ-render:
+    pwsh -NoLogo -NoProfile -Command "Set-Location tools/lintrules; go build -o bin/lintrules.exe ./cmd/lintrules; Set-Location ../..; go vet -vettool=tools/lintrules/bin/lintrules.exe ./..."
+lint-swallowed-errors: lint-defer-close lint-bare-templ-render lint-no-bare-catch
+probe-dispatcher-contract:
+    node audit/probe-dispatcher-contract.mjs
+probe-error-surfaces:
+    node audit/probe-error-surfaces.mjs
+
+promote-dry-run:
+    pwsh -NoLogo -NoProfile -Command "Write-Host 'Promotion gate delegated to release protocol'; git status --short; git diff --check"
+promote:
+    bash scripts/promote-open-pr.sh
+promote-confirm:
+    pwsh -NoLogo -NoProfile -Command "Write-Host 'Confirm stable promotion manually after merge'"
+
+changelog-archive:
+    pwsh -NoLogo -NoProfile -File scripts/archive-changelog.ps1
+
     go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
     go run ./scripts/bake-release-notes
     go run ./scripts/bake-activity
