@@ -29,6 +29,15 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install Just
+        uses: extractions/setup-just@v2
+        with:
+          just-version: 1.57.0
+
+      - name: Verify Just
+        shell: pwsh
+        run: just --version
+
       - name: Build CSS (frontend/app.css)
         shell: pwsh
         run: |
@@ -160,8 +169,8 @@ jobs:
       - name: htmx-guard lint (issue #316)
         shell: bash
         run: |
-          make lint-htmx-guard-strict
-          make lint-htmx-guard-test
+          just lint-htmx-guard-strict
+          just lint-htmx-guard-test
         timeout-minutes: 5
 
       # UX microcopy lint (issue #561). Static source scan over
@@ -178,8 +187,8 @@ jobs:
       - name: UX microcopy lint (issue #561, --strict)
         shell: bash
         run: |
-          make lint-microcopy-strict
-          make lint-microcopy-test
+          just lint-microcopy-strict
+          just lint-microcopy-test
         timeout-minutes: 3
 
       # Static Archive microcopy lint (issue #581, Slice 1). This
@@ -191,8 +200,8 @@ jobs:
       - name: Static Archive microcopy lint (issue #581, --strict)
         shell: bash
         run: |
-          make lint-static-archive-microcopy-strict
-          make lint-static-archive-microcopy-test
+          just lint-static-archive-microcopy-strict
+          just lint-static-archive-microcopy-test
         timeout-minutes: 3
 
       # Typst PDF microcopy lint (issue #581, Slice 2). Format-aware
@@ -205,8 +214,8 @@ jobs:
       - name: Typst PDF microcopy lint (issue #581, --strict)
         shell: bash
         run: |
-          make lint-pdf-microcopy-strict
-          make lint-pdf-microcopy-test
+          just lint-pdf-microcopy-strict
+          just lint-pdf-microcopy-test
         timeout-minutes: 3
 
       # iCalendar microcopy lint (issue #581, Slice 3, audit-only).
@@ -218,8 +227,8 @@ jobs:
       - name: iCalendar microcopy lint (issue #581, --strict)
         shell: bash
         run: |
-          make lint-icalendar-microcopy-strict
-          make lint-icalendar-microcopy-test
+          just lint-icalendar-microcopy-strict
+          just lint-icalendar-microcopy-test
         timeout-minutes: 3
 
       # Runtime + server + startup + CLI microcopy lint (issue
@@ -233,8 +242,8 @@ jobs:
       - name: Runtime microcopy lint (issue #581, --strict)
         shell: bash
         run: |
-          make lint-runtime-microcopy-strict
-          make lint-runtime-microcopy-test
+          just lint-runtime-microcopy-strict
+          just lint-runtime-microcopy-test
         timeout-minutes: 3
 
       # slice 4 — CI gate). The frontend ships raw from disk via

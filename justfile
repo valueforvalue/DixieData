@@ -117,8 +117,35 @@ lint-no-bare-catch:
 lint-typecheck:
     npm run typecheck
 
+lint-dialog-guard:
+    node audit/smoke_dialog_guard.mjs
+lint-dialog-guard-strict:
+    node audit/smoke_dialog_guard.mjs --strict
+lint-microcopy:
+    node audit/smoke_microcopy.mjs
+lint-microcopy-strict:
+    node audit/smoke_microcopy.mjs --strict
+lint-microcopy-test:
+    node audit/smoke_microcopy.test.mjs
+lint-static-archive-microcopy-strict:
+    node audit/smoke_static_archive_microcopy.mjs --strict
+lint-static-archive-microcopy-test:
+    node audit/smoke_static_archive_microcopy.test.mjs
+lint-pdf-microcopy-strict:
+    node audit/smoke_pdf_microcopy.mjs --strict
+lint-pdf-microcopy-test:
+    node audit/smoke_pdf_microcopy.test.mjs
+lint-icalendar-microcopy-strict:
+    node audit/smoke_icalendar_microcopy.mjs --strict
+lint-icalendar-microcopy-test:
+    node audit/smoke_icalendar_microcopy.test.mjs
+lint-runtime-microcopy-strict:
+    node audit/smoke_runtime_microcopy.mjs --strict
+lint-runtime-microcopy-test:
+    node audit/smoke_runtime_microcopy.test.mjs
+
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-no-bare-catch lint-typecheck
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
 
 audit:
     npm run audit
