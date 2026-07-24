@@ -31,6 +31,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install frontend dependencies
+        shell: pwsh
+        run: npm ci
+
       - name: Install Just
         uses: extractions/setup-just@v2
         with:
