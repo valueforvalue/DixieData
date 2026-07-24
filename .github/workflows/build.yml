@@ -46,6 +46,10 @@ jobs:
         shell: pwsh
         run: just --version
 
+      - name: Install frontend dependencies
+        shell: pwsh
+        run: npm ci
+
       - name: Build (just debug)
         shell: pwsh
         run: |
