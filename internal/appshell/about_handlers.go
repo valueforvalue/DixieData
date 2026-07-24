@@ -125,6 +125,7 @@ func buildActivityView(snap *activityhistory.Snapshot) *viewmodel.ActivitySnapsh
 		return v.IssuesClosed.ByType[i].Type < v.IssuesClosed.ByType[j].Type
 	})
 	v.IssuesClosed.TotalClosed = snap.IssuesClosed.TotalClosed
+	v.IssuesClosed.UncategorizedCount = snap.IssuesClosed.UncategorizedCount
 	v.IssuesClosed.GeneratedAt = snap.IssuesClosed.GeneratedAt
 	return v
 }

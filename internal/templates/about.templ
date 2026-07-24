@@ -363,13 +363,20 @@ templ aboutActivityPerRelease(act *viewmodel.ActivitySnapshotView) {
 // stacked bar + the legend. The bar itself is a flex row of
 // divs (one per Type); each div's width is proportional to
 // its share of TotalClosed. The legend lists the same buckets
-// with their counts.
+// with their counts. Issues without a canonical Type label
+// (uncategorized) are rendered as a separate slice at the
+// right of the bar so the total adds up to TotalClosed. Issue #650.
 templ aboutActivityIssuesClosed(act *viewmodel.ActivitySnapshotView) {
 	<div data-about-activity-issues-closed>
 		<h3 class="text-base font-semibold text-[var(--theme-text-primary)]">Issues closed by type</h3>
 		if act.IssuesClosed.TotalClosed == 0 {
 			<p class="mt-2 text-sm text-slate-500">No closed issues baked yet.</p>
 		} else {
+			if act.IssuesClosed.UncategorizedCount == 0 {
+				<p class="mt-2 text-sm text-slate-500" data-about-activity-issues-total-count>{ fmt.Sprintf("%d closed issues.", act.IssuesClosed.TotalClosed) }</p>
+			} else {
+				<p class="mt-2 text-sm text-slate-500" data-about-activity-issues-total-count>{ fmt.Sprintf("%d closed issues (%d with no Type label).", act.IssuesClosed.TotalClosed, act.IssuesClosed.UncategorizedCount) }</p>
+			}
 			<div class="mt-3 flex h-6 w-full overflow-hidden rounded-md border border-[rgb(var(--theme-sepia-rgb)/0.35)]" data-about-activity-issues-bar>
 				for _, b := range act.IssuesClosed.ByType {
 					<div
@@ -379,12 +386,26 @@ templ aboutActivityIssuesClosed(act *viewmodel.ActivitySnapshotView) {
 						title={ fmt.Sprintf("%s: %d", b.Type, b.Count) }
 					></div>
 				}
+				if act.IssuesClosed.UncategorizedCount > 0 {
+					<div
+						class="h-full"
+						style={ fmt.Sprintf("width: %s%%; background-color: %s;", bucketPercent(act.IssuesClosed.UncategorizedCount, act.IssuesClosed.TotalClosed), bucketColor("uncategorized")) }
+						data-about-activity-issues-bucket="uncategorized"
+						title={ fmt.Sprintf("uncategorized: %d", act.IssuesClosed.UncategorizedCount) }
+					></div>
+				}
 			</div>
 			<ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
 				for _, b := range act.IssuesClosed.ByType {
 					<li class="inline-flex items-center gap-1.5" data-about-activity-issues-legend={ b.Type }>
 						<span class="inline-block h-2.5 w-2.5 rounded-sm" style={ fmt.Sprintf("background-color: %s;", bucketColor(b.Type)) }></span>
 						<span class="text-slate-700">{ b.Type } &middot; { fmt.Sprintf("%d", b.Count) }</span>
+					</li>
+				}
+				if act.IssuesClosed.UncategorizedCount > 0 {
+					<li class="inline-flex items-center gap-1.5" data-about-activity-issues-legend="uncategorized">
+						<span class="inline-block h-2.5 w-2.5 rounded-sm" style={ fmt.Sprintf("background-color: %s;", bucketColor("uncategorized")) }></span>
+						<span class="text-slate-700">uncategorized &middot; { fmt.Sprintf("%d", act.IssuesClosed.UncategorizedCount) }</span>
 					</li>
 				}
 			</ul>
@@ -420,6 +441,13 @@ func bucketColor(typeName string) string {
 		return "#9c9c9c" // grey
 	case "wontfix":
 		return "#6b6b6b" // dark grey
+	case "uncategorized":
+		// Neutral grey for closed issues with no canonical Type
+		// label. Picked to stand out from the sepia/gold/red
+		// family of the Type palette so the user reads it as
+		// "uncategorized" rather than "another Type I missed".
+		// Issue #650.
+		return "#c4c4c4"
 	}
 	return "#cccccc"
 }

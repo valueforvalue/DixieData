@@ -595,3 +595,112 @@ func TestAboutViewGlossaryBoundedHeight(t *testing.T) {
 		}
 	}
 }
+
+// TestAboutActivityIssuesClosedUncategorizedBucket pins
+// the issue #650 contract: the /about page's
+// "Issues closed by type" widget renders the uncategorized
+// bucket as a separate bar slice + legend row when the bake
+// reports a non-zero UncategorizedCount. The total-count
+// line names the uncategorized count so the user reads the
+// "Total + uncategorized" composition at a glance (pre-#650
+// the unlabeled / non-canonical-Type issues were silently
+// dropped from the total).
+func TestAboutActivityIssuesClosedUncategorizedBucket(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Activity: &viewmodel.ActivitySnapshotView{
+			GeneratedAt:      "2026-07-20",
+			FirstCommitDate:  "2025-07-15",
+			LatestCommitDate: "2026-07-15",
+			TotalCommits:     1213,
+			TotalContributors: 7,
+			HeatmapData:      `{}`,
+			TopContributors:  nil,
+			PerRelease:       nil,
+			IssuesClosed: viewmodel.IssuesClosedView{
+				TotalClosed:         420,
+				UncategorizedCount: 30,
+				GeneratedAt:         "2026-07-20T00:00:00Z",
+				ByType: []viewmodel.TypeBucket{
+					{Type: "bug", Count: 200},
+					{Type: "enhancement", Count: 190},
+				},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		// Total-count line names the uncategorized count.
+		`data-about-activity-issues-total-count`,
+		`420 closed issues (30 with no Type label).`,
+		// Uncategorized bucket reaches the bar markup.
+		`data-about-activity-issues-bucket="uncategorized"`,
+		// Uncategorized legend row reaches the markup.
+		`data-about-activity-issues-legend="uncategorized"`,
+		// Existing bug + enhancement buckets still rendered.
+		`data-about-activity-issues-bucket="bug"`,
+		`data-about-activity-issues-bucket="enhancement"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about activity issues-closed uncategorized missing %q (#650)", want)
+		}
+	}
+}
+
+// TestAboutActivityIssuesClosedZeroUncategorized pins the
+// "all issues have a Type label" case: when
+// UncategorizedCount == 0 the total-count line omits the
+// "(N with no Type label)" parenthetical (the simpler
+// "N closed issues." form is used) and no uncategorized
+// bar slice or legend row reaches the DOM. Issue #650.
+func TestAboutActivityIssuesClosedZeroUncategorized(t *testing.T) {
+	view := viewmodel.AboutView{
+		AppName: "DixieData", Version: "1.1.4", Codename: "First Manassas", Schema: 67,
+		Activity: &viewmodel.ActivitySnapshotView{
+			GeneratedAt:      "2026-07-20",
+			FirstCommitDate:  "2025-07-15",
+			LatestCommitDate: "2026-07-15",
+			TotalCommits:     1213,
+			TotalContributors: 7,
+			HeatmapData:      `{}`,
+			TopContributors:  nil,
+			PerRelease:       nil,
+			IssuesClosed: viewmodel.IssuesClosedView{
+				TotalClosed:         100,
+				UncategorizedCount: 0,
+				GeneratedAt:         "2026-07-20T00:00:00Z",
+				ByType: []viewmodel.TypeBucket{
+					{Type: "bug", Count: 60},
+					{Type: "enhancement", Count: 40},
+				},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	if err := AboutView(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, want := range []string{
+		`100 closed issues.`,
+		`data-about-activity-issues-bucket="bug"`,
+		`data-about-activity-issues-bucket="enhancement"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("about activity issues-closed zero-uncategorized missing %q (#650)", want)
+		}
+	}
+	for _, banned := range []string{
+		`data-about-activity-issues-bucket="uncategorized"`,
+		`data-about-activity-issues-legend="uncategorized"`,
+		`with no Type label`,
+	} {
+		if strings.Contains(content, banned) {
+			t.Errorf("about activity issues-closed zero-uncategorized should NOT contain %q (#650)", banned)
+		}
+	}
+}

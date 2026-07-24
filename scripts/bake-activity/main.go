@@ -19,6 +19,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"go/format"
 	"log"
@@ -287,41 +288,94 @@ func gitLogContributors(root, rangeSpec string) ([]string, error) {
 }
 
 // fetchClosedIssues fetches all closed GitHub Issues via the
-// gh CLI, paginating until exhausted. The bake accepts that
-// this requires `gh auth login` -- a non-authenticated dev
-// environment bakes with an empty issues summary.
-func fetchClosedIssues() ([]parse.IssueLabel, error) {
-	all := []parse.IssueLabel{}
-	page := 1
-	for {
-		// gh api paginates automatically with --paginate; we use
-		// explicit page+per_page for the per-call JSON parsing.
+// gh CLI, paginating until exhausted. Each page returns
+// structured records (issue_number, labels, pull_request
+// discriminator); the previous implementation flattened the
+// response to label names only and double-counted issues
+// with multiple Type labels (issue #650). Pagination now
+// terminates on the upstream record count (per_page), not
+// on the flattened label output; an unlabeled page does not
+// stop the loop. The bake accepts that this requires `gh
+// auth login` -- a non-authenticated dev environment bakes
+// with an empty issues summary.
+func fetchClosedIssues() ([]parse.ClosedIssue, error) {
+	runPage := func(page int) ([]byte, error) {
 		cmd := exec.Command("gh", "api",
 			fmt.Sprintf("repos/valueforvalue/DixieData/issues?state=closed&per_page=100&page=%d", page),
-			"--jq", ".[].labels[].name",
 		)
-		out, err := cmd.Output()
+		return cmd.Output()
+	}
+	return fetchClosedIssuesPaged(runPage, 100, 50)
+}
+
+// fetchClosedIssuesPaged paginates through the closed-issues
+// endpoint until exhausted. pulled pulls one page of records
+// (the raw JSON body); perPage is the upstream per_page
+// value; maxPages is the safety cap (50 pages * 100 = 5000
+// issues, well over the repo's current count). Extracted
+// from fetchClosedIssues so the pagination + JSON decode
+// path can be unit-tested with synthetic pages. Issue #650.
+func fetchClosedIssuesPaged(pulled func(page int) ([]byte, error), perPage, maxPages int) ([]parse.ClosedIssue, error) {
+	all := []parse.ClosedIssue{}
+	for page := 1; page <= maxPages; page++ {
+		out, err := pulled(page)
 		if err != nil {
 			return nil, fmt.Errorf("gh api page %d: %w", page, err)
 		}
 		text := strings.TrimSpace(string(out))
-		if text == "" || text == "null" {
+		if text == "" || text == "null" || text == "[]" {
 			break
 		}
-		for _, line := range strings.Split(text, "\n") {
-			if line == "" {
-				continue
-			}
-			all = append(all, parse.IssueLabel{Name: line})
+		records, err := parseClosedIssuesPage(out)
+		if err != nil {
+			return nil, fmt.Errorf("gh api page %d decode: %w", page, err)
 		}
-		page++
-		if page > 50 {
-			// Safety: 50 pages * 100 = 5000 issues, way more than
-			// the repo has today (500). Bail if we somehow hit it.
+		if len(records) == 0 {
+			break
+		}
+		all = append(all, records...)
+		// Pagination terminates on the record count, not on
+		// flattened label output. If a page returned fewer than
+		// perPage records, we have reached the last page. An
+		// unlabeled page is still a page; it does not stop the
+		// loop. Issue #650.
+		if len(records) < perPage {
 			break
 		}
 	}
 	return all, nil
+}
+
+// parseClosedIssuesPage decodes one page of the GitHub
+// /repos/{owner}/{repo}/issues?state=closed response. The
+// API returns both issues and PRs; the pull_request field
+// is a non-null object for PRs and null/absent for issues,
+// which we surface as IsPullRequest. Labels are flattened
+// to a name slice. Issue #650.
+func parseClosedIssuesPage(body []byte) ([]parse.ClosedIssue, error) {
+	var records []struct {
+		Number      int `json:"number"`
+		Labels      []struct {
+			Name string `json:"name"`
+		} `json:"labels"`
+		PullRequest *struct{} `json:"pull_request"`
+	}
+	if err := json.Unmarshal(body, &records); err != nil {
+		return nil, err
+	}
+	out := make([]parse.ClosedIssue, 0, len(records))
+	for _, rec := range records {
+		names := make([]string, 0, len(rec.Labels))
+		for _, l := range rec.Labels {
+			names = append(names, l.Name)
+		}
+		out = append(out, parse.ClosedIssue{
+			Number:        rec.Number,
+			Labels:        names,
+			IsPullRequest: rec.PullRequest != nil,
+		})
+	}
+	return out, nil
 }
 
 // buildSnapshot assembles the typed Snapshot from the inputs.
@@ -353,7 +407,7 @@ func gitLogRecentCommits(root string, capN int) ([]string, error) {
 	return lines, nil
 }
 
-func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivity, issueLabels []parse.IssueLabel, recentCommitLines []string) *parse.Snapshot {
+func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivity, closedIssues []parse.ClosedIssue, recentCommitLines []string) *parse.Snapshot {
 	perDay := parse.PerDayFromGitLog(entries)
 	// Compute top contributors from the rolling entries.
 	contribCounts := make(map[string]int)
@@ -376,8 +430,11 @@ func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivi
 			latest = e.Date
 		}
 	}
-	// Issues-closed.
-	issues := parse.IssuesClosedFromLabels(issueLabels)
+	// Issues-closed: each closed issue is counted exactly once
+	// (issue #650). Issues with a canonical Type label are
+	// bucketed; issues without one contribute to
+	// UncategorizedCount; pull requests are excluded.
+	issues := parse.IssuesClosedFromIssues(closedIssues)
 	issues.GeneratedAt = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	return &parse.Snapshot{
 		GeneratedAt:       time.Now().UTC().Format("2006-01-02T15:04:05Z"),
@@ -442,6 +499,7 @@ var baked = &Snapshot{
 	buf.WriteString("\tIssuesClosed: IssuesSummary{\n")
 	buf.WriteString(fmt.Sprintf("\t\tTotalClosed: %d,\n", snap.IssuesClosed.TotalClosed))
 	buf.WriteString(fmt.Sprintf("\t\tGeneratedAt: %q,\n", snap.IssuesClosed.GeneratedAt))
+	buf.WriteString(fmt.Sprintf("\t\tUncategorizedCount: %d,\n", snap.IssuesClosed.UncategorizedCount))
 	buf.WriteString("\t\tByType: map[string]int{\n")
 	keys = keys[:0]
 	for k := range snap.IssuesClosed.ByType {

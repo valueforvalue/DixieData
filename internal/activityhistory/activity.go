@@ -47,6 +47,12 @@ type ReleaseActivity = parse.ReleaseActivity
 // IssueLabel is one parsed label from a closed GitHub Issue.
 type IssueLabel = parse.IssueLabel
 
+// ClosedIssue is one parsed closed GitHub issue (issue #650).
+// The /issues endpoint returns both issues and pull requests;
+// the bake sets IsPullRequest from the upstream payload so the
+// aggregation can exclude PRs.
+type ClosedIssue = parse.ClosedIssue
+
 // IssuesSummary is the closed-issues breakdown by Type label.
 type IssuesSummary = parse.IssuesSummary
 
@@ -82,9 +88,19 @@ func TopContributors(in []ContributorCount, n int) []ContributorCount {
 	return parse.TopContributors(in, n)
 }
 
+// IssuesClosedFromIssues aggregates a slice of ClosedIssue
+// records into the per-type closed-issues summary. Each
+// issue is counted exactly once; issues with no canonical
+// Type label land in UncategorizedCount; pull requests are
+// excluded. Issue #650.
+func IssuesClosedFromIssues(issues []ClosedIssue) IssuesSummary {
+	return parse.IssuesClosedFromIssues(issues)
+}
+
 // IssuesClosedFromLabels aggregates a slice of issue labels
-// into the per-type closed-issues summary. Returns an empty
-// (non-nil) ByType map so the templ partial can iterate.
+// into the per-type closed-issues summary. Legacy aggregation
+// (issue #650); retained for the parse_test.go fixture that
+// pins its shape. New callers should use IssuesClosedFromIssues.
 func IssuesClosedFromLabels(labels []IssueLabel) IssuesSummary {
 	return parse.IssuesClosedFromLabels(labels)
 }

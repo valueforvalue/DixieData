@@ -192,9 +192,13 @@ func TestParseRecentCommitsNoTimeFilter(t *testing.T) {
 	_ = time.Time{}
 }
 
-// TestIssuesClosedBucketShape pins the closed-issues shape:
-// one bucket per canonical Type label. Empty archive ->
-// empty map (not nil) so the templ partial can iterate.
+// TestIssuesClosedBucketShape pins the closed-issues-by-Type
+// shape using the legacy IssuesClosedFromLabels aggregator.
+// The legacy path counts canonical Type label occurrences
+// (not unique issues); this fixture pins its shape so the
+// pre-#650 contract stays testable. New tally logic uses
+// IssuesClosedFromIssues — see the regression-net tests
+// below for the unique-issue contract (issue #650).
 func TestIssuesClosedBucketShape(t *testing.T) {
 	got := IssuesClosedFromLabels([]IssueLabel{
 		{Name: "bug"},
@@ -222,5 +226,177 @@ func TestIssuesClosedBucketShape(t *testing.T) {
 	}
 	if _, ok := got.ByType["area:frontend"]; ok {
 		t.Errorf("ByType[area:frontend] present; should have been excluded (not a Type label)")
+	}
+}
+
+// TestIssuesClosedFromIssues_UnlabeledIssueIncrementsTotal pins
+// the unlabeled-issues contract: a closed issue with no
+// labels still counts in TotalClosed AND in
+// UncategorizedCount. Pre-#650 the unlabeled issue vanished
+// entirely because the legacy aggregator only counted
+// canonical Type label occurrences. Issue #650.
+func TestIssuesClosedFromIssues_UnlabeledIssueIncrementsTotal(t *testing.T) {
+	got := IssuesClosedFromIssues([]ClosedIssue{
+		{Number: 1, Labels: []string{}},
+	})
+	if got.TotalClosed != 1 {
+		t.Errorf("TotalClosed = %d; want 1 (unlabeled issue still counted)", got.TotalClosed)
+	}
+	if got.UncategorizedCount != 1 {
+		t.Errorf("UncategorizedCount = %d; want 1 (no canonical Type label)", got.UncategorizedCount)
+	}
+	if len(got.ByType) != 0 {
+		t.Errorf("ByType = %v; want empty", got.ByType)
+	}
+}
+
+// TestIssuesClosedFromIssues_PullRequestExcluded pins the
+// pull-request contract: the /issues endpoint returns both
+// issues and PRs; the tally is issue-only. A record with
+// IsPullRequest == true must NOT contribute to TotalClosed,
+// ByType, or UncategorizedCount. Issue #650.
+func TestIssuesClosedFromIssues_PullRequestExcluded(t *testing.T) {
+	got := IssuesClosedFromIssues([]ClosedIssue{
+		{Number: 1, Labels: []string{"bug"}, IsPullRequest: true},
+		{Number: 2, Labels: []string{"bug"}, IsPullRequest: false},
+	})
+	if got.TotalClosed != 1 {
+		t.Errorf("TotalClosed = %d; want 1 (PR excluded)", got.TotalClosed)
+	}
+	if got.ByType["bug"] != 1 {
+		t.Errorf("ByType[bug] = %d; want 1 (only the issue, not the PR)", got.ByType["bug"])
+	}
+	if got.UncategorizedCount != 0 {
+		t.Errorf("UncategorizedCount = %d; want 0", got.UncategorizedCount)
+	}
+}
+
+// TestIssuesClosedFromIssues_OneIssueOneBucket pins the
+// "count each issue once" contract: an issue with multiple
+// canonical Type labels is counted in exactly one bucket.
+// The deterministic choice is the alphabetically first
+// matching label (e.g. "bug" wins over "enhancement" because
+// 'b' < 'e'). Pre-#650 the issue was counted in N buckets
+// (once per Type label) — the displayed total was canonical
+// type-label occurrences, not unique issues. Issue #650.
+func TestIssuesClosedFromIssues_OneIssueOneBucket(t *testing.T) {
+	got := IssuesClosedFromIssues([]ClosedIssue{
+		{Number: 1, Labels: []string{"enhancement", "bug"}},
+		{Number: 2, Labels: []string{"bug", "documentation"}},
+	})
+	if got.TotalClosed != 2 {
+		t.Errorf("TotalClosed = %d; want 2 (each issue counted once)", got.TotalClosed)
+	}
+	if got.ByType["bug"] != 2 {
+		t.Errorf("ByType[bug] = %d; want 2 (both issues alphabetically picked bug)", got.ByType["bug"])
+	}
+	if got.ByType["enhancement"] != 0 {
+		t.Errorf("ByType[enhancement] = %d; want 0 (issue #1 picked bug over enhancement)", got.ByType["enhancement"])
+	}
+	if got.ByType["documentation"] != 0 {
+		t.Errorf("ByType[documentation] = %d; want 0 (issue #2 picked bug over documentation)", got.ByType["documentation"])
+	}
+}
+
+// TestIssuesClosedFromIssues_NonCanonicalLabelUncategorized pins
+// the non-canonical-label contract: an issue that carries
+// Status / Area / Priority / Meta labels (but no canonical
+// Type) counts in TotalClosed + UncategorizedCount but does
+// not contribute to any ByType bucket. Pre-#650 the issue
+// was silently dropped from the total. Issue #650.
+func TestIssuesClosedFromIssues_NonCanonicalLabelUncategorized(t *testing.T) {
+	got := IssuesClosedFromIssues([]ClosedIssue{
+		{Number: 1, Labels: []string{"area:frontend", "needs-triage"}},
+		{Number: 2, Labels: []string{"priority:medium"}},
+	})
+	if got.TotalClosed != 2 {
+		t.Errorf("TotalClosed = %d; want 2", got.TotalClosed)
+	}
+	if got.UncategorizedCount != 2 {
+		t.Errorf("UncategorizedCount = %d; want 2", got.UncategorizedCount)
+	}
+	if len(got.ByType) != 0 {
+		t.Errorf("ByType = %v; want empty", got.ByType)
+	}
+}
+
+// TestIssuesClosedFromIssues_MixedFixture pins the full
+// contract in one fixture: canonical Type (bucketed),
+// non-canonical (uncategorized), unlabeled (uncategorized),
+// pull request (excluded), multiple Type labels (one bucket,
+// alphabetical wins). Issue #650.
+func TestIssuesClosedFromIssues_MixedFixture(t *testing.T) {
+	got := IssuesClosedFromIssues([]ClosedIssue{
+		{Number: 1, Labels: []string{"bug"}},                              // bucketed bug
+		{Number: 2, Labels: []string{"bug"}},                              // bucketed bug
+		{Number: 3, Labels: []string{"enhancement"}},                      // bucketed enhancement
+		{Number: 4, Labels: []string{"area:frontend"}},                    // uncategorized
+		{Number: 5, Labels: []string{}},                                   // uncategorized
+		{Number: 6, Labels: []string{"bug", "documentation"}, IsPullRequest: true},  // excluded (PR)
+		{Number: 7, Labels: []string{"enhancement", "documentation"}},     // bucketed documentation (alphabetical)
+	})
+	if got.TotalClosed != 6 {
+		t.Errorf("TotalClosed = %d; want 6 (7 issues - 1 PR)", got.TotalClosed)
+	}
+	if got.ByType["bug"] != 2 {
+		t.Errorf("ByType[bug] = %d; want 2", got.ByType["bug"])
+	}
+	if got.ByType["enhancement"] != 1 {
+		t.Errorf("ByType[enhancement] = %d; want 1", got.ByType["enhancement"])
+	}
+	if got.ByType["documentation"] != 1 {
+		t.Errorf("ByType[documentation] = %d; want 1 (issue #7 picked documentation over enhancement)", got.ByType["documentation"])
+	}
+	if got.UncategorizedCount != 2 {
+		t.Errorf("UncategorizedCount = %d; want 2 (issues #4 and #5)", got.UncategorizedCount)
+	}
+}
+
+// TestIssuesClosedFromIssues_EmptyInput pins the empty-input
+// contract: an empty issues slice returns an empty (non-nil)
+// map so the templ partial can iterate without a nil-check,
+// TotalClosed = 0, UncategorizedCount = 0. Issue #650.
+func TestIssuesClosedFromIssues_EmptyInput(t *testing.T) {
+	got := IssuesClosedFromIssues(nil)
+	if got.TotalClosed != 0 {
+		t.Errorf("TotalClosed = %d; want 0", got.TotalClosed)
+	}
+	if got.UncategorizedCount != 0 {
+		t.Errorf("UncategorizedCount = %d; want 0", got.UncategorizedCount)
+	}
+	if got.ByType == nil {
+		t.Errorf("ByType is nil; want empty map")
+	}
+	if len(got.ByType) != 0 {
+		t.Errorf("ByType length = %d; want 0", len(got.ByType))
+	}
+}
+
+// TestClosedIssue_TypeLabelForDeterministic pins the
+// deterministic-tiebreaker contract: when multiple canonical
+// Type labels are present, TypeLabelFor returns the
+// alphabetically first one. This is the contract the
+// aggregation relies on for byte-stable output. Issue #650.
+func TestClosedIssue_TypeLabelForDeterministic(t *testing.T) {
+	cases := []struct {
+		name   string
+		labels []string
+		want   string
+	}{
+		{"single bug", []string{"bug"}, "bug"},
+		{"single enhancement", []string{"enhancement"}, "enhancement"},
+		{"bug+enhancement picks bug", []string{"enhancement", "bug"}, "bug"},
+		{"documentation+enhancement picks documentation", []string{"enhancement", "documentation"}, "documentation"},
+		{"no canonical returns empty", []string{"area:frontend", "needs-triage"}, ""},
+		{"empty returns empty", []string{}, ""},
+		{"non-canonical ignored", []string{"bug", "area:frontend", "needs-triage"}, "bug"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			iss := ClosedIssue{Number: 1, Labels: c.labels}
+			if got := iss.TypeLabelFor(); got != c.want {
+				t.Errorf("TypeLabelFor(%v) = %q; want %q", c.labels, got, c.want)
+			}
+		})
 	}
 }

@@ -47,22 +47,64 @@ type ReleaseActivity struct {
 
 // IssueLabel is one parsed label from a closed GitHub Issue.
 // The bake fetches /repos/{owner}/{repo}/issues?state=closed
-// and extracts the label names.
+// and extracts the label names. Kept for backward compatibility
+// with the parse_test.go fixture that pins the issue #586
+// bucket shape; new callers should use ClosedIssue.
 type IssueLabel struct {
 	Name string
 }
 
+// ClosedIssue is one parsed closed GitHub issue. Records the
+// GitHub issue number, the label names, and whether the
+// upstream record is a pull request (the /issues endpoint
+// returns both). The bake uses IsPullRequest to exclude PRs
+// from the closed-issues-by-Type tally (issue #650).
+// Labels is the raw name list; the aggregation decides
+// which (if any) is the canonical Type.
+type ClosedIssue struct {
+	Number        int
+	Labels        []string
+	IsPullRequest bool
+}
+
+// TypeLabelFor returns the canonical Type label on an issue
+// (e.g. "bug", "enhancement"), or "" if none of the labels
+// match the canonical set. The deterministic choice when
+// multiple Type labels are present is the alphabetically
+// first matching label ("bug" < "enhancement" < etc.). This
+// is the contract the aggregation relies on.
+func (c ClosedIssue) TypeLabelFor() string {
+	var match string
+	for _, l := range c.Labels {
+		if !canonicalTypeLabels[l] {
+			continue
+		}
+		if match == "" || l < match {
+			match = l
+		}
+	}
+	return match
+}
+
+// HasCanonicalType reports whether the issue carries at
+// least one canonical Type label.
+func (c ClosedIssue) HasCanonicalType() bool {
+	return c.TypeLabelFor() != ""
+}
+
 // IssuesSummary is the closed-issues breakdown by Type label.
-// TotalClosed counts issues with at least one canonical Type
-// label. ByType is keyed by the canonical Type name;
-// issues without a Type label are excluded from the per-type
-// counts but still counted in TotalClosed iff they have a
-// Status label (defensive; the bake source typically carries
-// the Type axis).
+// TotalClosed is the unique closed-issue count (pull requests
+// excluded). ByType is keyed by the canonical Type name.
+// UncategorizedCount is the count of closed issues with NO
+// canonical Type label — these are still closed issues but
+// carry only Status / Area / Priority / Meta labels (or no
+// labels at all). Surfaced as a separate bar slice on the
+// /about page so the total is visible at a glance. Issue #650.
 type IssuesSummary struct {
-	TotalClosed int
-	ByType      map[string]int
-	GeneratedAt string
+	TotalClosed         int
+	ByType              map[string]int
+	UncategorizedCount int
+	GeneratedAt         string
 }
 
 // RecentCommit is one parsed line of
@@ -211,9 +253,50 @@ func RecentCommitsFromGitLog(lines []string, cap int) []RecentCommit {
 	return out
 }
 
-// IssuesClosedFromLabels aggregates a slice of issue labels
-// into the per-type closed-issues summary. Returns an empty
-// (non-nil) ByType map so the templ partial can iterate.
+// IssuesClosedFromIssues aggregates a slice of ClosedIssue
+// records into the per-type closed-issues summary. Each
+// issue is counted exactly once. Issues with a canonical
+// Type label are bucketed under that Type (alphabetically
+// first wins when multiple are present). Issues without a
+// canonical Type label do not contribute to ByType but DO
+// contribute to TotalClosed + UncategorizedCount. Pull
+// requests (IsPullRequest == true) are excluded entirely
+// (before the counter increments). Returns an empty (non-nil)
+// ByType map so the templ partial can iterate without a
+// nil-check. Issue #650.
+func IssuesClosedFromIssues(issues []ClosedIssue) IssuesSummary {
+	byType := make(map[string]int)
+	total := 0
+	uncategorized := 0
+	for _, iss := range issues {
+		// Exclude pull requests: the /issues endpoint returns
+		// both issues and PRs; the /about page's "Issues closed
+		// by type" tally is issue-only. PRs are tracked in
+		// RecentCommits / PerRelease already.
+		if iss.IsPullRequest {
+			continue
+		}
+		total++
+		if t := iss.TypeLabelFor(); t != "" {
+			byType[t]++
+		} else {
+			uncategorized++
+		}
+	}
+	return IssuesSummary{
+		TotalClosed:         total,
+		ByType:              byType,
+		UncategorizedCount: uncategorized,
+	}
+}
+
+// IssuesClosedFromLabels is the legacy aggregator that
+// counted each canonical Type label occurrence. It
+// undercounted unique closed issues (issue #650) and is
+// retained only for the parse_test.go fixture that pins
+// its shape. New callers should use IssuesClosedFromIssues.
+// Each label in the input is counted once, mirroring the
+// pre-#650 contract.
 func IssuesClosedFromLabels(labels []IssueLabel) IssuesSummary {
 	byType := make(map[string]int)
 	total := 0

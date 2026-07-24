@@ -1053,11 +1053,16 @@ type Contributor struct {
 }
 
 // IssuesClosedView is the viewmodel projection of
-// activityhistory.IssuesSummary.
+// activityhistory.IssuesSummary. UncategorizedCount is the
+// count of closed issues with no canonical Type label — these
+// are still closed issues (just missing the Type axis); the
+// /about page surfaces them as a separate bar slice so the
+// total is visible at a glance. Issue #650.
 type IssuesClosedView struct {
-	TotalClosed int
-	GeneratedAt string
-	ByType      []TypeBucket
+	TotalClosed         int
+	UncategorizedCount int
+	GeneratedAt         string
+	ByType              []TypeBucket
 }
 
 // TypeBucket is one entry in the issues-closed-by-Type
