@@ -272,9 +272,9 @@ jobs:
       - name: Frontend type-check + JS regression nets (typecheck-baseline)
         shell: bash
         run: |
-          make lint-typecheck
-          make lint-dispatcher-tdz-test
-          make lint-typecheck-augmentations-test
+          just lint-typecheck
+          just lint-dispatcher-tdz-test
+          just lint-typecheck-augmentations-test
         timeout-minutes: 10
 
       # Schema-touching detector (build-protocol.md §4). If the

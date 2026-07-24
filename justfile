@@ -197,10 +197,14 @@ promote-confirm:
 changelog-archive:
     pwsh -NoLogo -NoProfile -File scripts/archive-changelog.ps1
 
+audit-build:
     go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
     go run ./scripts/bake-release-notes
     go run ./scripts/bake-activity
     bash -euc 'mkdir -p build/bin && go build -o build/bin/dixiedata-web ./cmd/dixiedata-web && go build -o build/bin/seed-data ./cmd/seed-data'
+
+audit:
+    npm run audit
 
 clean:
     pwsh -NoLogo -NoProfile -Command "Remove-Item build -Recurse -Force -ErrorAction SilentlyContinue"

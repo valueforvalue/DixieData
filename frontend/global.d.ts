@@ -69,6 +69,7 @@ interface DixieDataWindow {
     copyEntries?: () => void | Promise<void>;
     [key: string]: unknown;
   };
+  __dixieConfig?: Record<string, number>;
   __dixieDebugDisabled?: boolean;
   __dixieGoogleSettings?: Record<string, unknown>;
   __dixieLocalSettings?: Record<string, unknown>;
