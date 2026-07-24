@@ -88,10 +88,10 @@ freshness: debug
     tools/tune/bin/dixiedata-tune.exe -h
     build/bin/DixieData.exe --smoke --json
 
-verify-fresh-bake:
+clean-generated:
     pwsh -NoLogo -NoProfile -Command "Remove-Item internal/templates/*_templ.go,internal/releasehistory/baked.go,internal/activityhistory/baked.go -Force -ErrorAction SilentlyContinue"
-    generate
-    test
+
+verify-fresh-bake: clean-generated generate test
 
 verify-clean: verify-fresh-bake
 
