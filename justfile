@@ -127,6 +127,8 @@ lint-dialog-guard:
     node audit/smoke_dialog_guard.mjs
 lint-dialog-guard-strict:
     node audit/smoke_dialog_guard.mjs --strict
+lint-dialog-guard-test:
+    node --test audit/smoke_dialog_guard.test.mjs
 lint-microcopy:
     node audit/smoke_microcopy.mjs
 lint-microcopy-strict:
@@ -151,7 +153,7 @@ lint-runtime-microcopy-test:
     node audit/smoke_runtime_microcopy.test.mjs
 
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
 
 tune:
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"

@@ -20,8 +20,9 @@
 // Patterns accepted as "guarded" (any one of these in the
 // enclosing function body is sufficient):
 //
-//   1. enterInFlight(...)               — Pattern B (app.go inline)
-//   2. a.inFlight.LoadOrStore(...)      — raw sync.Map guard
+//   1. enterInFlight(...)               — Pattern B (app.go inline,
+//      legacy; folded into guardDialog in #615)
+//   2. a.inFlight.LoadOrStore(...)      — raw sync.Map guard (legacy)
 //   3. guardedSaveFileDialog(...)
 //      guardedOpenFileDialog(...)
 //      guardedOpenDirectoryDialog(...)
@@ -30,6 +31,9 @@
 //   4. errExportInFlight sentinel return — Pattern C (helpers
 //      like exportFullDatabasePDFPath that callers map back to
 //      a friendly response)
+//   5. guardDialog(...) + defer release() — Pattern D (post-#615;
+//      the canonical pattern after jobs.Registry.TryClaim collapsed
+//      the four redundant in-flight mechanisms into one)
 //
 // Sites NOT requiring a guard (intentionally unguarded):
 //   - *_test.go files (these mock the dialog at the boundary)
@@ -79,6 +83,13 @@ const GUARD_PATTERNS = [
 	/\binFlight\.LoadOrStore\s*\(/,
 	/\bguarded(?:Save|Open)(?:File|Directory|MultipleFiles)Dialog\s*\(/,
 	/\berrExportInFlight\b/,
+	// Pattern D (post-#615): guardDialog on its own is the dedup
+	// primitive, but the safe idiom is the `release, admitted :=
+	// a.guardDialog(...); defer release()` pair. Match both halves
+	// independently so lint failure surfaces next to the right
+	// missing piece.
+	/\bguardDialog\s*\(/,
+	/\bdefer\s+release\s*\(\)/,
 ];
 
 function* walkGoFiles(dir) {
