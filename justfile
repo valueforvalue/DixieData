@@ -67,6 +67,12 @@ archive:
 demo:
     pwsh -NoLogo -NoProfile -File scripts/build-demo-release.ps1
 
+bump:
+    pwsh -NoLogo -NoProfile -File scripts/bump-version.ps1 -BumpSchema
+
+release-github:
+    pwsh -NoLogo -NoProfile -File scripts/release-github.ps1
+
 stress:
     pwsh -NoLogo -NoProfile -File scripts/run-stress-tests.ps1
 
