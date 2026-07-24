@@ -61,6 +61,7 @@ func (a *App) setupRoutes() {
 	r.Get("/lib/insert_text_at_cursor.js", a.handleFrontendLib("insert_text_at_cursor.js", "text/javascript; charset=utf-8"))
 
 	r.Get("/recovery", a.handleRecovery)
+	r.Get("/startup-error", a.handleStartupError)
 	r.Get("/jobs/active", a.renderActiveJob)
 	r.Get("/jobs/*", a.handleJobStatus)
 	r.Post("/jobs/*", a.handleJobStatus)

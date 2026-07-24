@@ -40,12 +40,12 @@ import (
 type ErrorKind string
 
 const (
-	KindValidation ErrorKind = "validation" // 400 — bad user input
-	KindNotFound   ErrorKind = "not_found"   // 404
-	KindConflict   ErrorKind = "conflict"    // 409 — duplicate, schema collision
-	KindForbidden  ErrorKind = "forbidden"   // 403
+	KindValidation  ErrorKind = "validation"  // 400 — bad user input
+	KindNotFound    ErrorKind = "not_found"   // 404
+	KindConflict    ErrorKind = "conflict"    // 409 — duplicate, schema collision
+	KindForbidden   ErrorKind = "forbidden"   // 403
 	KindUnavailable ErrorKind = "unavailable" // 503 — disk, IO, dependency missing
-	KindInternal   ErrorKind = "internal"    // 500 — fallback for everything else
+	KindInternal    ErrorKind = "internal"    // 500 — fallback for everything else
 )
 
 // statusForKind maps a kind to the HTTP status code returned to the

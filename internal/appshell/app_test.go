@@ -50,8 +50,8 @@ func TestAppServeHTTPStartupError(t *testing.T) {
 
 	app.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status=%d want %d", rec.Code, http.StatusInternalServerError)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 	if !strings.Contains(rec.Body.String(), "startup failed") {
 		t.Fatalf("expected startup error in response, got %q", rec.Body.String())
@@ -491,17 +491,16 @@ func TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint(t *testing.T) 
 	if fragmentRec.Body.Len() != 0 {
 		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
 	}
-	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
-		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/recovery")
+	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/startup-error" {
+		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/startup-error")
 	}
 
-	// Case (b): same path without HX-Request → 500 with the error
-	// text (existing behavior unchanged for full-page nav).
+	// Case (b): same path without HX-Request → styled 503 error page.
 	fullPageReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
 	fullPageRec := httptest.NewRecorder()
 	app.ServeHTTP(fullPageRec, fullPageReq)
-	if fullPageRec.Code != http.StatusInternalServerError {
-		t.Fatalf("full-page status=%d want %d (full-page nav must still get the 500 with error text)", fullPageRec.Code, http.StatusInternalServerError)
+	if fullPageRec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("full-page status=%d want %d", fullPageRec.Code, http.StatusServiceUnavailable)
 	}
 	if !strings.Contains(fullPageRec.Body.String(), "bootstrap failed: db open") {
 		t.Fatalf("full-page body must contain the error text; got %q", fullPageRec.Body.String())
@@ -516,8 +515,8 @@ func TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint(t *testing.T) 
 	if arbitraryRec.Code != http.StatusNoContent {
 		t.Fatalf("arbitrary fragment status=%d want %d (forward-compat: any fragment should 204, not 500)", arbitraryRec.Code, http.StatusNoContent)
 	}
-	if got := arbitraryRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
-		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/recovery")
+	if got := arbitraryRec.Header().Get("X-DixieData-Redirect"); got != "/startup-error" {
+		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/startup-error")
 	}
 
 	// Case (d): arbitrary path without HX-Request → 500 with the
@@ -525,8 +524,8 @@ func TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint(t *testing.T) 
 	arbitraryFullReq := httptest.NewRequest(http.MethodGet, "/some/future/path", nil)
 	arbitraryFullRec := httptest.NewRecorder()
 	app.ServeHTTP(arbitraryFullRec, arbitraryFullReq)
-	if arbitraryFullRec.Code != http.StatusInternalServerError {
-		t.Fatalf("arbitrary full-page status=%d want %d", arbitraryFullRec.Code, http.StatusInternalServerError)
+	if arbitraryFullRec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("arbitrary full-page status=%d want %d", arbitraryFullRec.Code, http.StatusServiceUnavailable)
 	}
 	if !strings.Contains(arbitraryFullRec.Body.String(), "bootstrap failed: db open") {
 		t.Fatalf("arbitrary full-page body must contain the error text; got %q", arbitraryFullRec.Body.String())
