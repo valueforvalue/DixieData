@@ -330,12 +330,13 @@ func fetchClosedIssues() ([]parse.IssueLabel, error) {
 // format string matches the parse package's contract:
 // `<40-char hash>|<ISO timestamp>|<user.name>|<subject>`.
 // The parse package splits on the first 3 pipes; anything
-// after the third pipe is the subject. Issue #594.
+// after the third pipe is the subject. Issue #594. Use HEAD:
+// pull-request checkouts do not necessarily create a local dev ref.
 func gitLogRecentCommits(root string, capN int) ([]string, error) {
 	cmd := exec.Command("git", "log",
 		fmt.Sprintf("-n %d", capN),
 		"--format=%H|%aI|%an|%s",
-		"dev",
+		"HEAD",
 	)
 	cmd.Dir = root
 	out, err := cmd.Output()
@@ -379,16 +380,16 @@ func buildSnapshot(entries []parse.GitLogEntry, perRelease []parse.ReleaseActivi
 	issues := parse.IssuesClosedFromLabels(issueLabels)
 	issues.GeneratedAt = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	return &parse.Snapshot{
-		GeneratedAt:        time.Now().UTC().Format("2006-01-02T15:04:05Z"),
-		FirstCommitDate:    first,
-		LatestCommitDate:   latest,
-		TotalCommits:       len(entries),
-		TotalContributors:  len(contribCounts),
-		PerDay:             perDay,
-		TopContributors:    counts,
-		PerRelease:         perRelease,
-		IssuesClosed:       issues,
-		RecentCommits:      parse.RecentCommitsFromGitLog(recentCommitLines, recentCommitsCap),
+		GeneratedAt:       time.Now().UTC().Format("2006-01-02T15:04:05Z"),
+		FirstCommitDate:   first,
+		LatestCommitDate:  latest,
+		TotalCommits:      len(entries),
+		TotalContributors: len(contribCounts),
+		PerDay:            perDay,
+		TopContributors:   counts,
+		PerRelease:        perRelease,
+		IssuesClosed:      issues,
+		RecentCommits:     parse.RecentCommitsFromGitLog(recentCommitLines, recentCommitsCap),
 	}
 }
 
@@ -408,7 +409,7 @@ package activityhistory
 
 var baked = &Snapshot{
 `)
-		writeField(&buf, "GeneratedAt", snap.GeneratedAt)
+	writeField(&buf, "GeneratedAt", snap.GeneratedAt)
 	writeField(&buf, "FirstCommitDate", snap.FirstCommitDate)
 	writeField(&buf, "LatestCommitDate", snap.LatestCommitDate)
 	buf.WriteString(fmt.Sprintf("\tTotalCommits: %d,\n", snap.TotalCommits))

@@ -64,7 +64,7 @@ Add a new section at the top:
 
 ```bash
 # Schema bump (default; matches historical behavior)
-make bump
+just bump
 
 # Or explicitly:
 pwsh -File scripts/bump-version.ps1 -BumpSchema
@@ -79,7 +79,7 @@ The script:
 - rewrites the appropriate constant in `internal/versioninfo/versioninfo.go`
 - prints the new app version (`v1.{U}.{N}`) and next-step instructions
 
-`make bump` does NOT auto-commit. The reviewer must:
+`just bump` does NOT auto-commit. The reviewer must:
 
 - edit CHANGELOG.md (already done in step 3)
 - run `make test-quiet` to confirm migrations apply cleanly
@@ -88,7 +88,7 @@ The script:
 ### 5. Build and archive
 
 ```bash
-make archive
+just archive
 ```
 
 Produces `release/DixieData-release-v1.1.55.zip` containing the contents of `build\bin\` (`DixieData.exe`, `google-oauth-defaults.json`, `pdfium.dll`, `pdfium.version`).
@@ -100,26 +100,26 @@ branch), not `main`. The chain is:
 
 ```bash
 # 6a. Dry-run the gate chain (no push, no PR)
-make promote-dry-run
+just promote-dry-run
 
 # 6b. Open the promotion PR dev → stable
-make promote
+just promote
 
 # 6c. Review + merge the PR via the GitHub UI
 #     (operator is the merge authority per ADR 0009)
 
 # 6d. Post-merge sanity: stable HEAD matches the merge SHA
-make promote-confirm
+just promote-confirm
 
 # 6e. Tag + push + draft gh release
-make release-github
+just release-github
 ```
 
-`make promote` calls `scripts/promote-open-pr.sh`, which
+`just promote` calls `scripts/promote-open-pr.sh`, which
 embeds the gate-chain output + commit log + diff stat in the
 PR body. The PR title is `promote: dev → stable (v{VERSION})`.
 
-After the PR is merged, `make release-github` calls
+After the PR is merged, `just release-github` calls
 `scripts/release-github.ps1`, which enforces five safety gates
 before any mutation:
 
@@ -159,7 +159,7 @@ If `gh release create` fails after a successful tag push:
 
 ## Demo packages
 
-`make demo` produces a seeded demo release under `release/DixieData-demo-{date}.zip` via `scripts/build-demo-release.ps1`. This is independent of the release line — demo versions do not get GitHub releases.
+`just demo` produces a seeded demo release under `release/DixieData-demo-{date}.zip` via `scripts/build-demo-release.ps1`. This is independent of the release line — demo versions do not get GitHub releases.
 
 ## Manual override
 
@@ -181,6 +181,6 @@ The Makefile and scripts are convenience wrappers; the underlying convention is 
 
 ## See also
 
-- [ADR 0008 — Promotion protocol](adr/0008-promotion-protocol.md) — the `make promote` gate chain for `dev → main`, including the cadence-driven promotion story that the v{MAJOR}.{U}.{N} split enables.
+- [ADR 0008 — Promotion protocol](adr/0008-promotion-protocol.md) — the `just promote` gate chain for `dev → main`, including the cadence-driven promotion story that the v{MAJOR}.{U}.{N} split enables.
 - [ADR 0007 — In-place update safety](adr/0007-in-place-update-safety.md) — the four rules that gate the in-place update flow.
 - [`internal/versioninfo/versioninfo.go`](../internal/versioninfo/versioninfo.go) — the source-of-truth for all three counters.

@@ -29,16 +29,19 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+        with:
+          fetch-depth: 0
         with:
           go-version: '1.25'
           cache: true
 
-      - uses: actions/setup-node@v4
+      - name: Install Just
+        uses: extractions/setup-just@v2
         with:
-          node-version: '20'
-          cache: 'npm'
+          just-version: 1.57.0
+
+      - name: Verify Just
+        run: just --version
 
       - name: Install npm deps
         run: npm ci
@@ -46,26 +49,9 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
-      - name: Regenerate templ + bake files
-        # internal/templates/*_templ.go + internal/activityhistory/baked.go
-        # + internal/releasehistory/baked.go are gitignored generated
-        # files. CI must regenerate them before building dixiedata-web
-        # (appshell imports activityhistory which references `baked`).
-        # The plain .go files (e.g. internal/templates/linked_text_support.go)
-        # call helpers like `isSoldierEntry` that are defined in the
-        # generated `*_templ.go` files. Without this step the go build
-        # below fails with "undefined: isSoldierEntry" or "undefined: baked".
-        run: |
-          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
-          go run ./scripts/bake-release-notes
-          go run ./scripts/bake-activity
+      - name: Generate and build audit binaries
+        run: just audit-build
         timeout-minutes: 5
-
-      - name: Build dixiedata-web + seed-data
-        run: |
-          mkdir -p build/bin
-          go build -o build/bin/dixiedata-web ./cmd/dixiedata-web
-          go build -o build/bin/seed-data ./cmd/seed-data
 
       - name: Seed sample archive (50 soldiers)
         run: |

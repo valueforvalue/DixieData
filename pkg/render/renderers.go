@@ -68,7 +68,7 @@ func NewTypstRenderer(binPath, rootDir string) *TypstRenderer {
 func (t *TypstRenderer) SetTheme(themeJSON []byte) {
 	t.themeJSON = themeJSON
 }
-// native SVG, and per-page PNG output. Passing an empty string
+// SetOutputFormat selects native SVG, and per-page PNG output. Passing an empty string
 // resets to PDF. The format is read by Render on every call so
 // the same renderer instance can produce multiple formats across
 // calls.

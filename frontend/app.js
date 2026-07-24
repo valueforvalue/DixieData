@@ -49,6 +49,7 @@
   // when the config key is missing, zero, or window.__dixieConfig
   // is unavailable (script injection failed, test harness, etc.).
   // Issues #636-#639 follow-up.
+  /** @param {string} key @param {number} fallback @returns {number} */
   function readConfig(key, fallback) {
     try {
       var cfg = window.__dixieConfig;

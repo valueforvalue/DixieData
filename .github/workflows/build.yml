@@ -18,6 +18,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -30,32 +32,28 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
           wails doctor
 
-      - name: Regenerate templ + bake files
-        shell: pwsh
-        run: |
-          # internal/templates/*_templ.go + internal/activityhistory/baked.go
-          # + internal/releasehistory/baked.go are gitignored generated
-          # files. CI must regenerate them before `wails build` compiles
-          # the full tree (appshell imports activityhistory which
-          # references `baked`). `make tpl` runs templ generate + both
-          # bake steps.
-          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
-          go run ./scripts/bake-release-notes
-          go run ./scripts/bake-activity
-        timeout-minutes: 5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Generate Typst + PDFium binaries
-        shell: pwsh
-        run: |
-          # Restore-DixieDataTypstBinary + Restore-DixieDataPdfiumBinary are
-          # invoked by scripts/build-debug.ps1 → Invoke-DixieDataBuild.
-          # No need to invoke them explicitly here.
-          echo "Binaries restored during build."
+      - name: Install Just
+        uses: extractions/setup-just@v2
+        with:
+          just-version: 1.57.0
 
-      - name: Build (make debug)
+      - name: Verify Just
+        shell: pwsh
+        run: just --version
+
+      - name: Install frontend dependencies
+        shell: pwsh
+        run: npm ci
+
+      - name: Build (just debug)
         shell: pwsh
         run: |
-          pwsh -File scripts/build-debug.ps1
+          just debug
         timeout-minutes: 25
 
       - name: Verify -trimpath (no absolute paths in binary)

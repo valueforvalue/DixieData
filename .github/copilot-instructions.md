@@ -2,15 +2,19 @@
 
 ## Build and test commands
 
-The Makefile is the preferred entry point. `make help` lists every target. Common:
+The Justfile is the preferred entry point. `just --list` lists every recipe. Common:
 
-- `make test` — `go test ./... -short -count=1`
-- `make tpl` — regenerate `*_templ.go` after editing `.templ` files
-- `make debug` — debug build (writes `build\bin\Run-DixieData-Debug.ps1`)
-- `make run` — build + launch debug build with UI IDs enabled
-- `make release` / `make archive` — release build, with or without versioned zip
-- `make demo` — seeded demo release package
-- `make stress` / `make goldmaster` — full test suites
+- `just test` — `go test ./... -short -count=1`
+- `just generate` — regenerate templ, bake, and CSS outputs
+- `just debug` — debug build (writes `build\\bin\\Run-DixieData-Debug.ps1`)
+- `just dev` — interactive Wails development
+- `just release` / `just archive` — release build, with or without versioned zip
+- `just demo` — seeded demo release package
+- `just stress` / `just goldmaster` — full test suites
+- `just dev` — interactive Wails development
+- `just release` / `just archive` — release build, with or without versioned zip
+- `just demo` — seeded demo release package
+- `just stress` / `just goldmaster` — full test suites
 
 Underlying PowerShell scripts (for advanced use):
 
@@ -28,7 +32,7 @@ Underlying PowerShell scripts (for advanced use):
 - This is a Windows-first Wails desktop app with a Go backend and SQLite storage. `main.go` is the repo entrypoint, and `internal\appshell\app.go` serves the UI through `http.ServeMux` handlers rather than a separate API + SPA split.
 - `internal\appshell\app.go` is the delivery surface. It wires facade interfaces from `internal\appshell\app_facades.go`, parses requests, and delegates rendering through `internal\presentation`; keep business logic out of it.
 - The frontend is server-rendered. `internal\templates\*.templ` defines the HTML; generated `*_templ.go` files are **gitignored** and regenerated locally by `make tpl` and in CI by the test/audit workflows. `frontend\app.js` is a custom HTMX-style request/swap layer that drives navigation, form submissions, Smart Back, toasts, tabs, and other rich interactions.
-- `internal\presentation\views.go` is the grey-box adapter between domain objects and rendered templates. `internal\viewmodel` holds display-ready DTOs that templates consume.
+- Generated `*_templ.go` files are **gitignored** and regenerated locally by `just generate` and in CI by Just build/test/audit recipes.
 - Runtime behavior is split into deep domain packages: `internal\records` owns record/search/review/analytics/research workflows, `internal\archive` owns exports/backups/diagnostics/images, and `internal\integrations` owns Google integration logic.
 - `internal\services` is now a compatibility shim over those deeper packages, not the architectural center.
 - Startup resolves the working data directory through `internal\appdata\appdata.go`, opens SQLite through `internal\db\db.go`, applies schema/migrations from `internal\db\schema.go`, then reloads facades before routes are usable.

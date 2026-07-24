@@ -19,6 +19,7 @@
   // Read from window.__dixieConfig (injected inline before any
   // scripts) or fall back to defaults. debug.js loads before
   // app.js so it can't use the readConfig helper.
+  /** @param {string} key @param {number} fallback @returns {number} */
   function readDebugConfig(key, fallback) {
     try {
       var cfg = window.__dixieConfig;

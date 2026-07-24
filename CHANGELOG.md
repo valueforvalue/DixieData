@@ -11,6 +11,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- **build: add Just command layer for Windows debug builds**. `just generate` and `just debug` provide explicit, discoverable orchestration while preserving PowerShell/Go build implementations. Windows build CI now exercises the Just entry point.
+
 ### Added
 
 - **config: /settings/config sub-page — read-only view of all config values (#638)**. New route + handler + templ renders the current config grouped by section (Window, UI, Calendar, Limits, Timing, PDF, Google) in a card layout with key-value tables. Accessible from the Settings sub-page breadcrumb. **Files**: 6 (routes.go, settings_subpage_handlers.go, settings_subpages.templ, views.go, types.go, mappers.go).
