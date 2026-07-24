@@ -8,7 +8,7 @@ committed here shows up identically in every render surface.
 
 This doc is the iteration playbook for an agent picking up a
 layout-iteration task on the dev branch. It assumes the agent can
-read typst and run `make`.
+read typst and run `just`.
 
 ## What the surfaces are
 
@@ -35,7 +35,7 @@ anniversary, and insights surfaces are many-page PDFs.
 ```sh
 # 1. Build the tune binary (only when pkg/render, pkg/exportbridge,
 #    or tools/tune source changes; typst template edits don't need this).
-make tune
+just tune
 
 # 2. Render the surface you are iterating on. ROUND defaults to one
 #    greater than the highest existing round-N.pdf for that surface.
@@ -43,10 +43,10 @@ make tune
 #    RECORD=<id> overrides the default record (1 for soldier, 61 for
 #    widow) for single-* surfaces, useful for iterating on a record
 #    with no image, long data, or other layout edge cases.
-make render-round-ONE SURFACE=single-soldier-landscape
+just render-round-ONE SURFACE=single-soldier-landscape
 # Or, for a specific record (e.g. Elbert Dixon Anderson, DXD-00019,
 # a no-image record):
-make render-round-ONE SURFACE=single-soldier-landscape RECORD=21
+just render-round-ONE SURFACE=single-soldier-landscape RECORD=21
 
 # 3. Open the PDF (and the SVG if you want a vector preview):
 start "" docs/renderings/single-soldier-landscape/round-N.pdf
@@ -54,7 +54,7 @@ start "" docs/renderings/single-soldier-landscape/round-N.pdf
 
 # 4. After the user signs off on the layout, regen the byte-stable
 #    snapshot fixture for this surface and verify byte-match:
-make update-snapshots-ONE SURFACE=single-soldier-landscape
+just update-snapshots-ONE SURFACE=single-soldier-landscape
 ```
 
 Repeat. The full loop is: edit typ -> step 2 -> review -> edit typ
@@ -103,7 +103,7 @@ handles both, plus a PNG preview, in one call:
 # Limit bulk surfaces to specific record IDs (saves ~99% disk):
 /c/Users/value/bin/render-svg.sh bulk-sorted N -i 1,2,3,4,5
 
-# Render every surface (matches make render-round, but as SVG):
+# Render every surface (matches just render-round, but as SVG):
 /c/Users/value/bin/render-svg.sh all
 ```
 
@@ -118,7 +118,7 @@ user to open alongside the per-surface review.md.
 `internal/exportcontract/testdata/{snapshots,snapshots-cli}/`
 hold 22 byte-stable PDF fixtures (11 in-process via the bridge,
 11 CLI via `dixiedata-tune`). The `go test` step in
-`make update-snapshots-ONE` runs with `UPDATE_SNAPSHOTS=1` to
+`just update-snapshots-ONE` runs with `UPDATE_SNAPSHOTS=1` to
 regen, then without to verify byte-match.
 
 Snapshots are git-tracked. Treat any byte drift as a layout
@@ -131,7 +131,7 @@ behaviour) and by the live-archive renderings under
 `docs/renderings/`. For those surfaces, run the full regen:
 
 ```sh
-make tune-snapshots
+just tune-snapshots
 ```
 
 (regen all 22 fixtures in one go; takes ~40s.)
@@ -151,7 +151,7 @@ iteration, render bulk with `-RecordIDs 1,2,3,4,5` (or similar)
 to keep the test fast and the output small:
 
 ```sh
-make render-round-ONE SURFACE=bulk-sorted ROUND=N
+just render-round-ONE SURFACE=bulk-sorted ROUND=N
 # Or, via PowerShell directly:
 pwsh -File scripts/render-round.ps1 -Round N -Only bulk-sorted \
     -RecordIDs 1,2,3,4,5
@@ -177,8 +177,8 @@ exported from the running appshell when there is doubt.
   accidentally, restore it from the Wails build artifacts or
   rebuild the appshell; tune cannot run without it.
 
-- **`tools/tune/bin/dixiedata-tune.exe` is gitignored**. `make tune`
-  rebuilds it. On Windows, `make tune` now writes the `.exe`
+- **`tools/tune/bin/dixiedata-tune.exe` is gitignored**. `just tune`
+  rebuilds it. On Windows, `just tune` now writes the `.exe`
   suffix explicitly (the old Makefile rule wrote `dixiedata-tune`
   without suffix, which broke shell scripts that hardcoded
   `dixiedata-tune.exe`).

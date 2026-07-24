@@ -137,7 +137,7 @@ dispatchUtilitySubmit(form, callback);  // preventDefault + cb
 dispatchSubmitPrep(form, callback);     // cb, allow default to bubble
 ```
 
-The CI probe `make lint-htmx-guard` will fail otherwise. The
+The CI probe `just lint-htmx-guard` will fail otherwise. The
 deprecated `// htmx-guard: utility-submit` marker is retained as
 a fallback but new code should use the helpers.
 
@@ -150,7 +150,7 @@ When you add a `form.addEventListener("submit", ...)` on a
 ## Probe source
 
 `audit/discover_htmx_guard.mjs` — `--strict` flag exits 1 on any
-violation. Run `make lint-htmx-guard` to invoke the probe locally.
+violation. Run `just lint-htmx-guard` to invoke the probe locally.
 
 ## Related
 

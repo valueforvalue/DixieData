@@ -26,7 +26,7 @@ Use Python REPL when the task is:
 
 Do NOT use Python REPL for:
 
-- **Go source** — use `go test`, `go run ./cmd/...`, `make audit`,
+- **Go source** — use `go test`, `go run ./cmd/...`, `just audit`,
   `dixiedata --smoke`. Go is the language of the build.
 - **Production data mutation** — destructive operations belong in Go
   handlers with an audit trail and the dialog-guard pattern
@@ -66,7 +66,7 @@ and references (PoT, PAL, Self-Debugging, CodeAct vs ReAct contrast).
 | Task | Tool |
 |---|---|
 | Go logic verification | `go test ./internal/...` |
-| Full UI/UX sweep | `make audit` |
+| Full UI/UX sweep | `just audit` |
 | Headless boot + smoke | `dixiedata --smoke` |
 | Single-shot CLI probe | `dixiedata <subcommand>` |
 | **Scratch parsing / numeric / sweep** | **Python REPL** (`~/.agents/skills/repl/repl.py`) |

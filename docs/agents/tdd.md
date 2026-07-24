@@ -269,7 +269,7 @@ speculative surface.
 
 - `go test -count=1 -short ./internal/<layer>/...` — green
 - `node audit/smoke_<feature>.mjs` — green
-- `make test` — green across the whole short suite
+- `just test` — green across the whole short suite
 
 If a slice makes another test in the same package turn red,
 **stop.** The slice is touching code outside its seam.
@@ -543,7 +543,7 @@ exit code.
   protocol overhead is unnecessary.
 - **Pure doc change.** No code, no test.
 - **Pure build/CI change.** Tests for build behavior are
-  brittle and slow; the existing `make freshness` gate is
+  brittle and slow; the existing `just freshness` gate is
   the anchor.
 - **Refactor with characterization tests.** When the slice
   preserves behavior but rearranges code (per `feature-

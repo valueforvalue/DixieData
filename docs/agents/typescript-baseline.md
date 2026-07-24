@@ -16,7 +16,7 @@ Enable cheap type-checking via TypeScript's `checkJs` mode **without introducing
 a build step**. `app.js` continues to be served raw. Editors get
 `lib: ["ES2022", "DOM", "DOM.Iterable"]` for signatures on `Element`,
 `HTMLFormElement`, `URLSearchParams`, `localStorage`, `addEventListener`, etc.
-CI gets `make lint-typecheck` as an observability signal — not a strict gate
+CI gets `just lint-typecheck` as an observability signal — not a strict gate
 on day 1.
 
 The runtime path is unchanged: `<script defer src="/app.js">` → file on disk
@@ -75,10 +75,10 @@ unused argument captures). They are the highest-signal slice-2 fix candidates.
 
 | Slice | What changed                                                                                  | Error count | Test budget added         |
 | ----- | --------------------------------------------------------------------------------------------- | ----------: | ------------------------- |
-| 1     | `jsconfig.json` + `npm run typecheck` + `make lint-typecheck` + baseline doc                  |         168 | (observability only)      |
+| 1     | `jsconfig.json` + `npm run typecheck` + `just lint-typecheck` + baseline doc                  |         168 | (observability only)      |
 | 2     | Reorder `dispatchDixieDataForm` (TDZ) + 4 narrowing fixes                                    |         157 | `dispatcher_tdz_fix` × 4  |
 | 3     | `frontend/global.d.ts` augmentation + `eventTargetElement` helper + per-site narrowing        |           0 | `typecheck_augmentations` × 6 |
-| 4     | CI gate: `make lint-typecheck` + the two JS regression nets land on every PR via `test.yml` |           0 | (gates the prior slices) |
+| 4     | CI gate: `just lint-typecheck` + the two JS regression nets land on every PR via `test.yml` |           0 | (gates the prior slices) |
 | 5a    | Hygiene flags (`useUnknownInCatchVariables`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`) + 11 sites of dead-code removal | 0 | (slice-specific) |
 | 5b    | `strictNullChecks: true` + nullable-annotation sweep (JSDoc `T \| null` on every `let X = null` site)                                       | 0 | — |
 | 5c-A  | `noImplicitAny: true` enabled; JSDoc @param sweep in `debug.js` + `debug-toolbox.js` (PR #478 `feature/strict-mode-sweep`)                 |   0 (in scope) → 258 remaining in app.js | — |
@@ -141,22 +141,22 @@ from disk by `internal/appshell/lifecycle.go`).
 - name: Frontend type-check + JS regression nets (typecheck-baseline)
   shell: bash
   run: |
-    make lint-typecheck
-    make lint-dispatcher-tdz-test
-    make lint-typecheck-augmentations-test
+    just lint-typecheck
+    just lint-dispatcher-tdz-test
+    just lint-typecheck-augmentations-test
   timeout-minutes: 10
 ```
 
 The three targets:
 
-1. **`make lint-typecheck`** → `tsc -p jsconfig.json --noEmit` against
+1. **`just lint-typecheck`** → `tsc -p jsconfig.json --noEmit` against
    `frontend/**/*.js`. Catches any TypeScript error introduced by a future
    commit. Replaces the slice-3 baseline (0 errors); the commit that breaks
    the baseline fails the step.
-2. **`make lint-dispatcher-tdz-test`** →
+2. **`just lint-dispatcher-tdz-test`** →
    `audit/dispatcher_tdz_fix.test.mjs`. Pins the slice-2
    `dispatchDixieDataForm` temporal-dead-zone fix (the empty-name save flow).
-3. **`make lint-typecheck-augmentations-test`** →
+3. **`just lint-typecheck-augmentations-test`** →
    `audit/typecheck_augmentations.test.mjs`. Pins the slice-3
    `frontend/global.d.ts` augmentation shape (16 install-once window markers,
    per-element markers, the htmx CustomEvent detail shape with
@@ -191,8 +191,8 @@ covered (the workflow triggers on both branches).
 
 - `npm run typecheck` exits with code 0 against the slice-3 tree (the
   slice-1 baseline was 168 errors; slice 3 cleared them all).
-- `make lint-typecheck`, `make lint-dispatcher-tdz-test`, and
-  `make lint-typecheck-augmentations-test` all exit 0 on the slice-4 tree.
+- `just lint-typecheck`, `just lint-dispatcher-tdz-test`, and
+  `just lint-typecheck-augmentations-test` all exit 0 on the slice-4 tree.
 - Go backstop: `go test -short -count=1 ./internal/appshell/...` exits 0;
   Go + templ untouched.
 - CI: the new `Frontend type-check + JS regression nets` step in

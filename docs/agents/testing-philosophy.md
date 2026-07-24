@@ -99,7 +99,7 @@ source formatting changes, and they run on every `go test`
 invocation even when the code under test hasn't changed.
 
 **Move to:** `audit/*.mjs` Node scripts, `go/analysis` analyzers,
-pre-commit hooks, or `make lint-*` targets.
+pre-commit hooks, or `just lint-*` recipes.
 
 Examples from the audit (issue #626):
 - Grepping `docs/adr/*.md` for `## Author` headings

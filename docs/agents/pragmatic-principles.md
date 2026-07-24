@@ -572,12 +572,12 @@ operator will get it slightly different. Automation is the
 *only* way to guarantee repeatability.
 
 **Repo operational form:**
-- 23 scripts in `scripts/` + 40+ Makefile targets + 4 GitHub
+- 23 scripts in `scripts/` + 67+ justfile recipes + 4 GitHub
   workflows.
-- `make build` / `make debug` / `make freshness` — the build
+- `just build` / `just debug` / `just freshness` — the build
   chain.
-- `make audit` — the audit sweep.
-- `make promote` — the release promotion (per ADR 0008).
+- `just audit` — the audit sweep.
+- `just promote` — the release promotion (per ADR 0008).
 - `cli-coverage.mjs` — asserts every documented CLI subcommand
   is implemented.
 
@@ -586,7 +586,7 @@ operator will get it slightly different. Automation is the
   scripted equivalent adds complexity for no win.
 - **Operator judgment** — a "promote to stable" decision is
   *not* fully automatable (the human reviews the diff). The
-  automation is the *enforcement* (`make promote-dry-run` is
+  automation is the *enforcement* (`just promote-dry-run` is
   a CI gate), not the *decision*.
 
 ### §1.16 — It's All Writing (English as code) — Tip #13
@@ -820,7 +820,7 @@ operational form of a principle.
 | Algorithm Speed | (No Law; the per-iter SQL footprint pattern is the operational form) |
 | Refactoring | (No Law; the Tier 2 / Tier 3 commit rule is the operational form) |
 | Code That's Easy to Test | "No feature PR ships a backend surface without a UI apply-site" (the smoke-probe-per-apply-site contract) |
-| Ubiquitous Automation | "Fresh debug build = `make freshness`" |
+| Ubiquitous Automation | "Fresh debug build = `just freshness`" |
 | It's All Writing | "Exported Go identifiers carry doc comments" |
 | Pragmatic Projects | (No Law; the fixship cadence + the slice discipline + the full-stack-team-via-slice approach are the operational form) |
 | Before the Project | (No Law; the slice plan + apply-sites checklist + the user-in-the-loop feedback are the operational form) |

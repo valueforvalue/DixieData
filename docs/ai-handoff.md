@@ -332,7 +332,7 @@ Known-good commands:
 - `templ generate`
 - `go test ./...`
 - `go build ./...`
-- `make <target>` — preferred entry point; see `make help` for full list. Wraps the PowerShell scripts below with log capture in `build\log\`.
+- `just <recipe>` — preferred entry point; see `just --list` for full list. Wraps the PowerShell scripts below with log capture in `build\log\`.
 - `.\scripts\build-release.ps1`
 - `.\scripts\build-debug.ps1`
 - `.\scripts\run-debug.ps1`
@@ -424,7 +424,7 @@ do them in this order.
      `page.url()` ends up at the target — header-only checks
      let the htmx `hx-swap="none"` + 303 silent-swallow bug
      slip through.
-7. **Verify.** `make tpl && make test && make audit`.
+7. **Verify.** `just tpl && just test && just audit`.
 8. **CHANGELOG.** Bullet under `[Unreleased]` > `### Added`
    in the same commit.
 
@@ -438,7 +438,7 @@ Read first, per layer:
   building, HTMX attribute typing, and the nav-after-POST
   rule.
 - `AGENTS.md` — commit/branch convention and the
-  `Makefile` target list (`make help`).
+  `justfile` recipe list (`just --list`).
 
 ## Handoff summary
 

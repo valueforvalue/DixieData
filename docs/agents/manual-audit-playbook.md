@@ -49,7 +49,7 @@ The canonical live-archive probe:
 
 ```bash
 # 1. Build (gitignored generated artifacts won't exist; rebuild fresh).
-make web seed
+just web seed
 
 # 2. Start the web harness against the LIVE archive (not a scratch dir).
 nohup ./build/bin/dixiedata-web.exe -addr 127.0.0.1:8765 > /tmp/web-live.log 2>&1 &
@@ -68,14 +68,14 @@ The audit-harness sweep (separate, ephemeral, reseed every run):
 
 ```bash
 # Build + seed a SCRATCH dir + start the harness against it.
-make web seed
+just web seed
 rm -rf .scratch/webmode && ./build/bin/seed-data.exe -data-dir .scratch/webmode -soldiers 25 -reset
 nohup ./build/bin/dixiedata-web.exe -addr 127.0.0.1:8765 -scratch-dir .scratch/webmode > /tmp/web.log 2>&1 &
 ```
 
 ```bash
 # Build + seed + start the web server
-make web seed
+just web seed
 rm -rf .scratch/webmode && ./build/bin/seed-data.exe -data-dir .scratch/webmode -soldiers 25 -reset
 nohup ./build/bin/dixiedata-web.exe -addr 127.0.0.1:8765 -scratch-dir .scratch/webmode > /tmp/web.log 2>&1 &
 

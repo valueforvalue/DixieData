@@ -10,7 +10,7 @@ updates.
 
 ## Table of contents
 
-1. [Makefile hygiene](#1-makefile-hygiene)
+1. [Justfile hygiene](#1-justfile-hygiene)
 2. [CLI freshness](#2-cli-freshness)
 3. [Release pipeline](#3-release-pipeline)
 4. [Schema bumps](#4-schema-bumps)
@@ -18,49 +18,50 @@ updates.
 
 ---
 
-## 1. Makefile hygiene
+## 1. Justfile hygiene
 
-The `Makefile` is the entry point for every build, test, render,
-bump, and release operation. Five targets cover the daily work;
-two new targets (`make freshness`, `make release-pipeline`) cover
-the regressions that bit us.
+The `justfile` is the entry point for every build, test, render,
+bump, and release operation. Five recipes cover the daily work;
+two more recipes (`just freshness`, `just release-pipeline`) cover
+the regressions that bit us. (Pre-#642 the entry point was the
+`Makefile`; the migration is documented in PR #642.)
 
-### Daily targets
+### Daily recipes
 
-| Target | What it does | When |
+| Recipe | What it does | When |
 |---|---|---|
-| `make help` | List every target + one-line summary | First run of the day |
-| `make debug` | Build DixieData (Wails) + dixiedata-web + seed-data + gold-master + dixiedata-tune | Iterating on UI or backend |
-| `make test` | `go test ./... -short -count=1` | Before any commit |
-| `make run` | Build + launch debug binary | Smoke-checking a change |
-| `make clean` | Remove generated artifacts | Switching branches that touch `templ` or `frontend/` |
+| `just --list` | List every recipe + one-line summary | First run of the day |
+| `just debug` | Build DixieData (Wails) + dixiedata-web + seed-data + gold-master + dixiedata-tune | Iterating on UI or backend |
+| `just test` | `go test ./... -short -count=1` | Before any commit |
+| `just run` | Build + launch debug binary | Smoke-checking a change |
+| `just clean` | Remove generated artifacts | Switching branches that touch `templ` or `frontend/` |
 
-### Freshness targets
+### Freshness recipes
 
-| Target | What it does | When |
+| Recipe | What it does | When |
 |---|---|---|
-| `make freshness` | Build every debug subtool + run each one's sanity probe + walk every registered CLI subcommand | Before any release; on first CI run after a subtool change |
-| `make release-pipeline` | The ordered release chain (test → tpl → css → bump-verify → debug → freshness → audit → archive → release-github), halt-on-first-failure | When cutting a release |
+| `just freshness` | Build every debug subtool + run each one's sanity probe + walk every registered CLI subcommand | Before any release; on first CI run after a subtool change |
+| `just release-pipeline` | The ordered release chain (test → tpl → css → bump-verify → debug → freshness → audit → archive → release-github), halt-on-first-failure | When cutting a release |
 
-### Render / iteration targets
+### Render / iteration recipes
 
-| Target | What it does |
+| Recipe | What it does |
 |---|---|
-| `make tune` | Run dixiedata-tune against live archive |
-| `make render-round` | Render all PDF export surfaces for one iteration round |
-| `make render-round-ONE SURFACE=...` | Render one surface |
-| `make update-snapshots-ONE SURFACE=...` | Regen the byte-stable snapshot fixture for one surface |
-| `make tune-snapshots` | Regen all 22 snapshot fixtures at once |
+| `just tune` | Run dixiedata-tune against live archive |
+| `just render-round` | Render all PDF export surfaces for one iteration round |
+| `just render-round-ONE SURFACE=...` | Render one surface |
+| `just update-snapshots-ONE SURFACE=...` | Regen the byte-stable snapshot fixture for one surface |
+| `just tune-snapshots` | Regen all 22 snapshot fixtures at once |
 
 ### Why these exist
 
-The debug chain (`make debug → web + seed + gold + tune-bin`)
+The debug chain (`just debug → web + seed + gold + tune-bin`)
 catches the case where the user opens the app, hits a button,
 and the audit smoke fails because `dixiedata-web.exe` isn't
-in `build/bin/`. One-shot `make debug` produces everything a
+in `build/bin/`. One-shot `just debug` produces everything a
 debug session needs.
 
-The release chain (`make release-pipeline`) catches the case
+The release chain (`just release-pipeline`) catches the case
 where a release ships with a stale `dixiedata-web.exe` from
 before today's commit, or with a CLI subcommand that no longer
 parses, or with a typst fixture that drifted. Each gate is a
@@ -78,7 +79,7 @@ gets "unknown subcommand".
 
 ### The freshness check
 
-`make freshness` runs three checks:
+`just freshness` runs three checks:
 
 1. **Build check.** `go build -tags debug -o build/bin/dixiedata.exe .`
    must succeed. Catches broken CLI parser / dispatch.
@@ -114,7 +115,7 @@ exit 0
 
 ### When to run
 
-- Before every release (`make release-pipeline` runs it).
+- Before every release (`just release-pipeline` runs it).
 - On first CI run after any commit that touches `main.go`,
   `internal/appshell/cli_*.go`, or `docs/agents/cli-plan.md`.
 - Manually when adding/removing a subcommand.
@@ -139,16 +140,16 @@ between commit and release must pass.
 ### Ordered gates
 
 ```
-make release-pipeline
-├── 1. make test          (Go test -short)
-├── 2. make tpl           (regenerate templ files)
-├── 3. make css           (rebuild Tailwind bundle)
-├── 4. make bump -VerifyOnly  (schema discipline intact)
-├── 5. make debug         (build DixieData + 4 subtools)
-├── 6. make freshness     (CLI coverage + subtool probes)
-├── 7. make audit         (visual sweep)
-├── 8. make archive       (build + zip release/)
-└── 9. make release-github  (tag + push + draft gh release)
+just release-pipeline
+├── 1. just test          (Go test -short)
+├── 2. just tpl           (regenerate templ files)
+├── 3. just css           (rebuild Tailwind bundle)
+├── 4. just bump -VerifyOnly  (schema discipline intact)
+├── 5. just debug         (build DixieData + 4 subtools)
+├── 6. just freshness     (CLI coverage + subtool probes)
+├── 7. just audit         (visual sweep)
+├── 8. just archive       (build + zip release/)
+└── 9. just release-github  (tag + push + draft gh release)
 ```
 
 Each gate must pass before the next runs. The wrapper halts on
@@ -158,15 +159,15 @@ the first non-zero exit.
 
 | # | Gate | Pass criterion |
 |---|---|---|
-| 1 | `make test` | All tests pass under `-short -count=1`. Both `//go:build debug` and `//go:build !debug` trace harness variants pass. |
-| 2 | `make tpl` | Templ files regenerate cleanly. No diff against the working tree (catches stale generated files). |
-| 3 | `make css` | Tailwind builds without warnings. `frontend/app.css` regenerated. |
-| 4 | `make bump -VerifyOnly` | `CurrentSchemaVersion` matches all doc references (user-manual, implementation-and-features, ai-handoff). `docs/migrations/v{N}.md` exists. CHANGELOG has section. |
-| 5 | `make debug` | Wails build succeeds. All 4 subtools build. No `//go:build debug` file rotted the no-op stub. |
-| 6 | `make freshness` | All subtool probes pass. `cli-coverage` shows 100% documented/impl match. |
-| 7 | `make audit` | Visual sweep clean. No new findings. (Manual gate — passes when the user runs it and says so.) |
-| 8 | `make archive` | `release/DixieData-release-v1.2.{N}.zip` exists. Includes pdfium.dll + typst. |
-| 9 | `make release-github` | Tag pushed, draft release created. Per `release-github.ps1` 5 safety gates. |
+| 1 | `just test` | All tests pass under `-short -count=1`. Both `//go:build debug` and `//go:build !debug` trace harness variants pass. |
+| 2 | `just tpl` | Templ files regenerate cleanly. No diff against the working tree (catches stale generated files). |
+| 3 | `just css` | Tailwind builds without warnings. `frontend/app.css` regenerated. |
+| 4 | `just bump -VerifyOnly` | `CurrentSchemaVersion` matches all doc references (user-manual, implementation-and-features, ai-handoff). `docs/migrations/v{N}.md` exists. CHANGELOG has section. |
+| 5 | `just debug` | Wails build succeeds. All 4 subtools build. No `//go:build debug` file rotted the no-op stub. |
+| 6 | `just freshness` | All subtool probes pass. `cli-coverage` shows 100% documented/impl match. |
+| 7 | `just audit` | Visual sweep clean. No new findings. (Manual gate — passes when the user runs it and says so.) |
+| 8 | `just archive` | `release/DixieData-release-v1.2.{N}.zip` exists. Includes pdfium.dll + typst. |
+| 9 | `just release-github` | Tag pushed, draft release created. Per `release-github.ps1` 5 safety gates. |
 
 ### Manual override
 

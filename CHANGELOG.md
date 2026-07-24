@@ -15,6 +15,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - **build: add Just command layer for Windows debug builds**. `just generate` and `just debug` provide explicit, discoverable orchestration while preserving PowerShell/Go build implementations. Windows build CI now exercises the Just entry point.
 
+- **docs(migration): remove operational `make` references after Just cutover (#645)**. Rewrote 13 operational docs (12 in `docs/agents/` + `docs/ai-handoff.md`) to use `just <recipe>` instead of `make <target>`. Dated audit/notes/plans files (`docs/audit/pragmatic-programmer-*.md`, `docs/agents/notes/*`, `docs/agents/plans/581-*`, `docs/agents/plans/582-*`) retained their `make` references as historical snapshots of the state at their audit/planning time. No user-visible behavior change. **Files**: 13.
+
 ### Added
 
 - **config: /settings/config sub-page — read-only view of all config values (#638)**. New route + handler + templ renders the current config grouped by section (Window, UI, Calendar, Limits, Timing, PDF, Google) in a card layout with key-value tables. Accessible from the Settings sub-page breadcrumb. **Files**: 6 (routes.go, settings_subpage_handlers.go, settings_subpages.templ, views.go, types.go, mappers.go).

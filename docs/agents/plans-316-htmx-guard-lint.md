@@ -47,7 +47,7 @@ markers + conventions doc establish vocabulary that slices 2-4 reuse.
 - `audit/discover_htmx_guard.test.mjs` (new, ~70 LOC; mirrors `discover_orphan_handlers.test.mjs`)
 - `frontend/app.js` — add `// htmx-guard: utility-submit` markers at lines 3995, 4066, 5314; one marker at the 5225/5314 doc-level delegates confirming they're `data-dixie-submit` or utility
 - `docs/agents/htmx-guard-conventions.md` (new, ~25 LOC) — the marker convention documented
-- `Makefile` — add `lint-htmx-guard` target, wire into `audit` and `RELEASE_PIPELINE_GATES`
+- `justfile` — add `lint-htmx-guard` recipe, wire into `audit` and `RELEASE_PIPELINE_GATES`
 
 ### Success criteria (observable in 5 min)
 
@@ -55,16 +55,16 @@ markers + conventions doc establish vocabulary that slices 2-4 reuse.
 2. With a synthetic regression (added `setInfoToastHeader(w, "saved")` to a function whose body lacks all of `X-DixieData-Redirect | writeExportRedirect | enqueueExport(` | `respondDuplicateInFlight(`), probe exits 1 with file:line citation.
 3. With a synthetic regression (added `form.addEventListener("submit", ...)` inside a `<form data-dixie-submit>` body, NOT routing through `dispatchDixieDataForm`), probe exits 1.
 4. With a synthetic regression (added bare `<form>` `addEventListener("submit", ...)` without a `// htmx-guard: utility-submit` marker), probe exits 1.
-5. `make lint-htmx-guard` runs probe + reports pass/fail summary; exits non-zero on regression.
+5. `just lint-htmx-guard` runs probe + reports pass/fail summary; exits non-zero on regression.
 
 ### Regression net
 
 - `audit/discover_htmx_guard.test.mjs` — synthetic-file fixtures under `audit/_lib/fixtures/htmx_guard/` covering all 4 cases. Pattern matches `discover_orphan_handlers.test.mjs` (which exists as a sibling model).
-- `make lint-htmx-guard` wired into CI (GHA audit step already runs `node audit/*.mjs --strict`-style probes; this just adds one more).
+- `just lint-htmx-guard` wired into CI (GHA audit step already runs `node audit/*.mjs --strict`-style probes; this just adds one more).
 
 ### Commit shape (per AGENTS.md)
 
-- Commit 1: probe + tests + Makefile target. Title: `audit: add discover_htmx_guard probe for toast-no-redirect + JS submit coexistence`.
+- Commit 1: probe + tests + justfile recipe. Title: `audit: add discover_htmx_guard probe for toast-no-redirect + JS submit coexistence`.
 - Commit 2 (PREREQ, can co-land): app.js marker annotations + `htmx-guard-conventions.md`. Title: `frontend: mark utility-submit handlers for htmx-guard lint`. This is the slice 1 prerequisite that confirms the marker convention works on real code.
 
 Both commits land in the same PR (single feature, single review).

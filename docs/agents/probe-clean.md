@@ -1,8 +1,8 @@
 # probe-clean.ps1 — the build-cleanup PowerShell script
 
 This file is the canonical reference for `scripts/probe-clean.ps1`,
-the script that runs as `make probe-clean` (and is also wired
-into the `make debug` + `make web` pre-build steps). If you
+the script that runs as `just probe-clean` (and is also wired
+into the `just debug` + `just web` pre-build steps). If you
 are debugging a "I can't rebuild because Windows says the
 binary is in use" failure on Windows, **start here**.
 
@@ -50,7 +50,7 @@ your AV vendor's equivalent around the time the process was
 killed.
 
 **Recovery:** wait 10-30 seconds for the AV scan to complete
-the binary, then re-run `make probe-clean` (the script is
+the binary, then re-run `just probe-clean` (the script is
 idempotent).
 
 ### 2. Debugger attached
@@ -69,7 +69,7 @@ script has reported success.
 
 **Recovery:** detach the debugger (VS Code: stop the debug
 session; Wails DevTools: close the DevTools window), then
-re-run `make probe-clean`.
+re-run `just probe-clean`.
 
 ### 3. Re-spawning watcher
 
@@ -85,7 +85,7 @@ or similar in another terminal; VS Code's Run and Debug view
 showing a "Watch" task.
 
 **Recovery:** kill the watcher (Ctrl-C in its terminal, or the
-VS Code task), then re-run `make probe-clean`.
+VS Code task), then re-run `just probe-clean`.
 
 ## Policy: best-effort kill + clear diagnosis, no longer retry budget
 
@@ -99,7 +99,7 @@ The triage pass on #367 explicitly chose **document-only** over
   the script's control. A longer retry budget trades latency
   for nothing in the watchdog case (a watcher respawns faster
   than any bounded loop can re-kill).
-- Adding a 10-30s pause would make every `make probe-clean`
+- Adding a 10-30s pause would make every `just probe-clean`
   caller wait that long, even the happy path where no AV is
   involved.
 
@@ -112,7 +112,7 @@ fast.
 
 ## Idempotency contract
 
-**`make probe-clean` is safe to re-run anytime.** No error
+**`just probe-clean` is safe to re-run anytime.** No error
 if nothing is running. No state held between invocations. No
 files written.
 
@@ -121,7 +121,7 @@ always the same:
 
 ```
 <wait or fix the underlying cause>
-$ make probe-clean
+$ just probe-clean
 ```
 
 Re-run as many times as needed. The script will only return
@@ -131,8 +131,8 @@ exit 0 once the binary is actually released.
 
 `scripts/probe-clean.ps1` is invoked from:
 
-- `make probe-clean` — explicit cleanup target.
-- `Makefile` pre-build steps for `make debug` + `make web` —
+- `just probe-clean` — explicit cleanup target.
+- `justfile` pre-build steps for `just debug` + `just web` —
   runs automatically before each build.
 
 If you add a new build target that produces
