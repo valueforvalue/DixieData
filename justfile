@@ -7,6 +7,17 @@ generate:
     go run ./scripts/bake-activity
     npm run build:css
 
+tpl: generate
+
+release-notes-bake:
+    go run ./scripts/bake-release-notes
+
+activity-history-bake:
+    go run ./scripts/bake-activity
+
+css:
+    npm run build:css
+
 # Windows/Wails debug build plus sibling binaries required by local smoke/audit flows.
 debug: generate
     pwsh -NoLogo -NoProfile -File scripts/probe-clean.ps1
@@ -21,10 +32,105 @@ debug: generate
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"
     pwsh -NoLogo -NoProfile -Command "Set-Location tools/tune; go build -tags debug -o bin/dixiedata-tune.exe ."
 
+build: debug
+
+web:
+    pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force build/bin | Out-Null"
+    go build -tags debug -o build/bin/dixiedata-web.exe ./cmd/dixiedata-web
+    pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& './scripts/bundle-web-assets.ps1' -Root (Get-Location).Path"
+
+seed:
+    pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force build/bin | Out-Null"
+    go build -tags debug -o build/bin/seed-data.exe ./cmd/seed-data
+
+gold:
+    pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force build/bin | Out-Null"
+    go build -tags debug -o build/bin/gold-master.exe ./cmd/gold-master
+
+tune-bin:
+    pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"
+    pwsh -NoLogo -NoProfile -Command "Set-Location tools/tune; go build -tags debug -o bin/dixiedata-tune.exe ."
+
 # Interactive Wails development stays uncaptured by design.
 dev:
     wails dev
 
-# Read-only contract check for local/CI bootstrap.
+run:
+    pwsh -NoLogo -NoProfile -File scripts/run-debug.ps1
+
+release:
+    pwsh -NoLogo -NoProfile -File scripts/build-release.ps1
+
+archive:
+    pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive
+
+demo:
+    pwsh -NoLogo -NoProfile -File scripts/build-demo-release.ps1
+
+stress:
+    pwsh -NoLogo -NoProfile -File scripts/run-stress-tests.ps1
+
+goldmaster:
+    pwsh -NoLogo -NoProfile -File tests/goldmaster/run-suite.ps1
+
+test:
+    go test ./... -short -count=1
+    pwsh -NoLogo -NoProfile -Command "Set-Location tools/tune; go test -short -count=1"
+
+test-quiet: test
+
+# Freshness validates all debug subtools and the desktop smoke path.
+freshness: debug
+    pwsh -NoLogo -NoProfile -Command "if (-not (Test-Path build/bin/dixiedata-web.exe)) { throw 'missing dixiedata-web.exe' }; if (-not (Test-Path build/bin/seed-data.exe)) { throw 'missing seed-data.exe' }; if (-not (Test-Path build/bin/gold-master.exe)) { throw 'missing gold-master.exe' }; if (-not (Test-Path tools/tune/bin/dixiedata-tune.exe)) { throw 'missing dixiedata-tune.exe' }"
+    build/bin/dixiedata-web.exe --help
+    build/bin/seed-data.exe -h
+    build/bin/gold-master.exe -h
+    tools/tune/bin/dixiedata-tune.exe -h
+    build/bin/DixieData.exe --smoke --json
+
+verify-fresh-bake:
+    pwsh -NoLogo -NoProfile -Command "Remove-Item internal/templates/*_templ.go,internal/releasehistory/baked.go,internal/activityhistory/baked.go -Force -ErrorAction SilentlyContinue"
+    generate
+    test
+
+verify-clean: verify-fresh-bake
+
+# Lint probes retain existing stable names.
+lint-htmx-guard:
+    node audit/discover_htmx_guard.mjs
+lint-htmx-guard-strict:
+    node audit/discover_htmx_guard.mjs --strict
+lint-htmx-guard-test:
+    node audit/discover_htmx_guard.test.mjs
+lint-bake-bootstrap:
+    node audit/lint_bake_bootstrap.mjs
+lint-bake-bootstrap-strict:
+    node audit/lint_bake_bootstrap.mjs --strict
+lint-bake-bootstrap-test:
+    node --test audit/lint_bake_bootstrap.test.mjs
+lint-dispatcher-tdz-test:
+    node --test audit/dispatcher_tdz_fix.test.mjs
+lint-typecheck-augmentations-test:
+    node --test audit/typecheck_augmentations.test.mjs
+lint-no-bare-catch:
+    npm run lint:js
+lint-typecheck:
+    npm run typecheck
+
+# Existing lint aggregate. Individual recipes remain independently runnable.
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-no-bare-catch lint-typecheck
+
+audit:
+    npm run audit
+
+clean:
+    pwsh -NoLogo -NoProfile -Command "Remove-Item build -Recurse -Force -ErrorAction SilentlyContinue"
+
+log-clean:
+    pwsh -NoLogo -NoProfile -Command "Remove-Item build/log -Recurse -Force -ErrorAction SilentlyContinue"
+
+probe-clean:
+    pwsh -NoLogo -NoProfile -File scripts/probe-clean.ps1
+
 contract-test:
     node --test audit/just_contract.test.mjs
