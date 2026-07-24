@@ -6,6 +6,7 @@ import (
 
 func (a *App) handleStartupError(w http.ResponseWriter, r *http.Request) {
 	if a.startupErr == nil {
+		w.Header().Set("X-DixieData-Redirect", "/calendar")
 		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
 		return
 	}
