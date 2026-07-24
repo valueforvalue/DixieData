@@ -67,7 +67,7 @@ func (a *ArticleService) SetPageSizes(defaultSize, maxSize int) {
 	a.defaultPageSize = defaultSize
 	a.maxPageSize = maxSize
 }
-// uses to pre-render the article's PDF. The contract is a
+// ArticleRegistry uses a renderer to pre-render the article's PDF. The contract is a
 // subset of *render.Registry; the Render method takes a
 // record-type string + data map + writer and the impl
 // resolves the template + PrintSettings internally.
