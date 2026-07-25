@@ -50,7 +50,7 @@
   paper: "us-letter",
   margin: (x: 1.5cm, y: 1.5cm),
   header: [#text(size: 9pt, fill: luma(120))[#archive-title]],
-  footer: [#text(size: 8pt, fill: luma(120))[#footer-text #h(0.4em) #emph[#codename] #h(1fr) Page #counter(page).]],
+  footer: [#context [#text(size: 7pt, fill: luma(120))[#footer-text #h(0.4em) #emph[#codename] #h(1fr) #a.at("created_at", default: "") #h(1fr) Page #counter(page).display("1")]]],
 )
 
 // --- metadata ---
@@ -132,12 +132,3 @@
 )
 
 #v(1fr)
-
-// --- footer ---
-
-#line(length: 100%, stroke: 0.5pt + luma(200))
-#v(0.3em)
-#text(size: 8pt, fill: luma(120))[
-  Created: #a.at("created_at", default: "") #h(1em)
-  Updated: #a.at("updated_at", default: "")
-]
