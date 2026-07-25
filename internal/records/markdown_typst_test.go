@@ -130,7 +130,7 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 		{
 			name:     "fenced code block renders as raw block",
 			source:   "```\ncode here\nmore code\n```",
-			mustHave: []string{"#raw(block: true"},
+			mustHave: []string{"#raw("},
 			mustNot:  []string{"#list[", "#quote", "#par"},
 		},
 		{

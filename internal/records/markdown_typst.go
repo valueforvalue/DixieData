@@ -170,21 +170,19 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		}
 	case *ast.FencedCodeBlock:
 		if entering {
-			lang := string(v.Language(s.src))
+				lang := string(v.Language(s.src))
 			content := blockText(v, s.src)
-			// typst has #raw(block: true, lang: "go")[...] but
-			// syntax highlighting requires a typst plugin
-			// (`@preview/ctyp`) that the article template
-			// doesn't ship. Render as a plain raw block for
-			// now. When highlighting support lands, prepend
-			// `lang: "..."` to the raw() call.
+			// typst 0.15: raw() requires a string first arg;
+			// the content-body syntax raw(...)[...] is
+			// rejected with "expected string, found content".
+			// Emit as #raw("...escaped...", block: true).
 			_ = lang
-			fmt.Fprintf(&s.out, "#raw(block: true, lang: \"\")[\n%s\n]\n", typstEscape(content))
+			fmt.Fprintf(&s.out, "#raw(%s, block: true, lang: \"\")\n", typstStringLiteral(content))
 		}
 	case *ast.CodeBlock:
 		if entering {
 			content := blockText(v, s.src)
-			fmt.Fprintf(&s.out, "#raw(block: true)[\n%s\n]\n", typstEscape(content))
+			fmt.Fprintf(&s.out, "#raw(%s, block: true)\n", typstStringLiteral(content))
 		}
 	case *ast.List:
 		ordered := v.IsOrdered()
@@ -414,6 +412,30 @@ func typstEscapeLink(s string) string {
 			b.WriteRune(r)
 		}
 	}
+	return b.String()
+}
+
+// typstStringLiteral returns a typst string literal containing s.
+// Wraps the content in double quotes and escapes backslashes,
+// double-quotes, and newlines so the result is a valid typst
+// string suitable for passing as the first argument to raw().
+func typstStringLiteral(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 16)
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString("\\\\")
+		case '"':
+			b.WriteString("\\\"")
+		case '\n':
+			b.WriteString("\\n")
+		default:
+			b.WriteByte(byte(r))
+		}
+	}
+	b.WriteByte('"')
 	return b.String()
 }
 
