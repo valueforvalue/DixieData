@@ -458,7 +458,7 @@
   // page portrait card. The override (PDFExcerptOverride)
   // is the intended truncation mechanism; this cap is the
   // safety net for records that never set one.
-  let max-bio-chars-portrait = 2500
+  let max-bio-chars-portrait = 2250
   let cap-active = not is-landscape and body.len() > max-bio-chars-portrait
   let bio-text = if cap-active {
     body.clusters().slice(0, max-bio-chars-portrait).join("")
@@ -820,25 +820,29 @@
       #render-records-section(s, is-landscape: false)
     ]
     if image-panel != none {
-      // Round 42: image top Y is offset to the first grid
-      // line (the body top, 0.4in ≈ 10mm from the page top).
-      // Round 40 tried dy: -25mm which pushed the image
-      // into the header; the user picked the first visible
-      // grid line as the reference point. Grid lines are at
-      // 5mm intervals; the first one is at the body region's
-      // top edge (margin-top 0.4in ≈ 10mm).
-      // Biography is wrapped in `align(left)` so the section
-      // heading and the body paragraphs sit at the left edge
-      // of the right column instead of inheriting `align(center)`
-      // from the image-panel sibling (a Typst quirk: an
-      // `align()` block leaks its alignment to subsequent
-      // siblings inside the same content block).
+      // Round 57: render the image with dynamic height
+      // (width: 100%, height: 60mm, fit: contain) so
+      // landscape-aspect images render shorter and the
+      // bio starts closer to the image bottom. Tall
+      // portrait images cap at 60mm. The old fixed
+      // 50mm box left empty space under short images
+      // that the user flagged as too much gap.
+      let img-file = ""
+      let images = s.at("images", default: ())
+      let chosen = none
+      for img in images {
+        if img.at("is_primary", default: false) { chosen = img; break }
+      }
+      if chosen == none and images.len() > 0 { chosen = images.first() }
+      if chosen != none { img-file = chosen.at("file_name", default: "") }
       place(
         top + right,
         dx: 0pt,
         dy: 6.4mm,
         block(width: 50% - 0.3cm)[
-          #align(center)[#image-panel]
+          #if img-file != "" [
+            #align(center)[#image("/images/" + img-file, width: 100%, height: 60mm, fit: "contain")]
+          ]
           #v(3mm)
           #align(left)[#render-biography-inline(s, is-landscape: false)]
         ]
