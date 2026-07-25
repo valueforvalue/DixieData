@@ -18,12 +18,12 @@ package records
 
 // PDFRecordsPerPage is the maximum Source Records rendered per
 // Person-Record PDF in landscape orientation. Mirrors
-// pdf-records-per-page-landscape in templates/common/record_card.typ.
+// pdf-records-per-page-landscape (8) in templates/common/record_card.typ.
 // If you change one, change both — the regression net in
 // internal/records/pdf_test.go pins the Go const and renders a
 // synthetic soldier payload through the export pipeline to
 // assert the typst template doesn't blow past the cap.
-const PDFRecordsPerPage = 12
+const PDFRecordsPerPage = 8
 
 // PDFRecordsPerPagePortrait is the per-page cap for portrait
 // Person-Record PDFs. Portrait has ~70% of landscape's record

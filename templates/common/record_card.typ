@@ -11,10 +11,11 @@
 // --- formatting helpers ---
 
 // pdf-records-per-page-landscape is the maximum Source Records
-// rendered per Person-Record PDF in landscape orientation. 12
+// rendered per Person-Record PDF in landscape orientation. 8
 // fits the landscape 11x8.5 layout with margin at 9pt + v(0.2em)
-// per row (~0.5in per card, 6.5in usable text height → ~13
-// rows). 12 leaves ~8% headroom for tight `details` text.
+// per row. Rounds 33-57 trimmed the old 12 cap to 8 so the
+// truncation footnote fires more often and the user can reorder
+// Source Records to control what appears in the PDF.
 //
 // pdf-records-per-page-portrait is the cap for portrait
 // orientation. Portrait has ~70% of landscape's record column
@@ -31,7 +32,7 @@
 // warning toast (X-DixieData-Toast) can announce truncation
 // using the same number. If you change one side, change the
 // other — the audit net pins the pair.
-#let pdf-records-per-page-landscape = 12
+#let pdf-records-per-page-landscape = 8
 #let pdf-records-per-page-portrait = 6
 
 // pdf-records-cap returns the per-orientation Source Records
