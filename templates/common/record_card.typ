@@ -650,56 +650,7 @@
 
 // --- main card layouts ---
 
-// render-landscape-card is a 2-column grid matching the fpdf
-// landscape layout: left = identity + service + household, right =
-// image at the top and records below. The grid's right column is
-// the same X range the fpdf layout uses (50% of the page). The
-// label-value grid inside each column uses 32% of the column's
-// local width, not of the page, which is the same convention fpdf
-// uses. This means labels in the right column start at the column
-// edge (50% of page), not the page edge; the trade-off is that
-// landscape rendering still fits a typical record on a single
-// page, while portrait uses a different layout (see
-// render-portrait-card) where the column proportions can be
-// inverted.
-#let render-landscape-card(s, opts, image-panel, service-show-all: false, household-show-all: false) = {
-  // Landscape body grid (round 16): 2 columns. Left = the full
-  // vertical stack of identity + service + household sections.
-  // Right = records only (the image was floated into the title
-  // region by the caller via place()). The right cell starts
-  // with a top padding equal to the image-panel height plus
-  // 3mm so Records sits close to the bottom of the image, in
-  // the same right column. The left cell has no top padding
-  // and is top-aligned, so the body's left-column text starts
-  // at the body's top Y (which is right after the title block
-  // since the title row's height is the title text's natural
-  // height, not the image's). When image-panel is none (no
-  // image to render), the records section uses its own default
-  // 0.5em top padding.
-  let right-top = if image-panel == none {
-    0.5em
-  } else {
-    theme.geometry.image_panel_height + 3mm
-  }
-  grid(
-    columns: (1fr, 0.6cm, 1fr),
-    [
-      #render-identity-section(s)
-      #v(theme.geometry.section_gap)
-      #render-service-section(s, show-all: service-show-all)
-      #v(theme.geometry.section_gap)
-      #render-household-section(s, show-all: household-show-all)
-    ],
-    [],
-    [
-      #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-      #align(top)[
-        #v(right-top)
-        #render-records-section(s, is-landscape: true)
-      ]
-    ],
-  )
-}
+// --- main card layouts ---
 
 // --- public entry point ---
 
@@ -755,18 +706,29 @@
       #render-household-section(s, show-all: household-show-all)
     ]
     if image-panel != none {
-      // Right column: 50% page width minus half the gutter.
-      // The block sits flush with the page's right margin
-      // (place() with top + right + dx: 0). Records text is
-      // left-aligned within the block so it reads as the user
-      // expects, with the heading at the left edge of the
-      // right column.
+      // Round 57: dynamic image height (same as portrait
+      // branch). Image scales to column width, capped at
+      // 60mm for very tall images. Landscape column is
+      // wider (~4.75in) so the height cap fires more
+      // often; a 3:2 landscape image at 4.75in wide
+      // would be 3.17in (80mm) tall, so the 60mm cap
+      // constrains it to ~60mm × 3.6in.
+      let img-file = ""
+      let images = s.at("images", default: ())
+      let chosen = none
+      for img in images {
+        if img.at("is_primary", default: false) { chosen = img; break }
+      }
+      if chosen == none and images.len() > 0 { chosen = images.first() }
+      if chosen != none { img-file = chosen.at("file_name", default: "") }
       place(
         top + right,
         dx: 0pt,
         dy: 6.4mm,
         block(width: 50% - 0.3cm)[
-          #align(center)[#image-panel]
+          #if img-file != "" [
+            #align(center)[#image("/images/" + img-file, width: 100%, height: 60mm, fit: "contain")]
+          ]
           #v(3mm)
           #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
           #align(left)[#render-records-section(s, is-landscape: true)]
