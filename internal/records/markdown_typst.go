@@ -42,6 +42,8 @@ import (
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	gastext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 )
@@ -68,7 +70,7 @@ func (r *MarkdownRenderer) RenderTypst(source string) (string, error) {
 		return "", nil
 	}
 	srcBytes := []byte(source)
-	md := goldmark.New()
+	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	doc := md.Parser().Parse(text.NewReader(srcBytes))
 
 	state := &typstState{src: srcBytes}
@@ -87,6 +89,13 @@ func (r *MarkdownRenderer) RenderTypst(source string) (string, error) {
 type typstState struct {
 	src []byte
 	out bytes.Buffer
+
+	// Table accumulation
+	tableCells    []string
+	inTableHeader bool
+	inTableCell   bool
+	cellBuf       bytes.Buffer
+	rowCellCount  int
 }
 
 // walk is the ast.Walker callback. It dispatches on node type
@@ -214,11 +223,19 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		}
 	case *ast.Text:
 		if entering {
-			s.writeText(v)
+			if s.inTableCell {
+				s.writeTextToBuf(v, &s.cellBuf)
+			} else {
+				s.writeText(v)
+			}
 		}
 	case *ast.String:
 		if entering {
-			s.out.WriteString(typstEscape(string(v.Value)))
+			if s.inTableCell {
+				s.cellBuf.WriteString(typstEscape(string(v.Value)))
+			} else {
+				s.out.WriteString(typstEscape(string(v.Value)))
+			}
 		}
 	case *ast.HTMLBlock, *ast.RawHTML, *ast.LinkReferenceDefinition:
 		// Stripped -- bluemonday already filtered the sanitized
@@ -226,6 +243,32 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		// Skipping via returning WalkSkipChildren is more
 		// efficient than emitting nothing for the children.
 		return ast.WalkSkipChildren, nil
+	case *gastext.Table:
+		if entering {
+			s.tableCells = s.tableCells[:0]
+			s.rowCellCount = 0
+		} else {
+			s.emitTable()
+		}
+	case *gastext.TableHeader:
+		s.inTableHeader = entering
+	case *gastext.TableRow:
+		if entering {
+			s.rowCellCount = 0
+		}
+	case *gastext.TableCell:
+		if entering {
+			s.inTableCell = true
+			s.cellBuf.Reset()
+		} else {
+			s.inTableCell = false
+			content := s.cellBuf.String()
+			if s.inTableHeader {
+				content = "*" + content + "*"
+			}
+			s.tableCells = append(s.tableCells, content)
+			s.rowCellCount++
+		}
 	default:
 		// Unknown block / inline: best effort, walk children
 		// so any nested content still renders.
@@ -437,6 +480,46 @@ func typstStringLiteral(s string) string {
 	}
 	b.WriteByte('"')
 	return b.String()
+}
+
+// writeTextToBuf is writeText but emits to a caller-provided
+// buffer. Used during table cell accumulation.
+func (s *typstState) writeTextToBuf(t *ast.Text, buf *bytes.Buffer) {
+	raw := string(t.Segment.Value(s.src))
+	if t.HardLineBreak() {
+		raw = strings.TrimRight(raw, "\n")
+		raw = strings.TrimRight(raw, "\\")
+		buf.WriteString(typstEscape(raw))
+		buf.WriteString(" ")
+		return
+	}
+	if t.SoftLineBreak() {
+		raw = strings.TrimRight(raw, "\n")
+		buf.WriteString(typstEscape(raw))
+		buf.WriteString(" ")
+		return
+	}
+	raw = strings.TrimRight(raw, "\n")
+	buf.WriteString(typstEscape(raw))
+}
+
+// emitTable writes accumulated table cells as a typst
+// #table() call. Header cells are wrapped in *bold*.
+func (s *typstState) emitTable() {
+	if len(s.tableCells) == 0 {
+		return
+	}
+	cols := s.rowCellCount
+	if cols == 0 {
+		return
+	}
+	s.out.WriteString(fmt.Sprintf("#table(columns: %d", cols))
+	for _, cell := range s.tableCells {
+		s.out.WriteString(", [")
+		s.out.WriteString(cell)
+		s.out.WriteString("]")
+	}
+	s.out.WriteString(")\n")
 }
 
 // Reference imports so go vet / goimports keeps them when a
