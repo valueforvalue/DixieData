@@ -66,7 +66,7 @@
 }
 
 #set page(
-  paper: "a4",
+  paper: "us-letter",
   margin: (x: 1.5cm, y: 2cm),
   header: [#text(size: 9pt, fill: luma(120))[#archive-title]],
   footer: [#text(size: 8pt, fill: luma(120))[#footer-text #h(0.4em) #emph[#codename] #h(1fr) Page #counter(page).]],

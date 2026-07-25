@@ -21,6 +21,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/xuri/excelize/v2"
 )
@@ -600,8 +601,32 @@ func (e *ExportService) exportArticleViaRegistry(outputPath string, article mode
 	}
 	defer debug.DeferCloseLog(f, "exportArticleViaRegistry.f")
 
+	// Render the markdown body to typst markup so the template
+	// can inline it. The template reads a.at("body_typst").
+	// This was missing before round 1 — the raw models.Article
+	// struct has no body_typst field, so the template always
+	// saw an empty string and rendered no body text.
+	markdown := records.NewMarkdownRenderer()
+	bodyTypst, typstErr := markdown.RenderTypst(article.BodyMD)
+	if typstErr != nil {
+		return fmt.Errorf("exportArticle: typst body: %w", typstErr)
+	}
+
 	data := map[string]any{
-		"article":       article,
+		"article": map[string]any{
+			"id":             article.ID,
+			"sync_id":        article.SyncID,
+			"display_id":     article.DisplayID,
+			"title":          article.Title,
+			"subtitle":       article.Subtitle,
+			"body_md":        article.BodyMD,
+			"body_html":      article.BodyHTML,
+			"body_typst":     bodyTypst,
+			"created_at":     article.CreatedAt,
+			"updated_at":     article.UpdatedAt,
+			"is_snapshot":    article.IsSnapshot,
+			"snapshot_of_id":  article.SnapshotOfID,
+		},
 		"resolved_refs": resolvedRefs,
 		"options":       options.Normalize(orientation, true),
 		"settings":      settings,
