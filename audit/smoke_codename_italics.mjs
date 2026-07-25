@@ -16,7 +16,7 @@
  *   PDF (5 wrap sites):
  *     4. templates/common/record_card.typ wraps branding.at("codename")
  *        in #emph() in the shared footer.
- *     5-8. templates/article_landscape.typ, article_portrait.typ,
+ *     5-7. article_portrait.typ,
  *          event_landscape.typ, event_portrait.typ each declare a
  *          codename let-binding from branding and wrap it in
  *          #emph() in their inline footer call.
@@ -87,7 +87,6 @@ test('chrome-03 entry_form.templ Settings Build <dd> wraps Codename() in <em>', 
 
 // ----- PDF -----
 const RECORD_CARD = readFileSync(join(ROOT, 'templates', 'common', 'record_card.typ'), 'utf8');
-const ARTICLE_LANDSCAPE = readFileSync(join(ROOT, 'templates', 'article_landscape.typ'), 'utf8');
 const ARTICLE_PORTRAIT = readFileSync(join(ROOT, 'templates', 'article_portrait.typ'), 'utf8');
 const EVENT_LANDSCAPE = readFileSync(join(ROOT, 'templates', 'event_landscape.typ'), 'utf8');
 const EVENT_PORTRAIT = readFileSync(join(ROOT, 'templates', 'event_portrait.typ'), 'utf8');
@@ -101,15 +100,6 @@ test('pdf-01 templates/common/record_card.typ wraps branding.codename in #emph()
 });
 
 test('pdf-02 article_landscape.typ declares codename let-binding and wraps in #emph()', () => {
-  assert.ok(
-    /#let codename\s*=\s*if "codename" in branding/.test(ARTICLE_LANDSCAPE),
-    'article_landscape.typ must declare `#let codename = if "codename" in branding { ... }`',
-  );
-  assert.ok(
-    /#emph\s*\[\s*#codename\s*\]/.test(ARTICLE_LANDSCAPE),
-    'article_landscape.typ footer must wrap #codename in #emph()',
-  );
-});
 
 test('pdf-03 article_portrait.typ declares codename let-binding and wraps in #emph()', () => {
   assert.ok(

@@ -31,16 +31,7 @@ templ ArticlePDFExport(articleID int64) {
 		data-article-id={ fmt.Sprintf("%d", articleID) }
 	>
 		<div class="flex flex-wrap items-center gap-2">
-			<label for="article-pdf-orientation" class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">PDF orientation</label>
-			<select
-				id="article-pdf-orientation"
-				name="orientation"
-				class="field-input w-auto text-sm"
-				data-article-pdf-orientation
-			>
-				<option value="portrait" selected>Portrait</option>
-				<option value="landscape">Landscape</option>
-			</select>
+			<input type="hidden" name="orientation" value="portrait">
 			@Button("Save PDF", ButtonPrimary, "whitespace-nowrap", templ.Attributes{
 				"type":                     "submit",
 				"data-article-pdf-submit":  "",

@@ -682,23 +682,19 @@ try {
     const pdfState = await page.evaluate(() => {
       const picker = document.querySelector('[data-article-pdf-export]');
       const orientation = document.querySelector('[data-article-pdf-orientation]');
+      // Article is portrait-only; selector removed, check hidden input instead
+      const hiddenOrientation = document.querySelector('input[name="orientation"][value="portrait"]');
       const submit = document.querySelector('[data-article-pdf-submit]');
       const raw = document.querySelector('[data-article-raw-download]');
       return {
         pickerExists: picker !== null,
-        orientationExists: orientation !== null,
-        orientationDefault: orientation?.value,
-        orientationOptions: orientation ? Array.from(orientation.querySelectorAll('option')).map((o) => o.value) : [],
+        hiddenOrientationExists: hiddenOrientation !== null,
         submitExists: submit !== null,
         rawDownloadExists: raw !== null,
       };
     });
     record('pdf-picker-renders', pdfState.pickerExists, pdfState);
-    record('pdf-orientation-select-renders', pdfState.orientationExists, pdfState);
-    record('pdf-orientation-default-portrait', pdfState.orientationDefault === 'portrait', pdfState);
-    record('pdf-orientation-options-are-portrait-landscape',
-      JSON.stringify(pdfState.orientationOptions) === JSON.stringify(['portrait', 'landscape']),
-      pdfState);
+    record('pdf-hidden-orientation-portrait', pdfState.hiddenOrientationExists, pdfState);
     record('pdf-submit-button-renders', pdfState.submitExists, pdfState);
     record('raw-download-link-renders', pdfState.rawDownloadExists, pdfState);
 

@@ -406,7 +406,10 @@ func templateForRecordType(recordType, orientation string) string {
 	case "wife", "linked_person":
 		return "spouse_" + short
 	case "article":
-		return "article_" + short
+		// Article is portrait-only (issue #321 v1). Landscape
+		// template was dropped. Always return article_portrait
+		// regardless of orientation.
+		return "article_portrait"
 	case "event":
 		return "event_" + short
 	default:
