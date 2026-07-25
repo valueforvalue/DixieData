@@ -481,6 +481,12 @@ func PDFOptionsFromForm(values url.Values, defaultOrientation string, defaultInc
 		Orientation:     strings.TrimSpace(values.Get("orientation")),
 		PrinterFriendly: values.Get("printer_friendly") != "",
 		IncludeImages:   parseBoolFormValueDefault(values, "include_images", defaultIncludeImages),
+		// debug_grid is a tune-only tool: the typst template
+		// reads opts.debugGrid to draw a 5mm grid + 1in ruler
+		// on top of the page so the developer can give precise
+		// Y/X coordinates back. The appshell never sets this;
+		// only `dixiedata-tune --debug-grid` does.
+		DebugGrid: values.Get("debug_grid") != "",
 	}
 	return options.Normalize(defaultOrientation, defaultIncludeImages)
 }

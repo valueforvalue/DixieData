@@ -305,6 +305,7 @@ type renderFlags struct {
 	filterCHS    string
 	printer      bool
 	fullBio      bool
+	debugGrid    bool
 	out          string
 	maxPages     int
 	format       outputFormat
@@ -332,6 +333,7 @@ func parseRenderFlags(name string, args []string) (*renderFlags, error) {
 	fs.StringVar(&rf.filterCHS, "filter-confederate-home-status", "", "comma-separated Confederate Home statuses to include")
 	fs.BoolVar(&rf.printer, "printer-friendly", false, "printer-friendly mode")
 	fs.BoolVar(&rf.fullBio, "full-biography-page", false, "append full biography appendix")
+	fs.BoolVar(&rf.debugGrid, "debug-grid", false, "overlay a 5mm grid + 1in ruler (tuning only)")
 	fs.StringVar(&rf.out, "out", "", "output PDF path (required)")
 	fs.IntVar(&rf.maxPages, "max-pages-per-record", 2, "warn when a single record exceeds this many pages")
 	fs.StringVar((*string)(&rf.format), "format", "human", "human or json")
@@ -401,6 +403,9 @@ func urlValuesFromFlags(rf *renderFlags) url.Values {
 	}
 	if rf.fullBio {
 		v.Set("full_biography_page", "1")
+	}
+	if rf.debugGrid {
+		v.Set("debug_grid", "1")
 	}
 	for _, s := range splitCSV(rf.selectedIDs) {
 		v.Add("selected_ids", s)
@@ -494,6 +499,7 @@ func doRenderParsed(rf *renderFlags, dbPath, typstPath, templatesDir, dataDir st
 			Orientation:     rf.orientation,
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
+			DebugGrid:       rf.debugGrid,
 		}
 		out, err := createOutFile(rf.out)
 		if err != nil {
@@ -521,6 +527,7 @@ func doRenderParsed(rf *renderFlags, dbPath, typstPath, templatesDir, dataDir st
 			Orientation:     rf.orientation,
 			PrinterFriendly: rf.printer,
 			IncludeImages:   true,
+			DebugGrid:       rf.debugGrid,
 		}
 		out, err := createOutFile(rf.out)
 		if err != nil {
@@ -548,6 +555,7 @@ func doRenderParsed(rf *renderFlags, dbPath, typstPath, templatesDir, dataDir st
 			Orientation:     rf.orientation,
 			PrinterFriendly: rf.printer,
 			IncludeImages:   false,
+			DebugGrid:       rf.debugGrid,
 		}
 		out, err := createOutFile(rf.out)
 		if err != nil {

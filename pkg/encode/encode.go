@@ -145,5 +145,9 @@ func mergeOptionsWithDefaults(options render.PDFOptions) render.PrintSettings {
 		SingleRecordTemplate: options.Template,
 		IncludeImages:        options.IncludeImages,
 		PrintableArchive:     options.PrintableArchive,
+		// debug_grid is forwarded so the typst template can
+		// render the 5mm grid + 1in ruler overlay. See
+		// PDFOptions.DebugGrid for the contract.
+		DebugGrid:            options.DebugGrid,
 	}
 }

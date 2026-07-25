@@ -53,6 +53,14 @@ type PrintSettings struct {
 	SelectedIDs                   []int64
 	IncludeImages                 bool
 	PrintableArchive              bool
+	// DebugGrid toggles a 5mm grid + 1in ruler overlay on the
+	// rendered PDF. Mirrors PDFOptions.DebugGrid (kept in sync
+	// via mergeOptionsWithDefaults in pkg/encode). The Typst
+	// template reads `opts.debugGrid` and renders the grid
+	// only when true. Production callers (the appshell,
+	// snapshot tests) never set this; only
+	// `dixiedata-tune --debug-grid` does.
+	DebugGrid                     bool
 }
 
 // HasFilters returns true if any of the filter slices is non-empty.
@@ -77,6 +85,15 @@ type PDFOptions struct {
 	IncludeImages    bool   `json:"includeImages"`
 	PrintableArchive bool   `json:"printableArchive"`
 	Template         string `json:"template"`
+	// DebugGrid toggles a 5mm grid + 1in ruler overlay on the
+	// rendered PDF. Used by the rendering-iteration loop so a
+	// developer reading the PDF can give precise Y/X
+	// coordinates back to the agent. The Typst template reads
+	// it via `opts.debugGrid` and renders the grid only when
+	// true. Production callers (the appshell, snapshot tests)
+	// never set this — it's a tune-time tool, not a shipped
+	// PDF feature.
+	DebugGrid bool `json:"debugGrid"`
 }
 
 // Normalize fills in the default values for the fields the caller

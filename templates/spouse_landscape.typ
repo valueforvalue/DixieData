@@ -12,6 +12,7 @@
 // (always show Linked Spouse Record, Maiden Name, Rank fields).
 
 #import "common/record_card.typ": *
+#import "common/debug_grid.typ": render-debug-grid
 
 #let data = read("data.json", encoding: none)
 #let data = json(data)
@@ -26,3 +27,4 @@
 #set par(leading: 0.45em)
 
 #render-record-card(opts, branding, s, "spouse")
+#render-debug-grid(opts)

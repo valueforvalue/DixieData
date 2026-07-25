@@ -17,10 +17,23 @@
 package records
 
 // PDFRecordsPerPage is the maximum Source Records rendered per
-// Person-Record PDF. Mirrors pdf-records-per-page in
-// templates/common/record_card.typ. If you change one, change
-// both — the regression net in internal/records/pdf_test.go
-// pins the Go const and renders a synthetic soldier payload
-// through the export pipeline to assert the typst template
-// doesn't blow past the cap.
+// Person-Record PDF in landscape orientation. Mirrors
+// pdf-records-per-page-landscape in templates/common/record_card.typ.
+// If you change one, change both — the regression net in
+// internal/records/pdf_test.go pins the Go const and renders a
+// synthetic soldier payload through the export pipeline to
+// assert the typst template doesn't blow past the cap.
 const PDFRecordsPerPage = 12
+
+// PDFRecordsPerPagePortrait is the per-page cap for portrait
+// Person-Record PDFs. Portrait has ~70% of landscape's record
+// column width (single 50% page column vs the 50% right column
+// in landscape) and the same row pitch, so the cap is reduced
+// to keep one-page predictability. 6 was picked over 8 after
+// round 35 review: with 8 the inline bio (when set) pushed
+// records into a second column, which still triggered a 3rd
+// page from the dedicated bio page; 6 fits the same envelope
+// cleanly with the inline bio. Mirrors
+// pdf-records-per-page-portrait in templates/common/record_card.typ.
+// Same dual-side invariant: change both, regen snapshots.
+const PDFRecordsPerPagePortrait = 6

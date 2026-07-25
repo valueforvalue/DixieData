@@ -10,20 +10,38 @@
 
 // --- formatting helpers ---
 
-// pdf-records-per-page is the maximum Source Records rendered
-// per Person-Record PDF. 12 fits the landscape 11x8.5 layout
-// with margin at 9pt + v(0.2em) per row (~0.5in per card,
-// 6.5in usable text height → ~13 rows). 12 leaves ~8% headroom
-// for tight `details` text. Portrait gets the same cap to keep
-// the one-page mental model consistent across modes (the extra
-// portrait whitespace is intentional — predictability over
-// density).
+// pdf-records-per-page-landscape is the maximum Source Records
+// rendered per Person-Record PDF in landscape orientation. 12
+// fits the landscape 11x8.5 layout with margin at 9pt + v(0.2em)
+// per row (~0.5in per card, 6.5in usable text height → ~13
+// rows). 12 leaves ~8% headroom for tight `details` text.
 //
-// Issue #513: mirrored as records.PDFRecordsPerPage in Go so the
-// export-time warning toast (X-DixieData-Toast) can announce
-// truncation using the same number. If you change one side,
-// change the other — the audit net pins the pair.
-#let pdf-records-per-page = 12
+// pdf-records-per-page-portrait is the cap for portrait
+// orientation. Portrait has ~70% of landscape's record column
+// width (a single 50% page column vs the 50% right column in
+// landscape) and the same row pitch, so the cap is reduced to
+// keep the one-page mental model honest. 6 was picked over 8
+// after round 35 review: with 8 the inline bio (when set)
+// pushed records into a second column, which still triggered
+// a 3rd page from the dedicated bio page; 6 fits the same
+// envelope cleanly with the inline bio. Round 36.
+//
+// Issue #513: mirrored as records.PDFRecordsPerPage (12) +
+// records.PDFRecordsPerPagePortrait (6) in Go so the export-time
+// warning toast (X-DixieData-Toast) can announce truncation
+// using the same number. If you change one side, change the
+// other — the audit net pins the pair.
+#let pdf-records-per-page-landscape = 12
+#let pdf-records-per-page-portrait = 6
+
+// pdf-records-cap returns the per-orientation Source Records
+// cap. Landscape uses the wider cap; portrait uses the
+// narrower one. The render-records-section helper reads this
+// when slicing its list so the typst side and the Go toast
+// stay in sync.
+#let pdf-records-cap(is-landscape) = {
+  if is-landscape { pdf-records-per-page-landscape } else { pdf-records-per-page-portrait }
+}
 
 // title-case capitalizes the first character of a string and
 // lowercases the rest. Used for entry-type fallbacks.
@@ -375,20 +393,22 @@
 }
 
 // render-records-section renders the right-column "Records" section.
-// Caps the rendered list at pdf-records-per-page and emits a
+// Caps the rendered list at the per-orientation cap
+// (pdf-records-per-page-landscape=12 / -portrait=8) and emits a
 // muted footnote when records were truncated so the user can see
 // they have more Source Records than the PDF shows. The export
 // pipeline surfaces a parallel warning toast (X-DixieData-Toast)
-// driven by records.PDFRecordsPerPage so the user gets the same
-// truncation signal whether they look at the PDF or the UI.
-#let render-records-section(s) = {
+// driven by records.PDFRecordsPerPage / PDFRecordsPerPagePortrait
+// so the user gets the same truncation signal whether they look
+// at the PDF or the UI.
+#let render-records-section(s, is-landscape: true) = {
   v(0.5em)
   let records = s.at("records", default: ())
   if records.len() > 0 [
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Records]
     #v(0.2em)
     #set text(size: 9pt)
-    #let limit = pdf-records-per-page
+    #let limit = pdf-records-cap(is-landscape)
     #let shown = records.slice(0, calc.min(limit, records.len()))
     #let omitted = records.len() - shown.len()
     #for r in shown [
@@ -402,7 +422,7 @@
     ]
     #if omitted > 0 [
       #v(0.3em)
-      #text(size: 7pt, fill: theme.palette.muted)[
+      #text(size: 7pt, fill: theme.palette.text_muted)[
         #omitted additional record(s) omitted — reorder Source Records to control which are included in this PDF.
       ]
     ]
@@ -415,9 +435,15 @@
 // compact form, suitable for fitting alongside a record card on
 // the same page. Uses the user-supplied PDFExcerptOverride when
 // set (typically a shortened version) and falls back to the full
-// biography. The full bio is allowed to overflow onto a new
-// page if needed; the override is what keeps the layout compact.
-#let render-biography-inline(s) = {
+// biography. When the full bio is used in portrait mode and
+// exceeds the hard cap (max-bio-chars-portrait, ~2000 chars),
+// the text is truncated with a visible note so the bio never
+// overflows the single-page portrait card. Landscape has no
+// cap because overflow can go to a dedicated bio page.
+//
+// The override is the intended mechanism; the cap is a safety
+// net for records where the override was never set.
+#let render-biography-inline(s, is-landscape: true) = {
   let excerpt = s.at("pdf_excerpt_override", default: "")
   let body = if excerpt != none and excerpt.trim() != "" {
     excerpt
@@ -426,12 +452,30 @@
   }
   if body == none or body.trim() == "" { return none }
 
+  // Portrait cap: ~2000 chars fits ~25 lines at 7pt in the
+  // 4.25in right column with standard leading. The cap is
+  // a hard limit so the bio never pushes past the single-
+  // page portrait card. The override (PDFExcerptOverride)
+  // is the intended truncation mechanism; this cap is the
+  // safety net for records that never set one.
+  let max-bio-chars-portrait = 2500
+  let cap-active = not is-landscape and body.len() > max-bio-chars-portrait
+  let bio-text = if cap-active {
+    body.clusters().slice(0, max-bio-chars-portrait).join("")
+  } else {
+    body
+  }
+
   text(size: theme.type-scale.biography.size, weight: "bold", fill: theme.palette.accent)[
     Biography
   ]
   v(0.4em)
   set text(size: theme.type-scale.biography.size - 2pt, fill: theme.palette.text_primary)
-  body
+  bio-text
+  if cap-active [
+    #v(0.3em)
+    #text(size: 7pt, fill: theme.palette.text_muted)[...truncated — open this record in DixieData to read the full biography.]
+  ]
 }
 
 // render-biography-page appends a dedicated page with the
@@ -590,7 +634,7 @@
       width: 100%,
       height: theme.geometry.image_panel_height,
       clip: true,
-      align(center + horizon)[
+      align(top + center)[
         // The image lookup is rooted at the typst workdir, which is
         // the temp dir we pass via `--root`. The renderer's image
         // staging step copies the image to <workdir>/images/, so
@@ -651,55 +695,8 @@
       #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
       #align(top)[
         #v(right-top)
-        #render-records-section(s)
+        #render-records-section(s, is-landscape: true)
       ]
-    ],
-  )
-}
-
-// render-portrait-card has two shapes:
-//   - When the soldier has a primary image, the card is laid out
-//     as a 2-column grid:
-//       left  = title + identity + service + household + records
-//       right = image at top, biography underneath
-//     The biography uses PDFExcerptOverride when set (the user-
-//     supplied short version) so a long bio does not push the
-//     right column over the page break. If no override is set the
-//     full biography is rendered and Typst's block model allows
-//     it to overflow into page 2.
-// render-portrait-card is always a 2-column layout (single page).
-// The right column is reserved for the image at the top and the
-// biography below it. When the soldier has no image, the right
-// column is empty at the top and the biography flows up; when the
-// biography is long the user can supply a PDFExcerptOverride so
-// it fits in the right column.
-//
-// Portrait is a single page by design. The fpdf path's
-// choosePDFRecordCardLayout also tries to keep portrait on a
-// single page; multi-page portrait is only used when the content
-// genuinely does not fit, and even then the second page is
-// rare in practice.
-#let render-portrait-card(s, opts, service-show-all: false, household-show-all: false) = {
-  let image-panel = render-image-panel(opts, s)
-  grid(
-    columns: (1fr, 0.6cm, 1fr),
-    [
-      #render-identity-section(s)
-      #v(theme.geometry.section_gap)
-      #render-service-section(s, show-all: service-show-all)
-      #v(theme.geometry.section_gap)
-      #render-household-section(s, show-all: household-show-all)
-      #v(theme.geometry.section_gap)
-      #render-records-section(s)
-    ],
-    [],
-    [
-      #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-      #if image-panel != none [
-        #image-panel
-        #v(theme.geometry.section_gap)
-      ]
-      #render-biography-inline(s)
     ],
   )
 }
@@ -720,7 +717,12 @@
 // the title there, so the alignment works out differently).
 #let render-record-card(opts, branding, s, variant) = {
   let is-landscape = detect-landscape(opts)
-  let align-title = if is-landscape { left } else { center }
+  // Title is always left-aligned (round 34): the user asked
+  // for portrait to match landscape's left-aligned name +
+  // display-id. Centred portraits read as a different
+  // document family from the landscape cards; left alignment
+  // ties both modes to a single brand voice.
+  let align-title = left
   let image-panel = render-image-panel(opts, s)
 
   if is-landscape {
@@ -762,12 +764,12 @@
       place(
         top + right,
         dx: 0pt,
-        dy: 0pt,
+        dy: 6.4mm,
         block(width: 50% - 0.3cm)[
           #align(center)[#image-panel]
           #v(3mm)
           #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-          #align(left)[#render-records-section(s)]
+          #align(left)[#render-records-section(s, is-landscape: true)]
         ]
       )
     } else {
@@ -782,18 +784,76 @@
       place(
         top + right,
         dx: 0pt,
-        dy: 0pt,
+        dy: 6.4mm,
         block(width: 50% - 0.3cm)[
           #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-          #align(left)[#render-records-section(s)]
+          #align(left)[#render-records-section(s, is-landscape: true)]
         ]
       )
     }
     render-biography-page(s)
   } else {
+    // Portrait layout: single-page by design (round 36). The
+    // right column carries the image at the top with the
+    // inline biography (using PDFExcerptOverride when set,
+    // otherwise the full biography — Typst's block model
+    // fits it) directly underneath. The dedicated full-bio
+    // page from render-biography-page is intentionally NOT
+    // called in portrait because a second page breaks the
+    // single-page contract the user wants for portrait cards
+    // (a portrait page is half a landscape page in vertical
+    // space, so anything beyond a short bio would push the
+    // layout over). Records render in the left col under
+    // household with the portrait cap of 6; if the soldier
+    // has more than 6 records the truncation footnote names
+    // the count so the user knows to reorder Source Records.
     render-title-block(s, align-title: align-title)
     let service-show-all = variant == "widow" or variant == "spouse"
     let household-show-all = variant == "widow" or variant == "spouse"
-    render-portrait-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
+    block(width: 50% - 0.3cm)[
+      #render-identity-section(s)
+      #v(theme.geometry.section_gap)
+      #render-service-section(s, show-all: service-show-all)
+      #v(theme.geometry.section_gap)
+      #render-household-section(s, show-all: household-show-all)
+      #v(theme.geometry.section_gap)
+      #render-records-section(s, is-landscape: false)
+    ]
+    if image-panel != none {
+      // Round 42: image top Y is offset to the first grid
+      // line (the body top, 0.4in ≈ 10mm from the page top).
+      // Round 40 tried dy: -25mm which pushed the image
+      // into the header; the user picked the first visible
+      // grid line as the reference point. Grid lines are at
+      // 5mm intervals; the first one is at the body region's
+      // top edge (margin-top 0.4in ≈ 10mm).
+      // Biography is wrapped in `align(left)` so the section
+      // heading and the body paragraphs sit at the left edge
+      // of the right column instead of inheriting `align(center)`
+      // from the image-panel sibling (a Typst quirk: an
+      // `align()` block leaks its alignment to subsequent
+      // siblings inside the same content block).
+      place(
+        top + right,
+        dx: 0pt,
+        dy: 6.4mm,
+        block(width: 50% - 0.3cm)[
+          #align(center)[#image-panel]
+          #v(3mm)
+          #align(left)[#render-biography-inline(s, is-landscape: false)]
+        ]
+      )
+    } else {
+      // No image: biography flows from the top of the right
+      // column at the title's Y via `place(top + right)`.
+      place(
+        top + right,
+        dx: 0pt,
+        dy: 6.4mm,
+        block(width: 50% - 0.3cm)[
+          #align(left)[#render-biography-inline(s, is-landscape: false)]
+        ]
+      )
+    }
   }
 }
