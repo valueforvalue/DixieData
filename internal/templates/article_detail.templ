@@ -38,6 +38,15 @@ templ ArticleDetailShell(view viewmodel.Article) {
 						class="pill-link"
 						data-article-edit-link
 					>Edit</a>
+					// Issue #666: per-article delete affordance.
+					// Posts to the same path as the detail page with
+					// data-method="DELETE" so the dispatcher routes it
+					// to handleDeleteArticle. The confirm message names
+					// the cascade (article + snapshots + refs) so the
+					// user knows what they're deleting.
+					<form action={ templ.SafeURL(routebuilder.ArticleDelete(view.ID)) } method="post" data-method="DELETE" data-dixie-submit="true" data-confirm={ "Delete article " + view.DisplayID + " and all its revisions? The snapshots will be removed too." } class="inline-flex">
+						@components.Button("Delete", components.ButtonDanger, "", templ.Attributes{"type": "submit"})
+					</form>
 				</div>
 			</div>
 			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3" data-article-export-bar>

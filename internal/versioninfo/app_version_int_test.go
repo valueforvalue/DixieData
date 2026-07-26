@@ -27,8 +27,8 @@ func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
 	// accounts for the documented post-2026-07-03 release
 	// work — the #544 + #566 feedback chain, the #561
 	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 15 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 15 (RC1 check-for-updates polling guard, issue #665)", CurrentAppVersionInt)
+	if CurrentAppVersionInt != 16 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 16 (RC1 article delete affordance, issue #666)", CurrentAppVersionInt)
 	}
 }
 

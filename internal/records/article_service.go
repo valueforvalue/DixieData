@@ -454,6 +454,19 @@ func (a *ArticleService) Update(article models.Article) error {
 // when the id does not exist; returns ErrArticleSnapshot
 // when the target is a snapshot.
 func (a *ArticleService) Delete(id int64) error {
+	// Issue #666: cascade-delete the snapshot rows first.
+	// Snapshots live in the same `articles` table with
+	// snapshot_of_id set; there is no FK from snapshot to
+	// parent so we must clean them up explicitly. Without
+	// this, deleting an article leaves orphaned snapshot
+	// rows pointing at a non-existent parent id, and the
+	// "Revisions" tab on a different article would render
+	// ghost entries in the per-article-snapshot list if
+	// the user's query joined on the deleted id.
+	conn := a.soldiers.db.Conn()
+	if _, err := conn.Exec(`DELETE FROM articles WHERE snapshot_of_id = ?`, id); err != nil {
+		return fmt.Errorf("delete article %d snapshots: %w", id, err)
+	}
 	// Slice 4 of issue #613: the DELETE goes through the
 	// ArticleRecordRepo seam. The legacy `is_snapshot = 0`
 	// filter is preserved inside the repo's Delete.

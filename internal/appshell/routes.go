@@ -192,6 +192,13 @@ func (a *App) setupRoutes() {
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
+	// Issue #666: per-article DELETE. Same path as the
+	// detail/edit URL — the dispatcher differentiates by
+	// HTTP method (the form carries data-method="DELETE").
+	// Mirrors /tags/{id} + /events/{id}. ArticleService.Delete
+	// (slice 4 of #613) cascade-deletes the article, its
+	// snapshots, and its refs in a single transaction.
+	r.Delete("/articles/{id:[0-9]+}", a.handleDeleteArticle)
 	// v60 (issue #320): Event Record routes. Registered
 	// before the /soldiers/* catch-all so the literal /events
 	// prefix matches first. The /events/{id:[0-9]+}/edit

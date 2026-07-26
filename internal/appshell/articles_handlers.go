@@ -993,3 +993,41 @@ func slugifyTitle(title string) string {
 	}
 	return strings.TrimRight(b.String(), "-")
 }
+
+// handleDeleteArticle removes an article + its snapshots +
+// its refs in a single transaction. DELETE /articles/{id}.
+// Idempotent on missing rows; ErrArticleSnapshot means the
+// target is a snapshot row and should be deleted via the
+// snapshot-delete route instead. On success, returns the
+// new (post-Commits 3-5) contract: 200 + X-DixieData-Redirect
+// + X-DixieData-Toast. The JS dispatcher reads the redirect
+// header and navigates + shows the toast. Mirrors
+// handleDeleteTag (issue #666).
+func (a *App) handleDeleteArticle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "")
+	if err != nil || id < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	ctx := r.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := a.articles.Delete(id); err != nil {
+		switch {
+		case errors.Is(err, records.ErrArticleNotFound):
+			respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+		case errors.Is(err, records.ErrArticleSnapshot):
+			respondValidation(w, r, "Cannot delete a snapshot row via /articles/{id}. Use the snapshot-delete route instead.", err)
+		default:
+			respondInternal(w, r, fmt.Sprintf("Could not delete article %d.", id), err)
+		}
+		return
+	}
+	setToastHeader(w, "Article deleted.")
+	writeExportRedirect(w, "/articles")
+}

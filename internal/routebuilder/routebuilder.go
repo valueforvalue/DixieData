@@ -514,6 +514,15 @@ func ArticleByID(id int64) string {
 	return fmt.Sprintf("/articles/%d", id)
 }
 
+// ArticleDelete (issue #666) returns the URL for the
+// per-Article delete form. Registered as DELETE
+// /articles/{id} in routes.go. Same path as ArticleByID;
+// the dispatcher differentiates by HTTP method (form
+// data-method="DELETE"). Mirrors TagDelete(t.ID).
+func ArticleDelete(id int64) string {
+	return fmt.Sprintf("/articles/%d", id)
+}
+
 // ArticleRefsAttach (issue #321 slice 2) returns the URL for
 // the per-Article ref-attach form. Registered as POST
 // /articles/{id}/refs in routes.go. Caller appends the
