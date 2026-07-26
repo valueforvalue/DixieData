@@ -103,7 +103,7 @@ templ tagsRow(t records.Tag, allTags []records.Tag) {
 					</select>
 					@components.Button("Merge", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 				</form>
-				<form action={ templ.SafeURL(routebuilder.TagDelete(t.ID)) } method="post" data-dixie-submit="true" data-confirm={ fmt.Sprintf("Delete tag %q and detach it from every Person Record?", t.Name) }>
+				<form action={ templ.SafeURL(routebuilder.TagDelete(t.ID)) } method="post" data-method="DELETE" data-dixie-submit="true" data-confirm={ fmt.Sprintf("Delete tag %q and detach it from every Person Record?", t.Name) }>
 					@components.Button("Delete", components.ButtonDanger, "", templ.Attributes{"type": "submit"})
 				</form>
 			</div>
