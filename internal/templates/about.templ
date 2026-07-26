@@ -220,7 +220,7 @@ templ aboutRecentSection(view viewmodel.AboutView) {
 				Recent commits will appear after the next build. The bake captures the last 25 commits to the <code class="font-mono">dev</code> branch; run <code class="font-mono">make tpl</code> to refresh.
 			</div>
 		} else {
-			@aboutRecentList(view.RecentCommits)
+			@aboutRecentList(view.RepositoryURL, view.RecentCommits)
 		}
 	</section>
 }
@@ -230,7 +230,7 @@ templ aboutRecentSection(view viewmodel.AboutView) {
 // the GitHub commit permalink; the short hash is the visible
 // link text. The full hash is also rendered (visually muted)
 // so a user can copy-paste it from the page source.
-templ aboutRecentList(commits []viewmodel.RecentCommitView) {
+templ aboutRecentList(repoURL string, commits []viewmodel.RecentCommitView) {
 	// Issue #603: bounded height + inner scroll so
 	// the list does not push the rest of /about down
 	// when the build carries many baked commits. The
@@ -242,7 +242,7 @@ templ aboutRecentList(commits []viewmodel.RecentCommitView) {
 				<li class="py-2.5 text-sm" data-about-recent-row={ c.Hash }>
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<a
-						href={ templ.URL("https://github.com/valueforvalue/DixieData/commit/" + c.Hash) }
+						href={ templ.URL(viewmodel.CommitURL(repoURL, c.Hash)) }
 						class="font-mono text-[var(--theme-text-primary)] underline shrink-0"
 						data-about-recent-hash
 						data-short-hash={ c.ShortHash }

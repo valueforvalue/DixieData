@@ -43,6 +43,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
+	"github.com/valueforvalue/DixieData/internal/supportuploader"
 	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
@@ -2140,6 +2141,15 @@ func (a *App) reloadServices() error {
 	soldierSvc.SetEvents(a.events)
 	a.articles = records.NewArticleService(soldierSvc, records.NewMarkdownRenderer())
 	a.articles.SetPageSizes(a.cfg.Limits.ArticlePageSize, a.cfg.Limits.ArticlePageSize*4)
+	viewmodel.SetBodyExcerptCap(a.cfg.Limits.ArticleExcerptChars)
+	viewmodel.SetAllowedImageMIMETypes(a.cfg.Files.AllowedImageMIMETypes)
+	archive.SetExportBatchSize(a.cfg.Limits.ExportBatchSize)
+	// Wire the configured ThemeConfig into the markdown
+	// renderer so the typst PDF output matches the browser
+	// preview (issue #660 amendment #2).
+	markdownRenderer := records.NewMarkdownRenderer()
+	markdownRenderer.SetTheme(&a.cfg.Theme)
+	a.articles.SetMarkdownRenderer(markdownRenderer)
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)
@@ -2216,12 +2226,56 @@ func (a *App) reloadServices() error {
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
 	integrations.SetCalendarNames(a.cfg.Google.CalendarName, a.cfg.Google.TestCalendarName)
+	integrations.SetHealthTimeout(time.Duration(a.cfg.Timing.GoogleHealthTimeoutS) * time.Second)
+	integrations.SetOAuthWaitTimeout(time.Duration(a.cfg.Timing.GoogleOAuthWaitTimeoutS) * time.Second)
 	a.updater = update.NewService(a.database, a.dataDir, func(outputPath string) error {
 		_, err := a.backup.Export(outputPath, a.dataDir)
 		return err
 	})
 	a.updater.SetHTTPTimeout(time.Duration(a.cfg.Timing.UpdateCheckTimeoutS) * time.Second)
+	a.updater.SetCheckURL(a.cfg.Services.UpdateCheckURL)
 	a.updateProgress = newUpdateProgressState()
+
+	// Issue #660: wire the feedback endpoint + send timeout
+	// into the package globals so handleFeedbackSubmit reads
+	// the configured value instead of the built-in constant.
+	formsparkConfiguredEndpoint = a.cfg.Services.FeedbackEndpoint
+	feedbackSendTimeoutS = a.cfg.Timing.FeedbackSendTimeoutS
+	supportuploader.SetUploadTimeout(time.Duration(a.cfg.Timing.FeedbackUploadTimeoutS) * time.Second)
+
+	// Issue #660 amendment #1: one-shot migration of the
+	// user-set update source URL from the SQLite
+	// `system_config` table into `config.Services.UpdateSourceURL`.
+	// The migration fires when:
+	//   - cfg.Services.UpdateSourceURL is empty (default), AND
+	//   - system_config has a non-empty update_source_url row.
+	// The migration copies the row's value into cfg + deletes
+	// the row so future reads come from cfg (which survives
+	// .ddbak imports). The transaction wraps the delete + the
+	// in-memory update so a crash mid-migration leaves the
+	// appshell in the pre-migration state; the next launch
+	// re-fires safely.
+	if a.cfg.Services.UpdateSourceURL == "" {
+		if existing, err := a.database.SystemConfig("update_source_url"); err == nil && strings.TrimSpace(existing) != "" {
+			a.cfg.Services.UpdateSourceURL = strings.TrimSpace(existing)
+			a.updater.SetSourceURL(a.cfg.Services.UpdateSourceURL)
+			if err := a.database.SetSystemConfig("update_source_url", ""); err == nil {
+				if err := config.Save(a.dataDir, a.cfg); err != nil {
+					// Save failure is non-fatal: the in-memory
+					// value is already set, so this session
+					// works. The next config.Save (e.g. another
+					// settings change) will persist it.
+					log := debug.FromContext(context.Background())
+					log.Warn("config.Save after update_source_url migration failed", "err", err.Error())
+				}
+			}
+		}
+	} else {
+		// Migration already ran (cfg has the value); sync the
+		// updater override so the next sourceSettings() call
+		// reads it.
+		a.updater.SetSourceURL(a.cfg.Services.UpdateSourceURL)
+	}
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir, a.database)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {

@@ -31,6 +31,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/appshell"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
@@ -169,7 +170,13 @@ func main() {
 	<-stop
 	log.Printf("dixiedata-web: shutting down")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Issue #660: read the configured shutdown timeout
+	// (cfg.Timing.ShutdownTimeoutS, default 5s). The CLI
+	// doesn't load config.json directly so we use
+	// config.Defaults() — the same default the appshell
+	// would see with no config.json present.
+	shutdownTimeout := time.Duration(config.Defaults().Timing.ShutdownTimeoutS) * time.Second
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("shutdown: %v", err)

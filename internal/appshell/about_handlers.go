@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/activityhistory"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
@@ -31,7 +32,7 @@ var _ viewmodel.AboutView = viewmodel.AboutView{}
 // the package-level `baked` slice (nil in dev builds; the
 // templ partial renders an empty-state message).
 func (a *App) handleAbout(w http.ResponseWriter, r *http.Request) {
-	view := buildAboutView(buildinfo.GitCommit, buildinfo.GitBranch, buildinfo.BuildTimestamp)
+	view := buildAboutView(buildinfo.GitCommit, buildinfo.GitBranch, buildinfo.BuildTimestamp, a.cfg.Services.RepositoryURL)
 	if err := presentation.AboutView(view).Render(r.Context(), w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -48,7 +49,7 @@ func (a *App) handleAbout(w http.ResponseWriter, r *http.Request) {
 // scripts/bake-activity/main.go for the per-release
 // Repository activity rollup (#586), so the import
 // stays.
-func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
+func buildAboutView(commit, branch, builtAt, repoURL string) viewmodel.AboutView {
 	view := viewmodel.AboutView{
 		AppName:    buildinfo.AppName,
 		Version:    buildinfo.AppVersion,
@@ -57,7 +58,8 @@ func buildAboutView(commit, branch, builtAt string) viewmodel.AboutView {
 		Commit:     commit,
 		Branch:     branch,
 		BuiltAt:    builtAt,
-		LicenseURL: licenseURL(commit),
+		LicenseURL:    licenseURL(commit, repoURL),
+		RepositoryURL: repoURL,
 		Activity:   buildActivityView(activityhistory.Baked()),
 		Glossary:   buildGlossaryView(),
 	}
@@ -131,13 +133,30 @@ func buildActivityView(snap *activityhistory.Snapshot) *viewmodel.ActivitySnapsh
 }
 
 // licenseURL returns the GitHub LICENSE blob URL for the
-// running commit. For dev builds (commit == "dev") it points at
-// the dev branch; for tagged builds it points at the tag.
-func licenseURL(commit string) string {
-	if commit == "" || commit == "dev" {
-		return "https://github.com/valueforvalue/DixieData/blob/dev/LICENSE"
+// running commit (issue #660: base URL from
+// cfg.Services.RepositoryURL). For dev builds (commit == "dev")
+// it points at the dev branch; for tagged builds it points at
+// the tag. repoURL is the configured repository base URL
+// (default https://github.com/valueforvalue/DixieData); an
+// empty repoURL falls back to the built-in default so callers
+// without config wiring still work.
+func licenseURL(commit, repoURL string) string {
+	if strings.TrimSpace(repoURL) == "" {
+		repoURL = "https://github.com/valueforvalue/DixieData"
 	}
-	return "https://github.com/valueforvalue/DixieData/blob/" + commit + "/LICENSE"
+	if commit == "" || commit == "dev" {
+		return repoURL + "/blob/dev/LICENSE"
+	}
+	return repoURL + "/blob/" + commit + "/LICENSE"
+}
+
+// commitURL builds the GitHub commit URL for a single commit
+// hash (issue #660). The viewmodel package's CommitURL helper
+// is the canonical implementation used by the templ; this
+// thin alias exists so older callers that imported commitURL
+// from appshell keep working.
+func commitURL(repoURL, hash string) string {
+	return viewmodel.CommitURL(repoURL, hash)
 }
 
 // buildGlossaryView projects the canonical term registry

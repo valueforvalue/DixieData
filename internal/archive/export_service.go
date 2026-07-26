@@ -26,7 +26,23 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const exportBatchSize = 500
+const defaultExportBatchSize = 500
+
+// exportBatchSize is the active export batch size. Set by
+// SetExportBatchSize; the default is defaultExportBatchSize.
+var exportBatchSize = defaultExportBatchSize
+
+// SetExportBatchSize overrides the active export batch size
+// (issue #660 audit gap). Pass 0 to revert to the built-in
+// default. The appshell calls this from reloadServices with
+// cfg.Limits.ExportBatchSize.
+func SetExportBatchSize(size int) {
+	if size <= 0 {
+		exportBatchSize = defaultExportBatchSize
+		return
+	}
+	exportBatchSize = size
+}
 
 // ExportService is the facade for the export pipeline: PDF, JPG,
 // JSON, CSV, iCal, static archive, shared archive. Owns the

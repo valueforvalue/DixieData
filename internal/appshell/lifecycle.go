@@ -129,7 +129,11 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// Configure structured logging AFTER dataDir is resolved so the log
-	// file lands in the correct location.
+// file lands in the correct location. The ring buffer size
+// here uses the built-in default (500); once a.cfg is loaded
+// further down in this function we re-Configure with the
+// configured cfg.Limits.DebugLogRingSize so user-customized
+// values take effect on the very first launch (issue #660).
 	logPath := appdata.AppLogPath(a.dataDir)
 	if err := debug.Configure(debug.Config{
 		LogPath:       logPath,
@@ -198,6 +202,20 @@ func (a *App) startup(ctx context.Context) {
 	}
 	// Apply calendar timezone from config (#638).
 	buildinfo.SetCalendarTimeZone(a.cfg.Calendar.Timezone)
+	// Issue #660: re-Configure the debug log with the
+	// configured ring size now that a.cfg is loaded. The
+	// earlier Configure above used the built-in default;
+	// this re-Configure applies the user's
+	// cfg.Limits.DebugLogRingSize on the very first launch
+	// (subsequent launches reloadServices already covers
+	// the same seam).
+	if a.cfg.Limits.DebugLogRingSize > 0 {
+		_ = debug.Configure(debug.Config{
+			LogPath:       logPath,
+			RingSize:      a.cfg.Limits.DebugLogRingSize,
+			AppName:       buildinfo.AppName,
+		})
+	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
 	// reloads and app restarts.

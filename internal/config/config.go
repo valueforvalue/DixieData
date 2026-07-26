@@ -34,11 +34,31 @@ type Config struct {
 	Window   WindowConfig   `json:"window"`
 	UI       UIConfig       `json:"ui"`
 	Calendar CalendarConfig `json:"calendar"`
+	Services ServicesConfig `json:"services"`
+	Files    FilesConfig    `json:"files"`
 	Limits   LimitsConfig   `json:"limits"`
 	Timing   TimingConfig   `json:"timing"`
 	PDF      PDFConfig      `json:"pdf"`
 	Google   GoogleConfig   `json:"google"`
 	Theme    ThemeConfig    `json:"theme"`
+}
+
+// ServicesConfig holds external-service endpoints + the
+// user-set update source URL (the latter was relocated from the
+// SQLite `system_config` table in issue #660 amendment #1 so it
+// survives .ddbak imports).
+type ServicesConfig struct {
+	UpdateCheckURL  string `json:"update_check_url"`
+	UpdateSourceURL string `json:"update_source_url"`
+	RepositoryURL   string `json:"repository_url"`
+	FeedbackEndpoint string `json:"feedback_endpoint"`
+}
+
+// FilesConfig holds file-type allowlists. The image MIME list
+// is the single source of truth for both the HTML form
+// `accept` attribute and the backend validation.
+type FilesConfig struct {
+	AllowedImageMIMETypes []string `json:"allowed_image_mime_types"`
 }
 
 // WindowConfig controls the OS window at launch.
@@ -76,21 +96,28 @@ type LimitsConfig struct {
 	DuplicateAuditThreshold  int `json:"duplicate_audit_threshold"`
 	JobsConcurrency          int `json:"jobs_concurrency"`
 	NotesPreviewChars        int `json:"notes_preview_chars"`
+	ArticleExcerptChars      int `json:"article_excerpt_chars"`
+	DebugLogRingSize         int `json:"debug_log_ring_size"`
+	ExportBatchSize          int `json:"export_batch_size"`
 }
 
 // TimingConfig controls polling intervals and debounce delays.
 type TimingConfig struct {
-	JobsPollMs              int `json:"jobs_poll_ms"`
-	ReviewBadgePollMs       int `json:"review_badge_poll_ms"`
-	JobStatusPollMs         int `json:"job_status_poll_ms"`
-	UndoRedoPollMs          int `json:"undo_redo_poll_ms"`
-	BrowseFilterDebounceMs  int `json:"browse_filter_debounce_ms"`
-	PrintPreviewDebounceMs  int `json:"print_preview_debounce_ms"`
-	UpdateCheckTimeoutS     int `json:"update_check_timeout_s"`
-	ShutdownTimeoutS        int `json:"shutdown_timeout_s"`
-	ClientLogFlushMs        int `json:"client_log_flush_ms"`
-	ClientLogFlushThreshold int `json:"client_log_flush_threshold"`
-	ClientLogMaxBuffer      int `json:"client_log_max_buffer"`
+	JobsPollMs                int `json:"jobs_poll_ms"`
+	ReviewBadgePollMs         int `json:"review_badge_poll_ms"`
+	JobStatusPollMs           int `json:"job_status_poll_ms"`
+	UndoRedoPollMs            int `json:"undo_redo_poll_ms"`
+	BrowseFilterDebounceMs    int `json:"browse_filter_debounce_ms"`
+	PrintPreviewDebounceMs    int `json:"print_preview_debounce_ms"`
+	UpdateCheckTimeoutS       int `json:"update_check_timeout_s"`
+	ShutdownTimeoutS          int `json:"shutdown_timeout_s"`
+	ClientLogFlushMs          int `json:"client_log_flush_ms"`
+	ClientLogFlushThreshold   int `json:"client_log_flush_threshold"`
+	ClientLogMaxBuffer        int `json:"client_log_max_buffer"`
+	FeedbackSendTimeoutS      int `json:"feedback_send_timeout_s"`
+	FeedbackUploadTimeoutS    int `json:"feedback_upload_timeout_s"`
+	GoogleHealthTimeoutS      int `json:"google_health_timeout_s"`
+	GoogleOAuthWaitTimeoutS   int `json:"google_oauth_wait_timeout_s"`
 }
 
 // PDFConfig controls PDF export defaults.
@@ -116,11 +143,36 @@ type GoogleConfig struct {
 // ThemeConfig controls the visual theme tokens shared between
 // CSS and Typst PDF rendering. This is the single source of
 // truth for colors, type scale, and geometry.
+//
+// Issue #660 amendment #2 extended this with browser-palette
+// + heading_color + blockquote_border + code_bg + heading_h{1..4}
+// + body_prose + code_size so the markdown → typst converter
+// can consume the same theme tokens the CSS uses.
 type ThemeConfig struct {
-	Palette   map[string]string     `json:"palette"`
-	TypeScale map[string]TypeSize   `json:"type_scale"`
-	Fonts     FontConfig            `json:"fonts"`
-	Branding  BrandingConfig        `json:"branding"`
+	Palette        map[string]string     `json:"palette"`
+	TypeScale      map[string]TypeSize   `json:"type_scale"`
+	Fonts          FontConfig            `json:"fonts"`
+	Branding       BrandingConfig        `json:"branding"`
+	PaletteBrowser map[string]string     `json:"palette_browser"`
+	FontsBrowser   FontConfigBrowser     `json:"fonts_browser"`
+	TypeScaleBrowser map[string]TypeSize `json:"type_scale_browser"`
+	PaletteActivity map[string]string    `json:"palette_activity"`
+	PaletteCalendar map[string]string    `json:"palette_calendar"`
+	HeadingColor   string                `json:"heading_color"`
+	BlockquoteBorder string              `json:"blockquote_border"`
+	CodeBackground string                `json:"code_background"`
+}
+
+// FontConfigBrowser controls the browser-side font stacks
+// (issue #660). Distinct from the existing FontConfig because
+// the browser uses platform-native stacks ("Helvetica Neue",
+// Georgia, monospace) while the Typst PDF renderer uses
+// deterministic installed-font names (Arial, Times New Roman,
+// DejaVu Sans Mono).
+type FontConfigBrowser struct {
+	BodySans  string   `json:"body_sans"`
+	BodySerif []string `json:"body_serif"`
+	Mono      string   `json:"mono"`
 }
 
 // TypeSize is a font size + optional line height.
@@ -158,6 +210,22 @@ func Defaults() Config {
 		Calendar: CalendarConfig{
 			Timezone: "America/Chicago",
 		},
+		Services: ServicesConfig{
+			UpdateCheckURL:   "https://api.github.com/repos/valueforvalue/DixieData/releases/latest",
+			UpdateSourceURL:  "",
+			RepositoryURL:    "https://github.com/valueforvalue/DixieData",
+			FeedbackEndpoint: "https://submit-form.com/vJSONT1nB",
+		},
+		Files: FilesConfig{
+			AllowedImageMIMETypes: []string{
+				"image/png",
+				"image/jpeg",
+				"image/gif",
+				"image/bmp",
+				"image/webp",
+				"image/svg+xml",
+			},
+		},
 		Limits: LimitsConfig{
 			BrowseDefaultPageSize:    100,
 			BrowseMaxPageSize:        250,
@@ -175,19 +243,26 @@ func Defaults() Config {
 			DuplicateAuditThreshold:  2,
 			JobsConcurrency:          2,
 			NotesPreviewChars:        260,
+			ArticleExcerptChars:      280,
+			DebugLogRingSize:         500,
+			ExportBatchSize:          500,
 		},
 		Timing: TimingConfig{
-			JobsPollMs:             3000,
-			ReviewBadgePollMs:      30000,
-			JobStatusPollMs:        2000,
-			UndoRedoPollMs:         500,
-			BrowseFilterDebounceMs: 200,
-			PrintPreviewDebounceMs: 150,
-			UpdateCheckTimeoutS:    45,
-			ShutdownTimeoutS:       5,
-			ClientLogFlushMs:       2000,
-			ClientLogFlushThreshold: 50,
-			ClientLogMaxBuffer:     500,
+			JobsPollMs:               3000,
+			ReviewBadgePollMs:        30000,
+			JobStatusPollMs:          2000,
+			UndoRedoPollMs:           500,
+			BrowseFilterDebounceMs:   200,
+			PrintPreviewDebounceMs:   150,
+			UpdateCheckTimeoutS:      45,
+			ShutdownTimeoutS:         5,
+			ClientLogFlushMs:         2000,
+			ClientLogFlushThreshold:  50,
+			ClientLogMaxBuffer:       500,
+			FeedbackSendTimeoutS:     35,
+			FeedbackUploadTimeoutS:   30,
+			GoogleHealthTimeoutS:     5,
+			GoogleOAuthWaitTimeoutS:  120,
 		},
 		PDF: PDFConfig{
 			Paper: "us-letter",
@@ -231,6 +306,53 @@ func Defaults() Config {
 			Branding: BrandingConfig{
 				HeaderSuffix:   "'s Civil War Research Archive",
 				FooterTemplate: "Made with DixieData | Version: {app_version} | Build: {build_identity}",
+			},
+			HeadingColor:     "#22303d",
+			BlockquoteBorder: "#8d7440",
+			CodeBackground:   "rgb(36 48 61 / 0.06)",
+			PaletteBrowser: map[string]string{
+				"ink":          "#22303d",
+				"sepia":        "#8d7440",
+				"parchment":    "#fff8e7",
+				"panel":        "#ffffff",
+				"border":       "rgb(141 116 64 / 0.35)",
+				"text_muted":   "#71808e",
+				"text_strong":  "#22303d",
+				"link":         "#4A90E2",
+				"danger":       "#54211d",
+				"event":        "#7cb3e2",
+				"holiday":      "#d98989",
+				"today":        "#1f5b3b",
+				"quote_text":   "#7d4f2d",
+			},
+			FontsBrowser: FontConfigBrowser{
+				BodySans:  `"Helvetica Neue", Arial, sans-serif`,
+				BodySerif: []string{`Georgia, "Times New Roman", serif`},
+				Mono:      `"ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"`,
+			},
+			TypeScaleBrowser: map[string]TypeSize{
+				"h1":       {SizePt: 1.85, LinePt: 1.3},
+				"h2":       {SizePt: 1.5,  LinePt: 1.25},
+				"h3":       {SizePt: 1.25, LinePt: 1.2},
+				"h4":       {SizePt: 1.1,  LinePt: 1.15},
+				"body_prose": {SizePt: 1.0, LinePt: 1.6},
+				"code_size":  {SizePt: 0.92, LinePt: 1.5},
+			},
+			PaletteActivity: map[string]string{
+				"create":   "#a14747",
+				"update":   "#7d4f2d",
+				"merge":    "#4f7d6b",
+				"share":    "#b6854f",
+				"comment":  "#3f5d8a",
+				"neutral":  "#71808e",
+			},
+			PaletteCalendar: map[string]string{
+				"event":      "#7cb3e2",
+				"holiday":    "#d98989",
+				"today":      "#1f5b3b",
+				"quote_text": "#7d4f2d",
+				"border":     "rgb(141 116 64 / 0.3)",
+				"fill":       "#fff8e7",
 			},
 		},
 	}
@@ -302,6 +424,27 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.Calendar.Timezone != "" {
 		dst.Calendar.Timezone = src.Calendar.Timezone
 	}
+	if src.Services.UpdateCheckURL != "" {
+		dst.Services.UpdateCheckURL = src.Services.UpdateCheckURL
+	}
+	// UpdateSourceURL is allowed to be empty (the default
+	// is empty), so we merge only when src has it set
+	// AND dst does not. The one-shot migration (see
+	// appshell.reloadServices) seeds the dst value from
+	// the legacy system_config row before this merge runs
+	// for installs that pre-date the slice.
+	if src.Services.UpdateSourceURL != "" {
+		dst.Services.UpdateSourceURL = src.Services.UpdateSourceURL
+	}
+	if src.Services.RepositoryURL != "" {
+		dst.Services.RepositoryURL = src.Services.RepositoryURL
+	}
+	if src.Services.FeedbackEndpoint != "" {
+		dst.Services.FeedbackEndpoint = src.Services.FeedbackEndpoint
+	}
+	if len(src.Files.AllowedImageMIMETypes) > 0 {
+		dst.Files.AllowedImageMIMETypes = src.Files.AllowedImageMIMETypes
+	}
 	if src.Limits.BrowseDefaultPageSize != 0 {
 		dst.Limits.BrowseDefaultPageSize = src.Limits.BrowseDefaultPageSize
 	}
@@ -350,6 +493,15 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.Limits.NotesPreviewChars != 0 {
 		dst.Limits.NotesPreviewChars = src.Limits.NotesPreviewChars
 	}
+	if src.Limits.ArticleExcerptChars != 0 {
+		dst.Limits.ArticleExcerptChars = src.Limits.ArticleExcerptChars
+	}
+	if src.Limits.DebugLogRingSize != 0 {
+		dst.Limits.DebugLogRingSize = src.Limits.DebugLogRingSize
+	}
+	if src.Limits.ExportBatchSize != 0 {
+		dst.Limits.ExportBatchSize = src.Limits.ExportBatchSize
+	}
 	if src.Timing.JobsPollMs != 0 {
 		dst.Timing.JobsPollMs = src.Timing.JobsPollMs
 	}
@@ -382,6 +534,18 @@ func mergeConfig(dst *Config, src *Config) {
 	}
 	if src.Timing.ClientLogMaxBuffer != 0 {
 		dst.Timing.ClientLogMaxBuffer = src.Timing.ClientLogMaxBuffer
+	}
+	if src.Timing.FeedbackSendTimeoutS != 0 {
+		dst.Timing.FeedbackSendTimeoutS = src.Timing.FeedbackSendTimeoutS
+	}
+	if src.Timing.FeedbackUploadTimeoutS != 0 {
+		dst.Timing.FeedbackUploadTimeoutS = src.Timing.FeedbackUploadTimeoutS
+	}
+	if src.Timing.GoogleHealthTimeoutS != 0 {
+		dst.Timing.GoogleHealthTimeoutS = src.Timing.GoogleHealthTimeoutS
+	}
+	if src.Timing.GoogleOAuthWaitTimeoutS != 0 {
+		dst.Timing.GoogleOAuthWaitTimeoutS = src.Timing.GoogleOAuthWaitTimeoutS
 	}
 	if src.PDF.Paper != "" {
 		dst.PDF.Paper = src.PDF.Paper
@@ -428,6 +592,56 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.Theme.Branding.FooterTemplate != "" {
 		dst.Theme.Branding.FooterTemplate = src.Theme.Branding.FooterTemplate
 	}
+	if src.Theme.HeadingColor != "" {
+		dst.Theme.HeadingColor = src.Theme.HeadingColor
+	}
+	if src.Theme.BlockquoteBorder != "" {
+		dst.Theme.BlockquoteBorder = src.Theme.BlockquoteBorder
+	}
+	if src.Theme.CodeBackground != "" {
+		dst.Theme.CodeBackground = src.Theme.CodeBackground
+	}
+	if src.Theme.PaletteBrowser != nil {
+		if dst.Theme.PaletteBrowser == nil {
+			dst.Theme.PaletteBrowser = make(map[string]string)
+		}
+		for k, v := range src.Theme.PaletteBrowser {
+			dst.Theme.PaletteBrowser[k] = v
+		}
+	}
+	if src.Theme.FontsBrowser.BodySans != "" {
+		dst.Theme.FontsBrowser.BodySans = src.Theme.FontsBrowser.BodySans
+	}
+	if len(src.Theme.FontsBrowser.BodySerif) > 0 {
+		dst.Theme.FontsBrowser.BodySerif = src.Theme.FontsBrowser.BodySerif
+	}
+	if src.Theme.FontsBrowser.Mono != "" {
+		dst.Theme.FontsBrowser.Mono = src.Theme.FontsBrowser.Mono
+	}
+	if src.Theme.TypeScaleBrowser != nil {
+		if dst.Theme.TypeScaleBrowser == nil {
+			dst.Theme.TypeScaleBrowser = make(map[string]TypeSize)
+		}
+		for k, v := range src.Theme.TypeScaleBrowser {
+			dst.Theme.TypeScaleBrowser[k] = v
+		}
+	}
+	if src.Theme.PaletteActivity != nil {
+		if dst.Theme.PaletteActivity == nil {
+			dst.Theme.PaletteActivity = make(map[string]string)
+		}
+		for k, v := range src.Theme.PaletteActivity {
+			dst.Theme.PaletteActivity[k] = v
+		}
+	}
+	if src.Theme.PaletteCalendar != nil {
+		if dst.Theme.PaletteCalendar == nil {
+			dst.Theme.PaletteCalendar = make(map[string]string)
+		}
+		for k, v := range src.Theme.PaletteCalendar {
+			dst.Theme.PaletteCalendar[k] = v
+		}
+	}
 }
 
 // ClientConfig is the subset of Config exposed to the frontend
@@ -435,49 +649,83 @@ func mergeConfig(dst *Config, src *Config) {
 // (window size, update timeout, shutdown timeout) that the
 // frontend has no use for.
 type ClientConfig struct {
-	ToastDurationMs         int    `json:"toastDurationMs"`
-	LandingPage             string `json:"landingPage"`
-	CalendarTimezone        string `json:"calendarTimezone"`
-	RecentRecordsCap        int    `json:"recentRecordsCap"`
-	ResearchRecentsCap      int    `json:"researchRecentsCap"`
-	BackStackDepth          int    `json:"backStackDepth"`
-	NotesPreviewChars       int    `json:"notesPreviewChars"`
-	JobsPollMs              int    `json:"jobsPollMs"`
-	ReviewBadgePollMs       int    `json:"reviewBadgePollMs"`
-	JobStatusPollMs         int    `json:"jobStatusPollMs"`
-	UndoRedoPollMs          int    `json:"undoRedoPollMs"`
-	BrowseFilterDebounceMs  int    `json:"browseFilterDebounceMs"`
-	PrintPreviewDebounceMs  int    `json:"printPreviewDebounceMs"`
-	ClientLogFlushMs        int    `json:"clientLogFlushMs"`
-	ClientLogFlushThreshold int    `json:"clientLogFlushThreshold"`
-	ClientLogMaxBuffer      int    `json:"clientLogMaxBuffer"`
-	PDFPaper                string `json:"pdfPaper"`
-	GoogleCalendarName      string `json:"googleCalendarName"`
-	GoogleTestCalendarName  string `json:"googleTestCalendarName"`
+	ToastDurationMs          int      `json:"toastDurationMs"`
+	LandingPage              string   `json:"landingPage"`
+	CalendarTimezone         string   `json:"calendarTimezone"`
+	UpdateSourceURL          string   `json:"updateSourceUrl"`
+	RepositoryURL            string   `json:"repositoryUrl"`
+	FeedbackEndpoint         string   `json:"feedbackEndpoint"`
+	AllowedImageMIMETypes    []string `json:"allowedImageMimeTypes"`
+	RecentRecordsCap         int      `json:"recentRecordsCap"`
+	ResearchRecentsCap       int      `json:"researchRecentsCap"`
+	BackStackDepth           int      `json:"backStackDepth"`
+	NotesPreviewChars        int      `json:"notesPreviewChars"`
+	ArticleExcerptChars      int      `json:"articleExcerptChars"`
+	DebugLogRingSize         int      `json:"debugLogRingSize"`
+	ExportBatchSize          int      `json:"exportBatchSize"`
+	JobsPollMs               int      `json:"jobsPollMs"`
+	ReviewBadgePollMs        int      `json:"reviewBadgePollMs"`
+	JobStatusPollMs          int      `json:"jobStatusPollMs"`
+	UndoRedoPollMs           int      `json:"undoRedoPollMs"`
+	BrowseFilterDebounceMs   int      `json:"browseFilterDebounceMs"`
+	PrintPreviewDebounceMs   int      `json:"printPreviewDebounceMs"`
+	ClientLogFlushMs         int      `json:"clientLogFlushMs"`
+	ClientLogFlushThreshold  int      `json:"clientLogFlushThreshold"`
+	ClientLogMaxBuffer       int      `json:"clientLogMaxBuffer"`
+	FeedbackSendTimeoutS     int      `json:"feedbackSendTimeoutS"`
+	FeedbackUploadTimeoutS   int      `json:"feedbackUploadTimeoutS"`
+	PDFPaper                 string   `json:"pdfPaper"`
+	GoogleCalendarName       string   `json:"googleCalendarName"`
+	GoogleTestCalendarName   string   `json:"googleTestCalendarName"`
+	ThemeBrowserPalette      map[string]string     `json:"themeBrowserPalette"`
+	ThemeBrowserFonts        FontConfigBrowser     `json:"themeBrowserFonts"`
+	ThemeBrowserTypeScale    map[string]TypeSize   `json:"themeBrowserTypeScale"`
+	ThemeActivityPalette     map[string]string     `json:"themeActivityPalette"`
+	ThemeCalendarPalette     map[string]string     `json:"themeCalendarPalette"`
+	ThemeHeadingColor        string                 `json:"themeHeadingColor"`
+	ThemeBlockquoteBorder    string                 `json:"themeBlockquoteBorder"`
+	ThemeCodeBackground      string                 `json:"themeCodeBackground"`
 }
 
 // ForClient returns the subset of Config meant for frontend
 // consumption via window.__dixieConfig.
 func (c Config) ForClient() ClientConfig {
 	return ClientConfig{
-		ToastDurationMs:         c.UI.ToastDurationMs,
-		LandingPage:             c.UI.LandingPage,
-		CalendarTimezone:        c.Calendar.Timezone,
-		RecentRecordsCap:        c.Limits.RecentRecordsCap,
-		ResearchRecentsCap:      c.Limits.ResearchRecentsCap,
-		BackStackDepth:          c.Limits.BackStackDepth,
-		NotesPreviewChars:       c.Limits.NotesPreviewChars,
-		JobsPollMs:              c.Timing.JobsPollMs,
-		ReviewBadgePollMs:       c.Timing.ReviewBadgePollMs,
-		JobStatusPollMs:         c.Timing.JobStatusPollMs,
-		UndoRedoPollMs:          c.Timing.UndoRedoPollMs,
-		BrowseFilterDebounceMs:  c.Timing.BrowseFilterDebounceMs,
-		PrintPreviewDebounceMs:  c.Timing.PrintPreviewDebounceMs,
-		ClientLogFlushMs:        c.Timing.ClientLogFlushMs,
+		ToastDurationMs:        c.UI.ToastDurationMs,
+		LandingPage:            c.UI.LandingPage,
+		CalendarTimezone:       c.Calendar.Timezone,
+		UpdateSourceURL:        c.Services.UpdateSourceURL,
+		RepositoryURL:          c.Services.RepositoryURL,
+		FeedbackEndpoint:       c.Services.FeedbackEndpoint,
+		AllowedImageMIMETypes:  c.Files.AllowedImageMIMETypes,
+		RecentRecordsCap:       c.Limits.RecentRecordsCap,
+		ResearchRecentsCap:     c.Limits.ResearchRecentsCap,
+		BackStackDepth:         c.Limits.BackStackDepth,
+		NotesPreviewChars:      c.Limits.NotesPreviewChars,
+		ArticleExcerptChars:    c.Limits.ArticleExcerptChars,
+		DebugLogRingSize:       c.Limits.DebugLogRingSize,
+		ExportBatchSize:        c.Limits.ExportBatchSize,
+		JobsPollMs:             c.Timing.JobsPollMs,
+		ReviewBadgePollMs:      c.Timing.ReviewBadgePollMs,
+		JobStatusPollMs:        c.Timing.JobStatusPollMs,
+		UndoRedoPollMs:         c.Timing.UndoRedoPollMs,
+		BrowseFilterDebounceMs: c.Timing.BrowseFilterDebounceMs,
+		PrintPreviewDebounceMs: c.Timing.PrintPreviewDebounceMs,
+		ClientLogFlushMs:       c.Timing.ClientLogFlushMs,
 		ClientLogFlushThreshold: c.Timing.ClientLogFlushThreshold,
-		ClientLogMaxBuffer:      c.Timing.ClientLogMaxBuffer,
-		PDFPaper:                c.PDF.Paper,
-		GoogleCalendarName:      c.Google.CalendarName,
-		GoogleTestCalendarName:  c.Google.TestCalendarName,
+		ClientLogMaxBuffer:     c.Timing.ClientLogMaxBuffer,
+		FeedbackSendTimeoutS:   c.Timing.FeedbackSendTimeoutS,
+		FeedbackUploadTimeoutS: c.Timing.FeedbackUploadTimeoutS,
+		PDFPaper:               c.PDF.Paper,
+		GoogleCalendarName:     c.Google.CalendarName,
+		GoogleTestCalendarName: c.Google.TestCalendarName,
+		ThemeBrowserPalette:    c.Theme.PaletteBrowser,
+		ThemeBrowserFonts:      c.Theme.FontsBrowser,
+		ThemeBrowserTypeScale:  c.Theme.TypeScaleBrowser,
+		ThemeActivityPalette:   c.Theme.PaletteActivity,
+		ThemeCalendarPalette:   c.Theme.PaletteCalendar,
+		ThemeHeadingColor:      c.Theme.HeadingColor,
+		ThemeBlockquoteBorder:  c.Theme.BlockquoteBorder,
+		ThemeCodeBackground:    c.Theme.CodeBackground,
 	}
 }

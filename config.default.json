@@ -10,6 +10,22 @@
   "calendar": {
     "timezone": "America/Chicago"
   },
+  "services": {
+    "update_check_url": "https://api.github.com/repos/valueforvalue/DixieData/releases/latest",
+    "update_source_url": "",
+    "repository_url": "https://github.com/valueforvalue/DixieData",
+    "feedback_endpoint": "https://submit-form.com/vJSONT1nB"
+  },
+  "files": {
+    "allowed_image_mime_types": [
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/bmp",
+      "image/webp",
+      "image/svg+xml"
+    ]
+  },
   "limits": {
     "browse_default_page_size": 100,
     "browse_max_page_size": 250,
@@ -26,7 +42,10 @@
     "feedback_retention_days": 365,
     "duplicate_audit_threshold": 2,
     "jobs_concurrency": 2,
-    "notes_preview_chars": 260
+    "notes_preview_chars": 260,
+    "article_excerpt_chars": 280,
+    "debug_log_ring_size": 500,
+    "export_batch_size": 500
   },
   "timing": {
     "jobs_poll_ms": 3000,
@@ -39,7 +58,11 @@
     "shutdown_timeout_s": 5,
     "client_log_flush_ms": 2000,
     "client_log_flush_threshold": 50,
-    "client_log_max_buffer": 500
+    "client_log_max_buffer": 500,
+    "feedback_send_timeout_s": 35,
+    "feedback_upload_timeout_s": 30,
+    "google_health_timeout_s": 5,
+    "google_oauth_wait_timeout_s": 120
   },
   "pdf": {
     "paper": "us-letter",
@@ -83,6 +106,53 @@
     "branding": {
       "header_suffix": "'s Civil War Research Archive",
       "footer_template": "Made with DixieData | Version: {app_version} | Build: {build_identity}"
+    },
+    "heading_color": "#22303d",
+    "blockquote_border": "#8d7440",
+    "code_background": "rgb(36 48 61 / 0.06)",
+    "palette_browser": {
+      "ink":         "#22303d",
+      "sepia":       "#8d7440",
+      "parchment":   "#fff8e7",
+      "panel":       "#ffffff",
+      "border":      "rgb(141 116 64 / 0.35)",
+      "text_muted":  "#71808e",
+      "text_strong": "#22303d",
+      "link":        "#4A90E2",
+      "danger":      "#54211d",
+      "event":       "#7cb3e2",
+      "holiday":     "#d98989",
+      "today":       "#1f5b3b",
+      "quote_text":  "#7d4f2d"
+    },
+    "fonts_browser": {
+      "body_sans":  "\"Helvetica Neue\", Arial, sans-serif",
+      "body_serif": ["Georgia, \"Times New Roman\", serif"],
+      "mono":       "\"ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace\""
+    },
+    "type_scale_browser": {
+      "h1":         { "size_pt": 1.85, "line_pt": 1.3 },
+      "h2":         { "size_pt": 1.5,  "line_pt": 1.25 },
+      "h3":         { "size_pt": 1.25, "line_pt": 1.2 },
+      "h4":         { "size_pt": 1.1,  "line_pt": 1.15 },
+      "body_prose": { "size_pt": 1.0,  "line_pt": 1.6 },
+      "code_size":  { "size_pt": 0.92, "line_pt": 1.5 }
+    },
+    "palette_activity": {
+      "create":  "#a14747",
+      "update":  "#7d4f2d",
+      "merge":   "#4f7d6b",
+      "share":   "#b6854f",
+      "comment": "#3f5d8a",
+      "neutral": "#71808e"
+    },
+    "palette_calendar": {
+      "event":      "#7cb3e2",
+      "holiday":    "#d98989",
+      "today":      "#1f5b3b",
+      "quote_text": "#7d4f2d",
+      "border":     "rgb(141 116 64 / 0.3)",
+      "fill":       "#fff8e7"
     }
   }
 }

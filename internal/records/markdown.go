@@ -26,6 +26,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/valueforvalue/DixieData/internal/config"
 )
 
 // MarkdownRenderer renders markdown source to a sanitized
@@ -56,6 +57,13 @@ import (
 type MarkdownRenderer struct {
 	md       goldmark.Markdown
 	sanitizer *bluemonday.Policy
+	// theme carries the configured ThemeConfig so the
+	// markdown → typst converter (markdown_typst.go) can
+	// emit the same colors / fonts / heading sizes the
+	// browser preview uses (issue #660 amendment #2).
+	// Optional: a nil theme falls back to flat 11pt Arial
+	// so existing callers (tests, dry-runs) keep working.
+	theme *config.ThemeConfig
 }
 
 // NewMarkdownRenderer constructs a renderer with goldmark's
@@ -96,6 +104,23 @@ func NewMarkdownRenderer() *MarkdownRenderer {
 		),
 		sanitizer: p,
 	}
+}
+
+// SetTheme updates the configured ThemeConfig (issue #660
+// amendment #2). The markdown → typst converter reads
+// colors / fonts / heading sizes from the theme so the
+// PDF export matches the browser preview. Pass nil to
+// revert to the flat 11pt Arial default (back-compat for
+// existing callers that don't need theme-driven PDF
+// output).
+func (r *MarkdownRenderer) SetTheme(theme *config.ThemeConfig) {
+	r.theme = theme
+}
+
+// Theme returns the current ThemeConfig. May be nil when
+// no theme has been wired (the flat-default path).
+func (r *MarkdownRenderer) Theme() *config.ThemeConfig {
+	return r.theme
 }
 
 // Render converts markdown source to a sanitized HTML

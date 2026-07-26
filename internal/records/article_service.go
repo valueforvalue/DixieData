@@ -67,6 +67,16 @@ func (a *ArticleService) SetPageSizes(defaultSize, maxSize int) {
 	a.defaultPageSize = defaultSize
 	a.maxPageSize = maxSize
 }
+
+// SetMarkdownRenderer swaps the markdown renderer after
+// construction (issue #660 amendment #2). Used by the appshell
+// to thread a renderer with the configured ThemeConfig into the
+// service after NewArticleService has already returned (so
+// reloadServices can apply a fresh theme on every launch
+// without rebuilding the service).
+func (a *ArticleService) SetMarkdownRenderer(r *MarkdownRenderer) {
+	a.renderer = r
+}
 // ArticleRegistry uses a renderer to pre-render the article's PDF. The contract is a
 // subset of *render.Registry; the Render method takes a
 // record-type string + data map + writer and the impl

@@ -50,6 +50,50 @@ func SetCalendarNames(managed, test string) {
 	}
 }
 
+// SetHealthTimeout overrides the default 5-second context
+// timeout used by token-health + sync calls (issue #660 audit
+// gap). Called by appshell at startup from
+// cfg.Timing.GoogleHealthTimeoutS.
+func SetHealthTimeout(d time.Duration) {
+	healthTimeoutOverride = d
+}
+
+// SetOAuthWaitTimeout overrides the default 2-minute context
+// timeout used by the OAuth callback wait loop (issue #660
+// audit gap). Called by appshell at startup from
+// cfg.Timing.GoogleOAuthWaitTimeoutS.
+func SetOAuthWaitTimeout(d time.Duration) {
+	oauthWaitTimeoutOverride = d
+}
+
+// healthTimeoutOverride + oauthWaitTimeoutOverride are the
+// runtime overrides applied by SetHealthTimeout /
+// SetOAuthWaitTimeout. Zero means "use the built-in default".
+var (
+	healthTimeoutOverride     time.Duration
+	oauthWaitTimeoutOverride  time.Duration
+)
+
+// resolvedHealthTimeout returns the active health timeout
+// (override wins over the built-in default). Centralizing the
+// resolution here keeps the override pattern consistent with
+// supportuploader.resolvedUploadTimeout.
+func resolvedHealthTimeout() time.Duration {
+	if healthTimeoutOverride > 0 {
+		return healthTimeoutOverride
+	}
+	return 5 * time.Second
+}
+
+// resolvedOAuthWaitTimeout returns the active OAuth-wait
+// timeout (override wins over the built-in default).
+func resolvedOAuthWaitTimeout() time.Duration {
+	if oauthWaitTimeoutOverride > 0 {
+		return oauthWaitTimeoutOverride
+	}
+	return 2 * time.Minute
+}
+
 // GoogleCalendarSyncState is the on-disk JSON record of which
 // Google Calendar the DixieData anniversaries are synced to.
 // Persisted at dataDir/google-calendar-sync.json; the file is
@@ -155,7 +199,7 @@ func (g *GoogleService) connectionHealthy(settings models.GoogleSettings, token 
 	if token == nil {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), resolvedHealthTimeout())
 	defer cancel()
 	config := g.oauthConfig(settings, "http://127.0.0.1")
 	tokenSource := config.TokenSource(ctx, token)
@@ -320,7 +364,7 @@ func (g *GoogleService) Connect(ctx context.Context) error {
 		return err
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	waitCtx, cancel := context.WithTimeout(ctx, resolvedOAuthWaitTimeout())
 	defer cancel()
 
 	var code string
@@ -480,7 +524,7 @@ func (g *GoogleService) googleCalendarRemoteOutOfSync(syncState GoogleCalendarSy
 	if strings.TrimSpace(syncState.LastSyncedAt) == "" {
 		return false, nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), resolvedHealthTimeout())
 	defer cancel()
 	client, settings, err := g.client(ctx)
 	if err != nil {

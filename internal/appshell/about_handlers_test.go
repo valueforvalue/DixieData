@@ -22,7 +22,7 @@ import (
 // AppName, Version, Codename, Schema, Commit, Branch, BuiltAt
 // all populated from the buildinfo package.
 func TestBuildAboutViewIdentityFields(t *testing.T) {
-	view := buildAboutView("abc123def", "stable", "2026-07-15T00:00:00Z")
+	view := buildAboutView("abc123def", "stable", "2026-07-15T00:00:00Z", "")
 	if view.AppName != buildinfo.AppName {
 		t.Errorf("AppName = %q; want %q", view.AppName, buildinfo.AppName)
 	}
@@ -51,13 +51,13 @@ func TestBuildAboutViewIdentityFields(t *testing.T) {
 // /blob/{commit}/LICENSE.
 func TestBuildAboutViewLicenseURL(t *testing.T) {
 	// Tagged build.
-	view := buildAboutView("abc123", "stable", "2026-07-15T00:00:00Z")
+	view := buildAboutView("abc123", "stable", "2026-07-15T00:00:00Z", "")
 	want := "https://github.com/valueforvalue/DixieData/blob/abc123/LICENSE"
 	if view.LicenseURL != want {
 		t.Errorf("LicenseURL (tagged) = %q; want %q", view.LicenseURL, want)
 	}
 	// Dev build.
-	view = buildAboutView("dev", "dev", "")
+	view = buildAboutView("dev", "dev", "", "")
 	want = "https://github.com/valueforvalue/DixieData/blob/dev/LICENSE"
 	if view.LicenseURL != want {
 		t.Errorf("LicenseURL (dev) = %q; want %q", view.LicenseURL, want)
@@ -81,7 +81,7 @@ func TestBuildAboutViewLicenseURL(t *testing.T) {
 // the templ needs is on the view, in a form the templ can
 // render without importing activityhistory directly.
 func TestBuildAboutViewRecentCommitsShape(t *testing.T) {
-	view := buildAboutView("dev", "dev", "")
+	view := buildAboutView("dev", "dev", "", "")
 	if view.RecentCommits == nil {
 		// Dev build (no bake). Shape is nil-slice, not
 		// zero-length slice. The templ handles nil safely.

@@ -28,14 +28,35 @@ import (
 var formsparkDefaultEndpointForTest string
 
 // formsparkEndpoint returns the Formspark endpoint the handler
-// should POST to. Production callers always see the package
-// constant; the test override is empty in production builds.
+// should POST to. Priority: test override > configured
+// cfg.Services.FeedbackEndpoint (issue #660 audit gap) > the
+// built-in default. The configured value is read once at App
+// construction via the formsparkConfiguredEndpoint global below
+// so the hot path stays a constant-time lookup.
 func formsparkEndpoint() string {
 	if formsparkDefaultEndpointForTest != "" {
 		return formsparkDefaultEndpointForTest
 	}
+	if formsparkConfiguredEndpoint != "" {
+		return formsparkConfiguredEndpoint
+	}
 	return supportuploader.DefaultFormsparkEndpoint
 }
+
+// formsparkConfiguredEndpoint is set by reloadServices from
+// cfg.Services.FeedbackEndpoint. Empty in production builds that
+// haven't gone through reloadServices; the fallback chain above
+// covers that path.
+var formsparkConfiguredEndpoint string
+
+// feedbackSendTimeoutS is set by reloadServices from
+// cfg.Timing.FeedbackSendTimeoutS (issue #660). The handler
+// reads it at the start of the upload context to size the
+// per-attempt deadline; the upload package's own timeout
+// (cfg.Timing.FeedbackUploadTimeoutS) governs the inner
+// POST. Zero means "use the built-in 35s default" so old
+// configs without the field still work.
+var feedbackSendTimeoutS int
 
 type feedbackEntry struct {
 	SubmittedAt   string `json:"submitted_at"`
@@ -122,7 +143,11 @@ func (a *App) handleFeedbackSubmit(w http.ResponseWriter, r *http.Request) {
 	action := strings.TrimSpace(r.FormValue("action"))
 	w.Header().Set("X-DixieData-Close-Feedback", "true")
 	if action == "send" {
-		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
+		timeout := time.Duration(feedbackSendTimeoutS) * time.Second
+		if timeout == 0 {
+			timeout = 35 * time.Second
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		if uploadErr := supportuploader.UploadFeedbackFormspark(ctx, entry, formsparkEndpoint()); uploadErr != nil {
 			log := debug.FromContext(r.Context())

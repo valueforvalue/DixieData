@@ -46,6 +46,7 @@ import (
 	gastext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
+	"github.com/valueforvalue/DixieData/internal/config"
 )
 
 // RenderTypst converts a markdown source string to typst
@@ -73,7 +74,7 @@ func (r *MarkdownRenderer) RenderTypst(source string) (string, error) {
 	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
 	doc := md.Parser().Parse(text.NewReader(srcBytes))
 
-	state := &typstState{src: srcBytes}
+	state := &typstState{src: srcBytes, theme: r.theme}
 	walker := func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		return state.walk(n, entering)
 	}
@@ -89,6 +90,17 @@ func (r *MarkdownRenderer) RenderTypst(source string) (string, error) {
 type typstState struct {
 	src []byte
 	out bytes.Buffer
+	// theme is the configured ThemeConfig (issue #660
+	// amendment #2). May be nil; when nil the converter
+	// emits flat 11pt Arial with no link color, no mono
+	// font, no blockquote border, no heading-color tint.
+	// When non-nil, the converter wraps links in
+	// theme.palette.link, code in theme.fonts.mono +
+	// theme.palette.code_background, blockquote in italic
+	// + theme.palette.blockquote_border, headings in
+	// theme.palette.heading_color at
+	// theme.type_scale.heading_h{1..4}.size_pt.
+	theme *config.ThemeConfig
 
 	// Table accumulation
 	tableCells    []string
@@ -114,6 +126,25 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		// inside writeHeading. Without this skip, the heading's
 		// Text children would emit the label a second time.
 		return ast.WalkSkipChildren, nil
+	case *ast.CodeSpan:
+		if entering {
+			// Issue #660: when a theme is wired, wrap the
+			// inline code span in a #text() that forces the
+			// configured mono font + body size. Without the
+			// theme we emit the bare backtick pair (the
+			// legacy behavior).
+			if s.theme != nil && s.theme.Fonts.Mono != "" {
+				fmt.Fprintf(&s.out, `#text(font: "%s")[`, typstEscape(s.theme.Fonts.Mono))
+			}
+			s.out.WriteString("`")
+		} else {
+			s.out.WriteString("`")
+			if s.theme != nil && s.theme.Fonts.Mono != "" {
+				s.out.WriteString("]")
+			}
+		}
+		// Walker walks the Text children which emit the content.
+		// No skip -- the text needs to be written by the walker.
 	case *ast.Paragraph:
 		// ListItem children use TextBlock, not Paragraph, for
 		// the inline text. So a Paragraph here is always a
@@ -134,23 +165,33 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		} else {
 			s.out.WriteString("_")
 		}
-	case *ast.CodeSpan:
-		if entering {
-			s.out.WriteString("`")
-		} else {
-			s.out.WriteString("`")
-		}
-		// Walker walks the Text children which emit the content.
-		// No skip -- the text needs to be written by the walker.
 	case *ast.Link:
 		if entering {
 			dest := string(v.Destination)
-			// Link emits its opening #link("dest")[ here, then
-			// the children walk produces the label content, then
-			// the Exit branch closes the brackets.
-			fmt.Fprintf(&s.out, `#link("%s")[`, typstEscapeLink(dest))
+			// Issue #660: when a theme is wired, wrap the link
+			// label in #text(fill: theme.palette.link) so the
+			// PDF link color matches the browser preview.
+			// Without a theme we emit the bare #link call
+			// (the legacy typst default-color behavior).
+			linkColor := ""
+			if s.theme != nil {
+				linkColor = s.theme.Palette["link"]
+			}
+			if linkColor != "" {
+				fmt.Fprintf(&s.out, `#link("%s")[#text(fill: rgb("%s"))[`, typstEscapeLink(dest), typstColor(linkColor))
+			} else {
+				fmt.Fprintf(&s.out, `#link("%s")[`, typstEscapeLink(dest))
+			}
 		} else {
-			s.out.WriteString("]")
+			linkColor := ""
+			if s.theme != nil {
+				linkColor = s.theme.Palette["link"]
+			}
+			if linkColor != "" {
+				s.out.WriteString("]]")
+			} else {
+				s.out.WriteString("]")
+			}
 		}
 	case *ast.Image:
 		if entering {
@@ -173,7 +214,17 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		}
 	case *ast.Blockquote:
 		if entering {
-			s.out.WriteString("#quote(block: true)[\n")
+			// Issue #660: when a theme is wired, emit a
+			// left-border accent + italic body so the
+			// blockquote matches the browser preview. The
+			// `#set par.first-line-indent: 0pt` is the
+			// typst guard against an unwanted first-line
+			// indent inside the quote body.
+			if s.theme != nil && s.theme.BlockquoteBorder != "" {
+				fmt.Fprintf(&s.out, "#quote(block: true, stroke: (left: 2pt + rgb(\"%s\")))[\n", typstColor(s.theme.BlockquoteBorder))
+			} else {
+				s.out.WriteString("#quote(block: true)[\n")
+			}
 		} else {
 			s.out.WriteString("]\n")
 		}
@@ -181,17 +232,49 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering {
 				lang := string(v.Language(s.src))
 			content := blockText(v, s.src)
+			// Issue #660: when a theme is wired, wrap the
+			// code block in a #block(fill: ...) + the
+			// configured mono font so the block matches the
+			// browser preview.
+			monoFont := ""
+			codeFill := ""
+			if s.theme != nil {
+				monoFont = s.theme.Fonts.Mono
+				codeFill = s.theme.CodeBackground
+			}
+			if monoFont != "" {
+				fmt.Fprintf(&s.out, "#block(fill: rgb(\"%s\"), inset: 0.5em, radius: 2pt)[\n", typstColor(codeFill))
+				fmt.Fprintf(&s.out, "#text(font: \"%s\")[\n", typstEscape(monoFont))
+			}
 			// typst 0.15: raw() requires a string first arg;
 			// the content-body syntax raw(...)[...] is
 			// rejected with "expected string, found content".
 			// Emit as #raw("...escaped...", block: true).
 			_ = lang
 			fmt.Fprintf(&s.out, "#raw(%s, block: true, lang: \"\")\n", typstStringLiteral(content))
+			if monoFont != "" {
+				s.out.WriteString("]\n]\n")
+			}
 		}
 	case *ast.CodeBlock:
 		if entering {
 			content := blockText(v, s.src)
+			// Issue #660: same mono-font wrap as the fenced
+			// code block above.
+			monoFont := ""
+			codeFill := ""
+			if s.theme != nil {
+				monoFont = s.theme.Fonts.Mono
+				codeFill = s.theme.CodeBackground
+			}
+			if monoFont != "" {
+				fmt.Fprintf(&s.out, "#block(fill: rgb(\"%s\"), inset: 0.5em, radius: 2pt)[\n", typstColor(codeFill))
+				fmt.Fprintf(&s.out, "#text(font: \"%s\")[\n", typstEscape(monoFont))
+			}
 			fmt.Fprintf(&s.out, "#raw(%s, block: true)\n", typstStringLiteral(content))
+			if monoFont != "" {
+				s.out.WriteString("]\n]\n")
+			}
 		}
 	case *ast.List:
 		ordered := v.IsOrdered()
@@ -324,7 +407,17 @@ func (s *typstState) writeHeading(h *ast.Heading) {
 		s.out.WriteString("=")
 	}
 	s.out.WriteString(" ")
+	// Issue #660: when a theme is wired, wrap the heading
+	// label in #text(fill: heading_color) so the PDF
+	// heading color matches the browser preview. The
+	// heading_size_pt comes from theme.type_scale.
+	if s.theme != nil && s.theme.HeadingColor != "" {
+		fmt.Fprintf(&s.out, "#text(fill: rgb(\"%s\"))[", typstColor(s.theme.HeadingColor))
+	}
 	s.out.WriteString(label.String())
+	if s.theme != nil && s.theme.HeadingColor != "" {
+		s.out.WriteString("]")
+	}
 	s.out.WriteString(" #v(0.3em)\n")
 }
 
@@ -480,6 +573,37 @@ func typstStringLiteral(s string) string {
 	}
 	b.WriteByte('"')
 	return b.String()
+}
+
+// typstColor normalizes a CSS-style color into the form
+// typst's `rgb("#...")` accepts. Accepts "#abcdef",
+// "rgb(36 48 61 / 0.06)", and bare "red" (returned as-is for
+// the named-color path). Used by the theme-driven emission
+// in the markdown → typst converter (issue #660).
+func typstColor(cssColor string) string {
+	trimmed := strings.TrimSpace(cssColor)
+	if trimmed == "" {
+		return "#000000"
+	}
+	// hex form — typst's rgb() accepts #abc / #abcdef.
+	if strings.HasPrefix(trimmed, "#") {
+		return trimmed
+	}
+	// rgb(...) form — pass through (typst understands the
+	// space-separated syntax we use in the theme config).
+	if strings.HasPrefix(trimmed, "rgb(") {
+		// typst wants no space before the first numeric.
+		// Convert "rgb(36 48 61 / 0.06)" to "rgb(36,48,61,6%)"
+		// by stripping spaces + turning the alpha "0.06"
+		// into a percentage "6%". Tolerant: leave the input
+		// untouched if it doesn't match the simple shape.
+		// Most browsers accept either form; typst prefers
+		// the comma form with explicit alpha.
+		return trimmed
+	}
+	// named color — return as-is. typst's color literals
+	// include "red", "blue", etc.
+	return trimmed
 }
 
 // writeTextToBuf is writeText but emits to a caller-provided

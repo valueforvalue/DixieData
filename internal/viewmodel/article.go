@@ -21,10 +21,27 @@ import (
 // list-page preview shows the first ~280 characters of the
 // sanitized body so the user gets a meaningful excerpt of
 // the article's content without the full body overwhelming
-// the row. Tune via this constant; the test pins the intent
-// (a meaningful excerpt + ellipsis suffix) without a brittle
-// exact-length match.
-const bodyExcerptCap = 280
+// the row. Tune via SetBodyExcerptCap (issue #660 audit gap);
+// the test pins the intent (a meaningful excerpt + ellipsis
+// suffix) without a brittle exact-length match. The default
+// is 280 to match the previous hard-coded constant; the
+// appshell calls SetBodyExcerptCap from reloadServices with
+// cfg.Limits.ArticleExcerptChars.
+const defaultBodyExcerptCap = 280
+
+// bodyExcerptCap is the active excerpt cap. Set by
+// SetBodyExcerptCap; the default is defaultBodyExcerptCap.
+var bodyExcerptCap = defaultBodyExcerptCap
+
+// SetBodyExcerptCap overrides the active excerpt cap. Pass
+// 0 to revert to the built-in default (issue #660).
+func SetBodyExcerptCap(cap int) {
+	if cap <= 0 {
+		bodyExcerptCap = defaultBodyExcerptCap
+		return
+	}
+	bodyExcerptCap = cap
+}
 
 // tagStripper matches HTML tags for the body excerpt
 // computation. Cheap regex is fine -- the input is

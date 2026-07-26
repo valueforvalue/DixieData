@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -76,10 +77,11 @@ func resolvedBootTheme(a *App) string {
 }
 
 // handleBootConfigScript serves a tiny JS snippet that injects
-// window.__dixieConfig before the static index.html shell paints
-// and redirects to the configured landing page when on root.
-// Mirrors handleBootThemeScript: blocking, no-store, runs before
-// htmx triggers hx-get on the body. Issue #638.
+// window.__dixieConfig + the configured CSS custom-property
+// overrides before the static index.html shell paints, and
+// redirects to the configured landing page when on root.
+// Mirrors handleBootThemeScript: blocking, no-store, runs
+// before htmx triggers hx-get on the body. Issue #638 + #660.
 func (a *App) handleBootConfigScript(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -94,6 +96,81 @@ func (a *App) handleBootConfigScript(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, "window.__dixieConfig=%s;\n", cfgJSON)
 	fmt.Fprintf(w, "(function(){var lp=window.__dixieConfig&&window.__dixieConfig.landingPage;if(lp&&lp!=='/'&&(window.location.pathname==='/'||window.location.pathname===''))window.location.replace(lp);})();\n")
+	// Issue #660: emit CSS custom-property overrides from the
+	// configured theme. The override block sets
+	// --theme-* variables on :root so the existing
+	// tailwind.css rules (which reference these variables)
+	// pick up the configured palette / fonts / type scale
+	// without rewriting the stylesheet. The block runs
+	// after the stylesheet has loaded (it's appended to
+	// the boot script which is included via a <script>
+	// tag in the shell, so it runs after the CSS).
+	if cssOverrides := buildThemeCSSOverrides(a.cfg.Theme); cssOverrides != "" {
+		fmt.Fprintf(w, "(function(){var s=document.createElement('style');s.textContent=%s;document.head.appendChild(s);})();\n", jsStringLiteral(cssOverrides))
+	}
+}
+
+// buildThemeCSSOverrides builds a :root { --theme-X: value }
+// block from the configured ThemeConfig (issue #660). The
+// CSS variables match the names frontend/tailwind.css uses
+// for browser palette / fonts / type scale. An empty
+// config yields an empty string so the boot script can
+// skip the <style> injection on the legacy path.
+func buildThemeCSSOverrides(theme config.ThemeConfig) string {
+	var b strings.Builder
+	b.WriteString(":root{")
+	if palette := theme.PaletteBrowser; len(palette) > 0 {
+		for k, v := range palette {
+			b.WriteString("--theme-")
+			b.WriteString(k)
+			b.WriteString(":")
+			b.WriteString(v)
+			b.WriteString(";")
+		}
+	}
+	if theme.HeadingColor != "" {
+		b.WriteString("--theme-heading-color:")
+		b.WriteString(theme.HeadingColor)
+		b.WriteString(";")
+	}
+	if theme.BlockquoteBorder != "" {
+		b.WriteString("--theme-blockquote-border:")
+		b.WriteString(theme.BlockquoteBorder)
+		b.WriteString(";")
+	}
+	if theme.CodeBackground != "" {
+		b.WriteString("--theme-code-bg:")
+		b.WriteString(theme.CodeBackground)
+		b.WriteString(";")
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
+// jsStringLiteral builds a JS string literal (with single
+// quotes around the value). Newlines + backslashes +
+// single quotes are escaped so the resulting JS is valid
+// for `s.textContent = ...`.
+func jsStringLiteral(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 16)
+	b.WriteByte('\'')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString("\\\\")
+		case '\'':
+			b.WriteString("\\'")
+		case '\n':
+			b.WriteString("\\n")
+		case '\r':
+			b.WriteString("\\r")
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('\'')
+	return b.String()
 }
 // persisted theme on document.documentElement before the static
 // index.html shell paints. See resolvedBootTheme for the full

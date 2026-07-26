@@ -41,6 +41,13 @@ import (
 // endpoint to acknowledge. Power users behind a slow proxy
 // can ship a smaller bundle or check the endpoint manually;
 // an open-ended timeout would block the dispatcher forever.
+//
+// Issue #660 audit gap: the 30s ceiling is configurable via
+// `cfg.Timing.FeedbackUploadTimeoutS`. SetUploadTimeout (in
+// formspark.go) is the package-level setter; the appshell
+// wires it from reloadServices. The constant below is the
+// built-in default; resolvedUploadTimeout centralizes the
+// override-vs-default resolution.
 const uploadTimeout = 30 * time.Second
 
 // UploadFeedback POSTs the feedback entry (as a JSON metadata
@@ -115,7 +122,7 @@ func UploadFeedback(ctx context.Context, entry any, bundlePath, endpoint string)
 	// (e.g. the test suite), we honour that instead.
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, uploadTimeout)
+		ctx, cancel = context.WithTimeout(ctx, resolvedUploadTimeout())
 		defer cancel()
 	}
 
@@ -127,10 +134,13 @@ func UploadFeedback(ctx context.Context, entry any, bundlePath, endpoint string)
 	req.Header.Set("Accept", "application/json")
 	// Per issue #544 acceptance: "no http.Client shared
 	// between uploader + the existing in-place updater".
-	// The 30s timeout lives on the request context above;
+	// The configured timeout lives on the request context
+	// above (resolvedUploadTimeout honours the
+	// SetUploadTimeout override set by reloadServices);
 	// the http.Client itself stays minimal (no shared
 	// state with the in-place updater's client).
 	client := &http.Client{}
+	_ = resolvedUploadTimeout() // keep helper referenced
 
 	resp, err := client.Do(req)
 	if err != nil {

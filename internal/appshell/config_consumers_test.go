@@ -138,11 +138,26 @@ func TestConfigConsumers_CustomValuesFlowToBootConfig(t *testing.T) {
 		"calendar": {
 			"timezone": "Europe/Paris"
 		},
+		"services": {
+			"update_check_url": "https://updates.example.com/check.json",
+			"repository_url": "https://github.com/example/repo",
+			"feedback_endpoint": "https://feedback.example.com/submit"
+		},
+		"files": {
+			"allowed_image_mime_types": [
+				"image/png",
+				"image/jpeg",
+				"image/webp"
+			]
+		},
 		"limits": {
 			"recent_records_cap": 25,
 			"research_recents_cap": 30,
 			"back_stack_depth": 12,
-			"notes_preview_chars": 333
+			"notes_preview_chars": 333,
+			"article_excerpt_chars": 444,
+			"debug_log_ring_size": 999,
+			"export_batch_size": 1234
 		},
 		"timing": {
 			"jobs_poll_ms": 1111,
@@ -153,7 +168,11 @@ func TestConfigConsumers_CustomValuesFlowToBootConfig(t *testing.T) {
 			"print_preview_debounce_ms": 100,
 			"client_log_flush_ms": 5000,
 			"client_log_flush_threshold": 99,
-			"client_log_max_buffer": 1500
+			"client_log_max_buffer": 1500,
+			"feedback_send_timeout_s": 77,
+			"feedback_upload_timeout_s": 88,
+			"google_health_timeout_s": 9,
+			"google_oauth_wait_timeout_s": 188
 		},
 		"pdf": { "paper": "a4" },
 		"google": {
@@ -187,6 +206,17 @@ func TestConfigConsumers_CustomValuesFlowToBootConfig(t *testing.T) {
 		{"ResearchRecentsCap", cfg.ResearchRecentsCap, 30},
 		{"BackStackDepth", cfg.BackStackDepth, 12},
 		{"NotesPreviewChars", cfg.NotesPreviewChars, 333},
+		{"ArticleExcerptChars", cfg.ArticleExcerptChars, 444},
+		{"DebugLogRingSize", cfg.DebugLogRingSize, 999},
+		{"ExportBatchSize", cfg.ExportBatchSize, 1234},
+		{"FeedbackSendTimeoutS", cfg.FeedbackSendTimeoutS, 77},
+		{"FeedbackUploadTimeoutS", cfg.FeedbackUploadTimeoutS, 88},
+		// GoogleHealthTimeoutS + GoogleOAuthWaitTimeoutS are
+		// server-internal (the browser never sees them), so
+		// they live on cfg.Timing only — not on ClientConfig.
+		// The boot-config flow doesn't expose them; a
+		// dedicated test (TestConfigGoogleTimeoutsInternal)
+		// pins the server-side plumbing separately.
 		{"JobsPollMs", cfg.JobsPollMs, 1111},
 		{"ReviewBadgePollMs", cfg.ReviewBadgePollMs, 22222},
 		{"JobStatusPollMs", cfg.JobStatusPollMs, 3333},
@@ -354,5 +384,83 @@ func TestConfigConsumers_CustomValuesFlowToSettingsConfig(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("/settings/config missing %q (configured value did not reach view)", want)
 		}
+	}
+}
+
+// TestConfigConsumers_UpdateSourceURLMigration pins the
+// one-shot migration contract (issue #660 amendment #1). When
+// the appshell boots with a non-empty
+// `system_config.update_source_url` row + an empty
+// `cfg.Services.UpdateSourceURL`, the migration must copy the
+// row's value into cfg + delete the row so future reads come
+// from cfg (which survives .ddbak imports). Without this
+// test, a refactor that breaks the migration silently
+// reverts every user-set update source URL on next app launch.
+//
+// The harness writes the value into `system_config` via the
+// appshell's database (SystemConfig.SetSystemConfig) before
+// reloadConfigFromDisk, then asserts the row is gone + the
+// cfg value is set after reload.
+func TestConfigConsumers_UpdateSourceURLMigration(t *testing.T) {
+	app := newStressApp(t)
+	// Seed the legacy system_config row the way the
+	// pre-amendment updater would have left it.
+	if err := app.database.SetSystemConfig("update_source_url", "https://custom.example.com/manifest.json"); err != nil {
+		t.Fatalf("seed system_config row: %v", err)
+	}
+	// Reload config from disk (no config.json => defaults
+	// => cfg.Services.UpdateSourceURL is empty). The migration
+	// must fire on this path.
+	reloadConfigFromDisk(t, app)
+
+	// cfg.Services.UpdateSourceURL must now carry the seeded
+	// value.
+	loaded, err := app.cfg.Services.UpdateSourceURL, error(nil)
+	_ = loaded
+	_ = err
+	if app.cfg.Services.UpdateSourceURL != "https://custom.example.com/manifest.json" {
+		t.Errorf("UpdateSourceURL = %q; want %q", app.cfg.Services.UpdateSourceURL, "https://custom.example.com/manifest.json")
+	}
+	// system_config row must be gone.
+	got, err := app.database.SystemConfig("update_source_url")
+	if err != nil {
+		t.Fatalf("read system_config: %v", err)
+	}
+	if got != "" {
+		t.Errorf("system_config.update_source_url = %q; want empty (row should have been deleted by migration)", got)
+	}
+}
+
+// TestConfigConsumers_UpdateSourceURLMigrationIdempotent pins
+// the "second launch doesn't re-fire" contract. After the
+// migration runs once, reloading config from disk must NOT
+// re-touch system_config (the row is gone; the cfg already
+// carries the value).
+func TestConfigConsumers_UpdateSourceURLMigrationIdempotent(t *testing.T) {
+	app := newStressApp(t)
+	// Pre-seed cfg.Services.UpdateSourceURL via config.json so
+	// the migration sees "already set" and skips.
+	writeConfigToStateRoot(t, app.dataDir, []byte(`{
+		"services": {"update_source_url": "https://already-set.example.com"}
+	}`))
+	// Also seed system_config with a DIFFERENT value. The
+	// migration must NOT overwrite the cfg value with the
+	// stale system_config row (cfg wins on the
+	// already-migrated path).
+	if err := app.database.SetSystemConfig("update_source_url", "https://stale.example.com"); err != nil {
+		t.Fatalf("seed system_config: %v", err)
+	}
+	reloadConfigFromDisk(t, app)
+	if app.cfg.Services.UpdateSourceURL != "https://already-set.example.com" {
+		t.Errorf("UpdateSourceURL = %q; want %q (cfg wins over stale system_config)", app.cfg.Services.UpdateSourceURL, "https://already-set.example.com")
+	}
+	// Stale row stays untouched (we don't want a re-fire to
+	// delete it; the migration only fires when cfg is empty).
+	got, err := app.database.SystemConfig("update_source_url")
+	if err != nil {
+		t.Fatalf("read system_config: %v", err)
+	}
+	if got != "https://stale.example.com" {
+		t.Errorf("system_config.update_source_url = %q; want %q (migration must NOT touch stale rows)", got, "https://stale.example.com")
 	}
 }

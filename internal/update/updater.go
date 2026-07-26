@@ -70,13 +70,29 @@ type configStore interface {
 }
 
 type Service struct {
-	config         configStore
-	dataDir        string
-	restorePoints  *RestorePointManager
-	archiveWriter  RestorePointArchiveWriter
-	client         *http.Client
-	executablePath func() (string, error)
-	now            func() time.Time
+	config          configStore
+	dataDir         string
+	restorePoints   *RestorePointManager
+	archiveWriter   RestorePointArchiveWriter
+	client          *http.Client
+	executablePath  func() (string, error)
+	now             func() time.Time
+	// sourceURLOverride carries the user-set update source URL
+	// after the appshell one-shot migration has moved the value
+	// from `system_config.update_source_url` into the external
+	// `config.json`. Set via SetSourceURL (see issue #660
+	// amendment #1). When non-empty, sourceSettings() returns
+	// this value instead of reading from system_config. The
+	// SaveSource method writes through to system_config AND
+	// this override so future boots continue to see the value
+	// even if config.json is lost.
+	sourceURLOverride string
+	// checkURLOverride carries the configured default update
+	// check URL (config.Services.UpdateCheckURL). When
+	// non-empty, sourceSettings() returns it instead of the
+	// hardcoded `defaultSourceURL` constant. Set via
+	// SetCheckURL from appshell.reloadServices.
+	checkURLOverride string
 }
 
 type SettingsState struct {
@@ -214,9 +230,17 @@ func (s *Service) SaveSource(rawURL string) (SettingsState, error) {
 	if err != nil {
 		return SettingsState{}, err
 	}
-	if err := s.config.SetSystemConfig(updateSourceConfigKey, normalized); err != nil {
-		return SettingsState{}, err
-	}
+	// Issue #660 amendment #1: the user-set update source URL
+	// now lives in `config.Services.UpdateSourceURL` (which
+	// survives .ddbak imports) instead of the SQLite
+	// `system_config` table. The appshell calls config.Save
+	// with the new value + reloadServices, which calls
+	// SetSourceURL on the Service. SaveSource updates the
+	// override directly as a back-compat path for tests +
+	// any callers that don't go through reloadServices; the
+	// appshell handler does the canonical write through
+	// config.json.
+	s.sourceURLOverride = normalized
 	return s.Settings()
 }
 
@@ -418,15 +442,46 @@ func (s *Service) failPrepare(progress func(UpdateProgress), format string, err 
 }
 
 func (s *Service) sourceSettings() (string, string, bool, error) {
+	override := strings.TrimSpace(s.sourceURLOverride)
+	if override != "" {
+		return override, override, false, nil
+	}
 	value, err := s.config.SystemConfig(updateSourceConfigKey)
 	if err != nil {
 		return "", "", false, err
 	}
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return "", defaultSourceURL, true, nil
+		// No user-set source; fall back to the configured
+		// default (issue #660 audit gap #1). If the appshell
+		// never wired the override (test path), use the
+		// built-in defaultSourceURL constant.
+		checkURL := strings.TrimSpace(s.checkURLOverride)
+		if checkURL == "" {
+			checkURL = defaultSourceURL
+		}
+		return "", checkURL, true, nil
 	}
 	return value, value, false, nil
+}
+
+// SetSourceURL updates the in-memory override so sourceSettings
+// returns it on the next call (issue #660 amendment #1). The
+// appshell calls this from reloadServices after the one-shot
+// migration copies the legacy system_config row into
+// config.Services.UpdateSourceURL. Does NOT touch the
+// system_config row directly — SaveSource does that.
+func (s *Service) SetSourceURL(rawURL string) {
+	s.sourceURLOverride = strings.TrimSpace(rawURL)
+}
+
+// SetCheckURL updates the in-memory override for the bundled
+// update check URL (issue #660 audit gap #1). When non-empty,
+// sourceSettings() returns it instead of the hardcoded
+// `defaultSourceURL` constant. Lets a packager point the app
+// at a fork's release feed without recompiling.
+func (s *Service) SetCheckURL(rawURL string) {
+	s.checkURLOverride = strings.TrimSpace(rawURL)
 }
 
 func (s *Service) resolveRelease() (resolvedRelease, error) {

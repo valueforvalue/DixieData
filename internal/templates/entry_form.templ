@@ -401,7 +401,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 											type="file"
 											name="images"
 											multiple
-											accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml"
+											accept={ viewmodel.ImageMIMEAcceptString(s.AllowedImageMIMETypes) }
 											class="hidden"
 											onchange="this.form.requestSubmit()"
 										/>

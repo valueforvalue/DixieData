@@ -387,7 +387,15 @@ func buildSmokeApp(ctx context.Context, dataDirOverride string) (*App, error) {
 // passes it a context; replicate the body inline for clarity.
 func smokeShutdown(a *App) {
 	if a.jobs != nil {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// Issue #660: smoke shutdown mirrors the production
+		// path; read the configured timeout so a user who
+		// customizes ShutdownTimeoutS gets the same
+		// behaviour under --smoke.
+		shutdownTimeout := time.Duration(a.cfg.Timing.ShutdownTimeoutS) * time.Second
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 5 * time.Second
+		}
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		_ = a.jobs.Shutdown(shutdownCtx)
 		cancel()
 	}

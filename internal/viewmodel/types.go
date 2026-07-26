@@ -1,6 +1,8 @@
 // Package viewmodel defines UI-shaped projections of soldier records and maps them to/from domain models.
 package viewmodel
 
+import "strings"
+
 // PersonRecord is the UI-shaped projection of a Soldier (the domain
 // type from internal/models). It carries only the fields the UI
 // surfaces, with nil-safe defaults for everything else, so the
@@ -12,6 +14,12 @@ type PersonRecord struct {
 	DisplayID             string
 	SyncID                string
 	EntryType             string
+	// AllowedImageMIMETypes is the configured image MIME
+	// allowlist (cfg.Files.AllowedImageMIMETypes) that the
+	// entry form's <input accept="..."> attribute derives
+	// from (issue #660). When empty the templ falls back to
+	// DefaultAllowedImageMIMETypes via ImageMIMEAcceptString.
+	AllowedImageMIMETypes []string
 	LinkedSoldierID       int64
 	RelationshipLabel     string
 	SpouseName            string
@@ -954,6 +962,11 @@ type AboutView struct {
 	Branch        string
 	BuiltAt       string
 	LicenseURL    string
+	// RepositoryURL is the configured repository base URL
+	// (cfg.Services.RepositoryURL). The /about page uses it
+	// to build commit links server-side; empty falls back to
+	// the built-in default (issue #660).
+	RepositoryURL string
 	Activity      *ActivitySnapshotView
 	RecentCommits []RecentCommitView
 	// Glossary is the project-wide terminology catalog
@@ -1090,4 +1103,77 @@ type ConfigSection struct {
 type ConfigField struct {
 	Label string
 	Value string
+}
+
+// DefaultRepositoryURL is the built-in fallback for the
+// repository base URL (issue #660). Used by helpers when the
+// configured RepositoryURL is empty.
+const DefaultRepositoryURL = "https://github.com/valueforvalue/DixieData"
+
+// CommitURL builds the commit URL for a hash using the
+// supplied repository base URL (or the built-in default when
+// repoURL is empty). Exposed so templ pages can build links
+// server-side without re-importing the appshell package.
+func CommitURL(repoURL, hash string) string {
+	if repoURL == "" {
+		repoURL = DefaultRepositoryURL
+	}
+	return repoURL + "/commit/" + hash
+}
+
+// DefaultAllowedImageMIMETypes is the built-in fallback for
+// the image MIME allowlist (issue #660). The templates use
+// this when cfg.Files.AllowedImageMIMETypes is empty so old
+// configs without the field still work.
+var DefaultAllowedImageMIMETypes = []string{
+	"image/png",
+	"image/jpeg",
+	"image/gif",
+	"image/bmp",
+	"image/webp",
+	"image/svg+xml",
+}
+
+// allowedImageMIMETypes is the package-level active list.
+// Set by SetAllowedImageMIMETypes from the appshell; the
+// mapper reads it via AllowedImageMIMETypes().
+var allowedImageMIMETypes = DefaultAllowedImageMIMETypes
+
+// SetAllowedImageMIMETypes overrides the active image MIME
+// allowlist (issue #660). Pass an empty slice to revert to
+// the built-in default.
+func SetAllowedImageMIMETypes(types []string) {
+	if len(types) == 0 {
+		allowedImageMIMETypes = DefaultAllowedImageMIMETypes
+		return
+	}
+	allowedImageMIMETypes = types
+}
+
+// AllowedImageMIMETypes returns the active list. Used by the
+// mapper to populate PersonRecord.AllowedImageMIMETypes so
+// the templ can derive the <input accept="..."> attribute
+// from a single source of truth.
+func AllowedImageMIMETypes() []string {
+	return allowedImageMIMETypes
+}
+
+// ImageMIMEAcceptString joins the supplied MIME list into the
+// comma-separated form the HTML <input accept="..."> attribute
+// expects. Empty input falls back to DefaultAllowedImageMIMETypes
+// so callers without config wiring still get the production
+// default. The slash / colon in MIME types does not need
+// escaping inside an HTML attribute value.
+func ImageMIMEAcceptString(types []string) string {
+	if len(types) == 0 {
+		types = DefaultAllowedImageMIMETypes
+	}
+	var b strings.Builder
+	for i, t := range types {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(t)
+	}
+	return b.String()
 }

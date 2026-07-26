@@ -19,7 +19,36 @@ import (
 // dispatcher forever. The appshell handler composes this with
 // a 35s outer context so the handler never returns after the
 // helper has already returned.
+//
+// Issue #660 audit gap: the 30s ceiling is configurable via
+// `cfg.Timing.FeedbackUploadTimeoutS` (units: seconds). The
+// SetUploadTimeout setter below swaps the package-level
+// default; the appshell calls it from reloadServices. Tests
+// call it directly to keep the deadline tight.
 const formsparkUploadTimeout = 30 * time.Second
+
+// configuredUploadTimeout is the runtime override applied by
+// SetUploadTimeout. Zero means "use formsparkUploadTimeout";
+// non-zero means "use this duration".
+var configuredUploadTimeout time.Duration
+
+// SetUploadTimeout updates the in-package timeout used by
+// UploadFeedbackFormspark. Pass 0 to revert to the built-in
+// default. The appshell wires cfg.Timing.FeedbackUploadTimeoutS
+// into this via reloadServices.
+func SetUploadTimeout(d time.Duration) {
+	configuredUploadTimeout = d
+}
+
+// resolvedUploadTimeout returns the active timeout (override
+// wins over default). Both callers + tests use this helper so
+// the resolution order is centralized.
+func resolvedUploadTimeout() time.Duration {
+	if configuredUploadTimeout > 0 {
+		return configuredUploadTimeout
+	}
+	return formsparkUploadTimeout
+}
 
 // UploadFeedbackFormspark POSTs the feedback entry to the
 // Formspark endpoint as a single JSON body
@@ -66,10 +95,13 @@ func UploadFeedbackFormspark(ctx context.Context, entry any, endpoint string) er
 	// (e.g. the test suite) we honour that instead. The
 	// deadline lives on the request context, not the http.Client,
 	// so the lockstep "no http.Client shared with the updater"
-	// contract from issue #544 still holds.
+	// contract from issue #544 still holds. resolvedUploadTimeout
+	// honours the SetUploadTimeout override (issue #660) so a
+	// configured FeedbackUploadTimeoutS > 0 wins over the
+	// built-in 30s default.
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, formsparkUploadTimeout)
+		ctx, cancel = context.WithTimeout(ctx, resolvedUploadTimeout())
 		defer cancel()
 	}
 
@@ -81,10 +113,13 @@ func UploadFeedbackFormspark(ctx context.Context, entry any, endpoint string) er
 	req.Header.Set("Accept", "application/json")
 
 	// Fresh client per the issue #544 contract: no shared
-	// state with the in-place updater. The 30s timeout lives
-	// on the request context above; the client itself is the
-	// standard library's default zero-value.
+	// state with the in-place updater. The configured timeout
+	// (cfg.Timing.FeedbackUploadTimeoutS via SetUploadTimeout,
+	// default 30s) lives on the request context above; the
+	// client itself is the standard library's default
+	// zero-value.
 	client := &http.Client{}
+	_ = resolvedUploadTimeout() // ensure helper is referenced; timeout set on ctx above
 
 	resp, err := client.Do(req)
 	if err != nil {
