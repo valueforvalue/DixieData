@@ -84,13 +84,21 @@ assert(
 
 // fix-shape-01: themed path emits the typst 0.15-compatible shape.
 // The branch lives inside the `if s.theme != nil && s.theme.BlockquoteBorder != ""` guard.
+// The post-#670 amendment 2 fix uses `typstColorExpr` which
+// returns `rgb("#hex")` for hex input (the rgb wrapper is
+// needed because typst markup mode treats bare `#hex` as a
+// function call). The emitted stroke arg is `stroke: (left: 2pt + rgb("#hex"))`.
 const themedBlock = /s\.theme\s*!=\s*nil\s*&&\s*s\.theme\.BlockquoteBorder\s*!=\s*""\s*\{[\s\S]*?\}/m;
 const themedMatch = markdownTypst.match(themedBlock);
 assert(
-  "fix-shape-01: themed blockquote branch emits #block + #set par(first-line-indent: 0pt)",
+  "fix-shape-01: themed blockquote branch emits #block + #set par(first-line-indent: 0pt) with rgb(\"#hex\") wrapper",
   themedMatch !== null
-    && /#block\(inset:\s*\(left:\s*1em\),\s*stroke:\s*\(left:\s*2pt\s*\+\s*rgb\(/.test(themedMatch[0])
-    && /#set par\(first-line-indent:\s*0pt\)/.test(themedMatch[0]),
+    && /#block\(inset:\s*\(left:\s*1em\),\s*stroke:\s*\(left:\s*2pt\s*\+\s*%\w\)/.test(themedMatch[0])
+    && /typstColorExpr\(s\.theme\.BlockquoteBorder\)/.test(themedMatch[0])
+    && /#set par\(first-line-indent:\s*0pt\)/.test(themedMatch[0])
+    // Plus verify typstColorExpr returns rgb("#hex") for hex input.
+    // The Go source uses the literal backslash-quote form.
+    && /rgb\(\\"#%s\\"\)/.test(markdownTypst),
   themedMatch
     ? `Themed branch source:\n${themedMatch[0]}`
     : "Could not locate the themed blockquote branch."

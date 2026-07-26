@@ -159,22 +159,25 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 			source:   "Visit [our site](https://example.com) for more.",
 			mustHave: []string{"#par[", `#link("https://example.com")[our site]`, "]"},
 		},
-		// Issue #669: typst 0.15 removed the `stroke:` arg
-		// from `#quote(...)`. The fix switched to
-		// `#block(inset: (left: 1em), stroke: (left: 2pt + rgb(...)))`
-		// + `#set par(first-line-indent: 0pt)`. Pin the new
-		// shape so a future refactor doesn't reintroduce the
-		// `stroke:`-on-quote regression. This subtest wires a
-		// theme so the themed code path (the one real PDF
-		// exports exercise) is exercised; the fall-through
-		// path is covered by the next subtest.
+		// Issue #669 + #670 amendment 2: typst 0.15 removed
+		// the `stroke:` arg from `#quote(...)` AND rejects
+		// nested `rgb("rgb(...))` forms. The fix emits
+		// `#block(inset: (left: 1em), stroke: (left: 2pt + #hex))`
+		// + `#set par(first-line-indent: 0pt)`. typstColorExpr
+		// returns the bare color literal (no `rgb("...")` wrapper)
+		// so the stroke arg is a clean typst expression. Pin
+		// the new shape so a future refactor doesn't reintroduce
+		// either regression. This subtest wires a theme so the
+		// themed code path (the one real PDF exports exercise)
+		// is exercised; the fall-through path is covered by the
+		// next subtest.
 		{
-			name:   "blockquote uses #block with left stroke when theme is wired (typst 0.15+, issue #669)",
+			name:   "blockquote uses #block with left stroke when theme is wired (typst 0.15+, issue #669 + #670)",
 			source: "> a quote\n> line two",
 			setup: func(r *MarkdownRenderer) {
 				r.SetTheme(&config.ThemeConfig{BlockquoteBorder: "#8d7440"})
 			},
-			mustHave: []string{"#block(inset: (left: 1em), stroke: (left: 2pt + rgb", "#set par(first-line-indent: 0pt)"},
+			mustHave: []string{`#block(inset: (left: 1em), stroke: (left: 2pt + rgb("#8d7440"))`, "#set par(first-line-indent: 0pt)"},
 			mustNot:  []string{"#quote(block: true, stroke:"},
 		},
 		{
@@ -215,8 +218,8 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 	}
 }
 
-// TestTypstColor_NormalizesForTypst015 (issue #669 amendment) pins
-// the typstColor normalizer. The pre-typst-0.15 code passed the
+// TestTypstColorExpr_NormalizesForTypst015 (issue #670 amendment 2) pins
+// the typstColorExpr normalizer. The pre-typst-0.15 code passed the
 // `rgb(36 48 61 / 0.06)` form through verbatim, which the markdown
 // converter then wrapped in `rgb("rgb(36 48 61 / 0.06)")` — the
 // nested rgb() form that typst 0.15 rejects with
@@ -226,20 +229,20 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 //   - "rgb(R, G, B, A)"  → "color.rgb(R, G, B, A*255)"
 //   - "rgb(R, G, B)"     → "#rrggbb"   (6-char hex, alpha omitted)
 //   - "#hex"             → "#hex"      (pass through)
-func TestTypstColor_NormalizesForTypst015(t *testing.T) {
+func TestTypstColorExpr_NormalizesForTypst015(t *testing.T) {
 	cases := []struct {
 		name string
 		in   string
 		want string
 	}{
 		// Hex passthrough.
-		{"hex 6-char passes through", "#8d7440", "#8d7440"},
-		{"hex 3-char passes through", "#abc", "#abc"},
+		{"hex 6-char wraps in rgb()", "#8d7440", `rgb("#8d7440")`},
+		{"hex 3-char wraps in rgb()", "#abc", `rgb("#abc")`},
 		// CSS rgb() with space separator + slash alpha.
 		// The default CodeBackground is this form:
 		// "rgb(36 48 61 / 0.06)". Convert to typst's own
 		// color.rgb() literal so the outer rgb() wrapper
-		// (added by the caller) becomes rgb("color.rgb(36, 48, 61, 15)")
+		// (added by the caller) becomes color.rgb(36, 48, 61, 15)
 		// which typst 0.15 accepts.
 		{
 			"css rgb() with space + slash alpha",
@@ -254,20 +257,20 @@ func TestTypstColor_NormalizesForTypst015(t *testing.T) {
 		},
 		// No alpha — fall back to 6-char hex.
 		{
-			"css rgb() no alpha",
+			"css rgb() no alpha wraps in rgb()",
 			"rgb(36, 48, 61)",
-			"#24303d",
+			`rgb("#24303d")`,
 		},
 		{
-			"css rgb() space no alpha",
+			"css rgb() space no alpha wraps in rgb()",
 			"rgb(36 48 61)",
-			"#24303d",
+			`rgb("#24303d")`,
 		},
 		// Named color passthrough.
 		{"named color passes through", "red", "red"},
 		// Empty falls back to black.
-		{"empty falls back to black", "", "#000000"},
-		{"whitespace falls back to black", "   ", "#000000"},
+		{"empty falls back to black (wrapped)", "", `rgb("#000000")`},
+		{"whitespace falls back to black (wrapped)", "   ", `rgb("#000000")`},
 		// Edge: alpha 1.0 = fully opaque. Should still emit
 		// color.rgb() with alpha=255, not a hex. (The form
 		// is lossy on conversion but the alpha is preserved.)
@@ -279,9 +282,40 @@ func TestTypstColor_NormalizesForTypst015(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := typstColor(c.in)
+			got := typstColorExpr(c.in)
 			if got != c.want {
-				t.Errorf("typstColor(%q) = %q, want %q", c.in, got, c.want)
+				t.Errorf("typstColorExpr(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+// TestTypstEscape_EscapesDollarInMarkup (issue #670 amendment 3)
+// pins the dollar-sign escape. typst 0.15 rejected a raw `$` in
+// markup mode (it starts math mode + requires a matching `]` or
+// `)` to close), so the pre-0.15 code that passed `~$5` through
+// unchanged failed at compile time. The fix adds `$` to the
+// typstEscape switch so the body becomes `\~$5` (both
+// characters escaped, both legal in markup mode).
+func TestTypstEscape_EscapesDollarInMarkup(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"dollar alone", "$", `\$`},
+		{"dollar in text", "~$5 million", `\~\$5 million`},
+		{"dollar in list item", "Property damage: ~$5 million", `Property damage\: \~\$5 million`},
+		// Already-escaped source: goldmark strips the backslash,
+		// so the walker sees raw text. The escape is applied
+		// once.
+		{"dollar at end of word", "end$", `end\$`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := typstEscape(c.in)
+			if got != c.want {
+				t.Errorf("typstEscape(%q) = %q, want %q", c.in, got, c.want)
 			}
 		})
 	}
