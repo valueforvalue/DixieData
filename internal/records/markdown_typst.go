@@ -214,16 +214,21 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		}
 	case *ast.Blockquote:
 		if entering {
-			// Issue #660: when a theme is wired, emit a
-			// left-border accent + italic body so the
-			// blockquote matches the browser preview. The
-			// `#set par.first-line-indent: 0pt` is the
-			// typst guard against an unwanted first-line
-			// indent inside the quote body.
+			// Issue #669: typst 0.15 removed the `stroke:`
+			// arg from `#quote(...)`. The pre-0.15 shape
+			// was:
+			//   #quote(block: true, stroke: (left: 2pt + rgb("#abc")))[
+			// which now fails to compile with "unexpected
+			// argument: stroke". Preserve the left-border
+			// design (the `--theme-sepia` token) by
+			// switching to `#block(inset: ..., stroke: ...)`
+			// + `#set par(first-line-indent: 0pt)` so the
+			// first line of the quote body doesn't get an
+			// unwanted indent.
 			if s.theme != nil && s.theme.BlockquoteBorder != "" {
-				fmt.Fprintf(&s.out, "#quote(block: true, stroke: (left: 2pt + rgb(\"%s\")))[\n", typstColor(s.theme.BlockquoteBorder))
+				fmt.Fprintf(&s.out, "#block(inset: (left: 1em), stroke: (left: 2pt + rgb(\"%s\")))[\n#set par(first-line-indent: 0pt)\n", typstColor(s.theme.BlockquoteBorder))
 			} else {
-				s.out.WriteString("#quote(block: true)[\n")
+				s.out.WriteString("#quote(block: true)[\n#set par(first-line-indent: 0pt)\n")
 			}
 		} else {
 			s.out.WriteString("]\n")
