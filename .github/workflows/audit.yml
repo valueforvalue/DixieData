@@ -31,17 +31,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
           cache: true
 
-      - name: Install Just
-        uses: extractions/setup-just@v2
+      - uses: actions/setup-node@v4
         with:
-          just-version: 1.57.0
-
-      - name: Verify Just
-        run: just --version
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install npm deps
         run: npm ci
@@ -49,9 +48,18 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
-      - name: Generate and build audit binaries
-        run: just audit-build
+      - name: Regenerate templ + bake files
+        run: |
+          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+          go run ./scripts/bake-release-notes
+          go run ./scripts/bake-activity
         timeout-minutes: 5
+
+      - name: Build dixiedata-web + seed-data
+        run: |
+          mkdir -p build/bin
+          go build -o build/bin/dixiedata-web ./cmd/dixiedata-web
+          go build -o build/bin/seed-data ./cmd/seed-data
 
       - name: Seed sample archive (50 soldiers)
         run: |
