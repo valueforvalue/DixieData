@@ -55,7 +55,7 @@ func (a *App) handleCheckForUpdates(w http.ResponseWriter, r *http.Request) {
 	result, err := a.updater.Check()
 	if err != nil {
 		log := debug.FromContext(r.Context())
-		log.Error("update check failed", "err", err)
+		log.Error("update check failed", "err", err.Error())
 		setToastHeaderWithType(w, "Update check failed.", "error")
 		// Issue #384 / Slice 5: wrap Render.
 		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
@@ -77,7 +77,7 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 	prepared, err := a.updater.PrepareLatest()
 	if err != nil {
 		log := debug.FromContext(r.Context())
-		log.Error("update apply failed", "err", err)
+		log.Error("update apply failed", "err", err.Error())
 		setToastHeaderWithType(w, "Update apply failed.", "error")
 		// Issue #384 / Slice 5: wrap Render.
 		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
