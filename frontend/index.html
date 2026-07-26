@@ -1,5 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- Issue #658: default data-theme="soft" on the shell <html> so
+     the first paint shows the correct theme even if /boot-theme.js
+     is slow or fails. The boot script overrides this with the
+     user's persisted theme. "soft" is the post-#494 default
+     for fresh installs; users who selected Classic or High
+     Contrast see a brief flash of Soft before the boot script
+     sets their theme. -->
+<html lang="en" data-theme="soft">
 <head>
   <meta charset="UTF-8"/>
   <!-- Issue #483 follow-up: the Wails asset server serves this static
