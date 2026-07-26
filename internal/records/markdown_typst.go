@@ -562,10 +562,18 @@ func typstEscapeLink(s string) string {
 // double-quotes, and newlines so the result is a valid typst
 // string suitable for passing as the first argument to raw().
 func typstStringLiteral(s string) string {
+	// Issue #671 follow-up: strip carriage returns (\r, 0x0D)
+	// from code-block content before encoding. The markdown
+	// source may have Windows line endings; typst doesn't
+	// need \r, and a bare \r inside a typst string literal
+	// is a control character that typst renders as a stray
+	// glyph. Stripping \r is safe because the newline (\n)
+	// carries the true line-break signal.
+	cleaned := strings.ReplaceAll(s, "\r", "")
 	var b strings.Builder
-	b.Grow(len(s) + 16)
+	b.Grow(len(cleaned) + 16)
 	b.WriteByte('"')
-	for _, r := range s {
+	for _, r := range cleaned {
 		switch r {
 		case '\\':
 			b.WriteString("\\\\")

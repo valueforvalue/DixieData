@@ -59,6 +59,7 @@ type ArticleService struct {
 
 	defaultPageSize int
 	maxPageSize     int
+	branding        map[string]string
 }
 
 // SetPageSizes configures the default and maximum page sizes for
@@ -66,6 +67,14 @@ type ArticleService struct {
 func (a *ArticleService) SetPageSizes(defaultSize, maxSize int) {
 	a.defaultPageSize = defaultSize
 	a.maxPageSize = maxSize
+}
+
+// SetBranding threads the configured branding map into the
+// service (issue #671 follow-up). Called by appshell after
+// construction so the PDF footer shows the correct version
+// and build identity instead of a bare "Made with DixieData".
+func (a *ArticleService) SetBranding(m map[string]string) {
+	a.branding = m
 }
 
 // SetMarkdownRenderer swaps the markdown renderer after
@@ -1334,11 +1343,15 @@ func (a *ArticleService) RenderPDF(articleID int64, orientation string) (*PDFRes
 		"snapshot_of_id":  articleWithBody.SnapshotOfID,
 	}
 	_ = articleWithBody
+	branding := a.branding
+	if branding == nil {
+		branding = map[string]string{}
+	}
 	data := map[string]any{
 		"article":       articlePayload,
 		"resolved_refs": resolvedRefs,
 		"options":       opts,
-		"branding":      map[string]string{},
+		"branding":      branding,
 	}
 	var buf bytes.Buffer
 	if err := a.registry.RenderArticle(contextBackground(), "article", normalizeOrientation(orientation), data, &buf); err != nil {

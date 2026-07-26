@@ -48,6 +48,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/pkg/render"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -2150,6 +2152,26 @@ func (a *App) reloadServices() error {
 	markdownRenderer := records.NewMarkdownRenderer()
 	markdownRenderer.SetTheme(&a.cfg.Theme)
 	a.articles.SetMarkdownRenderer(markdownRenderer)
+	// Issue #671 follow-up: thread the footer template into
+	// the article service so the PDF footer shows the
+	// configured version + build identity instead of a
+	// bare "Made with DixieData". The template key names
+	// must match what article_portrait.typ reads (footer_text +
+	// codename).
+	short := buildinfo.GitCommit
+	if len(short) > 7 {
+		short = short[:7]
+	}
+	codename := fmt.Sprintf("v%d.%d.%d · %s",
+		versioninfo.CurrentSchemaVersion,
+		versioninfo.CurrentUpdateFlowVersion,
+		versioninfo.AppRelease(),
+		short,
+	)
+	a.articles.SetBranding(map[string]string{
+		"footer_text": "Made with DixieData",
+		"codename":    codename,
+	})
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)
