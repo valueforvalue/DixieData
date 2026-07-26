@@ -15,14 +15,15 @@ package records
 import (
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/config"
 )
 
 func TestMarkdownRenderer_RenderTypst(t *testing.T) {
-	r := NewMarkdownRenderer()
-
 	cases := []struct {
 		name     string
 		source   string
+		setup    func(r *MarkdownRenderer)
 		mustHave []string
 		mustNot  []string
 	}{
@@ -158,10 +159,44 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 			source:   "Visit [our site](https://example.com) for more.",
 			mustHave: []string{"#par[", `#link("https://example.com")[our site]`, "]"},
 		},
+		// Issue #669: typst 0.15 removed the `stroke:` arg
+		// from `#quote(...)`. The fix switched to
+		// `#block(inset: (left: 1em), stroke: (left: 2pt + rgb(...)))`
+		// + `#set par(first-line-indent: 0pt)`. Pin the new
+		// shape so a future refactor doesn't reintroduce the
+		// `stroke:`-on-quote regression. This subtest wires a
+		// theme so the themed code path (the one real PDF
+		// exports exercise) is exercised; the fall-through
+		// path is covered by the next subtest.
+		{
+			name:   "blockquote uses #block with left stroke when theme is wired (typst 0.15+, issue #669)",
+			source: "> a quote\n> line two",
+			setup: func(r *MarkdownRenderer) {
+				r.SetTheme(&config.ThemeConfig{BlockquoteBorder: "#8d7440"})
+			},
+			mustHave: []string{"#block(inset: (left: 1em), stroke: (left: 2pt + rgb", "#set par(first-line-indent: 0pt)"},
+			mustNot:  []string{"#quote(block: true, stroke:"},
+		},
+		{
+			name:     "blockquote without theme falls back to plain #quote (no stroke arg)",
+			source:   "> a quote without theme",
+			mustHave: []string{"#quote(block: true)["},
+			mustNot:  []string{"stroke:"},
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Each subtest starts from a fresh renderer so
+			// the theme is deterministic per case. Without
+			// the reset, a prior case that called SetTheme
+			// would leak into the next case (the fallback
+			// "no theme" subtest would see a theme and take
+			// the themed branch).
+			r := NewMarkdownRenderer()
+			if tc.setup != nil {
+				tc.setup(r)
+			}
 			got, err := r.RenderTypst(tc.source)
 			if err != nil {
 				t.Fatalf("RenderTypst: %v", err)
