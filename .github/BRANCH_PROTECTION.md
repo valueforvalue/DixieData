@@ -1,10 +1,16 @@
-# Branch protection (main + stable)
+# Branch protection (main + stable + rc/v*)
 
 Per [ADR 0009](../docs/adr/0009-stable-branch-promotion.md),
 both `main` and `stable` get the **same** standard GitHub
 branch protection rules. `dev` is intentionally unprotected.
 
-## Rules (apply to BOTH `main` and `stable`)
+Per [ADR 0011](../docs/adr/0011-rc-branch-policy.md), the
+`rc/v*` branch family (e.g. `rc/v1.1`, `rc/v1.2`) also gets
+protection — stricter than `stable` because the RC line is
+in the middle of stabilization and the gate exists to keep
+new features out. `dev` is intentionally unprotected.
+
+## Rules (apply to `main`, `stable`, AND `rc/v*`)
 
 | Rule | Setting |
 |---|---|
@@ -24,7 +30,13 @@ branch protection rules. `dev` is intentionally unprotected.
 | Block in the admin namespace | OFF (operators are admins) |
 | Allow specified actors to bypass required pull requests | OFF |
 
-## Status checks (both `main` and `stable`)
+**`rc/v*` is stricter than the other branches**: the
+`release-blocker` label is required on every PR (see
+ADR 0011 §Decision 3). Apply the rule via the GitHub UI
+under **Require a label to be present** → `release-blocker`.
+For `main` + `stable` this rule does not apply.
+
+## Status checks (`main` + `stable`)
 
 The following checks must pass before merge:
 
@@ -36,6 +48,17 @@ These are the three workflows that listen to `push` and
 `pull_request` on `[dev, stable]`. The check names appear
 in the GitHub UI as the `Job name` for each workflow.
 
+## Status checks (`rc/v*`)
+
+The following checks must pass before merge (additionally):
+
+- `lint-rc-commits` (from `.github/workflows/rc-lint.yml`)
+  — the commit-message + diff-size gate per ADR 0011.
+  Walks every commit added by the PR; fails if any has
+  a disallowed type (feat/refactor/perf/build) or no
+  type prefix at all. The same `audit` + `build` + `test`
+  checks from above also apply.
+
 ## Applying the rules
 
 The rules are stored in the repo's branch protection
@@ -44,12 +67,15 @@ BranchProtection API is a write API, not a config file).
 The operator applies them once via the GitHub UI:
 
 1. Open `https://github.com/valueforvalue/DixieData/settings/branches`.
-2. Click **Add rule** for `main` (and separately, for `stable`).
+2. Click **Add rule** for `main` (and separately, for `stable`, and separately for each `rc/v*` branch).
 3. Paste the rules from the table above.
 4. Under **Status checks**, search for `audit`, `build`,
    `test` and select each one.
-5. Click **Create** (or **Save changes**).
-6. Repeat for `stable`.
+5. For `rc/v*` only: also select `lint-rc-commits`.
+6. For `rc/v*` only: under **Require a label to be present**,
+   add `release-blocker`.
+7. Click **Create** (or **Save changes**).
+8. Repeat for `stable` and for each `rc/v*` branch.
 
 ## Verifying the rules
 
@@ -78,6 +104,12 @@ is enforced the same way. Both branches look identical to a
 contributor trying to push directly: the push is rejected
 with a redirect to a PR.
 
+`rc/v*` is the same in spirit (no direct push) but stricter
+in execution (the commit-message + diff-size gate). The
+stranger rule serves a different purpose: the RC line is
+the only branch where the policy exists to *keep things
+out*, not to *keep things in*.
+
 ## Why `dev` is NOT protected
 
 AGENTS.md §Branch policy documents direct commits to `dev`
@@ -91,8 +123,10 @@ gate).
 ## References
 
 - [ADR 0009](../docs/adr/0009-stable-branch-promotion.md) —
-  the policy this file implements
+  the `main` + `stable` policy this file implements
 - [ADR 0008](../docs/adr/0008-promotion-protocol.md) — the
   `dev → stable` promotion chain the protection enables
+- [ADR 0011](../docs/adr/0011-rc-branch-policy.md) — the
+  `rc/v*` policy + commit-message + diff-size gate
 - [AGENTS.md §Branch policy](../AGENTS.md#branch-policy) —
   the day-to-day rules for humans + agents

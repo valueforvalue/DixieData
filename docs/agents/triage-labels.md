@@ -12,7 +12,7 @@ state without re-reading every issue title.
 | **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug`, `area:build`, `area:ci` |
 | **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
 | **Cohort** | What batch does it belong to? | `audit-fallout` |
-| **Meta** | Process state, not work state | `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix`, `safe-for-in-place`, `unsafe-for-in-place` |
+| **Meta** | Process state, not work state | `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix`, `safe-for-in-place`, `unsafe-for-in-place`, `release-blocker` |
 
 The full label set with colors + descriptions is defined in
 [`scripts/sync-labels.sh`](../../scripts/sync-labels.sh).

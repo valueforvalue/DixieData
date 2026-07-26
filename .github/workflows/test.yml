@@ -315,6 +315,20 @@ jobs:
         continue-on-error: true
         timeout-minutes: 2
 
+      # rc/v* commit-message gate (ADR 0011). Walks the
+      # commit subjects on a PR to rc/v* and fails if any
+      # has a disallowed type (feat/refactor/perf/build) or
+      # no type prefix at all. Companion test asserts the
+      # classifier's behavior on each allowed + disallowed
+      # type. Runs informational on dev / stable so the
+      # suite is exercised on every PR; the hard gate lives
+      # in .github/workflows/rc-lint.yml.
+      - name: rc/v* commit classifier (test only on this workflow)
+        shell: bash
+        run: |
+          node --test scripts/ci/lint-rc-commits.test.mjs
+        timeout-minutes: 1
+
       # in the body, used for cases like a performance-only
       # index change that doesn't need a bump.
       - name: Schema-touching bump detector

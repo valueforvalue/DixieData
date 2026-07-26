@@ -77,6 +77,9 @@ LABELS=(
 
   # --- Release-process exemptions ---
   "release-counter-exempt|fbca04|PR may skip the CurrentAppVersionInt bump gate (rare; docs-only releases, see RELEASING.md)"
+
+  # --- RC branch policy (ADR 0011) ---
+  "release-blocker|D93F0B|Bug fix or stabilization change eligible to land on the rc/v* branch (Zephyr-style feature freeze). Required on every PR to rc/v*."
 )
 
 CHANGED=0

@@ -1,0 +1,32 @@
+# rc-lint.yml — gate PRs to rc/v* branches via the
+# commit-message + diff-size policy in ADR 0011.
+# Mirrors the `lint-bake-bootstrap` pattern in build.yml:
+# a lightweight job that runs before the heavy test suite
+# so the policy violation fails fast.
+name: rc-lint
+
+on:
+  pull_request:
+    branches:
+      - 'rc/v*'
+
+jobs:
+  lint-rc-commits:
+    name: lint-rc-commits (ADR 0011)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: lint-rc-commits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: node scripts/ci/lint-rc-commits.mjs
