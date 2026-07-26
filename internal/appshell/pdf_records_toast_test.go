@@ -54,8 +54,8 @@ func TestSetPDFRecordsTruncationToast_AtCapPlusOne(t *testing.T) {
 	if toast == "" {
 		t.Fatalf("overflow toast not set; headers = %v", rec.Header())
 	}
-	if !strings.Contains(toast, "first 12") {
-		t.Errorf("toast = %q, want substring %q", toast, "first 12")
+	if !strings.Contains(toast, "first 8") {
+		t.Errorf("toast = %q, want substring %q", toast, "first 8")
 	}
 	if !strings.Contains(toast, "1 additional omitted") {
 		t.Errorf("toast = %q, want substring %q", toast, "1 additional omitted")
