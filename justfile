@@ -190,11 +190,21 @@ probe-error-surfaces:
     node audit/probe-error-surfaces.mjs
 
 promote-dry-run:
-    pwsh -NoLogo -NoProfile -Command "Write-Host 'Promotion gate delegated to release protocol'; git status --short; git diff --check"
-promote:
-    bash scripts/promote-open-pr.sh
+    bash scripts/promote-gate-chain.sh
+    bash scripts/promote-preflight.sh
+    @echo ""
+    @echo "promote-dry-run: gates passed; safe to run 'just promote'"
+promote: promote-dry-run
+    bash scripts/promote-preflight.sh
+    @if ! git diff --quiet origin/${STABLE_BRANCH:-stable}..origin/dev 2>/dev/null; then echo "promote: ABORTED — dev has commits ${STABLE_BRANCH:-stable} doesn't have. Run 'just promote-prep'."; exit 1; fi
+    @echo "promote: dev and ${STABLE_BRANCH:-stable} are in sync."
+    @echo ""
+    @echo "=== opening PR dev -> ${STABLE_BRANCH:-stable} ==="
+    @bash scripts/promote-open-pr.sh ${STABLE_BRANCH:-stable}
+promote-prep:
+    bash scripts/promote-prep.sh
 promote-confirm:
-    pwsh -NoLogo -NoProfile -Command "Write-Host 'Confirm stable promotion manually after merge'"
+    bash scripts/promote-confirm.sh
 
 changelog-archive:
     pwsh -NoLogo -NoProfile -File scripts/archive-changelog.ps1
