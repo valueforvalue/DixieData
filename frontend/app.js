@@ -5401,7 +5401,19 @@ async function dispatchDixieDataForm(button) {
           // (terminal phases). Multiple concurrent polls on
           // the same target are guarded by a per-target flag so
           // clicking Apply twice doesn't start two loops.
-          startUpdateProgressPollIfNeeded(target);
+          // Guard: only start polling if the swapped-in fragment
+          // actually carries the marker. Without this check,
+          // every successful form submission with a
+          // data-results-target would start a polling loop on
+          // the target, including Check for Updates (whose
+          // results-target is #settings-update-status). The
+          // progress endpoint would then overwrite the status
+          // fragment with the PhaseIdle ("idle") text every
+          // 500ms, flashing the update info briefly before
+          // hiding it (issue #665).
+          if (html.indexOf('data-poll-progress="true"') !== -1) {
+            startUpdateProgressPollIfNeeded(target);
+          }
         }
       }
       const requestState = {
