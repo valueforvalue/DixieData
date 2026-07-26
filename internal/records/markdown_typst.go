@@ -38,6 +38,7 @@ package records
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -581,34 +582,108 @@ func typstStringLiteral(s string) string {
 }
 
 // typstColor normalizes a CSS-style color into the form
-// typst's `rgb("#...")` accepts. Accepts "#abcdef",
+// typst 0.15's `rgb(...)` accepts. Accepts "#abcdef",
 // "rgb(36 48 61 / 0.06)", and bare "red" (returned as-is for
 // the named-color path). Used by the theme-driven emission
 // in the markdown → typst converter (issue #660).
+//
+// Issue #669 amendment: typst 0.15's `rgb()` parser is strict —
+// it rejects strings that contain non-hex letters (e.g. the
+// nested `rgb("rgb(36 48 61 / 0.06)")` shape, where the inner
+// `rgb(...)` is wrapped inside another `rgb(...)` call). The
+// pre-0.15 code worked because typst was lenient. The fix
+// is to convert the CSS rgb() form to typst's own color
+// literal: `color.rgb(r, g, b, a)` for alpha-bearing colors,
+// or a 6-char hex for opaque colors. The Markdown → typst
+// emission sites wrap the result in `rgb("%s")` so the
+// converted string is always the right thing for the wrapper.
 func typstColor(cssColor string) string {
 	trimmed := strings.TrimSpace(cssColor)
 	if trimmed == "" {
 		return "#000000"
 	}
-	// hex form — typst's rgb() accepts #abc / #abcdef.
+	// hex form — pass through. typst's rgb() accepts
+	// #abc / #abcdef. We do NOT strip the # because the
+	// caller wraps the result in `rgb("%s")` and typst
+	// 0.15's rgb() accepts both forms ("8d7440" and
+	// "#8d7440"). Returning the literal preserves whatever
+	// form the theme shipped.
 	if strings.HasPrefix(trimmed, "#") {
 		return trimmed
 	}
-	// rgb(...) form — pass through (typst understands the
-	// space-separated syntax we use in the theme config).
+	// rgb(...) form — convert to typst's color literal.
+	// Handles the three shapes we ship in the theme:
+	//   - "rgb(36 48 61 / 0.06)"  space-separated + slash-alpha
+	//   - "rgb(36 48 61, 0.06)"  comma-separated
+	//   - "rgb(36, 48, 61)"     no alpha
 	if strings.HasPrefix(trimmed, "rgb(") {
-		// typst wants no space before the first numeric.
-		// Convert "rgb(36 48 61 / 0.06)" to "rgb(36,48,61,6%)"
-		// by stripping spaces + turning the alpha "0.06"
-		// into a percentage "6%". Tolerant: leave the input
-		// untouched if it doesn't match the simple shape.
-		// Most browsers accept either form; typst prefers
-		// the comma form with explicit alpha.
+		inner := strings.TrimSuffix(strings.TrimPrefix(trimmed, "rgb("), ")")
+		// Normalize: replace "/" and "," with " " so a single
+		// split-on-whitespace handles all three input shapes.
+		normalized := strings.NewReplacer("/", " ", ",", " ").Replace(inner)
+		parts := strings.Fields(normalized)
+		if len(parts) >= 3 {
+			r := strings.TrimSpace(parts[0])
+			g := strings.TrimSpace(parts[1])
+			b := strings.TrimSpace(parts[2])
+			if len(parts) >= 4 {
+				// Alpha-bearing: emit color.rgb(r, g, b, a*255)
+				// so the alpha is preserved. typst 0.15's
+				// color.rgb() takes 0-255 alpha, which matches
+				// the CSS convention.
+				alphaStr := strings.TrimSpace(parts[3])
+				if alphaF, err := strconvParseFloat(alphaStr); err == nil {
+					alpha255 := int(alphaF * 255)
+					if alpha255 < 0 {
+						alpha255 = 0
+					} else if alpha255 > 255 {
+						alpha255 = 255
+					}
+					return fmt.Sprintf("color.rgb(%s, %s, %s, %d)", r, g, b, alpha255)
+				}
+			}
+			// Opaque rgb() — convert to 6-char hex so the
+			// outer rgb() wrapper in the caller has a simple
+			// hex string to wrap.
+			hex := rgbPartsToHex(r, g, b)
+			if hex != "" {
+				return "#" + hex
+			}
+		}
+		// Unparseable — return the literal and let typst
+		// emit a clear error. Better than silently dropping
+		// the color.
 		return trimmed
 	}
 	// named color — return as-is. typst's color literals
 	// include "red", "blue", etc.
 	return trimmed
+}
+
+// rgbPartsToHex converts three 0-255 RGB integer strings to a
+// 6-char lowercase hex string. Returns "" if any input is
+// out of range or non-numeric.
+func rgbPartsToHex(r, g, b string) string {
+	rv, err1 := strconvAtoi(r)
+	gv, err2 := strconvAtoi(g)
+	bv, err3 := strconvAtoi(b)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return ""
+	}
+	if rv < 0 || rv > 255 || gv < 0 || gv > 255 || bv < 0 || bv > 255 {
+		return ""
+	}
+	return fmt.Sprintf("%02x%02x%02x", rv, gv, bv)
+}
+
+// strconvParseFloat + strconvAtoi are tiny shims so the import
+// block stays compact. Wrapping the stdlib functions also lets
+// the parser logic be unit-tested without exposing strconv.
+var strconvParseFloat = func(s string) (float64, error) {
+	return strconvParseFloatImpl(s)
+}
+var strconvAtoi = func(s string) (int, error) {
+	return strconvAtoiImpl(s)
 }
 
 // writeTextToBuf is writeText but emits to a caller-provided
@@ -655,3 +730,15 @@ func (s *typstState) emitTable() {
 // future refactor trims usage in the file body.
 var _ = parser.NewParser
 var _ = goldmark.New
+
+// strconvParseFloatImpl + strconvAtoiImpl are the stdlib
+// delegates for the typstColor shim above. Kept in this
+// file (vs an inline import) so the file's import list
+// doesn't grow just for the parser; the typstColor body
+// stays a self-contained normalizer.
+func strconvParseFloatImpl(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
+}
+func strconvAtoiImpl(s string) (int, error) {
+	return strconv.Atoi(s)
+}
