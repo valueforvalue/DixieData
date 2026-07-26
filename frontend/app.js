@@ -5135,6 +5135,15 @@ async function dispatchDixieDataForm(button) {
     setBusyGroupState(submitter || form, true);
     try {
       const explicitMethod = (form.getAttribute && form.getAttribute("method")) || "";
+      // data-method on the form overrides the form's method attribute
+      // when present. This lets templ forms declare method="post" for
+      // native-submission safety (Wails WebView2 strips DELETE bodies —
+      // see issue #428) while still telling the JS dispatcher to send
+      // a DELETE. The synthetic-form branch above already reads
+      // data-method from the button; this branch makes the same
+      // respect available for real forms (issue #664 tag delete).
+      const formDataMethod = (form.getAttribute && form.getAttribute("data-method")) || "";
+      const resolvedMethod = (formDataMethod || explicitMethod || "POST").toUpperCase();
       // Read the method from the HTML attribute (not form.method
       // IDL), because browsers normalize unsupported values
       // (PATCH, PUT, DELETE) to "get" via the HTMLFormElement
@@ -5144,7 +5153,7 @@ async function dispatchDixieDataForm(button) {
       // issue #428 for the smoke repro on Source Records and
       // event sources.
       /** @type {RequestInit} */
-      const fetchOptions = { method: explicitMethod ? explicitMethod.toUpperCase() : "POST" };
+      const fetchOptions = { method: resolvedMethod };
       // Only attach a body for non-GET / non-HEAD requests. Bare-button
       // synthetic forms have no FormData to attach anyway.
       const methodUpper = String(fetchOptions.method).toUpperCase();
