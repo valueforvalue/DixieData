@@ -84,7 +84,7 @@ LABELS=(
   "target:stable|b60205|Urgent hotfix on the released-code home after a promote (rare; slipped past make promote)"
 
   # --- RC branch policy (ADR 0011) ---
-  "release-blocker|D93F0B|Bug fix or stabilization change eligible to land on the rc/v* branch (Zephyr-style feature freeze). Required on every PR to rc/v* together with target:rc."
+  "release-blocker|D93F0B|Required on every PR to rc/v* (with target:rc). Per ADR 0011."
 )
 
 CHANGED=0
