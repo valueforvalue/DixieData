@@ -212,6 +212,18 @@ func main() {
 		})
 		os.Exit(code)
 	}
+	if appshell.HasSeedFlag(os.Args[1:]) || appshell.EnvRequestsSeed() {
+		// Issue #667 follow-up (flag form before the future
+		// `dixiedata seed` positional subcommand lands). Same
+		// signal-aware ctx pattern as --smoke so Ctrl+C cancels
+		// cleanly mid-seed.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		opts := appshell.ParseSeedOptions(os.Args[1:])
+		opts.JSON = appshell.WantsSeedJSON(os.Args[1:])
+		_, code := appshell.RunSeed(ctx, opts)
+		os.Exit(code)
+	}
 
 	// waitForDebugger pauses the process until a debugger
 	// attaches or the user Ctrl-Cs out. Used by Run-DixieData-

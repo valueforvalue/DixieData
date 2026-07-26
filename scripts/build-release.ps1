@@ -31,6 +31,21 @@ if ($Archive) {
         Remove-Item $archivePath -Force
     }
 
-    Compress-Archive -Path (Join-Path $binDir "*") -DestinationPath $archivePath -Force
+    # Build the staging list: binDir contents first, then the
+    # seed-fixture helper script. The script is a thin wrapper
+    # around `DixieData.exe --seed`; shipping it in the release
+    # zip lets RC1 cohort + QA users populate a fresh archive
+    # without installing Go (issue #667 follow-up).
+    $stageRoot = Join-Path $env:TEMP "dixiedata-release-stage"
+    if (Test-Path $stageRoot) { Remove-Item $stageRoot -Recurse -Force }
+    New-Item -ItemType Directory -Path $stageRoot | Out-Null
+    Copy-Item -Path (Join-Path $binDir "*") -Destination $stageRoot -Recurse -Force
+    $seedScript = Join-Path $root "scripts/seed-fixture.ps1"
+    if (Test-Path $seedScript) {
+        Copy-Item -Path $seedScript -Destination (Join-Path $stageRoot "seed-fixture.ps1") -Force
+    }
+
+    Compress-Archive -Path (Join-Path $stageRoot "*") -DestinationPath $archivePath -Force
+    Remove-Item $stageRoot -Recurse -Force
     Write-Host "Release archive ready:" $archivePath
 }
