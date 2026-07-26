@@ -579,18 +579,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Issue #474: tag the resolved theme on the request context so
 	// Layout() can render <html data-theme="..."> from the same
-	// source on the first paint of every page. The atomic load
-	// is nil-safe — a fresh App (no Startup) gets "default".
-	var theme string
-	if v := a.theme.Load(); v != nil {
-		if s, ok := v.(string); ok {
-			theme = s
-		}
-	}
-	if theme == "" {
-		// Issue #494: Soft is the new default for fresh installs.
-		theme = records.ThemeSoft
-	}
+	// source on the first paint of every page. Uses
+	// resolvedBootTheme so the boot script and the Layout read
+	// from the same source — a nil a.theme (pre-startup or after
+	// an in-place update restart) falls back to local_settings.json
+	// before the ThemeSoft default, matching handleBootThemeScript.
+	// Without this the Layout and the boot script could disagree
+	// during the post-update window and the user would see the
+	// wrong theme on first paint.
+	theme := resolvedBootTheme(a)
 	ctx = templates.WithLayoutTheme(ctx, theme)
 	// Issue #534: tag the resolved export-surface preference
 	// on the request context so Layout() renders
