@@ -176,6 +176,29 @@ func SettingsUpdateApplyStarted(version string) templ.Component {
 	return templates.SettingsUpdateApplyStarted(version)
 }
 
+// SettingsUpdateApplyStarting renders the initial "Starting
+// update…" fragment the apply handler returns when it spawns
+// the prepare goroutine (issue #661). The fragment carries the
+// data-poll-progress marker so the JS dispatcher starts polling
+// /settings/updates/progress.
+func SettingsUpdateApplyStarting() templ.Component {
+	return templates.SettingsUpdateApplyStarting()
+}
+
+// SettingsUpdateProgress renders the live progress fragment
+// for /settings/updates/progress. The fragment includes
+// data-progress-phase so the JS poller can decide whether to
+// stop (terminal phases) or continue.
+func SettingsUpdateProgress(progress update.UpdateProgress) templ.Component {
+	return templates.SettingsUpdateProgress(
+		progress.Phase,
+		progress.BytesDownloaded,
+		progress.TotalBytes,
+		progress.Message,
+		progress.Error,
+	)
+}
+
 func UpdateRecoveryPage(record update.RestorePointRecord, failureMessage string, rollbackStarted bool) templ.Component {
 	return templates.UpdateRecoveryPage(record.CreatedAt, record.SourceAppVersion, record.TargetAppVersion, failureMessage, rollbackStarted)
 }

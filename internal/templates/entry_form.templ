@@ -11,6 +11,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -751,7 +752,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				@components.Button("Export Backup (.ddbak)", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			if state.CanApply {
-				<form action={ templ.SafeURL(routebuilder.SettingsUpdateApply()) } data-dixie-submit="true" class="w-full sm:w-auto">
+				<form action={ templ.SafeURL(routebuilder.SettingsUpdateApply()) } data-dixie-submit="true" data-results-target="#settings-update-progress" class="w-full sm:w-auto">
 					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 						"type": "submit",
 						"data-progress-label": "Preparing update…",
@@ -760,6 +761,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			}
 		</div>
 		<div id="settings-update-status"></div>
+		<div id="settings-update-progress"></div>
 	</div>
 }
 
@@ -798,6 +800,63 @@ templ SettingsUpdateStatusMessage(kind string, message string) {
 templ SettingsUpdateApplyStarted(version string) {
 	<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
 		Downloading and applying DixieData v{ version }. The app will close and restart when the installer finishes.
+	</div>
+}
+
+// SettingsUpdateApplyStarting renders the initial apply-state
+// fragment (issue #661). Carries data-poll-progress so the JS
+// dispatcher starts polling /settings/updates/progress.
+templ SettingsUpdateApplyStarting() {
+	<div id="settings-update-progress" data-poll-progress="true">
+		<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
+			Starting update… preparing the download.
+		</div>
+	</div>
+}
+
+// SettingsUpdateProgress renders the live progress fragment
+// for /settings/updates/progress (issue #661). The
+// data-progress-phase attribute is the polling terminator: when
+// phase="applying" or phase="error" the JS dispatcher stops
+// polling. The byte bar renders only during the download
+// phase; other phases render just the phase label so the
+// user can see the pipeline is still moving.
+templ SettingsUpdateProgress(phase update.ApplyPhase, bytesDownloaded int64, totalBytes int64, message string, errorMessage string) {
+	<div id="settings-update-progress" data-poll-progress="true" data-progress-phase={ string(phase) }>
+		if phase == update.PhaseError {
+			<div class="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+				<div class="font-semibold">Update failed</div>
+				if errorMessage != "" {
+					<div class="mt-1 whitespace-pre-wrap">{ errorMessage }</div>
+				}
+			</div>
+		} else if phase == update.PhaseDownload {
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
+				<div class="font-semibold">Downloading update…</div>
+				<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+					if totalBytes > 0 {
+						<div class="h-full bg-[rgb(var(--theme-sepia-rgb))] transition-all" style={ fmt.Sprintf("width: %d%%", int((bytesDownloaded*100)/totalBytes)) }></div>
+					} else {
+						<div class="h-full w-1/3 animate-pulse bg-[rgb(var(--theme-sepia-rgb))]"></div>
+					}
+				</div>
+				<div class="mt-1 text-xs text-slate-500">
+					if totalBytes > 0 {
+						{ fmt.Sprintf("%.1f MB / %.1f MB", float64(bytesDownloaded)/1024/1024, float64(totalBytes)/1024/1024) }
+					} else {
+						{ fmt.Sprintf("%.1f MB downloaded", float64(bytesDownloaded)/1024/1024) }
+					}
+				</div>
+			</div>
+		} else {
+			<div class="rounded-2xl border border-[rgb(var(--theme-sepia-rgb)/0.35)] bg-white/80 px-4 py-3 text-sm text-slate-700">
+				if message != "" {
+					{ message }
+				} else {
+					{ string(phase) }
+				}
+			</div>
+		}
 	</div>
 }
 

@@ -334,6 +334,7 @@ func (a *App) setupRoutes() {
 	r.Post("/settings/updates/source", a.handleUpdateSource)
 	r.Post("/settings/updates/check", a.handleCheckForUpdates)
 	r.Post("/settings/updates/apply", a.handleApplyLatestUpdate)
+	r.Get("/settings/updates/progress", a.handleUpdateProgress)
 	r.Post("/settings/updates/health/bootstrap", a.handleUpdateBootstrapHealth)
 	r.Post("/settings/images/orphans/scan", a.handleScanImageOrphans)
 	r.Post("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)

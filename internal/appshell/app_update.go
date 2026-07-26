@@ -8,6 +8,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/update"
 )
 
 func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
@@ -74,35 +75,63 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	prepared, err := a.updater.PrepareLatest()
-	if err != nil {
-		log := debug.FromContext(r.Context())
-		log.Error("update apply failed", "err", err.Error())
-		setToastHeaderWithType(w, "Update apply failed.", "error")
-		// Issue #384 / Slice 5: wrap Render.
-		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
-			respondErrorFragment(w, r, KindInternal, "Could not render the apply-update error.", err)
+	// Issue #661: reset progress + spawn the prepare in a
+	// goroutine so the apply button returns within ~50ms
+	// instead of blocking on a multi-MB download. The JS
+	// dispatcher polls /settings/updates/progress every 500ms
+	// and writes the live progress fragment into the
+	// #settings-update-progress target.
+	a.updateProgress.set(update.UpdateProgress{Phase: update.PhaseDownload, Message: "Starting update…"})
+	go func() {
+		prepared, err := a.updater.PrepareLatestWithProgress(func(p update.UpdateProgress) {
+			a.updateProgress.set(p)
+		})
+		if err != nil {
+			log := debug.FromContext(r.Context())
+			log.Error("update prepare failed", "err", err.Error())
+			return
 		}
-		return
-	}
-	command := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", prepared.ScriptPath)
-	if err := command.Start(); err != nil {
-		setToastHeaderWithType(w, "Unable to start the update installer.", "error")
-		// Issue #384 / Slice 5: wrap Render.
-		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
-			respondErrorFragment(w, r, KindInternal, "Could not render the installer-start error.", err)
+		command := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", prepared.ScriptPath)
+		if err := command.Start(); err != nil {
+			log := debug.FromContext(r.Context())
+			log.Error("installer start failed", "err", err.Error())
+			a.updateProgress.set(update.UpdateProgress{Phase: update.PhaseError, Message: err.Error(), Error: err.Error()})
+			return
 		}
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Applying DixieData v%s. The app will restart shortly.", prepared.Version))
-	// Issue #384 / Slice 5: wrap Render.
-	if err := presentation.SettingsUpdateApplyStarted(prepared.Version).Render(r.Context(), w); err != nil {
+		// Final-phase update so the polling UI can transition
+		// from the "Creating restore point…" label to the
+		// "App will restart shortly…" label before the app
+		// actually quits. The Quit happens in a separate
+		// goroutine below so the progress callback fires first.
+		setToastHeader(w, fmt.Sprintf("Applying DixieData v%s. The app will restart shortly.", prepared.Version))
+		go func() {
+			time.Sleep(750 * time.Millisecond)
+			if a.ctx != nil {
+				a.Quit()
+			}
+		}()
+	}()
+	// Issue #384 / Slice 5: wrap Render. The fragment
+	// carries the data-poll-progress marker so the JS
+	// dispatcher starts polling for live progress.
+	if err := presentation.SettingsUpdateApplyStarting().Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the apply-started status.", err)
 	}
-	go func() {
-		time.Sleep(750 * time.Millisecond)
-		if a.ctx != nil {
-			a.Quit()
-		}
-	}()
+}
+
+// handleUpdateProgress serves the live progress fragment
+// during an in-place update (issue #661). The JS dispatcher
+// polls this endpoint every 500ms while the
+// #settings-update-progress target is mounted with
+// data-poll-progress. Terminal phases (PhaseApplyStarted,
+// PhaseError) signal the polling loop to stop.
+func (a *App) handleUpdateProgress(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	progress := a.updateProgress.get()
+	if err := presentation.SettingsUpdateProgress(progress).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the update progress.", err)
+	}
 }

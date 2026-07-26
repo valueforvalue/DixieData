@@ -4866,6 +4866,54 @@ function currentBrowseStateFromForm(form) {
   }
 
   /** @param {Element} el @param {boolean} busy */
+// startUpdateProgressPollIfNeeded starts a 500ms polling loop
+// on the given progress target element (issue #661). The loop
+// reads /settings/updates/progress and writes the response HTML
+// into the target, replacing the live progress fragment until
+// the terminal phase ("applying" or "error") is reached.
+// Subsequent calls on the same target are no-ops so a second
+// click of the Apply button doesn't spawn duplicate loops.
+//
+// Lives next to setBusyState so it's grouped with the other
+// dispatch-side helpers; pure DOM, no framework.
+async function startUpdateProgressPollIfNeeded(target) {
+  if (!(target instanceof HTMLElement)) return;
+  if (target.dataset.updatePolling === "true") return;
+  target.dataset.updatePolling = "true";
+  const url = "/settings/updates/progress";
+  // The polling loop terminates on terminal phases. The list
+  // matches the ApplyPhase constants in internal/update/updater.go.
+  const TERMINAL_PHASES = new Set(["applying", "error"]);
+  try {
+    while (target.isConnected) {
+      // Yield to the browser so a user-initiated abort (closing
+      // the panel, navigating away) gets a chance to set
+      // isConnected=false before the next request fires.
+      await new Promise((r) => setTimeout(r, 500));
+      if (!target.isConnected) break;
+      let resp;
+      try {
+        resp = await fetch(url, { headers: { Accept: "text/html" } });
+      } catch (_) {
+        // network blip; keep polling
+        continue;
+      }
+      if (!resp.ok) break;
+      const html = await resp.text();
+      // Parse the response to find its data-progress-phase so we
+      // can stop polling at the right moment. textContent-based
+      // parse avoids the cost of a full DOMParser round-trip.
+      const phaseMatch = html.match(/data-progress-phase="([^"]+)"/);
+      const phase = phaseMatch ? phaseMatch[1] : "";
+      target.innerHTML = html;
+      initializeDynamicContent();
+      if (TERMINAL_PHASES.has(phase)) break;
+    }
+  } finally {
+    target.dataset.updatePolling = "false";
+  }
+}
+
 function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
@@ -5335,6 +5383,16 @@ async function dispatchDixieDataForm(button) {
           const html = await response.text();
           target.innerHTML = html;
           initializeDynamicContent();
+          // Issue #661: if the rendered fragment carries
+          // data-poll-progress, start polling
+          // /settings/updates/progress every 500ms so the user
+          // sees live byte counts + phase labels during the
+          // download. The loop terminates when the fragment's
+          // data-progress-phase reaches "applying" or "error"
+          // (terminal phases). Multiple concurrent polls on
+          // the same target are guarded by a per-target flag so
+          // clicking Apply twice doesn't start two loops.
+          startUpdateProgressPollIfNeeded(target);
         }
       }
       const requestState = {

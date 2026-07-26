@@ -30,6 +30,38 @@ const (
 	maxUpdateSourceBytes  = 2 << 20
 )
 
+// ApplyPhase identifies which stage of the in-place update
+// pipeline a progress callback is reporting. The UI switches on
+// Phase to decide which label + progress-bar shape to render
+// (issue #661). Phase strings are intentionally short + distinct
+// so the templ/JS renderers can match them without ambiguity.
+type ApplyPhase string
+
+const (
+	PhaseIdle         ApplyPhase = "idle"
+	PhaseDownload     ApplyPhase = "downloading"
+	PhaseVerify       ApplyPhase = "verifying"
+	PhaseExtract      ApplyPhase = "extracting"
+	PhaseRestorePoint ApplyPhase = "creating-restore-point"
+	PhaseApplyStarted ApplyPhase = "applying"
+	PhaseError        ApplyPhase = "error"
+)
+
+// UpdateProgress is the payload passed to the in-place update
+// progress callback. The callback fires at least once per phase
+// transition and at least once per network chunk during the
+// download (subject to network buffering). TotalBytes is -1
+// when the server did not send a Content-Length header (chunked
+// or unknown-length response); BytesDownloaded is always
+// monotonically non-decreasing within a single prepare pipeline.
+type UpdateProgress struct {
+	Phase           ApplyPhase
+	BytesDownloaded int64
+	TotalBytes      int64
+	Message         string
+	Error           string
+}
+
 var versionPattern = regexp.MustCompile(`(?i)v?(\d+)\.(\d+)\.(\d+)`)
 
 type configStore interface {
@@ -224,27 +256,42 @@ func (s *Service) Check() (CheckResult, error) {
 }
 
 func (s *Service) PrepareLatest() (PreparedUpdate, error) {
+	return s.PrepareLatestWithProgress(nil)
+}
+
+// PrepareLatestWithProgress is the progress-reporting variant of
+// PrepareLatest (issue #661). The callback fires at each phase
+// boundary (download, verify, extract, restore-point, applying)
+// and per-chunk during the download. Pass nil for the no-op
+// path (PrepareLatest delegates here).
+func (s *Service) PrepareLatestWithProgress(progress func(UpdateProgress)) (PreparedUpdate, error) {
 	settings, err := s.Settings()
 	if err != nil {
+		s.failPrepare(progress, "could not load settings: %v", err)
 		return PreparedUpdate{}, err
 	}
 	if !settings.CanApply {
+		s.failPrepare(progress, settings.DisabledReason, nil)
 		return PreparedUpdate{}, errors.New(settings.DisabledReason)
 	}
 	release, err := s.resolveRelease()
 	if err != nil {
+		s.failPrepare(progress, "could not resolve latest release: %v", err)
 		return PreparedUpdate{}, err
 	}
 	comparison, err := compareVersions(release.version, settings.CurrentVersion)
 	if err != nil {
+		s.failPrepare(progress, "could not compare versions: %v", err)
 		return PreparedUpdate{}, err
 	}
 	if !comparison.Newer || !comparison.Compatible {
+		s.failPrepare(progress, "no newer update is available", nil)
 		return PreparedUpdate{}, fmt.Errorf("no newer update is available")
 	}
 
 	executablePath, err := s.executablePath()
 	if err != nil {
+		s.failPrepare(progress, "could not locate the executable: %v", err)
 		return PreparedUpdate{}, err
 	}
 	executableName := filepath.Base(executablePath)
@@ -253,39 +300,49 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 	workRoot := filepath.Join(appdata.UpdateDownloadsDir(s.dataDir), "update-"+s.now().UTC().Format("20060102T150405"))
 	stageRoot := filepath.Join(workRoot, "stage")
 	if err := os.MkdirAll(stageRoot, 0o755); err != nil {
+		s.failPrepare(progress, "could not create staging dir: %v", err)
 		return PreparedUpdate{}, err
 	}
 
 	artifactName := downloadFileName(release.downloadURL, release.assetKind)
 	artifactPath := filepath.Join(workRoot, artifactName)
-	if err := s.downloadFile(release.downloadURL, artifactPath); err != nil {
+	if err := s.downloadFileWithProgress(release.downloadURL, artifactPath, progress); err != nil {
 		return PreparedUpdate{}, err
 	}
 	if strings.TrimSpace(release.checksumSHA) != "" {
+		s.emitPhase(progress, PhaseVerify, "Verifying checksum…")
 		if err := verifyFileChecksum(artifactPath, release.checksumSHA); err != nil {
+			s.failPrepare(progress, "checksum verification failed: %v", err)
 			return PreparedUpdate{}, err
 		}
 	}
 
 	switch release.assetKind {
 	case "zip":
+		s.emitPhase(progress, PhaseExtract, "Extracting update…")
 		if err := extractZip(artifactPath, stageRoot); err != nil {
+			s.failPrepare(progress, "extract failed: %v", err)
 			return PreparedUpdate{}, err
 		}
 		stageRoot, err = normalizeStageRoot(stageRoot, executableName)
 		if err != nil {
+			s.failPrepare(progress, "stage normalization failed: %v", err)
 			return PreparedUpdate{}, err
 		}
 	case "exe":
+		s.emitPhase(progress, PhaseExtract, "Copying update…")
 		targetExe := filepath.Join(stageRoot, executableName)
 		if err := copyFile(artifactPath, targetExe); err != nil {
+			s.failPrepare(progress, "copy failed: %v", err)
 			return PreparedUpdate{}, err
 		}
 	default:
+		s.failPrepare(progress, "unsupported update asset type", nil)
 		return PreparedUpdate{}, fmt.Errorf("unsupported update asset type")
 	}
 
 	if _, err := os.Stat(filepath.Join(stageRoot, executableName)); err != nil {
+		s.failPrepare(progress, "staged update is missing %s", err)
 		return PreparedUpdate{}, fmt.Errorf("staged update is missing %s", executableName)
 	}
 
@@ -298,14 +355,18 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 		return snapshotInstalledBuild(installDir, s.dataDir, outputDir)
 	})
 	if err != nil {
+		s.failPrepare(progress, "create restore point: %v", err)
 		return PreparedUpdate{}, fmt.Errorf("create restore point: %w", err)
 	}
+	s.emitPhase(progress, PhaseRestorePoint, "Creating restore point…")
 	if err := s.restorePoints.SaveLaunchState(restorePoint); err != nil {
+		s.failPrepare(progress, "write restore point launch state: %v", err)
 		return PreparedUpdate{}, fmt.Errorf("write restore point launch state: %w", err)
 	}
 
 	resultPath := appdata.UpdateApplyResultPath(s.dataDir)
 	if err := os.MkdirAll(filepath.Dir(resultPath), 0o755); err != nil {
+		s.failPrepare(progress, "could not create result dir: %v", err)
 		return PreparedUpdate{}, err
 	}
 	scriptPath := filepath.Join(workRoot, "apply-update.ps1")
@@ -321,13 +382,39 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 		FeedbackLogPath:    appdata.FeedbackLogPath(s.dataDir),
 		FeedbackArchiveDir: appdata.FeedbackLogArchiveDir(s.dataDir),
 	}); err != nil {
-		return PreparedUpdate{}, err
+		s.failPrepare(progress, "write apply script: %v", err)
+		return PreparedUpdate{}, fmt.Errorf("write apply script: %w", err)
 	}
 
+	s.emitPhase(progress, PhaseApplyStarted, "Applying update…")
 	return PreparedUpdate{
 		Version:    release.version,
 		ScriptPath: scriptPath,
 	}, nil
+}
+
+// emitPhase is a small helper that fires the progress callback
+// with the given phase + message. No-op when the callback is
+// nil (the PrepareLatest back-compat path).
+func (s *Service) emitPhase(progress func(UpdateProgress), phase ApplyPhase, message string) {
+	if progress == nil {
+		return
+	}
+	progress(UpdateProgress{Phase: phase, Message: message})
+}
+
+// failPrepare fires the progress callback with PhaseError and
+// a formatted message. Returns nothing — callers still
+// propagate the original error from the same `return` that
+// called failPrepare. The formatted message is computed via
+// fmt.Sprintf so the template is safe even when the
+// underlying error is nil (the %v branch returns "<nil>").
+func (s *Service) failPrepare(progress func(UpdateProgress), format string, err error) {
+	if progress == nil {
+		return
+	}
+	msg := fmt.Sprintf(format, err)
+	progress(UpdateProgress{Phase: PhaseError, Message: msg, Error: msg})
 }
 
 func (s *Service) sourceSettings() (string, string, bool, error) {
@@ -715,26 +802,106 @@ func downloadFileName(downloadURL, assetKind string) string {
 }
 
 func (s *Service) downloadFile(downloadURL, destinationPath string) error {
+	return s.downloadFileWithProgress(downloadURL, destinationPath, nil)
+}
+
+// downloadFileWithProgress downloads the update zip with per-chunk
+// progress reporting (issue #661). The callback fires once at
+// the start of the transfer with TotalBytes from the response's
+// Content-Length header (-1 if absent), once for each chunk
+// copied from the response body, and once at the end with the
+// final BytesDownloaded. On error, the callback fires a final
+// time with Phase=PhaseError + a non-empty Error string.
+//
+// The existing downloadFile delegates here with a nil callback
+// (the no-op path) so any caller that doesn't need progress
+// reporting keeps the original behavior.
+func (s *Service) downloadFileWithProgress(downloadURL, destinationPath string, callback func(UpdateProgress)) error {
 	request, err := http.NewRequest(http.MethodGet, downloadURL, nil)
 	if err != nil {
+		if callback != nil {
+			callback(UpdateProgress{Phase: PhaseError, Error: err.Error()})
+		}
 		return err
 	}
 	request.Header.Set("User-Agent", buildinfo.AppName+"-updater/"+buildinfo.AppVersion)
 	response, err := s.client.Do(request)
 	if err != nil {
+		if callback != nil {
+			callback(UpdateProgress{Phase: PhaseError, Error: err.Error()})
+		}
 		return err
 	}
-	defer debug.DeferCloseLog(response.Body, "downloadFile.response")
+	defer debug.DeferCloseLog(response.Body, "downloadFileWithProgress.response")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("update download returned %s", response.Status)
+		downloadErr := fmt.Errorf("update download returned %s", response.Status)
+		if callback != nil {
+			callback(UpdateProgress{Phase: PhaseError, Error: downloadErr.Error()})
+		}
+		return downloadErr
+	}
+	totalBytes := response.ContentLength
+	if totalBytes < 0 {
+		totalBytes = -1
+	}
+	if callback != nil {
+		callback(UpdateProgress{
+			Phase:           PhaseDownload,
+			BytesDownloaded: 0,
+			TotalBytes:      totalBytes,
+			Message:         "Downloading update…",
+		})
 	}
 	file, err := os.Create(destinationPath)
 	if err != nil {
+		if callback != nil {
+			callback(UpdateProgress{Phase: PhaseError, Error: err.Error()})
+		}
 		return err
 	}
-	defer debug.DeferCloseLog(file, "downloadFile.file")
-	_, err = io.Copy(file, response.Body)
-	return err
+	defer debug.DeferCloseLog(file, "downloadFileWithProgress.file")
+	// Wrap the response body in a counting reader so the callback
+	// fires per-chunk. CopyBuffer ensures we always read in
+	// 32 KiB blocks (matches http.Transport's default buffer size)
+	// even if the server flushes smaller chunks.
+	var downloaded int64
+	reader := &countingReader{r: response.Body, n: &downloaded}
+	if _, err := io.CopyBuffer(file, reader, make([]byte, 32*1024)); err != nil {
+		if callback != nil {
+			callback(UpdateProgress{
+				Phase:           PhaseError,
+				BytesDownloaded: downloaded,
+				TotalBytes:      totalBytes,
+				Error:           err.Error(),
+			})
+		}
+		return err
+	}
+	if callback != nil {
+		callback(UpdateProgress{
+			Phase:           PhaseDownload,
+			BytesDownloaded: downloaded,
+			TotalBytes:      totalBytes,
+			Message:         "Download complete",
+		})
+	}
+	return nil
+}
+
+// countingReader wraps an io.Reader to track total bytes read.
+// The updater's download progress callback fires per Read() call
+// (one per network chunk) so the UI can show live byte counts.
+type countingReader struct {
+	r io.Reader
+	n *int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	if n > 0 {
+		*c.n += int64(n)
+	}
+	return n, err
 }
 
 func verifyFileChecksum(filePath, expectedHex string) error {

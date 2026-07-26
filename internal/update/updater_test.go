@@ -2,9 +2,12 @@ package update
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/testtemp"
@@ -314,5 +317,137 @@ func TestVersionFromStringRejectsFourthSegment(t *testing.T) {
 		if _, err := versionFromString(in); err == nil {
 			t.Errorf("versionFromString(%q) should have errored (fourth segment not allowed)", in)
 		}
+	}
+}
+
+// TestDownloadFileWithProgressFiresCallbackPerChunk pins the
+// progress-callback contract for issue #661 (download progress
+// bar for in-place update). The download function must invoke
+// the callback at least twice per transfer (start + end) and
+// report monotonically-increasing BytesDownloaded + the final
+// TotalBytes so the UI can show "Downloading... X MB / Y MB"
+// updates.
+func TestDownloadFileWithProgressFiresCallbackPerChunk(t *testing.T) {
+	const totalBytes int64 = 4096 // 4 chunks of 1024 bytes
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "4096")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+		chunk := make([]byte, 1024)
+		for i := 0; i < 4; i++ {
+			w.Write(chunk)
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}))
+	defer server.Close()
+
+	service := NewService(&stubConfigStore{}, testtemp.New(t).Path(), nil)
+	destPath := filepath.Join(testtemp.New(t).Path(), "download.bin")
+
+	var (
+		mu       sync.Mutex
+		calls    []UpdateProgress
+		progress UpdateProgress
+	)
+	callback := func(p UpdateProgress) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, p)
+		progress = p
+	}
+
+	if err := service.downloadFileWithProgress(server.URL, destPath, callback); err != nil {
+		t.Fatalf("downloadFileWithProgress: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(calls) < 2 {
+		t.Errorf("progress callback fired %d times; want >= 2 (start + end at minimum)", len(calls))
+	}
+	if progress.BytesDownloaded != totalBytes {
+		t.Errorf("final BytesDownloaded = %d; want %d", progress.BytesDownloaded, totalBytes)
+	}
+	if progress.TotalBytes != totalBytes {
+		t.Errorf("final TotalBytes = %d; want %d", progress.TotalBytes, totalBytes)
+	}
+	if progress.Phase != PhaseDownload {
+		t.Errorf("final Phase = %q; want %q", progress.Phase, PhaseDownload)
+	}
+	var prev int64
+	for i, call := range calls {
+		if call.BytesDownloaded < prev {
+			t.Errorf("call %d BytesDownloaded=%d < previous %d (non-monotonic)", i, call.BytesDownloaded, prev)
+		}
+		prev = call.BytesDownloaded
+	}
+}
+
+// TestDownloadFileWithProgressReportsPhaseError pins the
+// error-phase contract: if the download fails (e.g. 500 from
+// server), the callback's final invocation must carry
+// Phase=PhaseError + a non-empty Error string. The apply handler
+// reads the final phase to decide what to render into the
+// progress target.
+func TestDownloadFileWithProgressReportsPhaseError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("boom"))
+	}))
+	defer server.Close()
+
+	service := NewService(&stubConfigStore{}, testtemp.New(t).Path(), nil)
+	destPath := filepath.Join(testtemp.New(t).Path(), "download.bin")
+
+	var (
+		mu    sync.Mutex
+		final UpdateProgress
+	)
+	callback := func(p UpdateProgress) {
+		mu.Lock()
+		defer mu.Unlock()
+		final = p
+	}
+
+	if err := service.downloadFileWithProgress(server.URL, destPath, callback); err == nil {
+		t.Fatalf("expected error on 500 response")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if final.Phase != PhaseError {
+		t.Errorf("final Phase = %q; want %q", final.Phase, PhaseError)
+	}
+	if final.Error == "" {
+		t.Errorf("final Error is empty; want non-empty (error message)")
+	}
+}
+
+// TestApplyProgressPhasesAreDistinct pins the phase-name
+// contract. Every phase string used by the progress pipeline
+// must be distinct so the UI can switch on Phase to decide
+// which label + progress-bar shape to render. Drift between
+// phase constants would cause the UI to render the wrong label
+// (e.g. "Downloading..." when the pipeline is actually
+// verifying the checksum).
+func TestApplyProgressPhasesAreDistinct(t *testing.T) {
+	phases := []ApplyPhase{
+		PhaseIdle,
+		PhaseDownload,
+		PhaseVerify,
+		PhaseExtract,
+		PhaseRestorePoint,
+		PhaseApplyStarted,
+		PhaseError,
+	}
+	seen := map[ApplyPhase]bool{}
+	for _, p := range phases {
+		if seen[p] {
+			t.Errorf("phase %q duplicated", p)
+		}
+		seen[p] = true
 	}
 }

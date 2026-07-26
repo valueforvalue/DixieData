@@ -102,6 +102,11 @@ type App struct {
 	diagnostics                     *archive.DiagnosticsService
 	google                          *integrations.GoogleService
 	updater                         *update.Service
+	// updateProgress is the thread-safe progress state the apply
+	// handler writes to from its prepare goroutine; the
+	// /settings/updates/progress GET endpoint reads it on each
+	// poll to render the live progress fragment (issue #661).
+	updateProgress                  *updateProgressState
 	restorePoints                   *update.RestorePointManager
 	quotes                          []models.Quote
 	mux                             http.Handler
@@ -2216,6 +2221,7 @@ func (a *App) reloadServices() error {
 		return err
 	})
 	a.updater.SetHTTPTimeout(time.Duration(a.cfg.Timing.UpdateCheckTimeoutS) * time.Second)
+	a.updateProgress = newUpdateProgressState()
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir, a.database)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
