@@ -50,6 +50,7 @@ import (
 // before Startup stores the atomic), then records.ThemeDefault.
 func resolvedBootTheme(a *App) string {
 	var theme string
+	source := "atomic"
 	if a != nil {
 		if v := a.theme.Load(); v != nil {
 			if s, ok := v.(string); ok {
@@ -58,13 +59,18 @@ func resolvedBootTheme(a *App) string {
 		}
 	}
 	if theme == "" && a != nil && a.dataDir != "" {
+		source = "disk"
 		if settings, err := records.LoadLocalSettings(a.dataDir); err == nil {
 			theme = settings.ResolvedTheme()
 		}
 	}
 	if theme == "" {
+		source = "default"
 		// Issue #494: Soft is the new default for fresh installs.
 		theme = records.ThemeSoft
+	}
+	if a != nil {
+		debug.FromContext(context.Background()).Info("resolvedBootTheme", "theme", theme, "source", source)
 	}
 	return theme
 }
