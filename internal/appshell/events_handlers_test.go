@@ -178,23 +178,7 @@ func TestHandleEventByIDGetDetail(t *testing.T) {
 	}
 }
 
-// TestHandleEventByIDGetDetail_SourcesPanelEditCTA (issue #360)
-// pins the post-#357 Sources panel shape: /events/{id} no
-// longer carries a standalone attach form (record_type /
-// app_id / details inputs) because the same attach surface
-// lives inline on /events/{id}/edit (slot #357). Instead the
-// Sources panel exposes an 'Edit Event' CTA next to the
-// attached counter for both empty and non-empty cases. The
-// test renders an event with zero attached sources + asserts
-// the legacy form is absent + asserts the Edit Event link
-// with data-action="/events/{id}/edit" is present + asserts
-// the empty-state copy no longer mentions the obsolete
-// "/sources authoring flow" redirect.
-//
-// RED today (pre-#360): the body contains 'name="record_type"',
-// the body is missing 'data-action="/events/{id}/edit"'.
-// (The body for event.ID is substituted into the URL at
-// runtime.)
+// TestHandleEventByIDGetDetail confirms the Event detail page keeps
 func TestHandleEventByIDGetDetail_SourcesPanelEditCTA(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
@@ -226,13 +210,13 @@ func TestHandleEventByIDGetDetail_SourcesPanelEditCTA(t *testing.T) {
 		t.Errorf("GET /events/%d empty-state copy still references obsolete /sources authoring flow", created.ID)
 	}
 
-	// Edit Event CTA must be present with the right href and
-	// label. Multiple 'data-action' attributes exist on the
-	// detail page (Images panel button, etc.); checking for the
-	// exact edit URL keeps the test targeted.
 	editHref := fmt.Sprintf("/events/%d/edit", created.ID)
-	if !strings.Contains(body, fmt.Sprintf(`data-action="%s"`, editHref)) {
-		t.Errorf("GET /events/%d body missing %q CTA", created.ID, editHref)
+	// The page-level anchor is the only Edit Event entry point.
+	if !strings.Contains(body, fmt.Sprintf(`href="%s"`, editHref)) {
+		t.Errorf("GET /events/%d body missing page-level Edit Event link %q", created.ID, editHref)
+	}
+	if strings.Contains(body, fmt.Sprintf(`data-action="%s"`, editHref)) {
+		t.Errorf("GET /events/%d body contains obsolete panel Edit Event action", created.ID)
 	}
 }
 
@@ -1139,9 +1123,13 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	if !strings.Contains(detailBody, "id=\"data-event-sources-list\"") {
 		t.Errorf("event detail missing sources list wrapper id; got %q", detailBody)
 	}
+	// Event detail keeps only page-level edit navigation.
 	editHref := fmt.Sprintf("/events/%d/edit", event.ID)
-	if !strings.Contains(detailBody, fmt.Sprintf(`data-action="%s"`, editHref)) {
-		t.Errorf("event detail missing Sources panel Edit Event CTA; want data-action=%q", editHref)
+	if !strings.Contains(detailBody, fmt.Sprintf(`href="%s"`, editHref)) {
+		t.Errorf("event detail missing page-level Edit Event link; want href=%q", editHref)
+	}
+	if strings.Contains(detailBody, fmt.Sprintf(`data-action="%s"`, editHref)) {
+		t.Errorf("event detail contains obsolete panel Edit Event action")
 	}
 	if !strings.Contains(detailBody, "id=\"data-event-tags-list\"") {
 		t.Errorf("event detail missing tags list wrapper id; got %q", detailBody)
