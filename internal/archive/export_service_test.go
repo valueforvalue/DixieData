@@ -795,6 +795,141 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	}
 }
 
+// TestExportService_ExportSoldierPDF_RemovesPartialFileOnRenderError
+// pins the cleanup contract added in issue #653. Before the fix,
+// ExportSoldierPDF opened the user-chosen output file, called
+// registry.Render, and returned the error without removing the
+// file. The user then opened a 0-byte (or truncated) PDF at the
+// path they picked and reported it as "corrupted". The fix
+// mirrors the bulk export's pattern: on Render or Close error,
+// remove the partial file so the user gets the same behavior as
+// a SaveFileDialog cancellation (no file at the path).
+//
+// The test forces a Render error by wiring a Registry whose
+// template directory is empty. Resolve then fails fast with
+// "no typst template matches recordType=..." before any byte
+// reaches the output file, but the export service has already
+// created the file via os.Create. The test asserts the file is
+// removed after the error returns.
+func TestExportService_ExportSoldierPDF_RemovesPartialFileOnRenderError(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+
+	binPath := findTypstBinaryInTest(t)
+	// Empty templateDir -> Registry.Resolve returns
+	// "no typst template matches recordType=..." for every
+	// recordType, so the Render call fails before any byte
+	// is written to the user file. The fix must still
+	// remove the empty file the export service created.
+	typst := render.NewTypstRenderer(binPath, "")
+	reg := render.NewRegistry(typst, "")
+	exportSvc := NewExportService(d, soldierSvc)
+	exportSvc.SetRegistry(reg)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID: "PENSION-99",
+		FirstName: "Cleanup",
+		LastName:  "Test",
+		EntryType: "soldier",
+	}, PDFOptions{IncludeImages: false})
+	if err == nil {
+		t.Fatalf("ExportSoldierPDF returned no error; expected a Resolve error from the empty template dir")
+	}
+	if _, statErr := os.Stat(outPath); !os.IsNotExist(statErr) {
+		t.Fatalf("output file should be removed on Render error; Stat err = %v", statErr)
+	}
+}
+
+// TestExportService_ExportEventPDF_RemovesPartialFileOnRenderError
+// is the same contract for the per-Event export. The fix
+// applies to all four single-record / per-event export paths
+// (soldier, soldier-noimg, event, article, anniversary); this
+// test pins event because the linked-person array exercises
+// the same os.Create + Render + remove pattern via
+// exportEventViaRegistry.
+func TestExportService_ExportEventPDF_RemovesPartialFileOnRenderError(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+
+	binPath := findTypstBinaryInTest(t)
+	typst := render.NewTypstRenderer(binPath, "")
+	reg := render.NewRegistry(typst, "")
+	exportSvc := NewExportService(d, soldierSvc)
+	exportSvc.SetRegistry(reg)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "event.pdf")
+	err := exportSvc.ExportEventPDF(outPath, models.Soldier{
+		DisplayID: "EVT-1",
+		EntryType: "event",
+	}, nil, PDFOptions{IncludeImages: false})
+	if err == nil {
+		t.Fatalf("ExportEventPDF returned no error; expected a Resolve error from the empty template dir")
+	}
+	if _, statErr := os.Stat(outPath); !os.IsNotExist(statErr) {
+		t.Fatalf("output file should be removed on Render error; Stat err = %v", statErr)
+	}
+}
+
+// TestExportService_ExportArticlePDF_RemovesPartialFileOnRenderError
+// pins the article export's cleanup contract (issue #653). The
+// article path also has an early-return branch when the markdown
+// body fails to render to typst; that branch is covered by the
+// same fix (close + remove before the error returns).
+func TestExportService_ExportArticlePDF_RemovesPartialFileOnRenderError(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+
+	binPath := findTypstBinaryInTest(t)
+	typst := render.NewTypstRenderer(binPath, "")
+	reg := render.NewRegistry(typst, "")
+	exportSvc := NewExportService(d, soldierSvc)
+	exportSvc.SetRegistry(reg)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "article.pdf")
+	err := exportSvc.ExportArticlePDF(outPath, models.Article{
+		DisplayID: "ART-1",
+		Title:     "Cleanup contract",
+		BodyMD:    "# heading",
+	}, nil, PDFOptions{IncludeImages: false})
+	if err == nil {
+		t.Fatalf("ExportArticlePDF returned no error; expected a Resolve error from the empty template dir")
+	}
+	if _, statErr := os.Stat(outPath); !os.IsNotExist(statErr) {
+		t.Fatalf("output file should be removed on Render error; Stat err = %v", statErr)
+	}
+}
+
+// TestExportService_ExportMonthlyAnniversaryPDF_RemovesPartialFileOnRenderError
+// pins the anniversary export's cleanup contract. The
+// anniversary path is technically multi-record but shares the
+// same os.Create + Render shape and is reached via the same
+// /export/soldier/{id}/pdf-like user flow, so the same
+// partial-file-leak bug applied.
+func TestExportService_ExportMonthlyAnniversaryPDF_RemovesPartialFileOnRenderError(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+
+	binPath := findTypstBinaryInTest(t)
+	typst := render.NewTypstRenderer(binPath, "")
+	reg := render.NewRegistry(typst, "")
+	exportSvc := NewExportService(d, soldierSvc)
+	exportSvc.SetRegistry(reg)
+
+	outPath := filepath.Join(testtemp.New(t).Path(), "anniversary.pdf")
+	err := exportSvc.ExportMonthlyAnniversaryPDF(outPath, 4, map[int][]models.Soldier{}, PDFOptions{IncludeImages: false})
+	if err == nil {
+		t.Fatalf("ExportMonthlyAnniversaryPDF returned no error; expected a Resolve error from the empty template dir")
+	}
+	if _, statErr := os.Stat(outPath); !os.IsNotExist(statErr) {
+		t.Fatalf("output file should be removed on Render error; Stat err = %v", statErr)
+	}
+}
+
 // TestExportService_ExportEventPDF verifies the per-Event PDF
 // export (issue #320 v1, issue #374 portrait). The test exercises
 // the full typst-backed Registry path: the new event_landscape.typ

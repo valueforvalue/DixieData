@@ -463,7 +463,24 @@ func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier
 		"settings": settings,
 		"branding": e.archiveBranding(options.PrinterFriendly),
 	}
-	return e.registry.Render(context.Background(), settings, recordType, data, f)
+	// Issue #653: mirror the bulk export's cleanup contract. A
+	// Render error (typst compile failure, Resolve miss, write
+	// error) must not leave a half-written file at the
+	// user-chosen output path. Without the Remove the user
+	// opens the file in a PDF viewer and gets the "file is
+	// damaged" or "blank" symptom. Close first so Windows can
+	// drop the handle before Remove runs; the deferred close
+	// is then a no-op on the success path.
+	if err := e.registry.Render(context.Background(), settings, recordType, data, f); err != nil {
+		_ = f.Close()
+		os.Remove(outputPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(outputPath)
+		return err
+	}
+	return nil
 }
 
 // archiveBranding returns the header/footer strings used by the
@@ -544,7 +561,17 @@ func (e *ExportService) exportEventViaRegistry(outputPath string, event models.S
 		"settings": settings,
 		"branding": e.archiveBranding(false),
 	}
-	return e.registry.Render(context.Background(), settings, "event", data, f)
+	// Issue #653: cleanup contract — see exportSingleRecordViaRegistry.
+	if err := e.registry.Render(context.Background(), settings, "event", data, f); err != nil {
+		_ = f.Close()
+		os.Remove(outputPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(outputPath)
+		return err
+	}
+	return nil
 }
 
 // soldierDateRangeLabel renders a Person Record's begin/end
@@ -612,6 +639,11 @@ func (e *ExportService) exportArticleViaRegistry(outputPath string, article mode
 	markdown := records.NewMarkdownRenderer()
 	bodyTypst, typstErr := markdown.RenderTypst(article.BodyMD)
 	if typstErr != nil {
+		// Issue #653: file was already created above; close
+		// it and remove so the user doesn't get a half-written
+		// PDF at the chosen path.
+		_ = f.Close()
+		os.Remove(outputPath)
 		return fmt.Errorf("exportArticle: typst body: %w", typstErr)
 	}
 
@@ -635,7 +667,17 @@ func (e *ExportService) exportArticleViaRegistry(outputPath string, article mode
 		"settings":      settings,
 		"branding":      e.archiveBranding(false),
 	}
-	return e.registry.Render(context.Background(), settings, "article", data, f)
+	// Issue #653: cleanup contract — see exportSingleRecordViaRegistry.
+	if err := e.registry.Render(context.Background(), settings, "article", data, f); err != nil {
+		_ = f.Close()
+		os.Remove(outputPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(outputPath)
+		return err
+	}
+	return nil
 }
 
 // exportAnniversaryViaRegistry renders the anniversary report
@@ -663,6 +705,11 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 	// memorials) are ignored.
 	links, err := e.firstFindAGraveLinks(calendar)
 	if err != nil {
+		// Issue #653: file was already created above; close it
+		// and remove so the user doesn't get a half-written
+		// PDF at the chosen path.
+		_ = f.Close()
+		os.Remove(outputPath)
 		return fmt.Errorf("build anniversary links: %w", err)
 	}
 	data := map[string]any{
@@ -673,7 +720,17 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 		"soldier_links": links,
 		"branding":      e.archiveBranding(options.PrinterFriendly),
 	}
-	return e.registry.Render(context.Background(), settings, "soldier", data, f)
+	// Issue #653: cleanup contract — see exportSingleRecordViaRegistry.
+	if err := e.registry.Render(context.Background(), settings, "soldier", data, f); err != nil {
+		_ = f.Close()
+		os.Remove(outputPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(outputPath)
+		return err
+	}
+	return nil
 }
 
 // firstFindAGraveLinks queries the records table once for every
