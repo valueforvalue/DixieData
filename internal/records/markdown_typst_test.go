@@ -214,3 +214,75 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 		})
 	}
 }
+
+// TestTypstColor_NormalizesForTypst015 (issue #669 amendment) pins
+// the typstColor normalizer. The pre-typst-0.15 code passed the
+// `rgb(36 48 61 / 0.06)` form through verbatim, which the markdown
+// converter then wrapped in `rgb("rgb(36 48 61 / 0.06)")` — the
+// nested rgb() form that typst 0.15 rejects with
+// "color string contains non-hexadecimal letters". The fix converts
+// the input to a typst-0.15-compatible literal:
+//   - "rgb(R G B / A)"   → "color.rgb(R, G, B, A*255)"
+//   - "rgb(R, G, B, A)"  → "color.rgb(R, G, B, A*255)"
+//   - "rgb(R, G, B)"     → "#rrggbb"   (6-char hex, alpha omitted)
+//   - "#hex"             → "#hex"      (pass through)
+func TestTypstColor_NormalizesForTypst015(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		// Hex passthrough.
+		{"hex 6-char passes through", "#8d7440", "#8d7440"},
+		{"hex 3-char passes through", "#abc", "#abc"},
+		// CSS rgb() with space separator + slash alpha.
+		// The default CodeBackground is this form:
+		// "rgb(36 48 61 / 0.06)". Convert to typst's own
+		// color.rgb() literal so the outer rgb() wrapper
+		// (added by the caller) becomes rgb("color.rgb(36, 48, 61, 15)")
+		// which typst 0.15 accepts.
+		{
+			"css rgb() with space + slash alpha",
+			"rgb(36 48 61 / 0.06)",
+			"color.rgb(36, 48, 61, 15)",
+		},
+		// Comma-separated with alpha.
+		{
+			"css rgb() comma alpha",
+			"rgb(36, 48, 61, 0.06)",
+			"color.rgb(36, 48, 61, 15)",
+		},
+		// No alpha — fall back to 6-char hex.
+		{
+			"css rgb() no alpha",
+			"rgb(36, 48, 61)",
+			"#24303d",
+		},
+		{
+			"css rgb() space no alpha",
+			"rgb(36 48 61)",
+			"#24303d",
+		},
+		// Named color passthrough.
+		{"named color passes through", "red", "red"},
+		// Empty falls back to black.
+		{"empty falls back to black", "", "#000000"},
+		{"whitespace falls back to black", "   ", "#000000"},
+		// Edge: alpha 1.0 = fully opaque. Should still emit
+		// color.rgb() with alpha=255, not a hex. (The form
+		// is lossy on conversion but the alpha is preserved.)
+		{
+			"alpha 1.0 emits color.rgb with alpha 255",
+			"rgb(255, 0, 0, 1.0)",
+			"color.rgb(255, 0, 0, 255)",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := typstColor(c.in)
+			if got != c.want {
+				t.Errorf("typstColor(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
