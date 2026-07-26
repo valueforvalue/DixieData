@@ -1,36 +1,49 @@
 /**
  * audit/smoke_typst_color_rgb.mjs — RED-first regression net for
- * the typst 0.15 color-string strictness (issue #669 amendment).
- * Typst 0.15's `rgb(...)` parser rejects strings that contain
- * non-hex letters. The pre-0.15 path passed CSS-style
- * `rgb(36 48 61 / 0.06)` strings through the markdown converter,
- * which then wrapped them in `rgb("rgb(36 48 61 / 0.06)")` —
- * the nested `rgb(...)` form typst 0.15 rejects with
+ * the typst 0.15 color-string strictness (issues #669 amendment
+ * + #670 amendment 2). Typst 0.15's `rgb(...)` parser rejects
+ * strings that contain non-hex letters. The pre-0.15 path
+ * passed CSS-style `rgb(36 48 61 / 0.06)` strings through
+ * the markdown converter, which then wrapped them in
+ * `rgb("rgb(36 48 61 / 0.06)")` — the nested `rgb(...)` form
+ * typst 0.15 rejects with
  * `error: color string contains non-hexadecimal letters`.
+ *
+ * The fix introduces `typstColorExpr` (replacing `typstColor`)
+ * which returns a BARE typst color expression — `#rrggbb` for
+ * opaque colors, `color.rgb(r, g, b, a)` for alpha-bearing
+ * colors. The emission sites drop the `rgb("...")` wrapper
+ * entirely and use the result directly in color contexts:
+ *
+ *     #block(fill: #24303d, inset: 0.5em, radius: 2pt)[...]
+ *     #block(fill: color.rgb(36, 48, 61, 15), inset: ...)[...]
+ *     #text(fill: #22303d)[Heading]
+ *
+ * The first attempt at the fix (issue #670) still wrapped the
+ * result in `rgb("...")`, producing `rgb("color.rgb(...)")` which
+ * is ALSO rejected. This amendment 2 dropped the wrapper.
  *
  * Source-scan probe — no live server needed. Asserts:
  *
- *   bug-shape-01 internal/records/markdown_typst.go MUST NOT emit
- *     the nested `rgb("rgb(...)")` pattern. A future refactor of
- *     `typstColor` that returns a `rgb(...)` form unchanged (the
- *     pre-0.15 behavior) would re-introduce the bug class.
+ *   bug-shape-01 the markdown_typst emission sites MUST NOT
+ *     wrap the typstColorExpr result in `rgb("...")`. The
+ *     emission pattern is `fill: #hex` or `fill: color.rgb(...)`
+ *     directly, never `fill: rgb("...")`.
  *
- *   fix-shape-01 `typstColor` MUST convert the CSS `rgb(R G B / A)`
- *     form to typst's own `color.rgb(R, G, B, A*255)` literal so
- *     the outer `rgb("%s")` wrapper in the markdown_typst call
- *     sites produces a string typst 0.15 accepts.
+ *   fix-shape-01 typstColorExpr MUST convert the CSS
+ *     `rgb(R G B / A)` form to typst's own `color.rgb(r, g, b, a)`
+ *     literal (a*255 for the alpha).
  *
- *   fix-shape-02 `typstColor` MUST convert the alpha-less
- *     `rgb(R, G, B)` form to a 6-char hex (`#rrggbb`) so the
- *     outer wrapper has a simple hex string to wrap.
+ *   fix-shape-02 typstColorExpr MUST convert the alpha-less
+ *     `rgb(R, G, B)` form to a 6-char hex (`#rrggbb`).
  *
  *   scope-shape-01 no other .go file in the repo emits the
- *     nested `rgb("rgb(...)")` pattern. (The audit scans every
+ *     nested `rgb("rgb(...))` pattern. (The audit scans every
  *     .go file, strips comments + string literals, and asserts
  *     the result is empty.)
  *
- *   regression-net-01 the test cases for the typstColor
- *     normalizer (TestTypstColor_NormalizesForTypst015) MUST
+ *   regression-net-01 the test cases for the typstColorExpr
+ *     normalizer (TestTypstColorExpr_NormalizesForTypst015) MUST
  *     exist in markdown_typst_test.go so a future refactor of
  *     the parser doesn't silently drop the conversions.
  *
@@ -80,20 +93,23 @@ const markdownTypstNoLiterals = markdownTypst
   })
   .join("\n");
 
-// bug-shape-01: no live `rgb("rgb(` pattern. The pre-typst-0.15
-// shape wrapped the result of `typstColor` in another `rgb()`
-// call, producing `rgb("rgb(36 48 61 / 0.06)")` for the
-// CodeBackground. The fix is in typstColor itself; the
-// emission sites still wrap in rgb() but the wrapped string
-// is now a typst-0.15-compatible literal (hex or color.rgb).
+// bug-shape-01: no live `rgb("rgb(...))` (nested) pattern. The
+// pre-#670 amendment 2 fix wrapped the typstColorExpr result
+// in another rgb() call, producing the nested
+// `rgb("color.rgb(...)")` form which typst 0.15 rejects
+// with "color string contains non-hexadecimal letters". The
+// amendment-2 fix was reworked again: typstColorExpr now
+// returns the full typst expression (rgb("#hex") for hex,
+// color.rgb(r, g, b, a) for alpha) and the emission sites
+// use the result directly with no further wrapping.
 const nestedRgbPattern = /rgb\(\s*"rgb\(/;
 assert(
-  "bug-shape-01: no live rgb(\"rgb(... in markdown_typst.go (typst 0.15 nested-rgb rejection)",
+  "bug-shape-01: no live nested rgb(\"rgb(... in markdown_typst.go (typst 0.15 strictness)",
   !nestedRgbPattern.test(markdownTypstNoLiterals),
   "Found the nested rgb(\"rgb(...)) form that typst 0.15 rejects with 'color string contains non-hexadecimal letters'."
 );
 
-// fix-shape-01: typstColor converts rgb(R G B / A) to color.rgb(R, G, B, A*255).
+// fix-shape-01: typstColorExpr converts rgb(R G B / A) to color.rgb(R, G, B, A*255).
 // The string is built via fmt.Sprintf so the source contains
 // the format-string form ("color.rgb(%s, %s, %s, %d)") rather
 // than a literal call. Assert on the format-string + the alpha
@@ -103,15 +119,15 @@ assert(
 const colorRgbFormat = /color\.rgb\(%s,\s*%s,\s*%s,\s*%d\)/;
 const alphaScaling = /alphaF\s*\*\s*255/;
 assert(
-  "fix-shape-01: typstColor emits color.rgb(R, G, B, A*255) for alpha-bearing input",
+  "fix-shape-01: typstColorExpr emits color.rgb(R, G, B, A*255) for alpha-bearing input",
   colorRgbFormat.test(markdownTypst) && alphaScaling.test(markdownTypst),
   `format-match=${colorRgbFormat.test(markdownTypst)}, alpha-match=${alphaScaling.test(markdownTypst)}`
 );
 
-// fix-shape-02: typstColor converts alpha-less rgb(R, G, B) to #rrggbb.
+// fix-shape-02: typstColorExpr converts alpha-less rgb(R, G, B) to #rrggbb.
 const rgbPartsToHex = /rgbPartsToHex\([^)]+\)/;
 assert(
-  "fix-shape-02: typstColor has a rgbPartsToHex helper for the alpha-less path",
+  "fix-shape-02: typstColorExpr has a rgbPartsToHex helper for the alpha-less path",
   rgbPartsToHex.test(markdownTypstNoLiterals),
   "Could not find the rgbPartsToHex helper. The alpha-less CSS rgb() path falls back to 6-char hex; the helper is the implementation."
 );
@@ -147,18 +163,18 @@ assert(
   nestedRgbFiles.length ? `Offending files:\n${nestedRgbFiles.join("\n")}` : null
 );
 
-// regression-net-01: the typstColor test cases exist in markdown_typst_test.go.
+// regression-net-01: the typstColorExpr test cases exist in markdown_typst_test.go.
 assert(
-  "regression-net-01: markdown_typst_test.go pins the typstColor normalizer (TestTypstColor_NormalizesForTypst015)",
-  /TestTypstColor_NormalizesForTypst015/.test(markdownTypstTest)
+  "regression-net-01: markdown_typst_test.go pins the typstColorExpr normalizer (TestTypstColorExpr_NormalizesForTypst015)",
+  /TestTypstColorExpr_NormalizesForTypst015/.test(markdownTypstTest)
     && /color\.rgb/.test(markdownTypstTest)
     && /#\d{6}/.test(markdownTypstTest),
-  "Expected the test source to reference TestTypstColor_NormalizesForTypst015 + a color.rgb literal + a 6-char hex expectation."
+  "Expected the test source to reference TestTypstColorExpr_NormalizesForTypst015 + a color.rgb literal + a 6-char hex expectation."
 );
 
 console.log("");
 if (failures.length === 0) {
-  console.log(`✓ smoke-typst-color-rgb: all 5 assertions hold (issue #669 amendment regression net).`);
+  console.log(`✓ smoke-typst-color-rgb: all 5 assertions hold (issues #669 + #670 amendment 2 regression net).`);
   process.exit(0);
 } else {
   console.error(`✗ smoke-typst-color-rgb: ${failures.length} assertion(s) failed:`);

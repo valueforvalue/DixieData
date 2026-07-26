@@ -179,7 +179,7 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 				linkColor = s.theme.Palette["link"]
 			}
 			if linkColor != "" {
-				fmt.Fprintf(&s.out, `#link("%s")[#text(fill: rgb("%s"))[`, typstEscapeLink(dest), typstColor(linkColor))
+				fmt.Fprintf(&s.out, `#link("%s")[#text(fill: %s)[`, typstEscapeLink(dest), typstColorExpr(linkColor))
 			} else {
 				fmt.Fprintf(&s.out, `#link("%s")[`, typstEscapeLink(dest))
 			}
@@ -227,7 +227,7 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 			// first line of the quote body doesn't get an
 			// unwanted indent.
 			if s.theme != nil && s.theme.BlockquoteBorder != "" {
-				fmt.Fprintf(&s.out, "#block(inset: (left: 1em), stroke: (left: 2pt + rgb(\"%s\")))[\n#set par(first-line-indent: 0pt)\n", typstColor(s.theme.BlockquoteBorder))
+				fmt.Fprintf(&s.out, "#block(inset: (left: 1em), stroke: (left: 2pt + %s))[\n#set par(first-line-indent: 0pt)\n", typstColorExpr(s.theme.BlockquoteBorder))
 			} else {
 				s.out.WriteString("#quote(block: true)[\n#set par(first-line-indent: 0pt)\n")
 			}
@@ -249,7 +249,7 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 				codeFill = s.theme.CodeBackground
 			}
 			if monoFont != "" {
-				fmt.Fprintf(&s.out, "#block(fill: rgb(\"%s\"), inset: 0.5em, radius: 2pt)[\n", typstColor(codeFill))
+				fmt.Fprintf(&s.out, "#block(fill: %s, inset: 0.5em, radius: 2pt)[\n", typstColorExpr(codeFill))
 				fmt.Fprintf(&s.out, "#text(font: \"%s\")[\n", typstEscape(monoFont))
 			}
 			// typst 0.15: raw() requires a string first arg;
@@ -274,7 +274,7 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 				codeFill = s.theme.CodeBackground
 			}
 			if monoFont != "" {
-				fmt.Fprintf(&s.out, "#block(fill: rgb(\"%s\"), inset: 0.5em, radius: 2pt)[\n", typstColor(codeFill))
+				fmt.Fprintf(&s.out, "#block(fill: %s, inset: 0.5em, radius: 2pt)[\n", typstColorExpr(codeFill))
 				fmt.Fprintf(&s.out, "#text(font: \"%s\")[\n", typstEscape(monoFont))
 			}
 			fmt.Fprintf(&s.out, "#raw(%s, block: true)\n", typstStringLiteral(content))
@@ -418,7 +418,7 @@ func (s *typstState) writeHeading(h *ast.Heading) {
 	// heading color matches the browser preview. The
 	// heading_size_pt comes from theme.type_scale.
 	if s.theme != nil && s.theme.HeadingColor != "" {
-		fmt.Fprintf(&s.out, "#text(fill: rgb(\"%s\"))[", typstColor(s.theme.HeadingColor))
+		fmt.Fprintf(&s.out, "#text(fill: %s)[", typstColorExpr(s.theme.HeadingColor))
 	}
 	s.out.WriteString(label.String())
 	if s.theme != nil && s.theme.HeadingColor != "" {
@@ -521,14 +521,14 @@ func blockLines(n ast.Node) []*text.Segment {
 // Backslash itself is doubled. Plain prose that doesn't
 // contain any of these characters is a fast no-op.
 func typstEscape(s string) string {
-	if !strings.ContainsAny(s, `#*_<>=:~/\\+`) {
+	if !strings.ContainsAny(s, `#*_<>=:~/\\$+`) {
 		return s
 	}
 	var b strings.Builder
 	b.Grow(len(s) + 8)
 	for _, r := range s {
 		switch r {
-		case '\\', '#', '*', '_', '`', '<', '>', '@', '=', ':', '~', '/', '+':
+		case '\\', '#', '*', '_', '`', '<', '>', '@', '=', ':', '~', '/', '$', '+':
 			b.WriteByte('\\')
 			b.WriteRune(r)
 		default:
@@ -581,38 +581,52 @@ func typstStringLiteral(s string) string {
 	return b.String()
 }
 
-// typstColor normalizes a CSS-style color into the form
-// typst 0.15's `rgb(...)` accepts. Accepts "#abcdef",
-// "rgb(36 48 61 / 0.06)", and bare "red" (returned as-is for
-// the named-color path). Used by the theme-driven emission
-// in the markdown → typst converter (issue #660).
+// typstColorExpr returns a typst color expression for the given
+// CSS color string, suitable for direct use in a typst
+// expression context (no surrounding `rgb("...")` wrapper
+// needed). The returned string is the full typst color
+// expression:
 //
-// Issue #669 amendment: typst 0.15's `rgb()` parser is strict —
-// it rejects strings that contain non-hex letters (e.g. the
-// nested `rgb("rgb(36 48 61 / 0.06)")` shape, where the inner
-// `rgb(...)` is wrapped inside another `rgb(...)` call). The
-// pre-0.15 code worked because typst was lenient. The fix
-// is to convert the CSS rgb() form to typst's own color
-// literal: `color.rgb(r, g, b, a)` for alpha-bearing colors,
-// or a 6-char hex for opaque colors. The Markdown → typst
-// emission sites wrap the result in `rgb("%s")` so the
-// converted string is always the right thing for the wrapper.
-func typstColor(cssColor string) string {
+//   "#8d7440"  →  `rgb("#8d7440")`    (rgb wrapper around hex)
+//   "rgb(R G B / A)"  →  `color.rgb(R, G, B, A*255)`  (bare function call)
+//   "rgb(R, G, B)"     →  `rgb("#rrggbb")`  (rgb wrapper around hex)
+//   "red"  →  `red`  (named color, pass through)
+//
+// The hex forms use `rgb("#hex")` because typst's markup mode
+// (the mode the article body uses via `eval(body-typst, mode: "markup")`)
+// treats a bare `#hex` as a function call (the `#` starts a
+// markup function). The `rgb()` wrapper is a real typst
+// function that accepts a hex string. The alpha-bearing form
+// uses `color.rgb()` directly because it's a function call
+// with positional args, which markup mode handles correctly.
+//
+// typst 0.15 strictness (issues #669 + #670 amendments):
+//   - `rgb("#hex")` works (the inner string is pure hex).
+//   - `rgb("rgb(R G B / A)")` is REJECTED with
+//     "color string contains non-hexadecimal letters" (the
+//     pre-#670 nested form).
+//   - `rgb("color.rgb(r, g, b, a)")` is ALSO rejected (the
+//     pre-#670 amendment-2 still-wrapped form).
+//   - `color.rgb(r, g, b, a)` bare works (a real function call).
+//   - `rgb("#hex")` in markup mode works (the `#hex` is a
+//     string literal inside the rgb() function call).
+//
+// So the returned string is always usable as a typst
+// expression: `fill: #hex_result`. The emission sites use
+// the result directly without further wrapping.
+func typstColorExpr(cssColor string) string {
 	trimmed := strings.TrimSpace(cssColor)
 	if trimmed == "" {
-		return "#000000"
+		return "rgb(\"#000000\")"
 	}
-	// hex form — pass through. typst's rgb() accepts
-	// #abc / #abcdef. We do NOT strip the # because the
-	// caller wraps the result in `rgb("%s")` and typst
-	// 0.15's rgb() accepts both forms ("8d7440" and
-	// "#8d7440"). Returning the literal preserves whatever
-	// form the theme shipped.
+	// hex form — wrap in rgb() so the markup-mode parser
+	// treats it as a color literal, not a function call.
 	if strings.HasPrefix(trimmed, "#") {
-		return trimmed
+		return fmt.Sprintf("rgb(\"%s\")", trimmed)
 	}
-	// rgb(...) form — convert to typst's color literal.
-	// Handles the three shapes we ship in the theme:
+	// rgb(...) form — convert to a typst-0.15-compatible
+	// expression. Handles the three shapes we ship in the
+	// theme:
 	//   - "rgb(36 48 61 / 0.06)"  space-separated + slash-alpha
 	//   - "rgb(36 48 61, 0.06)"  comma-separated
 	//   - "rgb(36, 48, 61)"     no alpha
@@ -628,7 +642,7 @@ func typstColor(cssColor string) string {
 			b := strings.TrimSpace(parts[2])
 			if len(parts) >= 4 {
 				// Alpha-bearing: emit color.rgb(r, g, b, a*255)
-				// so the alpha is preserved. typst 0.15's
+				// as a bare function call. typst 0.15's
 				// color.rgb() takes 0-255 alpha, which matches
 				// the CSS convention.
 				alphaStr := strings.TrimSpace(parts[3])
@@ -642,21 +656,46 @@ func typstColor(cssColor string) string {
 					return fmt.Sprintf("color.rgb(%s, %s, %s, %d)", r, g, b, alpha255)
 				}
 			}
-			// Opaque rgb() — convert to 6-char hex so the
-			// outer rgb() wrapper in the caller has a simple
-			// hex string to wrap.
+			// Opaque rgb() — convert to 6-char hex and wrap
+			// in rgb() so the markup-mode parser treats it
+			// as a color literal.
 			hex := rgbPartsToHex(r, g, b)
 			if hex != "" {
-				return "#" + hex
+				return fmt.Sprintf("rgb(\"#%s\")", hex)
 			}
 		}
-		// Unparseable — return the literal and let typst
-		// emit a clear error. Better than silently dropping
-		// the color.
-		return trimmed
+		// Unparseable — fall back to black so the export
+		// doesn't fail silently. The pre-0.15 code returned
+		// the literal and let typst emit a clear error; the
+		// 0.15 behavior is to fail the whole render, which
+		// is too costly for a single bad color.
+		return "rgb(\"#000000\")"
 	}
 	// named color — return as-is. typst's color literals
-	// include "red", "blue", etc.
+	// include "red", "blue", etc. (the markup-mode parser
+	// doesn't try to call them as functions).
+	return trimmed
+}
+
+// typstColor is the pre-#670 amendment normalizer. It returns
+// a string meant to be wrapped in `rgb("...")`. The five
+// markdown_typst emission sites now use typstColorExpr (which
+// returns a bare typst expression) instead, so this function
+// is only kept for callers that still need the wrapped form.
+// The pre-#670 code path that produced `rgb("rgb(36 48 61 / 0.06)")`
+// is dead; this function is preserved as a reference for the
+// audit probe + the test cases.
+func typstColor(cssColor string) string {
+	trimmed := strings.TrimSpace(cssColor)
+	if trimmed == "" {
+		return "#000000"
+	}
+	if strings.HasPrefix(trimmed, "#") {
+		return trimmed
+	}
+	if strings.HasPrefix(trimmed, "rgb(") {
+		return trimmed
+	}
 	return trimmed
 }
 
