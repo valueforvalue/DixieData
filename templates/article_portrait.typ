@@ -138,9 +138,9 @@
       let name = r.at("name", default: "")
       let resolved = r.at("resolved", default: false)
       if resolved {
-        [#text(fill: theme.palette.text_primary)[*#did*] #h(0.5em) #name \n]
+        [#text(fill: theme.palette.text_primary)[*#did*] #h(0.5em) #name #linebreak()]
       } else {
-        [#text(fill: red)[⚠ Unknown: #did] \n]
+        [#text(fill: red)[⚠ Unknown: #did] #linebreak()]
       }
     }
   ]
