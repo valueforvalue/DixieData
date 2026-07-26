@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 )
 
@@ -53,6 +54,8 @@ func (a *App) handleCheckForUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := a.updater.Check()
 	if err != nil {
+		log := debug.FromContext(r.Context())
+		log.Error("update check failed", "err", err)
 		setToastHeaderWithType(w, "Update check failed.", "error")
 		// Issue #384 / Slice 5: wrap Render.
 		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
@@ -73,6 +76,8 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	prepared, err := a.updater.PrepareLatest()
 	if err != nil {
+		log := debug.FromContext(r.Context())
+		log.Error("update apply failed", "err", err)
 		setToastHeaderWithType(w, "Update apply failed.", "error")
 		// Issue #384 / Slice 5: wrap Render.
 		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {

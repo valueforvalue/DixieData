@@ -64,12 +64,12 @@ func TestCohortManifestEndToEnd(t *testing.T) {
 	if !strings.HasSuffix(release.downloadURL, ".zip") {
 		t.Errorf("asset_kind not detected as zip; downloadURL = %q", release.downloadURL)
 	}
-	// The cohort manifest advertises 1.1.4-rc1 (or whatever
+	// The cohort manifest advertises 1.1.5-rc1 (or whatever
 	// the operator has published). The version parse strips
-	// the suffix; we assert the bare numeric is 1.1.4 (the
+	// the suffix; we assert the bare numeric is 1.1.5 (the
 	// cohort's base version). This catches a manifest
 	// published with a wrong-version typo.
-	if release.version != "1.1.4" {
-		t.Errorf("parsed version = %q; want %q (suffix should strip to base numeric)", release.version, "1.1.4")
+	if release.version != "1.1.7" {
+		t.Errorf("parsed version = %q; want %q (suffix should strip to base numeric)", release.version, "1.1.7")
 	}
 }

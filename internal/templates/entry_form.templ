@@ -719,7 +719,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				}
 			</div>
 		}
-		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true" class="space-y-4">
+		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true" data-results-target="#settings-update-panel" class="space-y-4">
 			<div>
 				<label class="mb-1 block text-sm text-slate-500" for="ef-source_url">Update source URL</label>
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false" id="ef-source_url"/>
@@ -728,7 +728,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				@components.Button("Save Update Source", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</div>
 		</form>
-		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true">
+		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true" data-results-target="#settings-update-panel">
 			<input type="hidden" name="source_url" value=""/>
 			@components.Button("Use Default GitHub Feed", components.ButtonGhost, "w-full px-4 py-2 text-left sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
@@ -744,7 +744,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			@SettingsUpdateStatusMessage("error", state.DisabledReason)
 		}
 		<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-			<form action={ templ.SafeURL(routebuilder.SettingsUpdateCheck()) } data-dixie-submit="true" class="w-full sm:w-auto">
+			<form action={ templ.SafeURL(routebuilder.SettingsUpdateCheck()) } data-dixie-submit="true" data-results-target="#settings-update-status" class="w-full sm:w-auto">
 				@components.Button("Check for Updates", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			<form action={ templ.SafeURL(routebuilder.ExportBackup()) } data-dixie-submit="true" class="w-full sm:w-auto">
@@ -759,6 +759,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				</form>
 			}
 		</div>
+		<div id="settings-update-status"></div>
 	</div>
 }
 

@@ -3,10 +3,10 @@
 // slice-1 catch-up bump sets it to. After the catch-up, N=4
 // reflects the body of post-cutover release-aimed work on
 // dev (the #544 + #566 feedback chain, the #561 microcopy
-// sweep, and the #570 buildinfo consolidation). The pin
-// guards against future regressions where someone resets N
-// to the cutover value (1) without realising the cutover was
-// 2026-07-03 and the dev branch has shipped since.
+// sweep, and the #570 buildinfo consolidation). RC1 cohort
+// bump (issue #658, 2026-07-26): N=5 so the RC manifest can
+// advertise 1.1.5-rc1, making compareVersions see Newer=true
+// against the installed 1.1.4 binary.
 //
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
@@ -27,8 +27,8 @@ func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
 	// accounts for the documented post-2026-07-03 release
 	// work — the #544 + #566 feedback chain, the #561
 	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 4 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 4 (issue #578 catch-up value)", CurrentAppVersionInt)
+	if CurrentAppVersionInt != 7 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 7 (RC1 check-results fix, issue #658)", CurrentAppVersionInt)
 	}
 }
 

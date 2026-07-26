@@ -185,7 +185,7 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 		</div>
 		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" class="space-y-4">
 			<label class="flex items-baseline gap-2 text-sm">
-				<input type="checkbox" name="enabled" value="1" class="field-input" if debugEnabled { checked } />
+				<input type="checkbox" name="debug_mode" value="on" class="field-input" if debugEnabled { checked } />
 				<span>Enable debug mode</span>
 			</label>
 			@components.Button("Save", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})

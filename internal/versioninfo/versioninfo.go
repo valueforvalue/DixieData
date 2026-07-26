@@ -108,7 +108,12 @@ func AppRelease() int {
 // pins this value; the slice-2 CI gate at
 // `.github/workflows/test.yml` enforces per-release +1 from
 // here forward.
-var CurrentAppVersionInt = 4
+//
+// RC1 cohort (2026-07-26): bumped from 4 to 5 so the RC
+// manifest can advertise 1.1.5-rc1, making the updater's
+// compareVersions see Newer=true against the installed 1.1.4
+// binary (issue #658).
+var CurrentAppVersionInt = 7
 
 // AppVersionForSchema composes an AppVersion-like string using
 // the historical formula (v1.2.{schema}). Kept for callers
