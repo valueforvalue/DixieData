@@ -137,6 +137,147 @@ func TestMemorialImportSkipsExistingMemorialID(t *testing.T) {
 	}
 }
 
+// TestMemorialImportSkipsPreserveIdentityAndReason pins the issue
+// #654 contract that the per-skip records surface row +
+// memorial_id + name + reason (not just an aggregate count) so
+// the job summary card + the downloadable report + the CLI
+// output can show the user WHICH rows were skipped and WHY.
+// Both skip classes (duplicate in file + already in Local
+// Archive) must be distinguishable in the Reason field so
+// the user can act on them.
+func TestMemorialImportSkipsPreserveIdentityAndReason(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	// Seed an existing memorial so the third row (M-200) hits
+	// the "already in Local Archive" branch.
+	if _, err := svc.Create(models.Soldier{
+		FirstName: "Pre-Existing",
+		LastName:  "Memorial",
+		Records: []models.Record{{
+			RecordType: memorialRecordType,
+			AppID:      "M-200",
+			Details:    "https://www.findagrave.com/memorial/M-200/existing",
+		}},
+	}); err != nil {
+		t.Fatalf("Create existing: %v", err)
+	}
+
+	// Archive: row 1 unique (creates), row 2 creates
+	// (M-300 first, not in seen yet), row 3 dup of row 2
+	// (duplicate in file), row 4 collides with seeded
+	// M-200 (already in Local Archive). Two distinct skip
+	// classes, two skips total.
+	filePath := filepath.Join(t.TempDir(), "memorials-skips.json")
+	if err := os.WriteFile(filePath, []byte(`[
+		{
+			"memorial_id":"M-100",
+			"name":"First Unique Entry",
+			"url":"https://www.findagrave.com/memorial/M-100"
+		},
+		{
+			"memorial_id":"M-300",
+			"name":"Duplicate In File First",
+			"url":"https://www.findagrave.com/memorial/M-300-first"
+		},
+		{
+			"memorial_id":"M-300",
+			"name":"Duplicate In File Second",
+			"url":"https://www.findagrave.com/memorial/M-300-second"
+		},
+		{
+			"memorial_id":"M-200",
+			"name":"Already In Archive",
+			"url":"https://www.findagrave.com/memorial/M-200-new"
+		}
+	]`), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	preview, err := svc.PreviewMemorialArchive(filePath)
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	if preview.WouldCreate != 2 || preview.WouldSkip != 2 {
+		t.Fatalf("preview counts: create=%d skip=%d, want 2/2", preview.WouldCreate, preview.WouldSkip)
+	}
+	// The preview.Skips slice must carry row + memorial_id +
+	// name + reason for every skip. The two duplicate-in-file
+	// rows must carry the same Reason string; the
+	// already-in-Local-Archive row must carry a different
+	// Reason string so the user can distinguish.
+	if len(preview.Skips) != 2 {
+		t.Fatalf("preview.Skips len = %d, want 2", len(preview.Skips))
+	}
+	dupInFileReason := ""
+	alreadyInArchiveReason := ""
+	for _, skip := range preview.Skips {
+		if skip.Row < 1 {
+			t.Errorf("skip Row = %d, want >= 1 (1-indexed)", skip.Row)
+		}
+		if skip.MemorialID == "" {
+			t.Errorf("skip MemorialID is empty (row %d): %+v", skip.Row, skip)
+		}
+		if skip.Name == "" {
+			t.Errorf("skip Name is empty (row %d): %+v", skip.Row, skip)
+		}
+		if skip.Reason == "" {
+			t.Errorf("skip Reason is empty (row %d): %+v", skip.Row, skip)
+		}
+		switch skip.MemorialID {
+		case "M-200":
+			alreadyInArchiveReason = skip.Reason
+		case "M-300":
+			if dupInFileReason == "" {
+				dupInFileReason = skip.Reason
+			} else if dupInFileReason != skip.Reason {
+				t.Errorf("two duplicate-in-file skips carry different reasons: %q vs %q", dupInFileReason, skip.Reason)
+			}
+		}
+	}
+	if dupInFileReason == "" {
+		t.Fatal("no duplicate-in-file skip reason captured")
+	}
+	if alreadyInArchiveReason == "" {
+		t.Fatal("no already-in-Local-Archive skip reason captured")
+	}
+	if dupInFileReason == alreadyInArchiveReason {
+		t.Errorf("skip classes are not distinguishable: both reasons = %q", dupInFileReason)
+	}
+	if !strings.Contains(dupInFileReason, "duplicate") {
+		t.Errorf("dup-in-file reason = %q, want it to mention 'duplicate'", dupInFileReason)
+	}
+	if !strings.Contains(alreadyInArchiveReason, "Local Archive") {
+		t.Errorf("already-in-archive reason = %q, want it to mention 'Local Archive'", alreadyInArchiveReason)
+	}
+
+	// The summary (post-import) must carry the same skip
+	// identity so the downloadable report + the job card
+	// show the user the same rows.
+	summary, err := svc.ImportMemorialArchive(filePath)
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if summary.Created != 2 || summary.Skipped != 2 || summary.Failed != 0 {
+		t.Fatalf("summary counts: create=%d skip=%d fail=%d, want 2/2/0", summary.Created, summary.Skipped, summary.Failed)
+	}
+	if len(summary.Skips) != 2 {
+		t.Fatalf("summary.Skips len = %d, want 2", len(summary.Skips))
+	}
+	// The summary and preview must carry the same skip rows.
+	// (Identical slice: the import re-runs preview under the
+	// hood, so the row + memorial_id + name + reason for
+	// each skip must match.)
+	for i := range summary.Skips {
+		if summary.Skips[i].Row != preview.Skips[i].Row {
+			t.Errorf("summary.Skips[%d].Row = %d, preview.Skips[%d].Row = %d", i, summary.Skips[i].Row, i, preview.Skips[i].Row)
+		}
+		if summary.Skips[i].MemorialID != preview.Skips[i].MemorialID {
+			t.Errorf("summary.Skips[%d].MemorialID = %q, preview.Skips[%d].MemorialID = %q", i, summary.Skips[i].MemorialID, i, preview.Skips[i].MemorialID)
+		}
+	}
+}
+
 // writeMemorialEnvelope writes a Memorial Archive file in the
 // v1 envelope shape (issue #383 Slice 1). Used by the
 // format-version tests below. The scriptVersion / scriptName

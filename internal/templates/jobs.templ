@@ -63,6 +63,10 @@ templ JobStatusView(job jobs.Job) {
 //     captured a non-empty RemoteURL. Empty RemoteURL = no
 //     button (matches how ResultPath / LogPath are conditional).
 //   - Detail lines: structured bullet list (size / duration / kind note).
+//   - Memorial skips (issue #654): per-row structured list with
+//     row + memorial_id + name + reason + override-availability
+//     note. Renders below the DetailLines so the headline counts
+//     remain the primary signal and the skips are the drilldown.
 //   - Primary CTA: Dismiss (routes to job.DismissTargetPath()).
 //   - Show report button: links to /jobs/{id}/report (placeholder).
 //   - Artifact action (Open / Save): secondary, only when ResultPath is set.
@@ -93,6 +97,29 @@ templ jobSummaryCard(job jobs.Job) {
 					<li>{ line }</li>
 				}
 			</ul>
+		}
+		// Issue #654: per-skip structured list for Memorial
+		// imports. Renders below the headline + DetailLines so
+		// the count remains the primary signal. Each row carries
+		// row + memorial_id + name + reason + a "cannot be
+		// overridden" note (both skip classes would create
+		// duplicate Source Records; see the records-layer
+		// reason constants in internal/records/memorial_import.go).
+		if len(job.Result.MemorialSkips) > 0 {
+			<div class="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 space-y-1" data-job-memorial-skips>
+				<p class="text-xs font-semibold uppercase tracking-wide text-amber-900">Skipped memorial entries</p>
+				<ul class="space-y-1 text-xs text-amber-950">
+					for _, skip := range job.Result.MemorialSkips {
+						<li class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5" data-job-memorial-skip-row={ fmt.Sprintf("%d", skip.Row) }>
+							<span class="font-mono text-slate-700 shrink-0">row { fmt.Sprintf("%d", skip.Row) }</span>
+							<span class="font-mono text-slate-900 shrink-0">{ skip.MemorialID }</span>
+							<span class="text-slate-800 grow">{ skip.Name }</span>
+							<span class="text-amber-900 shrink-0">— { skip.Reason }</span>
+							<span class="text-slate-500 shrink-0 italic">(cannot be overridden: would create a duplicate memorial row)</span>
+						</li>
+					}
+				</ul>
+			</div>
 		}
 		if job.Summary().ResultPath != "" {
 			<p class="break-all text-xs text-slate-500">Saved to <code>{ job.Summary().ResultPath }</code></p>
@@ -182,6 +209,30 @@ templ jobStatusBody(job jobs.Job) {
 				</div>
 				if job.Message != "" {
 					<p class="text-sm text-[var(--theme-text-primary)]">{ job.Message }</p>
+				}
+				// Issue #654: render the per-skip structured
+				// preview BEFORE the irreversible-callout so the
+				// user can see WHICH rows will be skipped and
+				// decide whether to proceed. Each row carries
+				// row + memorial_id + name + reason + a
+				// "cannot be overridden" note (both skip
+				// classes would create duplicate Source
+				// Records; per records-layer reason constants).
+				if len(job.MemorialPreviewSkips) > 0 {
+					<div class="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 space-y-1" data-job-memorial-preview-skips>
+						<p class="text-xs font-semibold uppercase tracking-wide text-amber-900">Entries that will be skipped</p>
+						<ul class="space-y-1 text-xs text-amber-950">
+							for _, skip := range job.MemorialPreviewSkips {
+								<li class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5" data-job-memorial-preview-skip-row={ fmt.Sprintf("%d", skip.Row) }>
+									<span class="font-mono text-slate-700 shrink-0">row { fmt.Sprintf("%d", skip.Row) }</span>
+									<span class="font-mono text-slate-900 shrink-0">{ skip.MemorialID }</span>
+									<span class="text-slate-800 grow">{ skip.Name }</span>
+									<span class="text-amber-900 shrink-0">— { skip.Reason }</span>
+									<span class="text-slate-500 shrink-0 italic">(cannot be overridden: would create a duplicate memorial row)</span>
+								</li>
+							}
+						</ul>
+					</div>
 				}
 				<p class="text-xs text-slate-500">This action is irreversible. Confirm to start the import, or cancel to discard.</p>
 				<div class="flex flex-wrap items-center gap-2 pt-1">

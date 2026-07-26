@@ -340,6 +340,14 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	idCh <- id
 	_ = cancel
 	a.rememberManualCallback(id, release, cancel)
+	// Issue #654: attach the per-skip preview to the queued
+	// job so the confirmation card on /jobs/{id} can render
+	// the per-row identity + reason + override-availability
+	// note, not just the headline count. The handler-side
+	// preview is the source of truth (the worker re-runs
+	// preview.Skips via ImportMemorialArchive's own skip
+	// accounting once the import lands).
+	a.jobs.SetMemorialPreviewSkips(id, memorialSkipDetails(preview.Skips))
 	setInfoToastHeader(w, "Memorial JSON import queued. Confirm on the status page to proceed.")
 	writeExportRedirect(w, "/jobs/"+id)
 }

@@ -108,6 +108,15 @@ type Job struct {
 	ResultPath           string
 	Result               JobResult
 	AwaitingConfirmation bool // true when StartManual registered this job; /jobs/{id} renders a Confirm/Cancel card
+	// MemorialPreviewSkips holds the per-skip structured data
+	// for a Memorial JSON import BEFORE confirmation (issue
+	// #654). The handler sets this when the job is enqueued
+	// so the confirmation card can render the per-row
+	// identity + reason + override-availability note, not
+	// just the headline count. After the import runs, the
+	// result-side MemorialSkips (above) is the post-run
+	// structured data; this field is the pre-run snapshot.
+	MemorialPreviewSkips []MemorialSkipDetail
 	mu                   sync.Mutex
 	cancelled            bool
 	cancelCause          context.CancelFunc
@@ -430,6 +439,7 @@ func (j *Job) Snapshot() Job {
 		ResultPath:           j.ResultPath,
 		Result:               j.Result,
 		AwaitingConfirmation: j.AwaitingConfirmation,
+		MemorialPreviewSkips: j.MemorialPreviewSkips,
 	}
 }
 
@@ -881,6 +891,7 @@ func cloneJob(j *Job) Job {
 		ResultPath:           j.ResultPath,
 		Result:               j.Result,
 		AwaitingConfirmation: j.AwaitingConfirmation,
+		MemorialPreviewSkips: j.MemorialPreviewSkips,
 	}
 }
 
@@ -1301,6 +1312,29 @@ func (r *Registry) SetResult(id string, result JobResult) {
 		job.ResultPath = result.Path
 	}
 	job.Result = result
+	snap := cloneJob(job)
+	job.mu.Unlock()
+	r.appendSnapshot(snap)
+	r.broadcast(id, snap)
+}
+
+// SetMemorialPreviewSkips attaches the per-skip structured
+// preview data to a queued Memorial JSON import job (issue
+// #654). Called by the handler after StartManual returns the
+// id so the confirmation card on /jobs/{id} can render the
+// per-row identity + reason + override-availability note
+// (instead of just the headline count). Must be called while
+// the job is still in AwaitingConfirmation; the registry
+// silently no-ops on missing ids so a race with confirm is safe.
+func (r *Registry) SetMemorialPreviewSkips(id string, skips []MemorialSkipDetail) {
+	r.mu.Lock()
+	job, ok := r.jobs[id]
+	r.mu.Unlock()
+	if !ok {
+		return
+	}
+	job.mu.Lock()
+	job.MemorialPreviewSkips = skips
 	snap := cloneJob(job)
 	job.mu.Unlock()
 	r.appendSnapshot(snap)

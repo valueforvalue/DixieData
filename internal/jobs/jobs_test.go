@@ -118,6 +118,110 @@ func TestSetResultPathUpdatesJobSnapshot(t *testing.T) {
 // so /jobs/{id}/artifact streams without a separate SetResultPath
 // call. Tests for the Summary per-kind render live in
 // job_summary_test.go so they can exercise one branch per test.
+func TestSetMemorialPreviewSkipsAttachesToQueuedJob(t *testing.T) {
+	// Issue #654: the Memorial JSON confirmation card reads
+	// Job.MemorialPreviewSkips so the user can see WHICH rows
+	// will be skipped (not just the count) BEFORE clicking
+	// Confirm. The registry must attach the preview skips
+	// without flipping the job out of AwaitingConfirmation.
+	reg := New()
+	skips := []MemorialSkipDetail{
+		{Row: 2, MemorialID: "M-100", Name: "Duplicate In File", Reason: "duplicate memorial ID in import file"},
+		{Row: 4, MemorialID: "M-200", Name: "Already In Archive", Reason: "memorial ID already exists in Local Archive"},
+	}
+	id, release, _ := reg.StartManual("memorial_import", "Awaiting confirmation: will skip 2.", func(ctx context.Context, p *Progress) error {
+		return nil
+	})
+	defer func() { _ = release() }()
+	reg.SetMemorialPreviewSkips(id, skips)
+	snap, ok := reg.Get(id)
+	if !ok {
+		t.Fatalf("Get(%q) = missing", id)
+	}
+	if len(snap.MemorialPreviewSkips) != 2 {
+		t.Fatalf("MemorialPreviewSkips len = %d, want 2", len(snap.MemorialPreviewSkips))
+	}
+	// Each row must carry row + memorial_id + name + reason.
+	// The two skip classes must be distinguishable in the
+	// Reason field so the user can act on them.
+	dupInFileReason := ""
+	alreadyInArchiveReason := ""
+	for _, skip := range snap.MemorialPreviewSkips {
+		if skip.Row < 1 {
+			t.Errorf("skip Row = %d, want >= 1", skip.Row)
+		}
+		if skip.MemorialID == "" {
+			t.Errorf("skip MemorialID empty: %+v", skip)
+		}
+		if skip.Name == "" {
+			t.Errorf("skip Name empty: %+v", skip)
+		}
+		if skip.Reason == "" {
+			t.Errorf("skip Reason empty: %+v", skip)
+		}
+		switch skip.MemorialID {
+		case "M-100":
+			dupInFileReason = skip.Reason
+		case "M-200":
+			alreadyInArchiveReason = skip.Reason
+		}
+	}
+	if dupInFileReason == "" {
+		t.Fatal("no duplicate-in-file reason captured")
+	}
+	if alreadyInArchiveReason == "" {
+		t.Fatal("no already-in-Local-Archive reason captured")
+	}
+	if dupInFileReason == alreadyInArchiveReason {
+		t.Errorf("skip classes are not distinguishable: both reasons = %q", dupInFileReason)
+	}
+	// The job must remain in AwaitingConfirmation so the
+	// confirmation card (not the summary card) renders.
+	if !snap.AwaitingConfirmation {
+		t.Errorf("AwaitingConfirmation = false, want true (the preview skips are pre-confirmation data)")
+	}
+}
+
+func TestSetMemorialPreviewSkipsMissingJobIsNoOp(t *testing.T) {
+	// Defensive: if the handler races with the worker (or
+	// passes a stale id) the registry must not panic. The
+	// missing-id path is a silent no-op (the job was already
+	// promoted, confirmed, or never existed).
+	reg := New()
+	reg.SetMemorialPreviewSkips("does-not-exist", []MemorialSkipDetail{
+		{Row: 1, MemorialID: "M-1", Name: "n", Reason: "r"},
+	})
+	// No panic, no jobs, no broadcast — the test passes if we
+	// reach this line. (Snapshot broadcast is a no-op on the
+	// missing path; the test just guards the panic-free
+	// behaviour the handler relies on.)
+}
+
+func TestSetMemorialPreviewSkipsBroadcastsSnapshot(t *testing.T) {
+	// The preview skips must be visible to the polling
+	// /jobs/{id}/status handler. The broadcaster fires on
+	// every set; the subscriber sees the latest snapshot.
+	reg := New()
+	id, release, _ := reg.StartManual("memorial_import", "Awaiting confirmation", func(ctx context.Context, p *Progress) error {
+		return nil
+	})
+	defer func() { _ = release() }()
+	updates := reg.Subscribe(id)
+	defer reg.Unsubscribe(id, updates)
+	// Drain the initial queued snapshot so the channel
+	// only carries the SetMemorialPreviewSkips broadcast.
+	<-updates
+	reg.SetMemorialPreviewSkips(id, []MemorialSkipDetail{{Row: 1, MemorialID: "M-1", Name: "n", Reason: "r"}})
+	select {
+	case snap := <-updates:
+		if len(snap.MemorialPreviewSkips) != 1 {
+			t.Errorf("broadcast snap MemorialPreviewSkips len = %d, want 1", len(snap.MemorialPreviewSkips))
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for SetMemorialPreviewSkips broadcast")
+	}
+}
+
 func TestSetResultRecordsPayloadAndPromotesPath(t *testing.T) {
 	reg := New()
 	id := reg.Start("json_export", func(ctx context.Context, p *Progress) error { return nil })
