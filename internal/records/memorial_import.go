@@ -31,10 +31,18 @@ var ErrMemorialFormatMismatch = errors.New("memorial archive format mismatch")
 
 // MemorialImportIssue is a records-layer type used by the matching service.
 type MemorialImportIssue struct {
-	Row        int
-	MemorialID string
-	Name       string
-	Error      string
+	Row        int    `json:"row"`
+	MemorialID string `json:"memorial_id"`
+	Name       string `json:"name"`
+	Error      string `json:"error"`
+}
+
+// MemorialImportSkip identifies one row omitted from import and why.
+type MemorialImportSkip struct {
+	Row        int    `json:"row"`
+	MemorialID string `json:"memorial_id"`
+	Name       string `json:"name"`
+	Reason     string `json:"reason"`
 }
 
 // MemorialImportFormat captures the version metadata the FindAGrave
@@ -61,6 +69,7 @@ type MemorialImportPreview struct {
 	WouldSkip   int
 	WouldFail   int
 	Issues      []MemorialImportIssue
+	Skips       []MemorialImportSkip
 }
 
 // MemorialImportSummary is a records-layer type used by the matching service.
@@ -75,6 +84,7 @@ type MemorialImportSummary struct {
 	Skipped              int
 	Failed               int
 	Issues               []MemorialImportIssue
+	Skips                []MemorialImportSkip
 }
 
 type memorialArchiveEntry struct {
@@ -121,6 +131,7 @@ func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPrev
 		memorialID := strings.TrimSpace(mapped.Records[0].AppID)
 		if _, duplicateInFile := seen[memorialID]; duplicateInFile {
 			preview.WouldSkip++
+			preview.Skips = append(preview.Skips, memorialImportSkip(row, entry, "duplicate memorial ID in import file"))
 			continue
 		}
 		exists, existsErr := s.memorialRepo.MemorialIDExists(context.Background(), conn, memorialID)
@@ -131,6 +142,7 @@ func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPrev
 		}
 		if exists {
 			preview.WouldSkip++
+			preview.Skips = append(preview.Skips, memorialImportSkip(row, entry, "memorial ID already exists in Local Archive"))
 			continue
 		}
 		seen[memorialID] = struct{}{}
@@ -174,6 +186,7 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 		memorialID := strings.TrimSpace(mapped.Records[0].AppID)
 		if _, duplicateInFile := seen[memorialID]; duplicateInFile {
 			summary.Skipped++
+			summary.Skips = append(summary.Skips, memorialImportSkip(row, entry, "duplicate memorial ID in import file"))
 			continue
 		}
 		exists, existsErr := s.memorialRepo.MemorialIDExists(context.Background(), conn, memorialID)
@@ -184,6 +197,7 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 		}
 		if exists {
 			summary.Skipped++
+			summary.Skips = append(summary.Skips, memorialImportSkip(row, entry, "memorial ID already exists in Local Archive"))
 			continue
 		}
 		// Issue #377 slice 2: stamp the import path so future
@@ -234,9 +248,9 @@ func loadMemorialArchive(path string) ([]memorialArchiveEntry, MemorialImportFor
 	// known envelope field; on failure, fall back to bare-array
 	// decoding for pre-v1 backward compat.
 	var envelope struct {
-		FormatVersion string             `json:"format_version"`
-		ScriptVersion string             `json:"script_version"`
-		ScriptName    string             `json:"script_name"`
+		FormatVersion string                 `json:"format_version"`
+		ScriptVersion string                 `json:"script_version"`
+		ScriptName    string                 `json:"script_name"`
 		Entries       []memorialArchiveEntry `json:"entries"`
 	}
 	if err := json.Unmarshal(data, &envelope); err == nil && envelope.FormatVersion != "" {
@@ -418,6 +432,15 @@ func importIssue(row int, entry memorialArchiveEntry, err error) MemorialImportI
 		MemorialID: strings.TrimSpace(entry.MemorialID),
 		Name:       strings.TrimSpace(entry.Name),
 		Error:      strings.TrimSpace(err.Error()),
+	}
+}
+
+func memorialImportSkip(row int, entry memorialArchiveEntry, reason string) MemorialImportSkip {
+	return MemorialImportSkip{
+		Row:        row,
+		MemorialID: strings.TrimSpace(entry.MemorialID),
+		Name:       strings.TrimSpace(entry.Name),
+		Reason:     reason,
 	}
 }
 

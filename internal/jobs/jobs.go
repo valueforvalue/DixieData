@@ -39,12 +39,12 @@ import (
 
 // Status values.
 const (
-	StatusQueued       = "queued"
-	StatusRunning      = "running"
-	StatusDone         = "done"
-	StatusError        = "error"
-	StatusCancelled    = "cancelled"
-	StatusInterrupted  = "interrupted"
+	StatusQueued      = "queued"
+	StatusRunning     = "running"
+	StatusDone        = "done"
+	StatusError       = "error"
+	StatusCancelled   = "cancelled"
+	StatusInterrupted = "interrupted"
 )
 
 // SilentKinds enumerates job kinds that MUST NOT surface in the
@@ -58,12 +58,12 @@ const (
 // page (/jobs/{id}) already serves as the landing.
 //
 // Add a kind here only when:
-//   1. The worker's destination page (always /jobs/{id}) is
-//      self-sufficient — the user does not need the popup
-//      to remember where they were going.
-//   2. The artifact (if any) does not preview well in a new
-//      tab, so the popup's "Open result" button would be a
-//      dead end.
+//  1. The worker's destination page (always /jobs/{id}) is
+//     self-sufficient — the user does not need the popup
+//     to remember where they were going.
+//  2. The artifact (if any) does not preview well in a new
+//     tab, so the popup's "Open result" button would be a
+//     dead end.
 var SilentKinds = map[string]struct{}{
 	"static_archive": {},
 }
@@ -97,21 +97,21 @@ func KindLabel(kind string) string {
 // not write to this struct directly; it should use the Progress receiver
 // passed to the worker function.
 type Job struct {
-	ID                    string
-	Kind                  string
-	Status                string
-	Progress              int
-	Message               string
-	StartedAt             time.Time
-	FinishedAt            time.Time
-	Error                 string
-	ResultPath            string
-	Result                JobResult
-	AwaitingConfirmation  bool // true when StartManual registered this job; /jobs/{id} renders a Confirm/Cancel card
-	mu                    sync.Mutex
-	cancelled             bool
-	cancelCause           context.CancelFunc
-	registry              *Registry// set at registration so Progress can broadcast
+	ID                   string
+	Kind                 string
+	Status               string
+	Progress             int
+	Message              string
+	StartedAt            time.Time
+	FinishedAt           time.Time
+	Error                string
+	ResultPath           string
+	Result               JobResult
+	AwaitingConfirmation bool // true when StartManual registered this job; /jobs/{id} renders a Confirm/Cancel card
+	mu                   sync.Mutex
+	cancelled            bool
+	cancelCause          context.CancelFunc
+	registry             *Registry // set at registration so Progress can broadcast
 }
 
 // JobResult is the worker-supplied completion payload. Populated
@@ -133,6 +133,14 @@ type Job struct {
 // Fields default to zero; Summary() renders a stat line only
 // when the corresponding field is > 0 (or true for MigrationRan),
 // so legacy kinds that don't fill the struct are unaffected.
+// MemorialSkipDetail is the job-layer representation of one skipped memorial row.
+type MemorialSkipDetail struct {
+	Row        int    `json:"row"`
+	MemorialID string `json:"memorial_id"`
+	Name       string `json:"name"`
+	Reason     string `json:"reason"`
+}
+
 type JobResult struct {
 	// Path is promoted to Job.ResultPath on SetResult so the
 	// /jobs/{id}/artifact endpoint still streams the saved file
@@ -162,7 +170,8 @@ type JobResult struct {
 	SourcesImported int
 
 	// Memorial JSON import counts (preview-then-confirm flow).
-	Failed int // Memorial records that could not be imported
+	Failed        int // Memorial records that could not be imported
+	MemorialSkips []MemorialSkipDetail
 
 	// Backup restore (replace semantics, not merge).
 	ReplacedRecords int
@@ -217,14 +226,14 @@ type JobResult struct {
 // cleanly because encoding/json handles nil pointers as
 // `null` and rehydrates the absence on read.
 type StaticArchiveResult struct {
-	PersonRecords   int // Total Person Records exported (soldier + wife/widow + linked_person)
-	SpouseRecords   int // Of the Person Records, the spouse (wife/widow) subset
-	LinkedPeople    int // Of the Person Records, the linked_person subset
-	Events          int // Event Records included in archive_data.js
-	Articles        int // Articles included in archive_data.js
-	PersonImages    int // Person Record image files copied into images/
-	SourceRecords   int // Source Records (claims + findings) attached to Person Records
-	DistinctTags    int // Distinct tag names referenced by any exported Person Record
+	PersonRecords int // Total Person Records exported (soldier + wife/widow + linked_person)
+	SpouseRecords int // Of the Person Records, the spouse (wife/widow) subset
+	LinkedPeople  int // Of the Person Records, the linked_person subset
+	Events        int // Event Records included in archive_data.js
+	Articles      int // Articles included in archive_data.js
+	PersonImages  int // Person Record image files copied into images/
+	SourceRecords int // Source Records (claims + findings) attached to Person Records
+	DistinctTags  int // Distinct tag names referenced by any exported Person Record
 	// Issue #498 slice 5: extra per-page counts surfaced on the
 	// /jobs/{id} summary card so the user sees the Calendar + Insights
 	// page contents alongside the per-record counts.
@@ -471,22 +480,22 @@ type Registry struct {
 	// /jobs/{id}/stream SSE handler can push updates in real time.
 	// Slow subscribers are dropped (non-blocking send) so a wedged
 	// client cannot back up the worker.
-	subMu        sync.Mutex
-	subscribers  map[string]map[chan Job]struct{}
+	subMu       sync.Mutex
+	subscribers map[string]map[chan Job]struct{}
 }
 
 // persistedSnapshot is the on-disk shape of a job record. Stable across
 // releases; do not rename fields without a migration.
 type persistedSnapshot struct {
-	ID          string    `json:"id"`
-	Kind        string    `json:"kind"`
-	Status      string    `json:"status"`
-	Progress    int       `json:"progress"`
-	Message     string    `json:"message,omitempty"`
-	StartedAt   time.Time `json:"started_at,omitempty"`
-	FinishedAt  time.Time `json:"finished_at,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	ResultPath  string    `json:"result_path,omitempty"`
+	ID         string    `json:"id"`
+	Kind       string    `json:"kind"`
+	Status     string    `json:"status"`
+	Progress   int       `json:"progress"`
+	Message    string    `json:"message,omitempty"`
+	StartedAt  time.Time `json:"started_at,omitempty"`
+	FinishedAt time.Time `json:"finished_at,omitempty"`
+	Error      string    `json:"error,omitempty"`
+	ResultPath string    `json:"result_path,omitempty"`
 	// Result is omitempty so older log files (written before
 	// stats landed) parse cleanly. NewFromLog drops the field
 	// when absent; live jobs always carry a zero JobResult.
@@ -639,12 +648,12 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 	job.mu.Unlock()
 
 	// Acquire a worker slot before launching the goroutine. If the pool
-// is saturated the semaphore blocks until another worker exits, so
-// the job stays in StatusQueued (set at registration) until then.
-// workerWG.Add must land BEFORE the goroutine is spawned so a
-// concurrent Shutdown() can never observe WaitGroup counter == 0
-// followed by a fresh Add (which Go's sync runtime rejects with
-// 'WaitGroup is reused before previous Wait has returned').
+	// is saturated the semaphore blocks until another worker exits, so
+	// the job stays in StatusQueued (set at registration) until then.
+	// workerWG.Add must land BEFORE the goroutine is spawned so a
+	// concurrent Shutdown() can never observe WaitGroup counter == 0
+	// followed by a fresh Add (which Go's sync runtime rejects with
+	// 'WaitGroup is reused before previous Wait has returned').
 	r.workerWG.Add(1)
 	go func() {
 		defer r.workerWG.Done()
@@ -931,7 +940,7 @@ func (r *Registry) RecentJobs(n int) []Job {
 // returns ErrNotFound when no such job exists, ErrAlreadyTerminal when
 // the job is already done / errored / cancelled.
 var (
-	ErrNotFound       = errors.New("job not found")
+	ErrNotFound        = errors.New("job not found")
 	ErrAlreadyTerminal = errors.New("job is already in a terminal state")
 )
 
@@ -1101,6 +1110,9 @@ func appendMemorialImportStats(lines []string, r JobResult) []string {
 	if r.Added > 0 || r.Skipped > 0 || r.Failed > 0 {
 		lines = append(lines, fmt.Sprintf("Person records: %d added, %d skipped, %d failed",
 			r.Added, r.Skipped, r.Failed))
+	}
+	for _, skip := range r.MemorialSkips {
+		lines = append(lines, fmt.Sprintf("Skipped row %d: %s (%s) — %s", skip.Row, skip.Name, skip.MemorialID, skip.Reason))
 	}
 	if r.ImagesImported > 0 {
 		lines = append(lines, fmt.Sprintf("Images imported: %d", r.ImagesImported))

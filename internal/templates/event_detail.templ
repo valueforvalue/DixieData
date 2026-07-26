@@ -92,12 +92,6 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">Linked Person Records</p>
 						<div class="flex items-center gap-3">
 							<span class="text-xs text-slate-500">{ fmt.Sprintf("%d linked", len(linked)) }</span>
-							<button
-								type="button"
-								data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/edit", event.ID)) }
-								data-dixie-submit="true"
-								class="ghost-link"
-							>Edit Event</button>
 						</div>
 					</div>
 					if len(linked) == 0 {

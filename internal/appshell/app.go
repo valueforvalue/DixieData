@@ -18,24 +18,24 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"sync/atomic"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/archive"
-	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/config"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -44,9 +44,9 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
 	"github.com/valueforvalue/DixieData/internal/templates"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
-	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/update"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -69,11 +69,11 @@ type App struct {
 	// from config.json at startup (issues #636-#639). Missing
 	// file → Defaults(). Read-only after Startup; handlers
 	// read from a.cfg.*, not from hard-coded constants.
-	cfg                     config.Config
-	ctx                     context.Context
-	database                *db.DB
-	soldiers                *records.SoldierService
-	anniversary             *records.AnniversaryService
+	cfg         config.Config
+	ctx         context.Context
+	database    *db.DB
+	soldiers    *records.SoldierService
+	anniversary *records.AnniversaryService
 	// v60 (issue #320): Event Record service. Wired in
 	// reloadServices() alongside soldiers (it borrows the same
 	// database handle). Handlers route Event-only operations
@@ -82,40 +82,40 @@ type App struct {
 	// Issue #343 finding #4: facade interfaces deleted; the App
 	// holds the concrete service types directly per the
 	// two-adapter rule (interfaces live at the consumer).
-	events                  *records.EventService
+	events *records.EventService
 	// v62 (issue #321): Article Record service. Wired in
 	// reloadServices() alongside soldiers + events. The slice-1
 	// surface is minimal (Create + GetByID); the facade debate
 	// (#343 candidate #4) deliberately deferred, so Article
 	// stays direct for v1.
-	articles                *records.ArticleService
-	calendar                *records.CalendarService
-	analytics               *records.AnalyticsService
-	audit                   *records.AuditService
-	exportTemplates         *records.ExportTemplateService
-	shareQueuePresets       *records.ShareQueuePresetService
-	tags                    *records.TagService
-	archiveMeta             *records.ArchiveMetaService
-	images                  *archive.ImageService
-	export                  *archive.ExportService
-	backup                  *archive.BackupService
-	diagnostics             *archive.DiagnosticsService
-	google                  *integrations.GoogleService
-	updater                 *update.Service
-	restorePoints           *update.RestorePointManager
-	quotes                  []models.Quote
-	mux                     http.Handler
-	muxRaw                  *http.ServeMux
-	saveFileDialogOverride       func(opts any) (string, error)
-	openFileDialogOverride       func(opts any) (string, error)
+	articles                        *records.ArticleService
+	calendar                        *records.CalendarService
+	analytics                       *records.AnalyticsService
+	audit                           *records.AuditService
+	exportTemplates                 *records.ExportTemplateService
+	shareQueuePresets               *records.ShareQueuePresetService
+	tags                            *records.TagService
+	archiveMeta                     *records.ArchiveMetaService
+	images                          *archive.ImageService
+	export                          *archive.ExportService
+	backup                          *archive.BackupService
+	diagnostics                     *archive.DiagnosticsService
+	google                          *integrations.GoogleService
+	updater                         *update.Service
+	restorePoints                   *update.RestorePointManager
+	quotes                          []models.Quote
+	mux                             http.Handler
+	muxRaw                          *http.ServeMux
+	saveFileDialogOverride          func(opts any) (string, error)
+	openFileDialogOverride          func(opts any) (string, error)
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
-	openDirectoryDialogOverride func(opts any) (string, error)
-	browserOpenURLOverride      func(rawURL string) error
-	manualCallbacks             sync.Map // map[string]*manualCallbackEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs
-	startupErr              error
-	setupRequired           bool
-	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
-	theme                   atomic.Value // string; resolved theme name (default/high-contrast/soft). Issue #474.
+	openDirectoryDialogOverride     func(opts any) (string, error)
+	browserOpenURLOverride          func(rawURL string) error
+	manualCallbacks                 sync.Map // map[string]*manualCallbackEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs
+	startupErr                      error
+	setupRequired                   bool
+	debugMode                       atomic.Bool  // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
+	theme                           atomic.Value // string; resolved theme name (default/high-contrast/soft). Issue #474.
 	// exportSurface (issue #534) is the per-user preference for
 	// what to do after a successful export: "jobs-page" (the
 	// historical default -- navigate to /jobs/{id} via the
@@ -770,7 +770,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	}
 	defer release()
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFName(*soldier, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -815,7 +815,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 	}
 	defer release()
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFNameNoImages(*soldier),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -862,7 +862,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 	}
 	defer release()
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
 		DefaultFilename: soldierJPGName(*soldier, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "JPEG image", Pattern: "*.jpg"},
@@ -922,7 +922,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	}
 	defer release()
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -977,7 +977,7 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 	defer release()
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
 		DefaultFilename: imageScreenshotName(payload.FileName),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PNG image", Pattern: "*.png"},
@@ -1482,11 +1482,11 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		// (normalizeSoldierEntry) clears them defensively for
 		// non-Event rows so the row never lands in the database
 		// with stale data from a previous Event edit.
-		Kind:                  r.FormValue("kind"),
-		BeginDate:             beginDate,
-		EndDate:               endDate,
-		Description:           r.FormValue("description"),
-		Records:               parseRecordInputs(r),
+		Kind:        r.FormValue("kind"),
+		BeginDate:   beginDate,
+		EndDate:     endDate,
+		Description: r.FormValue("description"),
+		Records:     parseRecordInputs(r),
 	}, nil
 }
 
@@ -1915,7 +1915,7 @@ func parseRecordInputs(r *http.Request) []models.Record {
 }
 
 func writeMemorialImportErrorLog(summary records.MemorialImportSummary) (string, error) {
-	if len(summary.Issues) == 0 {
+	if len(summary.Issues) == 0 && len(summary.Skips) == 0 {
 		return "", nil
 	}
 	file, err := os.CreateTemp("", "dixiedata-memorial-import-*.log")
@@ -1923,6 +1923,11 @@ func writeMemorialImportErrorLog(summary records.MemorialImportSummary) (string,
 		return "", err
 	}
 	defer debug.DeferCloseLog(file, "writeMemorialImportErrorLog.file")
+	for _, skip := range summary.Skips {
+		if _, err := fmt.Fprintf(file, "row=%d memorial_id=%q name=%q skipped_reason=%q\n", skip.Row, skip.MemorialID, skip.Name, skip.Reason); err != nil {
+			return "", err
+		}
+	}
 	for _, issue := range summary.Issues {
 		_, err := fmt.Fprintf(file, "row=%d memorial_id=%q name=%q error=%q\n", issue.Row, issue.MemorialID, issue.Name, issue.Error)
 		if err != nil {
@@ -2887,7 +2892,7 @@ func (a *articleRegistryAdapter) RenderArticle(ctx context.Context, recordType, 
 		return errors.New("articleRegistryAdapter: nil registry")
 	}
 	settings := render.PrintSettings{
-		Orientation:          orientation,
+		Orientation: orientation,
 		SingleRecordTemplate: recordType + "_" + func() string {
 			if orientation == "P" {
 				return "portrait"
@@ -2913,7 +2918,7 @@ func (a *eventRegistryAdapter) RenderEvent(ctx context.Context, recordType, orie
 		return errors.New("eventRegistryAdapter: nil registry")
 	}
 	settings := render.PrintSettings{
-		Orientation:          orientation,
+		Orientation: orientation,
 		SingleRecordTemplate: recordType + "_" + func() string {
 			if orientation == "P" {
 				return "portrait"

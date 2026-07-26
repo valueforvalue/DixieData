@@ -526,17 +526,17 @@ func previewSharedArchive(from string, opts ImportOptions) (int, error) {
 	}
 	if opts.JSON {
 		out := map[string]any{
-			"dry_run":       true,
-			"kind":          "shared-archive",
-			"from":          from,
-			"soldiers":      manifest.Soldiers,
-			"records":       manifest.Records,
-			"images":        manifest.Images,
-			"format":        manifest.Format,
-			"version":       manifest.Version,
-			"data_format":   manifest.DataFormat,
+			"dry_run":        true,
+			"kind":           "shared-archive",
+			"from":           from,
+			"soldiers":       manifest.Soldiers,
+			"records":        manifest.Records,
+			"images":         manifest.Images,
+			"format":         manifest.Format,
+			"version":        manifest.Version,
+			"data_format":    manifest.DataFormat,
 			"schema_version": manifest.SchemaVersion,
-			"owner_name":    manifest.OwnerName,
+			"owner_name":     manifest.OwnerName,
 		}
 		_ = json.NewEncoder(opts.Writer).Encode(out)
 		return 0, nil
@@ -598,11 +598,11 @@ func runImportImages(ctx context.Context, a *App, opts ImportOptions) (int, erro
 	}
 	if opts.JSON {
 		out := map[string]any{
-			"kind":      "images",
-			"soldier":   soldier.DisplayID,
+			"kind":       "images",
+			"soldier":    soldier.DisplayID,
 			"soldier_id": soldier.ID,
-			"imported":  imported,
-			"requested": len(opts.FromPaths),
+			"imported":   imported,
+			"requested":  len(opts.FromPaths),
 		}
 		if err != nil {
 			out["warning"] = err.Error()
@@ -652,16 +652,17 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 		}
 		if opts.JSON {
 			_ = json.NewEncoder(opts.Writer).Encode(map[string]any{
-				"dry_run":     true,
-				"kind":        "memorial-json",
-				"from":        from,
-				"format":      preview.Format,
-				"warnings":    preview.Warnings,
-				"total_rows":  preview.TotalRows,
+				"dry_run":      true,
+				"kind":         "memorial-json",
+				"from":         from,
+				"format":       preview.Format,
+				"warnings":     preview.Warnings,
+				"total_rows":   preview.TotalRows,
 				"would_create": preview.WouldCreate,
-				"would_skip":  preview.WouldSkip,
-				"would_fail":  preview.WouldFail,
-				"issues":      preview.Issues,
+				"would_skip":   preview.WouldSkip,
+				"would_fail":   preview.WouldFail,
+				"issues":       preview.Issues,
+				"skips":        preview.Skips,
 			})
 			return 0, nil
 		}
@@ -694,17 +695,18 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 	// the log payload.
 	if opts.JSON {
 		_ = json.NewEncoder(opts.Writer).Encode(map[string]any{
-			"kind":                     "memorial-json",
-			"from":                     from,
-			"format":                   summary.Format,
-			"imported_by_app_version":  summary.ImportedByAppVersion,
-			"warnings":                 summary.Warnings,
-			"total_rows":               summary.TotalRows,
-			"created":                  summary.Created,
-			"skipped":                  summary.Skipped,
-			"failed":                   summary.Failed,
-			"batch_id":                 summary.BatchID,
-			"issues":                   summary.Issues,
+			"kind":                    "memorial-json",
+			"from":                    from,
+			"format":                  summary.Format,
+			"imported_by_app_version": summary.ImportedByAppVersion,
+			"warnings":                summary.Warnings,
+			"total_rows":              summary.TotalRows,
+			"created":                 summary.Created,
+			"skipped":                 summary.Skipped,
+			"failed":                  summary.Failed,
+			"batch_id":                summary.BatchID,
+			"issues":                  summary.Issues,
+			"skips":                   summary.Skips,
 		})
 		return 0, nil
 	}
@@ -719,6 +721,12 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 	}
 	for _, w := range summary.Warnings {
 		fmt.Fprintf(opts.Writer, "  ⚠ %s\n", w)
+	}
+	if summary.Skipped > 0 {
+		fmt.Fprintln(opts.Writer, "  skipped entries:")
+		for _, skip := range summary.Skips {
+			fmt.Fprintf(opts.Writer, "    row=%d memorial_id=%q name=%q reason=%q\n", skip.Row, skip.MemorialID, skip.Name, skip.Reason)
+		}
 	}
 	if summary.Failed > 0 {
 		fmt.Fprintf(opts.Writer, "  see issues in the import log (batch_id=%s)\n", summary.BatchID)

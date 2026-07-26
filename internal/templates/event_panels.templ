@@ -234,13 +234,9 @@ templ EventLinksListFragment(eventID int64, linked []viewmodel.PersonRecord) {
 }
 
 // EventSectionPanel renders one section on the Event detail
-// page with the standard header (title + count + Edit Event
-// CTA) and a body wrapper div carrying the literal id the JS
-// dispatcher swaps into. Extracted from event_detail.templ to
-// pin the Sources + Tags panel shape in one place (issue #343
-// finding #2).
+// page with the standard section header and body wrapper div.
+// The page-level Edit Event link is the single edit entry point.
 //
-// Parameters:
 //   - title:    the uppercase-tracking section label
 //     (e.g. "Source Records", "Tags").
 //   - count:    the integer that follows the section label
@@ -274,12 +270,6 @@ templ EventSectionPanel(
 			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--theme-accent-strong)]">{ title }</p>
 			<div class="flex items-center gap-3">
 				<span class="text-xs text-slate-500">{ fmt.Sprintf("%d %s", count, countFmt) }</span>
-				<button
-					type="button"
-					data-action={ templ.SafeURL(fmt.Sprintf("/events/%s/edit", eventID)) }
-					data-dixie-submit="true"
-					class="ghost-link"
-				>Edit Event</button>
 			</div>
 		</div>
 		<div id={ panelID }>

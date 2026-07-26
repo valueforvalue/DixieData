@@ -1,25 +1,5 @@
-// Characterization tests for EventSectionPanel (issue #343
-// finding #2). The component extracts the near-identical
-// Sources + Tags panel scaffolding from event_detail.templ —
-// a <section> wrapper, a header row (title + count + optional
-// Edit Event CTA), and a body wrapper div carrying the literal
-// id that the JS dispatcher swaps into.
-//
-// The component MUST produce byte-identical HTML for both
-// panels so the existing appshell/events_handlers_test.go pin
-// (id="data-event-sources-list" + id="data-event-tags-list" +
-// data-action="/events/{id}/edit") stays green. RED-then-GREEN:
-// write the assertions first against the new component
-// signature (which does not exist yet), confirm RED, implement
-// the component, confirm GREEN.
-//
-// The extracted shape covers the Sources + Tags pair (the
-// issue's literal scope). Linked Persons + Images stay inline
-// for now — they each have asymmetric structure (Linked Persons
-// has no body wrapper; Images has no Edit CTA + a tail import
-// form) and would need either a wider param set or a follow-up
-// slice. Documented in the issue's "apply opportunistically"
-// recommendation.
+// Regression tests for EventSectionPanel. Panel headers show counts
+// and body content; page-level Edit Event link is the only edit entry point.
 package templates
 
 import (
@@ -78,18 +58,8 @@ func TestEventSectionPanelSourcesShape(t *testing.T) {
 		t.Errorf("EventSectionPanel missing count %q; got %q", wantCount, got)
 	}
 
-	// Edit Event CTA — must point at /events/{id}/edit so the
-	// existing appshell/events_handlers_test.go editHref pin
-	// keeps passing on the full detail page.
-	wantEdit := `data-action="/events/` + eventID + `/edit"`
-	if !strings.Contains(got, wantEdit) {
-		t.Errorf("EventSectionPanel missing Edit Event CTA %q; got %q", wantEdit, got)
-	}
-	if !strings.Contains(got, "ghost-link") {
-		t.Errorf("EventSectionPanel Edit Event CTA must use ghost-link class; got %q", got)
-	}
-	if !strings.Contains(got, "Edit Event") {
-		t.Errorf("EventSectionPanel Edit Event CTA label missing; got %q", got)
+	if strings.Contains(got, `data-action="/events/`+eventID+`/edit"`) || strings.Contains(got, "Edit Event") {
+		t.Errorf("EventSectionPanel renders duplicate Edit Event action; got %q", got)
 	}
 
 	// Body wrapper — must carry the literal id (NOT a uiid
@@ -142,8 +112,8 @@ func TestEventSectionPanelTagsShape(t *testing.T) {
 	if !strings.Contains(got, ">2 attached</span>") {
 		t.Errorf("EventSectionPanel missing Tags count; got %q", got)
 	}
-	if !strings.Contains(got, `data-action="/events/`+eventID+`/edit"`) {
-		t.Errorf("EventSectionPanel missing Tags Edit Event CTA; got %q", got)
+	if strings.Contains(got, `data-action="/events/`+eventID+`/edit"`) || strings.Contains(got, "Edit Event") {
+		t.Errorf("Tags panel must not render duplicate Edit Event action; got %q", got)
 	}
 	if !strings.Contains(got, `id="`+panelID+`"`) {
 		t.Errorf("EventSectionPanel missing Tags body wrapper id; got %q", got)

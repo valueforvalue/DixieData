@@ -234,9 +234,6 @@ func TestHandleEventByIDGetDetail_SourcesPanelEditCTA(t *testing.T) {
 	if !strings.Contains(body, fmt.Sprintf(`data-action="%s"`, editHref)) {
 		t.Errorf("GET /events/%d body missing %q CTA", created.ID, editHref)
 	}
-	if !strings.Contains(body, "Edit Event") {
-		t.Errorf("GET /events/%d body missing 'Edit Event' label", created.ID)
-	}
 }
 
 // TestHandleEventByIDDelete removes an event and verifies

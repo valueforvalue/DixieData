@@ -329,10 +329,11 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 		}
 		p.Set(100, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed. Log: %s", import_summary.Created, import_summary.Skipped, import_summary.Failed, logPath))
 		a.jobs.SetResult(id, jobs.JobResult{
-			Added:   import_summary.Created,
-			Skipped: import_summary.Skipped,
-			Failed:  import_summary.Failed,
-			LogPath: logPath,
+			Added:         import_summary.Created,
+			Skipped:       import_summary.Skipped,
+			Failed:        import_summary.Failed,
+			LogPath:       logPath,
+			MemorialSkips: memorialSkipDetails(import_summary.Skips),
 		})
 		return nil
 	})
@@ -343,4 +344,12 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	writeExportRedirect(w, "/jobs/"+id)
 }
 
-
+func memorialSkipDetails(skips []records.MemorialImportSkip) []jobs.MemorialSkipDetail {
+	details := make([]jobs.MemorialSkipDetail, 0, len(skips))
+	for _, skip := range skips {
+		details = append(details, jobs.MemorialSkipDetail{
+			Row: skip.Row, MemorialID: skip.MemorialID, Name: skip.Name, Reason: skip.Reason,
+		})
+	}
+	return details
+}
