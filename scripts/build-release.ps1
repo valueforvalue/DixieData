@@ -18,8 +18,15 @@ if ($Archive) {
     $releaseDir = Join-Path $root "release"
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
     $appVersion = Get-DixieDataAppVersion -Root $root
+    $releaseTag = ""
+    if (-not [string]::IsNullOrWhiteSpace($LDFlags)) {
+        $tagMatch = [regex]::Match($LDFlags, 'CurrentReleaseTag=([^\s"]+)')
+        if ($tagMatch.Success) {
+            $releaseTag = "-" + $tagMatch.Groups[1].Value
+        }
+    }
 
-    $archivePath = Join-Path $releaseDir ("DixieData-release-{0}.zip" -f $appVersion)
+    $archivePath = Join-Path $releaseDir ("DixieData-release-{0}{1}.zip" -f $appVersion, $releaseTag)
     if (Test-Path $archivePath) {
         Remove-Item $archivePath -Force
     }
