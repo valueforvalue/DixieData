@@ -68,6 +68,7 @@
 #set page(
   paper: "us-letter",
   margin: (x: 1.5cm, y: 2cm),
+  fill: rgb("#F4F4F4"),
   header: [#text(size: 9pt, fill: luma(120))[#archive-title]],
   footer: [#context [#text(size: 7pt, fill: luma(120))[#footer-text #h(0.4em) #emph[#codename] #h(1fr) #a.at("created_at", default: "") #h(1fr) Page #counter(page).display("1")]]],
 )

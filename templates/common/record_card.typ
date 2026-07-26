@@ -574,6 +574,12 @@
     margin: margins,
     header: header-content,
     footer: footer-content,
+    // Light gray page fill — less harsh than pure white
+    // for all exported PDFs. The fill shows through the
+    // body as a subtle tint so printed pages still read
+    // as white stock but screen viewing is easier on the
+    // eyes.
+    fill: rgb("#F4F4F4"),
   )
 }
 

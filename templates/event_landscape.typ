@@ -70,6 +70,7 @@
 }
 
 #set page(
+  fill: rgb("#F4F4F4"),
   paper: "us-letter",
   margin: (
     top: 0.75in, bottom: 0.75in, left: 0.75in, right: 0.75in,
