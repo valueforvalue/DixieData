@@ -59,10 +59,10 @@ run:
     pwsh -NoLogo -NoProfile -File scripts/run-debug.ps1
 
 release:
-    pwsh -NoLogo -NoProfile -File scripts/build-release.ps1
+    pwsh -NoLogo -NoProfile -Command "if ($env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 }"
 
 archive:
-    pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive
+    pwsh -NoLogo -NoProfile -Command "if ($env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive }"
 
 demo:
     pwsh -NoLogo -NoProfile -File scripts/build-demo-release.ps1
@@ -229,3 +229,20 @@ probe-clean:
 
 contract-test:
     node --test audit/just_contract.test.mjs
+
+# RC cohort manifest publisher (issue #654). Generates the
+# manifest entry for a newly-built RC zip. Operator pastes
+# the output into the dixiedata-rc-manifest repo's
+# manifest.json and commits. After this lands in the
+# manifest repo, the cohort's updater (pointed at the
+# manifest URL via update_source_url) sees the new RC.
+#
+# Usage:
+#   just rc-publish TAG=rc1 ZIP=build/bin/DixieData-release-v1.1.4-rc1.zip
+#
+# Reads the zip's SHA256 (requires `sha256sum` on PATH;
+# Windows users can install via the standard GNU coreutils
+# package or run `certutil -hashfile ZIP SHA256` and pass
+# the result via SHA256=... instead).
+rc-publish TAG='rc1' ZIP='':
+    pwsh -NoLogo -NoProfile -Command "$tag = '{{TAG}}'; $zip = '{{ZIP}}'; if (-not (Test-Path $zip)) { throw \"zip not found: $zip\" }; $sha = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); $ver = $zip | Select-String -Pattern 'DixieData-release-v(.+?)\.zip' | ForEach-Object { $_.Matches[0].Groups[1].Value }; if (-not $ver) { throw \"could not extract version from zip path $zip\" }; $asset = \"https://github.com/valueforvalue/DixieData/releases/download/v$ver/DixieData-release-$ver.zip\"; $now = (Get-Date).ToUniversalTime().ToString('o'); $manifest = @{ version = $ver; asset_url = $asset; sha256 = $sha; release_notes = \"$ver — see DixieData CHANGELOG.md for the commits since the previous RC.\"; published_at = $now } | ConvertTo-Json -Depth 4; Write-Host '--- paste this into dixiedata-rc-manifest/manifest.json ---'; Write-Host $manifest; Write-Host '--- end ---'; Write-Host ''; Write-Host \"Next: edit tmp/manifest-repo/manifest.json in the manifest repo, then commit + push.\""

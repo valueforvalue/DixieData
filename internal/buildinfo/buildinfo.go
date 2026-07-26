@@ -155,6 +155,20 @@ var (
 	SchemaVersion = versioninfo.CurrentSchemaVersion
 )
 
+// AppVersionFull returns AppVersion with the optional
+// pre-release suffix appended (e.g. "1.1.4-rc1"). Chrome
+// surfaces (AppLabel, footer, window title) read this; the
+// bare AppVersion stays canonical for the updater's numeric
+// comparison + every `app_version` field in BackupManifest /
+// .ddbak / gold-master portable output. Function (not var)
+// so a build-time `-ldflags "-X .../versioninfo.CurrentReleaseTag=rc1"`
+// injection is observed by every chrome read at call time, not
+// at package init. See versioninfo.CurrentReleaseTag for the
+// injection contract.
+func AppVersionFull() string {
+	return versioninfo.AppVersionFull()
+}
+
 // GitCommit is the git SHA the binary was built from. Set by the
 // build pipeline (scripts/build-common.ps1 Invoke-DixieDataBuild).
 // Empty in dev builds; the user sees "commit dev" in the
@@ -173,11 +187,14 @@ var BuildTimestamp = ""
 var GitBranch = "dev"
 
 // AppLabel returns the human-readable name + version string for
-// UI banners and CLI headers: "DixieData v1.1.55". Stable shape;
-// the UI's title bar, the CLI's `--version` output, and the
-// diagnostics bundle header all use this.
+// UI banners and CLI headers: "DixieData v1.1.4" (stable) or
+// "DixieData v1.1.4-rc1" (RC build). Stable shape; the UI's
+// title bar, the CLI's `--version` output, and the diagnostics
+// bundle header all use this. Reads from AppVersionFull so a
+// build with -ldflags "-X .../versioninfo.CurrentReleaseTag=rc1" picks up
+// the suffix across every chrome surface in one change.
 func AppLabel() string {
-	return AppName + " v" + AppVersion
+	return AppName + " v" + AppVersionFull()
 }
 
 // BuildIdentity returns a short description of the binary's

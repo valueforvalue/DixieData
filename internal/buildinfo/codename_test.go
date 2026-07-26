@@ -87,3 +87,35 @@ func TestDisclosureSentenceWrapsCombined(t *testing.T) {
 		t.Errorf("DisclosureSentence() = %q; want %q", got, "("+CombinedVersionString()+")")
 	}
 }
+
+// TestAppLabelUsesAppVersionFull pins the chrome contract for
+// the pre-release tag (RC workflow). The default build (no
+// -ldflags injection) must produce "DixieData v1.1.4" (no
+// suffix) so stable builds look identical to before. When the
+// build script injects a -SetReleaseTag (via
+// -ldflags "...versioninfo.CurrentReleaseTag=rc1"), AppLabel() must
+// include the suffix so the footer / window title / CLI banner
+// all read "DixieData v1.1.4-rc1". AppVersion (the canonical
+// numeric) must NOT carry the suffix — the updater's
+// versionFromString regex strips it and the manifest
+// comparison is numeric.
+func TestAppLabelUsesAppVersionFull(t *testing.T) {
+	savedTag := versioninfo.CurrentReleaseTag
+	defer func() { versioninfo.CurrentReleaseTag = savedTag }()
+
+	versioninfo.CurrentReleaseTag = ""
+	if got, want := AppLabel(), "DixieData v"+versioninfo.AppVersion(); got != want {
+		t.Errorf("AppLabel() with empty tag = %q; want %q (stable build, no suffix)", got, want)
+	}
+
+	versioninfo.CurrentReleaseTag = "rc1"
+	want := "DixieData v" + versioninfo.AppVersion() + "-rc1"
+	if got := AppLabel(); got != want {
+		t.Errorf("AppLabel() with rc1 tag = %q; want %q (RC build, suffix present)", got, want)
+	}
+
+	versioninfo.CurrentReleaseTag = "rc1"
+	if got := AppVersion; strings.Contains(got, "-") {
+		t.Errorf("AppVersion = %q; must not contain the -rc1 suffix (canonical numeric only)", got)
+	}
+}

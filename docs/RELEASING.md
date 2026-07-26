@@ -184,3 +184,78 @@ The Makefile and scripts are convenience wrappers; the underlying convention is 
 - [ADR 0008 — Promotion protocol](adr/0008-promotion-protocol.md) — the `just promote` gate chain for `dev → main`, including the cadence-driven promotion story that the v{MAJOR}.{U}.{N} split enables.
 - [ADR 0007 — In-place update safety](adr/0007-in-place-update-safety.md) — the four rules that gate the in-place update flow.
 - [`internal/versioninfo/versioninfo.go`](../internal/versioninfo/versioninfo.go) — the source-of-truth for all three counters.
+
+## RC cut workflow (issue #654)
+
+When the maintainer wants to ship a pre-release to a testing cohort (the "RC cohort") without disrupting users on the stable channel, use the pre-release tag + manifest workflow. The cohort's updater is pointed at a hosted JSON manifest; default users keep the `stable` source (`/releases/latest`).
+
+### Why a manifest, not a GitHub release tag
+
+The default updater URL is `https://api.github.com/repos/valueforvalue/DixieData/releases/latest`. That endpoint returns the latest **published** (non-draft) release regardless of tag name. A pre-release tag like `v1.1.4-rc1` published as a GitHub release is technically "pre-release" but the `/releases/latest` endpoint filters out pre-releases by default — so default users would not see it, but the cohort would need a different URL.
+
+Two design choices were considered (issue #654):
+
+1. **Per-RC release URL on GitHub** — cohort points at `/releases/tags/v1.1.4-rc1`. The URL changes with every RC; the operator must communicate the new URL to the cohort each time. Simple, but not "easy" — not what we want.
+2. **Hosted manifest** (chosen) — cohort points at a single stable URL that returns the current RC. Operator bumps the manifest on each RC. The cohort's updater polls the same URL forever; the manifest is the only thing that changes.
+
+The manifest lives in a separate repo: [`valueforvalue/dixiedata-rc-manifest`](https://github.com/valueforvalue/dixiedata-rc-manifest). Single file: `manifest.json`. Shape:
+
+```json
+{
+  "version": "1.1.4-rc1",
+  "asset_url": "https://github.com/valueforvalue/DixieData/releases/download/v1.1.4-rc1/DixieData-release-v1.1.4-rc1.zip",
+  "sha256": "<hex>",
+  "release_notes": "RC1 — see CHANGELOG.",
+  "published_at": "2026-07-26T00:00:00Z"
+}
+```
+
+The DixieData updater's manifest parser (`internal/update/updater.go::manifestReleaseFromJSON`) accepts this shape verbatim.
+
+### Version parsing contract
+
+The updater's `versionFromString` regex captures only the 3 numeric segments:
+
+```
+(?i)v?(\d+)\.(\d+)\.(\d+)
+```
+
+A manifest advertising `1.1.4-rc1` parses to `1.1.4`; a stable release at `1.1.4` also parses to `1.1.4`. The numeric comparison is a no-op for the cohort's flow — what matters is the **string** of the version field, which differs between `-rc1` and `-rc2`. The updater checks the raw `version` field for "is this a different release?" and only then runs the numeric comparison as a guard against the "tag is exactly equal" case.
+
+This means: **the cohort can move from rc1 → rc2 → rc3 via in-place update even though the numeric version is the same**, because the raw version string differs. Test in `internal/update/updater_test.go::TestVersionFromStringStripsPreReleaseSuffix`.
+
+### RC cut steps (operator)
+
+From the DixieData repo root, on `dev`:
+
+1. **Tag the RC** — `git tag v1.1.4-rc1 && git push origin v1.1.4-rc1`
+2. **Build the RC zip with the pre-release tag**:
+   ```bash
+   DIXIEDATA_RELEASE_TAG=rc1 just archive
+   # or, via PowerShell:
+   pwsh -File scripts/build-release.ps1 -Archive -LDFlags "-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=rc1"
+   ```
+   The build script prints the invocation if you forget the shape — `pwsh -File scripts/bump-version.ps1 -SetReleaseTag -ReleaseTag rc1` prints the same.
+3. **Upload the zip** — `gh release create v1.1.4-rc1 build/bin/DixieData-release-v1.1.4-rc1.zip --draft --title "v1.1.4-rc1" --notes "RC1 — first pre-release cut from dev"`. Use `--draft` while you verify, then `gh release edit v1.1.4-rc1 --draft=false` when ready.
+4. **Generate the manifest entry** — `just rc-publish TAG=rc1 ZIP=build/bin/DixieData-release-v1.1.4-rc1.zip` prints the JSON to paste into the manifest repo's `manifest.json`.
+5. **Commit + push the manifest** — in the `dixiedata-rc-manifest` repo, edit `manifest.json` (paste the generated entry) and `git commit -m "rc1" && git push`.
+6. **Announce to the cohort** — tell the cohort to set `update_source_url` (Settings → Updates) to `https://raw.githubusercontent.com/valueforvalue/dixiedata-rc-manifest/main/manifest.json` if they haven't already, then check for updates.
+
+For subsequent RCs (rc2, rc3, ...) with patches: repeat steps 1-5 with the new tag. The cohort's updater picks up the new manifest on its next poll; no per-user action needed beyond "check for updates."
+
+### Promoting RC → stable
+
+When the cohort is satisfied and the maintainer is ready to ship stable:
+
+1. **Build the stable zip** (no pre-release tag):
+   ```bash
+   just archive
+   # or
+   pwsh -File scripts/build-release.ps1 -Archive
+   ```
+2. **Publish as the new stable release** — `gh release create v1.1.4 build/bin/DixieData-release-v1.1.4.zip --title "v1.1.4" --notes "..."`. This is the new `/releases/latest`; default users see the update.
+3. **Optional: update the manifest to point at the stable release** so the cohort's `update_source_url` keeps working without a per-machine flip. Or, instruct the cohort to flip their `update_source_url` back to default.
+
+### Manifest repo bootstrap
+
+The manifest repo (`dixiedata-rc-manifest`) is created once and lives at `valueforvalue/dixiedata-rc-manifest`. A starter `manifest.json` + `README.md` ship under DixieData's `tmp/manifest-repo/` for the maintainer to copy in at repo-creation time. See `tmp/manifest-repo/README.md` for the full operator-side instructions that ship with the manifest repo.

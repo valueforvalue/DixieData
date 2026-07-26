@@ -587,7 +587,8 @@ function Invoke-DixieDataBuild {
         [string]$Root,
         [string[]]$WailsArguments = @("build", "-clean", "-trimpath"),
         [switch]$AllowExampleOAuthDefaults,
-        [switch]$DebugBuild
+        [switch]$DebugBuild,
+        [string]$ExtraLDFlags = ""
     )
 
     $preservedOAuth = Save-DixieDataOAuthDefaults -Root $Root
@@ -625,6 +626,13 @@ function Invoke-DixieDataBuild {
         # The Go runtime symbol table is intact in both modes,
         # so `dlv attach $PID` works against any build.
         $buildLdFlags = "-X github.com/valueforvalue/DixieData/internal/buildinfo.GitCommit=$gitCommit -X github.com/valueforvalue/DixieData/internal/buildinfo.GitBranch=$gitBranch -X github.com/valueforvalue/DixieData/internal/buildinfo.BuildTimestamp=$buildTimestamp"
+        # RC cohort workflow: -ExtraLDFlags lets the caller inject
+        # extra -X var=value pairs (e.g. CurrentReleaseTag=rc1) so
+        # the same source tree can produce a stable zip OR an RC
+        # zip. Forwarded to `wails build -ldflags` below.
+        if (-not [string]::IsNullOrWhiteSpace($ExtraLDFlags)) {
+            $buildLdFlags = "$buildLdFlags $ExtraLDFlags"
+        }
         $effectiveWailsArguments = @($WailsArguments)
         if ($DebugBuild) {
             # Strip -trimpath from the caller-supplied args; the

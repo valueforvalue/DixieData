@@ -270,3 +270,49 @@ func TestSnapshotInstalledBuildSkipsDataDir(t *testing.T) {
 		t.Fatalf("data dir should be excluded, err = %v", err)
 	}
 }
+
+// TestVersionFromStringStripsPreReleaseSuffix pins the RC cohort
+// workflow contract (issue #654). The updater's versionFromString
+// regex captures only the 3 numeric segments; the pre-release
+// suffix (-rc1, -rc2, -beta1, etc.) is dropped before the
+// numeric comparison. This lets a manifest advertising
+// "1.1.4-rc1" install on a user running 1.1.4 (the cohort
+// opt-in path) while keeping the chrome string
+// "DixieData v1.1.4-rc1" intact on the same binary.
+func TestVersionFromStringStripsPreReleaseSuffix(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"1.1.4", "1.1.4"},
+		{"v1.1.4", "1.1.4"},
+		{"1.1.4-rc1", "1.1.4"},
+		{"1.1.4-rc2", "1.1.4"},
+		{"1.1.4-beta1", "1.1.4"},
+		{"v1.1.4-rc1", "1.1.4"},
+	}
+	for _, c := range cases {
+		got, err := versionFromString(c.in)
+		if err != nil {
+			t.Errorf("versionFromString(%q) returned error: %v", c.in, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("versionFromString(%q) = %q; want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// TestVersionFromStringRejectsFourthSegment pins the negative
+// case. A four-segment version like "1.2.3.4" must be rejected
+// (the existing guard at internal/update/updater.go's
+// versionFromString), not silently truncated to "1.2.3".
+// This is the contract that protects the cohort from a typo
+// in the manifest's version field.
+func TestVersionFromStringRejectsFourthSegment(t *testing.T) {
+	for _, in := range []string{"1.2.3.4", "v1.2.3.4", "1.2.3.4-rc1"} {
+		if _, err := versionFromString(in); err == nil {
+			t.Errorf("versionFromString(%q) should have errored (fourth segment not allowed)", in)
+		}
+	}
+}

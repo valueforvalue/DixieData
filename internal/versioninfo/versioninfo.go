@@ -41,6 +41,40 @@ const CurrentSchemaVersion = 68
 // RELEASING.md, ArchiveManifest field, footer display.
 const CurrentUpdateFlowVersion = 1
 
+// CurrentReleaseTag is the optional pre-release suffix
+// appended to AppVersion in chrome (footer, window title, CLI,
+// settings/build panel). Empty for stable releases; "-rc1",
+// "-rc2", etc. for the RC cohort's pre-release cuts. The
+// updater's versionFromString regex strips the suffix before
+// comparing (the regex only captures 3 numeric segments), so
+// the numeric comparison is unaffected — a cohort on
+// 1.1.4-rc1 sees a manifest advertising 1.1.4-rc2 as
+// "different enough" because the version string is different,
+// but the comparison happens on 1.1.4 vs 1.1.4 (same) — see
+// the cohort's manifest-host workflow (dixiedata-rc-manifest)
+// for how the cohort actually receives new RCs.
+//
+// The default "" matches a stable release. Set at build time
+// via -ldflags (scripts/build-common.ps1) when packaging an
+// RC zip: `-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=rc1`
+// yields AppVersionFull() == "1.1.4-rc1". The Chrome surfaces
+// read this via buildinfo.AppVersionFull() / AppLabel().
+var CurrentReleaseTag = ""
+
+// AppVersionFull returns AppVersion with the optional
+// pre-release suffix appended: "1.1.4" when CurrentReleaseTag
+// is empty, "1.1.4-rc1" when CurrentReleaseTag is "rc1". This
+// is the string chrome surfaces display; the bare AppVersion
+// stays canonical for the updater's version comparison + every
+// `app_version` field in BackupManifest / .ddbak / gold-master
+// portable output.
+func AppVersionFull() string {
+	if CurrentReleaseTag == "" {
+		return AppVersion()
+	}
+	return AppVersion() + "-" + CurrentReleaseTag
+}
+
 // AppVersion returns the human-facing release version string.
 // Shape: v{MAJOR}.{U}.{N} where N is the release counter
 // (every release bumps N; not tied 1:1 to CurrentSchemaVersion

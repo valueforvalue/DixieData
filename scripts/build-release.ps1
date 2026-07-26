@@ -1,5 +1,6 @@
 param(
-    [switch]$Archive
+    [switch]$Archive,
+    [string]$LDFlags = ""
 )
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -8,7 +9,7 @@ $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Get-DixieDataRoot -StartPath $scriptRoot
 
 Set-DixieDataBuildLocation -Root $root
-Invoke-DixieDataBuild -Root $root -AllowExampleOAuthDefaults
+Invoke-DixieDataBuild -Root $root -AllowExampleOAuthDefaults -ExtraLDFlags $LDFlags
 
 $binDir = Get-DixieDataBuildBinDir -Root $root
 Write-Host "Release build ready:" (Join-Path $binDir "DixieData.exe")

@@ -69,6 +69,24 @@
     patterns. If present and CurrentSchemaVersion is unchanged,
     fail with a drift message. CI use.
 
+.PARAMETER SetReleaseTag
+    Print the -ldflags + build invocation needed to bake a
+    pre-release tag (e.g. "rc1", "rc2") into the chrome. Does
+    NOT edit versioninfo.go — the tag is injected at build
+    time so the same source tree produces a stable zip OR an
+    RC zip. See the RC cohort workflow in docs/RELEASING.md.
+
+.PARAMETER ReleaseTag
+    Pre-release tag string (used with -SetReleaseTag). Letters
+    and digits only, no leading hyphen (e.g. "rc1", "beta2").
+    The script appends the hyphen when composing the chrome
+    string ("DixieData v1.1.4-rc1").
+
+.PARAMETER ClearReleaseTag
+    Print the stable build invocation (no -ldflags). Companion
+    to -SetReleaseTag. Use when promoting an RC cohort's
+    tested code to the stable channel.
+
 .EXAMPLE
     pwsh -File scripts/bump-version.ps1
     # CurrentSchemaVersion 54 -> 55
@@ -77,6 +95,13 @@
 .EXAMPLE
     pwsh -File scripts/bump-version.ps1 -BumpRelease
     # CurrentAppVersionInt +1; nothing else
+
+.EXAMPLE
+    pwsh -File scripts/bump-version.ps1 -SetReleaseTag -ReleaseTag rc1
+    # Prints the -ldflags invocation to bake the rc1 tag into the chrome.
+    # Does not edit versioninfo.go. The bare AppVersion stays 1.1.4; the
+    # chrome renders "DixieData v1.1.4-rc1".
+    # Pair with `pwsh -File scripts/build-release.ps1 -LDFlags "..."`.
 #>
 
 [CmdletBinding()]
@@ -86,6 +111,9 @@ param(
     [switch]$BumpRelease,
     [switch]$BumpCodename,
     [string]$Codename,
+    [switch]$SetReleaseTag,
+    [string]$ReleaseTag,
+    [switch]$ClearReleaseTag,
     [switch]$Force,
     [switch]$VerifyOnly,
     [switch]$DetectDrift
@@ -104,8 +132,10 @@ if ($BumpSchema) { $explicitBumps += 'Schema' }
 if ($BumpUpdateFlow) { $explicitBumps += 'UpdateFlow' }
 if ($BumpRelease) { $explicitBumps += 'Release' }
 if ($BumpCodename) { $explicitBumps += 'Codename' }
+if ($SetReleaseTag) { $explicitBumps += 'SetReleaseTag' }
+if ($ClearReleaseTag) { $explicitBumps += 'ClearReleaseTag' }
 if ($explicitBumps.Count -gt 1) {
-    throw "Pass only one of -BumpSchema, -BumpUpdateFlow, -BumpRelease, -BumpCodename. Got: $($explicitBumps -join ', ')"
+    throw "Pass only one of -BumpSchema, -BumpUpdateFlow, -BumpRelease, -BumpCodename, -SetReleaseTag, -ClearReleaseTag. Got: $($explicitBumps -join ', ')"
 }
 if ($explicitBumps.Count -eq 0) {
     $bumpKind = 'Schema'
@@ -281,10 +311,15 @@ if ($DetectDrift) {
     exit 0
 }
 
-# Refuse if working tree has uncommitted changes touching versioninfo.go
-$gitStatus = & git status --porcelain $versionInfoPath 2>$null
-if ($gitStatus) {
-    throw "versioninfo.go has uncommitted changes. Commit or stash before bumping."
+# Refuse if working tree has uncommitted changes touching versioninfo.go.
+# Print-only modes (SetReleaseTag, ClearReleaseTag) don't mutate the file
+# and skip this guard so the operator can preview the build invocation
+# while other commits are pending.
+if ($bumpKind -in @('Schema', 'UpdateFlow', 'Release', 'Codename')) {
+    $gitStatus = & git status --porcelain $versionInfoPath 2>$null
+    if ($gitStatus) {
+        throw "versioninfo.go has uncommitted changes. Commit or stash before bumping."
+    }
 }
 
 switch ($bumpKind) {
@@ -418,5 +453,66 @@ switch ($bumpKind) {
         Write-Host "  2. Run the test suite (make test-quiet) — versioninfo tests pin the codename."
         Write-Host "  3. git add internal/versioninfo/versioninfo.go"
         Write-Host "  4. git commit -m 'Bump release codename to $name'"
+    }
+    'SetReleaseTag' {
+        # Print the -ldflags + build invocation the operator
+        # needs to bake the pre-release tag into the RC zip.
+        # Does NOT edit versioninfo.go — the tag is injected at
+        # build time so the same source tree can produce both
+        # a stable zip (no tag) and an RC zip (tag baked in).
+        # The chrome contract: buildinfo.AppLabel() returns
+        # "DixieData v1.1.4-rc1" when CurrentReleaseTag is set;
+        # the bare AppVersion stays canonical (used by the
+        # updater's numeric comparison + every .ddbak / portable
+        # output emit site).
+        $tag = $ReleaseTag
+        if (-not $tag) {
+            $tag = Read-Host 'Release tag (e.g. rc1, rc2, beta1; no leading hyphen)'
+        }
+        if ($tag -match '^-') {
+            throw "Release tag '$tag' must not start with a hyphen — the script appends the hyphen itself."
+        }
+        if ($tag -match '[^A-Za-z0-9]') {
+            throw "Release tag '$tag' contains a forbidden character. Use letters and digits only (e.g. rc1, beta2)."
+        }
+        if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "Release tag cannot be empty; use -ClearReleaseTag to remove the suffix."
+        }
+        $ldflag = "-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=$tag"
+        $appVersion = "1.$currentUpdateFlow.$currentRelease-$tag"
+        Write-Host ""
+        Write-Host "Release tag: $tag" -ForegroundColor Green
+        Write-Host "App version (chrome): DixieData v$appVersion"
+        Write-Host "App version (canonical numeric, for manifest + .ddbak): 1.$currentUpdateFlow.$currentRelease"
+        Write-Host ""
+        Write-Host "Bake it in:" -ForegroundColor Cyan
+        Write-Host "  pwsh -File scripts/build-release.ps1 -LDFlags '$ldflag'"
+        Write-Host ""
+        Write-Host "Or via the justfile (issue #642):"
+        Write-Host "  DIXIEDATA_RELEASE_TAG=$tag just release"
+        Write-Host "  DIXIEDATA_RELEASE_TAG=$tag just archive"
+        Write-Host ""
+        Write-Host "Next steps (per the RC cohort workflow):" -ForegroundColor Cyan
+        Write-Host "  1. Build the RC zip with the -LDFlags above."
+        Write-Host "  2. Tag dev as v$appVersion + push (the tag is the same as the chrome string)."
+        Write-Host "  3. Update the dixiedata-rc-manifest repo's manifest.json with the new zip URL + sha256."
+        Write-Host "  4. The cohort's updater (pointed at the manifest URL via update_source_url) sees the new RC."
+        Write-Host "  5. When ready to ship stable, run with -ClearReleaseTag (no suffix) and tag v1.$currentUpdateFlow.$currentRelease as the stable release."
+    }
+    'ClearReleaseTag' {
+        # Companion to -SetReleaseTag. Prints the stable build
+        # invocation (no -ldflags injection) so the operator can
+        # rebuild + ship the same source tree as a stable release.
+        Write-Host ""
+        Write-Host "Release tag: <cleared>" -ForegroundColor Green
+        Write-Host "App version: DixieData v1.$currentUpdateFlow.$currentRelease"
+        Write-Host ""
+        Write-Host "Bake it in:" -ForegroundColor Cyan
+        Write-Host "  pwsh -File scripts/build-release.ps1"
+        Write-Host "  # (no -LDFlags needed; CurrentReleaseTag defaults to empty)"
+        Write-Host ""
+        Write-Host "Or via the justfile:"
+        Write-Host "  just release"
+        Write-Host "  just archive"
     }
 }
