@@ -113,7 +113,7 @@ func AppRelease() int {
 // manifest can advertise 1.1.5-rc1, making the updater's
 // compareVersions see Newer=true against the installed 1.1.4
 // binary (issue #658).
-var CurrentAppVersionInt = 26
+var CurrentAppVersionInt = 27
 
 // AppVersionForSchema composes an AppVersion-like string using
 // the historical formula (v1.2.{schema}). Kept for callers

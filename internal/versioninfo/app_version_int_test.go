@@ -27,8 +27,8 @@ func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
 	// accounts for the documented post-2026-07-03 release
 	// work — the #544 + #566 feedback chain, the #561
 	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 26 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 26 (debug mode checkbox alignment fix, rebuild)", CurrentAppVersionInt)
+	if CurrentAppVersionInt != 27 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 27 (remove flex from debug mode label)", CurrentAppVersionInt)
 	}
 }
 
