@@ -2157,16 +2157,18 @@ func (a *App) reloadServices() error {
 	// configured version + build identity instead of a
 	// bare "Made with DixieData". The template key names
 	// must match what article_portrait.typ reads (footer_text +
-	// codename).
+	// codename). Format matches the soldier PDF footer:
+	//   Made with DixieData | v1.2.21 · {commit} · {timestamp} {archive_title}
 	short := buildinfo.GitCommit
 	if len(short) > 7 {
 		short = short[:7]
 	}
-	codename := fmt.Sprintf("v%d.%d.%d · %s",
+	codename := fmt.Sprintf("v%d.%d.%d · %s · %s",
 		versioninfo.CurrentSchemaVersion,
 		versioninfo.CurrentUpdateFlowVersion,
 		versioninfo.AppRelease(),
 		short,
+		buildinfo.BuildTimestamp,
 	)
 	a.articles.SetBranding(map[string]string{
 		"footer_text": "Made with DixieData",

@@ -302,7 +302,21 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		}
 	case *ast.ListItem:
 		if entering {
-			s.out.WriteString("- ")
+			// Issue #673: ordered lists (inside #enum) must
+			// NOT emit the "- " prefix. typst's #enum handles
+			// numbering; the extra dash creates a stray bullet
+			// character alongside the number. Unordered lists
+			// keep the "- " prefix (the #list wrapper uses it).
+			parent := n.Parent()
+			ordered := false
+			if parent != nil {
+				if listParent, ok := parent.(*ast.List); ok {
+					ordered = listParent.IsOrdered()
+				}
+			}
+			if !ordered {
+				s.out.WriteString("- ")
+			}
 		} else {
 			s.out.WriteString("\n")
 		}

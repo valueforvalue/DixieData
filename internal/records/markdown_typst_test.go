@@ -110,7 +110,8 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 		{
 			name:     "ordered list renders as typst #enum(numbering: '1.')",
 			source:   "1. a\n2. b",
-			mustHave: []string{"#enum(", `numbering: "1."`, "- a", "- b"},
+			mustHave: []string{"#enum(", `numbering: "1."`, "a", "b"},
+			mustNot:  []string{"- a", "- b"},
 		},
 		{
 			// Issue #433: PDF body list markers rendered as
