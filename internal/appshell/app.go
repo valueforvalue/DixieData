@@ -2163,10 +2163,8 @@ func (a *App) reloadServices() error {
 	if len(short) > 7 {
 		short = short[:7]
 	}
-	codename := fmt.Sprintf("v%d.%d.%d · %s · %s",
-		versioninfo.CurrentSchemaVersion,
-		versioninfo.CurrentUpdateFlowVersion,
-		versioninfo.AppRelease(),
+	codename := fmt.Sprintf("v%s · %s · %s",
+		versioninfo.AppVersion(),
 		short,
 		buildinfo.BuildTimestamp,
 	)
