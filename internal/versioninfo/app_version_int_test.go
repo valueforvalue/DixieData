@@ -27,8 +27,8 @@ func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
 	// accounts for the documented post-2026-07-03 release
 	// work — the #544 + #566 feedback chain, the #561
 	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 24 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 24 (RC1 Wails relative-form-action fix, issue #674)", CurrentAppVersionInt)
+	if CurrentAppVersionInt != 25 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 25 (debug mode checkbox alignment fix)", CurrentAppVersionInt)
 	}
 }
 
