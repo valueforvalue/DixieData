@@ -59,10 +59,10 @@ run:
     pwsh -NoLogo -NoProfile -File scripts/run-debug.ps1
 
 release:
-    pwsh -NoLogo -NoProfile -Command "if ($env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 }"
+    pwsh -NoLogo -NoProfile -Command "if (\$env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=\$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 }"
 
 archive:
-    pwsh -NoLogo -NoProfile -Command "if ($env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive }"
+    pwsh -NoLogo -NoProfile -Command "if (\$env:DIXIEDATA_RELEASE_TAG) { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive -LDFlags \"-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=\$env:DIXIEDATA_RELEASE_TAG\" } else { & pwsh -NoLogo -NoProfile -File scripts/build-release.ps1 -Archive }"
 
 demo:
     pwsh -NoLogo -NoProfile -File scripts/build-demo-release.ps1
