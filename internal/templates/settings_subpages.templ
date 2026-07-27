@@ -164,7 +164,7 @@ templ SettingsDataPanel(confirmationWord string) {
 			<h3 class="text-xl gold font-bold">Initialize Local Archive</h3>
 			<p class="mt-2 text-sm text-slate-600">Replaces the database with a fresh copy; image files are kept.</p>
 		</div>
-		<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } method="post" data-dixie-submit="true" class="space-y-4">
+		<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } method="post" data-dixie-submit="true" data-reload-on-success="true" class="space-y-4">
 			<label class="block text-sm text-slate-700">
 				Type <code class="font-mono">{ confirmationWord }</code> to confirm.
 				<input type="text" name="confirmation_word" autocomplete="off" required aria-required="true" class="field-input mt-2" />
@@ -183,7 +183,7 @@ templ SettingsDiagnosticsPanel(debugEnabled bool) {
 			<h3 class="text-xl gold font-bold">Debug Mode</h3>
 			<p class="mt-2 text-sm text-slate-600">Per-user; turning it off hides both surfaces on next navigation.</p>
 		</div>
-		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" class="space-y-4">
+		<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } method="post" data-dixie-submit="true" data-reload-on-success="true" class="space-y-4">
 			<label class="text-sm">
 				<input type="checkbox" name="debug_mode" value="on" class="field-input mr-1" if debugEnabled { checked } />
 				<span>Enable debug mode</span>
