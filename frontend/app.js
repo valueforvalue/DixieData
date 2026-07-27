@@ -5231,8 +5231,9 @@ async function dispatchDixieDataForm(button) {
         && fetchOptions.method !== "HEAD"
         && fetchOptions.method !== "POST"
         && typeof requestUrl === "string"
-        && (requestUrl.indexOf("wails.localhost") >= 0
+        && ((requestUrl.indexOf("wails.localhost") >= 0
           || requestUrl.indexOf("://wails.") >= 0)
+          || (typeof window !== "undefined" && window.location && window.location.hostname === "wails.localhost"))
       ) {
         fetchOptions.headers = Object.assign({}, fetchOptions.headers, {
           "X-HTTP-Method-Override": String(fetchOptions.method).toUpperCase(),
@@ -5257,7 +5258,8 @@ async function dispatchDixieDataForm(button) {
         && fetchOptions.body instanceof FormData
         && typeof URLSearchParams !== "undefined"
         && typeof requestUrl === "string"
-        && requestUrl.indexOf("wails.localhost") >= 0
+        && (requestUrl.indexOf("wails.localhost") >= 0
+          || (typeof window !== "undefined" && window.location && window.location.hostname === "wails.localhost"))
       ) {
         try {
           const params = new URLSearchParams();
