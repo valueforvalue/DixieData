@@ -978,6 +978,46 @@ done
 
 ---
 
+### 3.8 `form.action` IDL shadowed by named controls (#571) — correlated Wails gate regression (#428/#674)
+
+**Symptom:** Forms with PATCH/PUT/DELETE method produce a
+`"Position must be a positive integer"` validation toast (or
+similar 400 errors) in the Wails desktop build, but work fine in
+the audit harness (plain Chromium). The Wails-PATCH and
+Wails-FormData workarounds in `dispatchDixieDataForm` never fire.
+
+**Why it happens:** The HTML IDL `form.action` is shadowed when
+a form contains a named control called `action` — the IDL returns
+the DOM node, not the URL string. Switching to
+`form.getAttribute('action')` fixes the shadowing but returns a
+*relative* path (`/soldiers/42/sources/5/position`) instead of the
+absolute URL (`http://wails.localhost:34115/...`) that `form.action`
+resolves. The Wails-runtime gate (`requestUrl.indexOf("wails.localhost")`)
+only matches absolute URLs — so the workarounds silently stop firing
+for every form with a relative `action` attribute.
+
+**Find it:**
+```bash
+grep -n 'form\.action\b' frontend/app.js
+# Any use of form.action (not getAttribute) in dispatcher is risky
+```
+
+**Fix:** Keep `getAttribute('action')` (shadow-proof). Add a
+`window.location.hostname === "wails.localhost"` fallback to both
+Wails runtime gates so relative form actions still trigger the
+workarounds.
+
+**Real examples:**
+- `8f955ea2 dispatcher: defend form.action IDL RadioNodeList quirk (fixes #571)` — replaced `form.action` with `getAttribute('action')`, unknowingly breaking the Wails-PATCH gate
+- `f330b323 fix(frontend): Wails-PATCH gate misses relative form actions (#674)` — restored the Wails gate via `window.location.hostname` fallback
+
+**Checklist when touching `dispatchDixieDataForm`:**
+1. Is `form.action` used anywhere? If yes, does the form have `name="action"` controls?
+2. Does the Wails-runtime gate check both `requestUrl` AND `window.location.hostname`?
+3. Run `node audit/dispatcher_patch_method.test.mjs` — all 7 assertions must pass
+
+---
+
 ### 3.6 [FUTURE-NAV-AVOID] Outside-click handler closes the panel the trigger just opened
 
 **Symptom:** First click on a top-nav foldout trigger (e.g.
