@@ -293,7 +293,7 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 				// glyph for the marker that bundled fonts
 				// (Liberation Sans etc.) lack, surfacing as
 				// U+FFFD in the PDF output.
-				s.out.WriteString(`#enum(numbering: "1.")[\n`)
+				s.out.WriteString("#enum(numbering: \"1.\")[\n")
 			} else {
 				s.out.WriteString("#list[\n")
 			}
