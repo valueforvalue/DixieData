@@ -75,13 +75,10 @@ test('frontend/app.js no longer reads method via form.method IDL', () => {
   );
 });
 
-test('dispatcher reads method via explicitMethod.toUpperCase()', () => {
-  // The fix: read via getAttribute and uppercase the attribute
-  // value, not the IDL. Pin the fix shape so a refactor that
-  // regresses to the IDL path is caught.
+test('dispatcher reads method via getAttribute not IDL', () => {
   assert.ok(
-    /explicitMethod\.toUpperCase\s*\(\s*\)/.test(src),
-    'expected "explicitMethod.toUpperCase()" in frontend/app.js — the #428 fix reads the method via the HTML attribute, not the IDL getter',
+    /getAttribute\(\s*['"]method['"]\s*\)/.test(src),
+    'expected method read via getAttribute("method") in frontend/app.js — the #428 fix reads the method via the HTML attribute, not the IDL getter',
   );
 });
 
@@ -157,8 +154,8 @@ test('dispatcher rewrites PATCH/PUT/DELETE to POST + X-HTTP-Method-Override insi
   // The Wails-PATCH block + FormData-to-URLSearchParams
   // conversion both live in the dispatcher. Widen the window
   // enough to reach both (the URLSearchParams block sits
-  // ~8500 chars after the function declaration).
-  const window = src.slice(dispatcherIdx, dispatcherIdx + 10000);
+  // over ~10000 chars to reach both workarounds.
+  const window = src.slice(dispatcherIdx, dispatcherIdx + 12000);
   assert.ok(
     /X-HTTP-Method-Override/.test(window),
     'dispatchDixieDataForm should set X-HTTP-Method-Override when the request is PATCH/PUT/DELETE and the URL is wails.localhost; otherwise Wails strips the body and the server returns 400',
@@ -178,6 +175,14 @@ test('dispatcher rewrites PATCH/PUT/DELETE to POST + X-HTTP-Method-Override insi
   assert.ok(
     /params\.toString\s*\(\s*\)/.test(window),
     'URLSearchParams must be serialized to a string before being assigned to fetchOptions.body',
+  );
+  // Issue #674: the wails.localhost gate originally only checked
+  // requestUrl, but that's a relative path for most forms (e.g.
+  // /soldiers/42/sources/5/position). The fallback to
+  // window.location.hostname catches relative-action forms.
+  assert.ok(
+    /window\.location\.hostname\s*===?\s*['"]wails\.localhost['"]/.test(window),
+    'Wails-PATCH + Wails-FormData gates should also check window.location.hostname; relative form actions (most forms) never carry wails.localhost in the path',
   );
 });
 

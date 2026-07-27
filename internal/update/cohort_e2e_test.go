@@ -69,7 +69,7 @@ func TestCohortManifestEndToEnd(t *testing.T) {
 	// the suffix; we assert the bare numeric is 1.1.5 (the
 	// cohort's base version). This catches a manifest
 	// published with a wrong-version typo.
-	if release.version != "1.1.23" {
-		t.Errorf("parsed version = %q; want %q (suffix should strip to base numeric)", release.version, "1.1.23")
+	if release.version != "1.1.24" {
+		t.Errorf("parsed version = %q; want %q (suffix should strip to base numeric)", release.version, "1.1.24")
 	}
 }
