@@ -9,6 +9,20 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
+## v1.1.32 - RC1 Method-Override Elimination
+
+### Fixed
+
+- **eliminated all `data-method` attributes from forms and buttons across the frontend**. The Wails desktop build's method-override mechanism (`X-HTTP-Method-Override` header + `r.Clone()` in lifecycle.go) was silently failing, causing every form and button that declared `data-method="DELETE"` or `data-method="PUT"` to either 405 or route to the wrong handler. All delete and update actions now use plain POST with dedicated routes — no method override, no Clone issue.
+  - Person Record edit save (was 405, now POST → `handleUpdateSoldier`)
+  - Person Record delete (was routing to update, now POST `/soldiers/{id}/delete`)
+  - Tag delete (was 405, now POST `/tags/{id}`)
+  - Article delete (was 405, now POST `/articles/{id}/delete`)
+  - Article refs detach (was 405, now POST `/articles/{id}/refs/{personId}`)
+  - Article snapshot delete (was 405, now POST `/articles/{id}/snapshot/{snapshotID}`)
+  - Event delete (was routing to update, now POST `/events/{id}/delete`)
+  - Anniversary item delete (was 405, now POST `/anniversary/{m}/{d}/items/{id}`)
+
 ## v1.1.31 - RC3 Patch Release
 
 - Force-clears the v1.1.30-rc2 Wails build cache (the previous RC shipped an embedded frontend identical to v1.1.29-rc1; only the linker-injected build stamps differed). RC3 rebuilds from scratch so the embedded frontend assets actually carry the dispatcher fixes from #676, #677, #678, and #680.

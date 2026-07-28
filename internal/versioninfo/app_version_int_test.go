@@ -33,14 +33,12 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// rc/v1.1 RC3: N=31 re-bumps after Wails cache reuse
-	// shipped a stale v1.1.30-rc2 binary identical to
-	// v1.1.29-rc1. The fresh build re-embeds the dispatcher
-	// fixes; the counter bump is the human signal that
-	// v1.1.30-rc2 must be retired and v1.1.31-rc3 is the new
-	// cohort install target.
-	if CurrentAppVersionInt != 31 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 31 (v1.1.31-rc3)", CurrentAppVersionInt)
+	// rc/v1.1 RC1: N=32 bumps after method-override elimination
+	// across all form/button delete and update paths. The previous
+	// RC3 (N=31) shipped with silently-broken save + delete buttons
+	// in the Wails desktop build due to data-method + Clone issues.
+	if CurrentAppVersionInt != 32 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 32 (v1.1.32-rc1)", CurrentAppVersionInt)
 	}
 }
 

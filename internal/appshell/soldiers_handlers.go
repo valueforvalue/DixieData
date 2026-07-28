@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -581,7 +582,7 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		if err := presentation.SoldierDetailWithCitedIn(*soldier, soldierTags, citedIn).Render(r.Context(), w); err != nil {
 			respondErrorFragment(w, r, KindInternal, "Could not render the person record detail page.", err)
 		}
-	case http.MethodPut:
+	case http.MethodPost, http.MethodPut:
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:
 		if err := a.soldiers.Delete(id); err != nil {
@@ -594,6 +595,25 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", 405)
 	}
+}
+
+// handleDeleteSoldierRoute handles POST /soldiers/{id}/delete — the
+// button-based delete path that avoids method-override in Wails.
+func (a *App) handleDeleteSoldierRoute(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id < 1 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := a.soldiers.Delete(id); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not delete person record %d.", id), err)
+		return
+	}
+	writeExportRedirect(w, "/soldiers")
 }
 
 func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64) {

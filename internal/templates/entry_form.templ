@@ -56,7 +56,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			if isEdit {
 				action={ fmt.Sprintf("/soldiers/%d", s.ID) }
 				method="post"
-				data-method="PUT"
 				data-dixie-submit="true"
 				data-draft-key={ draftKey(s, isEdit) }
 				data-draft-record-version={ draftRecordVersion(s, isEdit) }

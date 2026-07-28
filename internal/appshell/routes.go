@@ -71,6 +71,8 @@ func (a *App) setupRoutes() {
 	r.Get("/calendar/*", a.handleCalendarMonth)
 	r.Post("/calendar/*", a.handleCalendarMonth)
 	r.Get("/anniversary/*", a.handleAnniversary)
+	r.Post("/anniversary/*", a.handleAnniversary)
+	r.Delete("/anniversary/*", a.handleAnniversary)
 
 	r.Get("/soldiers", a.handleSoldiers)
 	r.Post("/soldiers", a.handleSoldiers)
@@ -102,6 +104,8 @@ func (a *App) setupRoutes() {
 	// doesn't apply here (this is an admin/recovery path,
 	// not a foldout entry).
 	r.Post("/soldiers/{id:[0-9]+}/display-id/recover", a.handleRecoverDisplayID)
+	// Soldier delete via POST (button-based, avoids method-override in Wails).
+	r.Post("/soldiers/{id:[0-9]+}/delete", a.handleDeleteSoldierRoute)
 	// Issue #368 slice 2: PATCH endpoint for reordering a
 	// Source Record within a Person Record. Top-level chi
 	// route (not a sub-dispatch in handleSoldierByID) so
@@ -134,6 +138,7 @@ func (a *App) setupRoutes() {
 	// (via hx-delete) to /articles/{id}/refs/{personId}.
 	// Idempotent detach so a UI double-click is a no-op.
 	r.Post("/articles/{id:[0-9]+}/refs", a.handleArticleRefsAttach)
+	r.Post("/articles/{id:[0-9]+}/refs/{personId:[0-9]+}", a.handleArticleRefsDetach)
 	r.Delete("/articles/{id:[0-9]+}/refs/{personId:[0-9]+}", a.handleArticleRefsDetach)
 	// v62 slice 2.5 (issue #321): snapshot lifecycle.
 	// POST /articles/{id}/snapshot creates a fresh row with
@@ -192,12 +197,13 @@ func (a *App) setupRoutes() {
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
-	// Issue #666: per-article DELETE. Same path as the
-	// detail/edit URL — the dispatcher differentiates by
-	// HTTP method (the form carries data-method="DELETE").
+	r.Post("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
+	// Issue #666: per-article DELETE. The form posts to
+	// /articles/{id}/delete without relying on method override.
 	// Mirrors /tags/{id} + /events/{id}. ArticleService.Delete
 	// (slice 4 of #613) cascade-deletes the article, its
 	// snapshots, and its refs in a single transaction.
+	r.Post("/articles/{id:[0-9]+}/delete", a.handleDeleteArticle)
 	r.Delete("/articles/{id:[0-9]+}", a.handleDeleteArticle)
 	// v60 (issue #320): Event Record routes. Registered
 	// before the /soldiers/* catch-all so the literal /events
@@ -216,6 +222,7 @@ func (a *App) setupRoutes() {
 	r.Post("/events/{id:[0-9]+}", a.handleEventByID)
 	r.Put("/events/{id:[0-9]+}", a.handleEventByID)
 	r.Delete("/events/{id:[0-9]+}", a.handleEventByID)
+	r.Post("/events/{id:[0-9]+}/delete", a.handleEventDeleteRoute)
 	// /events/{id}/edit dispatches to handleEditEvent via
 	// dedicated route shims; the handler reads the id from
 	// the URL path so the sub-path stays in one place.
@@ -396,6 +403,7 @@ func (a *App) setupRoutes() {
 	r.Get("/tags/{id:[0-9]+}", a.handleTagDetailPage)
 	r.Post("/tags/{id:[0-9]+}/rename", a.handleRenameTag)
 	r.Post("/tags/{id:[0-9]+}/merge", a.handleMergeTag)
+	r.Post("/tags/{id:[0-9]+}", a.handleDeleteTag)
 	r.Delete("/tags/{id:[0-9]+}", a.handleDeleteTag)
 	r.Patch("/share/export-options", a.handleShareExportOptions)
 	r.Post("/export/backup", a.handleExportBackup)

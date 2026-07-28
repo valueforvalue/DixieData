@@ -121,7 +121,6 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 								</button>
 								<button
 									data-action={ templ.SafeURL(routebuilder.AnniversaryItemDelete(day.Month, day.Day, item.ID)) }
-									data-method="DELETE"
 									data-confirm={ fmt.Sprintf("Delete '%s'? It will stop appearing on %s each year and any research-note link will be removed.", item.Title, calendarDayHeading(day.Month, day.Day)) }
 									data-dixie-submit="true"
 									class="danger-button px-3 py-2"

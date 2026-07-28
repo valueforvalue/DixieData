@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/jobs"
@@ -472,6 +473,10 @@ func (a *App) handleArticleRefsAttach(w http.ResponseWriter, r *http.Request) {
 // X-DixieData-Redirect back to the detail page so the JS
 // dispatcher can re-render the Refs panel.
 func (a *App) handleArticleRefsDetach(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/articles/")
 	parts := strings.SplitN(path, "/refs/", 2)
 	if len(parts) != 2 {
@@ -583,6 +588,10 @@ func (a *App) handleArticleRestore(w http.ResponseWriter, r *http.Request) {
 // to is untouched. Idempotent-on-not-found via 404 (not 200)
 // so a stale DELETE surfaces as not-found for the front end.
 func (a *App) handleArticleSnapshotDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/articles/")
 	parts := strings.SplitN(path, "/snapshot/", 2)
 	if len(parts) != 2 {
@@ -1004,11 +1013,11 @@ func slugifyTitle(title string) string {
 // header and navigates + shows the toast. Mirrors
 // handleDeleteTag (issue #666).
 func (a *App) handleDeleteArticle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	id, err := parseIntFromPath(r.URL.Path, "/articles/", "")
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil || id < 1 {
 		respondValidation(w, r, "Invalid article id.", err)
 		return

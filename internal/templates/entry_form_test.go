@@ -10,7 +10,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func TestEntryFormEditSubmitsAsPutThroughDispatcher(t *testing.T) {
+func TestEntryFormEditSubmitsAsPost(t *testing.T) {
 	var buf bytes.Buffer
 	if err := EntryForm(viewmodel.Soldier{ID: 497, DisplayID: "TDM65-00486"}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render edit form: %v", err)
@@ -22,10 +22,13 @@ func TestEntryFormEditSubmitsAsPutThroughDispatcher(t *testing.T) {
 		t.Fatal("edit form opening tag not found")
 	}
 	openingTag := content[formStart : formStart+formEnd+1]
-	for _, want := range []string{`action="/soldiers/497"`, `method="post"`, `data-method="PUT"`, `data-dixie-submit="true"`} {
+	for _, want := range []string{`action="/soldiers/497"`, `method="post"`, `data-dixie-submit="true"`} {
 		if !strings.Contains(openingTag, want) {
 			t.Errorf("edit form opening tag missing %s: %s", want, openingTag)
 		}
+	}
+	if strings.Contains(openingTag, `data-method=`) {
+		t.Errorf("edit form must not carry data-method attribute")
 	}
 }
 
