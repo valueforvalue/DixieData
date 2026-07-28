@@ -9,7 +9,11 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
-## [Unreleased]
+## v1.1.30 - RC2 Patch Release
+
+- Fixed RC/stable WebView2 browser-profile crossover by isolating RC browser storage per Local Archive.
+- Fixed Person Record edit submission, migrated Source Record ordering, and Windows JPG export resource cleanup.
+- RC2 package carries current `rc/v1.1` commit `bea85aa`.
 
 ### Added
 
