@@ -8,6 +8,13 @@
 // advertise 1.1.5-rc1, making compareVersions see Newer=true
 // against the installed 1.1.4 binary.
 //
+// RC cohort N progression on the rc/v1.1 branch:
+//   N=5  (2026-07-26, #658)     1.1.5-rc1
+//   N=25 (2026-07-27, #674)     1.1.25-rc1
+//   N=26 (2026-07-27, #674)     1.1.26-rc1
+//   N=28 (2026-07-27, #674)     1.1.28-rc2
+//   N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
+//
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
 // release-time PR (issue #578, ADR 0009 stable-promotion
@@ -23,12 +30,11 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// Catch-up value (issue #578 slice 1, 2026-07-14):
-	// accounts for the documented post-2026-07-03 release
-	// work — the #544 + #566 feedback chain, the #561
-	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 28 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 28 (debug mode toast reload fix)", CurrentAppVersionInt)
+	// rc/v1.1 RC cohort: N=29 reflects the v1.1.29-rc1 rebuild
+	// baking the 2 unlanded commits (monochrome icon + PowerShell
+	// env preservation) into the RC zip.
+	if CurrentAppVersionInt != 29 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 29 (v1.1.29-rc1 RC cohort rebuild)", CurrentAppVersionInt)
 	}
 }
 

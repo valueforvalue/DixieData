@@ -115,16 +115,18 @@ func TestSettingsDiagnosticsPageRenders(t *testing.T) {
 			t.Errorf("SettingsDiagnosticsPage missing %q", want)
 		}
 	}
-	// Issue #600: the Enable debug mode label uses
-	// `items-baseline` (not `items-center`) so the
-	// checkbox is vertically aligned with the label
-	// text baseline instead of floating in the middle of
-	// the form's vertical axis. Defensive: a future
-	// refactor that swaps back to `items-center` trips
-	// this assertion before the user sees the centered
-	// checkbox again.
-	if !strings.Contains(content, `class="flex items-baseline gap-2 text-sm"`) {
-		t.Errorf("Enable debug mode label uses items-center (or some other class) instead of items-baseline — issue #600 (centered-checkbox fix) regressed")
+	// Issue #600 follow-up (bfc41ac4, #674): the Enable debug
+	// mode label is now plain inline `class="text-sm"` (no
+	// `flex items-baseline gap-2`). The checkbox uses
+	// `field-input mr-1` to push the label text. The defensive
+	// pin catches a future refactor that re-introduces a flex
+	// container around the checkbox + label (the centered-checkbox
+	// regression shape from #600).
+	if !strings.Contains(content, `<label class="text-sm">`) {
+		t.Errorf("Enable debug mode label lost the plain inline layout (`<label class=\"text-sm\">`) — issue #600 follow-up / #674 bfc41ac4 regressed")
+	}
+	if strings.Contains(content, `<label class="flex items-baseline gap-2 text-sm">`) {
+		t.Errorf("Enable debug mode label re-introduced the flex+items-baseline shape that #674 (bfc41ac4) removed")
 	}
 }
 
