@@ -20,6 +20,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **source records: reorder migrated rows by visible ordinal instead of ID-sized sort values (#678)**. Person Record and Event Record move operations now read current display order, insert the selected Source Record at requested one-based position, and rewrite owner rows to dense ordinals in one transaction. Archives migrated with `sort_order = id` now move ▲/▼ correctly instead of comparing positions like `2` against values like `3010`.
+
 - **runtime: close deferred files, rows, databases, ZIP readers, and listeners instead of discarding the close thunk (#680)**. `debug.DeferCloseLog` now performs `Close` directly, making the repository's canonical `defer debug.DeferCloseLog(...)` call shape safe by construction across roughly 150 production sites. This removes leaked Windows file handles, lingering SQLite rows/connections, and incomplete archive cleanup; selected archive workarounds were normalized to the same API.
 
 - **person records: Save Changes now reaches the PUT update handler in RC (#676)**. Edit forms explicitly declare `data-method="PUT"` while retaining POST transport for Wails WebView2 compatibility, so clicking Save Changes commits fields and navigates back to Person Record detail instead of falling through to the POST-only route branch.
