@@ -14,6 +14,7 @@
 //   N=26 (2026-07-27, #674)     1.1.26-rc1
 //   N=28 (2026-07-27, #674)     1.1.28-rc2
 //   N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
+//   N=30 (2026-07-28, rc/v1.1)  1.1.30-rc2 — bug-fix RC2
 //
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
@@ -30,11 +31,10 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// rc/v1.1 RC cohort: N=29 reflects the v1.1.29-rc1 rebuild
-	// baking the 2 unlanded commits (monochrome icon + PowerShell
-	// env preservation) into the RC zip.
-	if CurrentAppVersionInt != 29 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 29 (v1.1.29-rc1 RC cohort rebuild)", CurrentAppVersionInt)
+	// rc/v1.1 RC2: N=30 advances the release counter so
+	// in-place update comparison sees v1.1.30-rc2 as newer.
+	if CurrentAppVersionInt != 30 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 30 (v1.1.30-rc2)", CurrentAppVersionInt)
 	}
 }
 
