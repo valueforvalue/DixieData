@@ -9,12 +9,14 @@
 // against the installed 1.1.4 binary.
 //
 // RC cohort N progression on the rc/v1.1 branch:
-//   N=5  (2026-07-26, #658)     1.1.5-rc1
-//   N=25 (2026-07-27, #674)     1.1.25-rc1
-//   N=26 (2026-07-27, #674)     1.1.26-rc1
-//   N=28 (2026-07-27, #674)     1.1.28-rc2
-//   N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
-//   N=30 (2026-07-28, rc/v1.1)  1.1.30-rc2 — bug-fix RC2
+//
+//	N=5  (2026-07-26, #658)     1.1.5-rc1
+//	N=25 (2026-07-27, #674)     1.1.25-rc1
+//	N=26 (2026-07-27, #674)     1.1.26-rc1
+//	N=28 (2026-07-27, #674)     1.1.28-rc2
+//	N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
+//	N=30 (2026-07-28, rc/v1.1)  1.1.30-rc2 — bug-fix RC2 (Wails cache reuse shipped stale binary)
+//	N=31 (2026-07-28, rc/v1.1)  1.1.31-rc3 — clean rebuild, re-bump so updater offers it
 //
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
@@ -31,10 +33,14 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// rc/v1.1 RC2: N=30 advances the release counter so
-	// in-place update comparison sees v1.1.30-rc2 as newer.
-	if CurrentAppVersionInt != 30 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 30 (v1.1.30-rc2)", CurrentAppVersionInt)
+	// rc/v1.1 RC3: N=31 re-bumps after Wails cache reuse
+	// shipped a stale v1.1.30-rc2 binary identical to
+	// v1.1.29-rc1. The fresh build re-embeds the dispatcher
+	// fixes; the counter bump is the human signal that
+	// v1.1.30-rc2 must be retired and v1.1.31-rc3 is the new
+	// cohort install target.
+	if CurrentAppVersionInt != 31 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 31 (v1.1.31-rc3)", CurrentAppVersionInt)
 	}
 }
 

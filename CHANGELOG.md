@@ -9,11 +9,16 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
+## v1.1.31 - RC3 Patch Release
+
+- Force-clears the v1.1.30-rc2 Wails build cache (the previous RC shipped an embedded frontend identical to v1.1.29-rc1; only the linker-injected build stamps differed). RC3 rebuilds from scratch so the embedded frontend assets actually carry the dispatcher fixes from #676, #677, #678, and #680.
+- Re-bumps the release counter so the in-place updater sees a strictly newer version (the user's installed v1.1.29 cohort reports `compareVersions(1.1.31, 1.1.29)` → `Newer=true`).
+
 ## v1.1.30 - RC2 Patch Release
 
 - Fixed RC/stable WebView2 browser-profile crossover by isolating RC browser storage per Local Archive.
 - Fixed Person Record edit submission, migrated Source Record ordering, and Windows JPG export resource cleanup.
-- RC2 package carries current `rc/v1.1` commit `bea85aa`.
+- **Note: published v1.1.30-rc2 binary is byte-identical to v1.1.29-rc1 due to Wails incremental-build cache reuse; do not install v1.1.30-rc2 — install v1.1.31-rc3 instead.**
 
 ### Added
 
