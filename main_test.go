@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -36,6 +37,37 @@ func TestMain(m *testing.M) {
 		goleak.IgnoreTopFunction("net/http.(*http2ClientConn).readLoop"),
 	)
 	os.Exit(m.Run())
+}
+
+func TestCurrentWebViewUserDataPathPreservesStableAndIsolatesRC(t *testing.T) {
+	resolverCalled := false
+	stablePath, err := currentWebViewUserDataPath("", `C:\Stable\.dixiedata`, func() (string, error) {
+		resolverCalled = true
+		return `C:\Users\TDM\AppData\Roaming`, nil
+	})
+	if err != nil || stablePath != "" {
+		t.Fatalf("stable profile = %q, %v; want empty Wails default", stablePath, err)
+	}
+	if resolverCalled {
+		t.Fatal("stable profile must not resolve or migrate AppData")
+	}
+
+	rcPath, err := currentWebViewUserDataPath("rc1", `C:\RC\.dixiedata`, func() (string, error) {
+		return `C:\Users\TDM\AppData\Roaming`, nil
+	})
+	if err != nil {
+		t.Fatalf("RC profile: %v", err)
+	}
+	if rcPath == "" || !strings.Contains(rcPath, `DixieData-RC`) {
+		t.Fatalf("RC profile = %q; want isolated explicit path", rcPath)
+	}
+
+	_, err = currentWebViewUserDataPath("rc1", `C:\RC\.dixiedata`, func() (string, error) {
+		return "", fmt.Errorf("permission denied")
+	})
+	if err == nil {
+		t.Fatal("RC profile resolver failure must not fall back to shared stable profile")
+	}
 }
 
 // TestVersionFlag verifies that handleVersionFlag returns

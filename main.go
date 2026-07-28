@@ -15,13 +15,26 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/config"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed frontend
 var assets embed.FS
+
+func currentWebViewUserDataPath(releaseTag, dataDir string, userConfigDir func() (string, error)) (string, error) {
+	if strings.TrimSpace(releaseTag) == "" {
+		return "", nil
+	}
+	appDataRoot, err := userConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve AppData for pre-release WebView profile: %w", err)
+	}
+	return appdata.WebViewUserDataPath(releaseTag, dataDir, appDataRoot)
+}
 
 // handleVersionFlag scans argv for --version / -v. Returns
 // the formatted output + done=true if found, done=false
@@ -244,11 +257,17 @@ func main() {
 
 	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
 
+	dataDir := appdata.DefaultDir()
+	webViewUserDataPath, err := currentWebViewUserDataPath(versioninfo.CurrentReleaseTag, dataDir, os.UserConfigDir)
+	if err != nil {
+		panic(err)
+	}
+
 	// Load application config early so window size is honored
 	// before Wails.Run opens the OS window (issues #636-#639).
 	// Data dir resolution matches appdata.DefaultDir().
 	appCfg := config.Defaults()
-	if loaded, err := config.Load(appdata.DefaultDir()); err != nil {
+	if loaded, err := config.Load(dataDir); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not load app config, using defaults: %v\n", err)
 	} else {
 		appCfg = loaded
@@ -267,6 +286,9 @@ func main() {
 		},
 		OnStartup:  app.Startup,
 		OnShutdown: app.Shutdown,
+		Windows: &windows.Options{
+			WebviewUserDataPath: webViewUserDataPath,
+		},
 		// EnableDefaultContextMenu turns on the browser's default
 		// context menu in production builds so the user can right-click
 		// → "Inspect" to open DevTools. In debug builds (`wails build
