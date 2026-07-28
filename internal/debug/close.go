@@ -31,8 +31,7 @@ import (
 	"log/slog"
 )
 
-// DeferCloseLog returns a thunk that calls c.Close() and logs the
-// result via slog.Warn on failure. Intended for
+// DeferCloseLog closes c and logs any failure. Intended for
 // `defer debug.DeferCloseLog(c, "component-name")`.
 //
 // The component parameter is a short stable tag (e.g. "backup-zip",
@@ -42,18 +41,13 @@ import (
 // regression-net probe can grep for it without parsing log lines.
 //
 // Nil-safety: c.Close() on a nil io.Closer interface panics, so
-// callers must guard before deferring. (Most closeable types in this
-// repo are concrete struct values, not interfaces, so the panic path
-// is rare in practice. When in doubt, check `if c != nil` before the
-// defer.)
-func DeferCloseLog(c io.Closer, component string) func() {
-	return func() {
-		if err := c.Close(); err != nil {
-			slog.Warn("close failed",
-				"audit", "close-error",
-				"component", component,
-				"err", err.Error(),
-			)
-		}
+// callers must guard before deferring.
+func DeferCloseLog(c io.Closer, component string) {
+	if err := c.Close(); err != nil {
+		slog.Warn("close failed",
+			"audit", "close-error",
+			"component", component,
+			"err", err.Error(),
+		)
 	}
 }

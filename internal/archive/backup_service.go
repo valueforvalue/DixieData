@@ -641,7 +641,7 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer func() { debug.DeferCloseLog(reader, "RestoreBackupArchive.zip")() }()
+	defer debug.DeferCloseLog(reader, "RestoreBackupArchive.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -711,16 +711,8 @@ func stampRestoredAtAfterRestore(dataDir string) error {
 	if err != nil {
 		return fmt.Errorf("open restored db: %w", err)
 	}
-	// Issue #449 slice 2: wrap the close in a closure so the
-	// *DB.Close fires before stampRestoredAtAfterRestore
-	// returns. The bare `defer Close()` form would defer the
-	// call expression but Go's defer captures the result of
-	// the call — debug.DeferCloseLog returns a function value
-	// and the bare form defers the call to the function value,
-	// which doesn't fire until the enclosing frame is gone
-	// (too late for the stagingDir rename in callers that
-	// follow). The wrapped form runs Close in this frame,
-	// before the caller proceeds.
+	// Close before returning so callers can rename the restored
+	// directory without a live SQLite handle on Windows.
 	defer func() { _ = d.Close() }()
 
 	// columnExists guard: a freshly-restored archive might
@@ -762,7 +754,7 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer func() { debug.DeferCloseLog(reader, "ImportWithLocalIdentity.zip")() }()
+	defer debug.DeferCloseLog(reader, "ImportWithLocalIdentity.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -852,15 +844,8 @@ func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity
 	if err != nil {
 		return err
 	}
-	// Issue #449 slice 2: wrap the close in a closure so the
-	// *DB.Close fires before preserveSnapshotImportIdentity
-	// returns. The bare `defer Close()` form would defer the
-	// call expression but Go's defer captures the result of
-	// the call — debug.DeferCloseLog returns a function value
-	// and the bare form defers the call to the function value,
-	// which doesn't fire until the enclosing frame is gone
-	// (too late for the stagingDir rename). The wrapped form
-	// runs Close in this frame, before replaceDataDir fires.
+	// Close before returning so replaceDataDir can rename the staged
+	// directory without a live SQLite handle on Windows.
 	defer func() { _ = database.Close() }()
 
 	// Issue #495: backup restore intentionally overwrites any
@@ -901,7 +886,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	if err != nil {
 		return SharedImportSummary{}, err
 	}
-	defer func() { debug.DeferCloseLog(reader, "ImportSharedBackup.zip")() }()
+	defer debug.DeferCloseLog(reader, "ImportSharedBackup.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -1130,7 +1115,7 @@ func addBackupFile(zipWriter *zip.Writer, entryName, sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { debug.DeferCloseLog(source, "addBackupFile.source")() }()
+	defer debug.DeferCloseLog(source, "addBackupFile.source")
 
 	entry, err := zipWriter.Create(entryName)
 	if err != nil {
@@ -1202,7 +1187,7 @@ func addBackupImages(zipWriter *zip.Writer, imageRoot string, includeBytes bool)
 		if err != nil {
 			return err
 		}
-		defer func() { debug.DeferCloseLog(source, "addBackupImages.source")() }()
+		defer debug.DeferCloseLog(source, "addBackupImages.source")
 
 		_, err = io.Copy(entry, source)
 		return err
@@ -1516,14 +1501,9 @@ func validateSQLiteBackupImageEntries(contents backupContents) error {
 	if err != nil {
 		return fmt.Errorf("open staged backup database: %w", err)
 	}
-	// Issue #449 follow-up: bare-thunk `defer debug.DeferCloseLog(...)`
-	// does not invoke the closure (see copyBackupFile for the
-	// full rationale). Use the closure-wrap form so the *db.DB
-	// connection releases before the test boundary hits the
-	// modernc driver's connectionOpener-still-holding-handles
-	// state, which on Windows surfaces as unlinkat / SQLITE_LOCKED
-	// on subsequent t.TempDir cleanup or next db.Open.
-	defer func() { debug.DeferCloseLog(stagedDB, "validateSQLiteBackupImageEntries.db")() }()
+	// Issue #680: DeferCloseLog now closes directly, so the canonical
+	// defer releases the staged DB before Windows cleanup or reopen.
+	defer debug.DeferCloseLog(stagedDB, "validateSQLiteBackupImageEntries.db")
 
 	soldierSvc := NewSoldierService(stagedDB)
 	soldiers, err := listAllSoldiers(soldierSvc)
@@ -1552,7 +1532,7 @@ func readBackupJSON(file *zip.File, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer func() { debug.DeferCloseLog(reader, "readBackupJSON.reader")() }()
+	defer debug.DeferCloseLog(reader, "readBackupJSON.reader")
 	return json.NewDecoder(reader).Decode(target)
 }
 
@@ -1602,13 +1582,13 @@ func extractBackupFile(file *zip.File, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { debug.DeferCloseLog(source, "extractBackupFile.source")() }()
+	defer debug.DeferCloseLog(source, "extractBackupFile.source")
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer func() { debug.DeferCloseLog(target, "extractBackupFile.target")() }()
+	defer debug.DeferCloseLog(target, "extractBackupFile.target")
 
 	_, err = io.Copy(target, source)
 	return err
@@ -1851,22 +1831,15 @@ func copyBackupFile(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	// Issue #449 follow-up: bare `defer debug.DeferCloseLog(source, ...)`
-	// form defers a function call whose return value (the close
-	// thunk) is the deferred action — but Go runs the deferred
-	// function-value's RETURNED closure, NOT the return value of
-	// `debug.DeferCloseLog`. The bare form therefore never closes
-	// the underlying *os.File. The wrapper below invokes the
-	// returned thunk explicitly inside an inline closure so the
-	// close fires before the test boundary (which is where the
-	// unlinkat race on the leaked file handle bites on Windows).
-	defer func() { debug.DeferCloseLog(source, "copyBackupFile.source")() }()
+	// Issue #680: canonical defer syntax now closes directly before
+	// Windows cleanup observes source or destination handles.
+	defer debug.DeferCloseLog(source, "copyBackupFile.source")
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer func() { debug.DeferCloseLog(target, "copyBackupFile.target")() }()
+	defer debug.DeferCloseLog(target, "copyBackupFile.target")
 
 	_, err = io.Copy(target, source)
 	return err

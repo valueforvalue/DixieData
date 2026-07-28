@@ -20,6 +20,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **runtime: close deferred files, rows, databases, ZIP readers, and listeners instead of discarding the close thunk (#680)**. `debug.DeferCloseLog` now performs `Close` directly, making the repository's canonical `defer debug.DeferCloseLog(...)` call shape safe by construction across roughly 150 production sites. This removes leaked Windows file handles, lingering SQLite rows/connections, and incomplete archive cleanup; selected archive workarounds were normalized to the same API.
+
 - **person records: Save Changes now reaches the PUT update handler in RC (#676)**. Edit forms explicitly declare `data-method="PUT"` while retaining POST transport for Wails WebView2 compatibility, so clicking Save Changes commits fields and navigates back to Person Record detail instead of falling through to the POST-only route branch.
 
 - **runtime: isolate RC WebView2 browser storage from stable and other Local Archives (#677)**. Pre-release builds now use an explicit `%APPDATA%/DixieData-RC/<archive-id>/EBWebView` profile derived from the canonical Local Archive path. Stable builds deliberately keep Wails' existing default profile, preserving current stable drafts and preferences without migration. RC numbers share one profile for the same Local Archive, while different portable archives no longer share drafts, Share Queue state, or browser preferences.

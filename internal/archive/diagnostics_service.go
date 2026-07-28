@@ -544,7 +544,7 @@ func readLastNLogLines(logPath string, maxLines int) []string {
 	if err != nil {
 		return nil
 	}
-	defer debug.DeferCloseLog(f, "readLastNLogLines.f")()
+	defer debug.DeferCloseLog(f, "readLastNLogLines.f")
 
 	const maxRead = 4 * 1024 * 1024
 	stat, err := f.Stat()

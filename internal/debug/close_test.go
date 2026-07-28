@@ -13,12 +13,13 @@ func (f *fakeCloser) Close() error {
 	return f.err
 }
 
-// TestDeferCloseLog_NoError verifies the helper invokes Close even on
-// the nil-error path. Issue #384 / Slice 9 regression net.
+// TestDeferCloseLog_NoError verifies canonical defer syntax invokes
+// Close exactly once on the nil-error path. Issue #680.
 func TestDeferCloseLog_NoError(t *testing.T) {
 	fc := &fakeCloser{}
-	closeFn := DeferCloseLog(fc, "test-component")
-	closeFn()
+	func() {
+		defer DeferCloseLog(fc, "test-component")
+	}()
 	if !fc.called {
 		t.Fatal("Close() was not invoked")
 	}
