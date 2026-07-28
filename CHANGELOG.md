@@ -6806,6 +6806,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
   Per-session token savings: ~1.5K tokens for an agent loading the docs/agents spine (was ~3.5K, now ~2K). The framework's claimed 2K Tier-0 ceiling now holds for this repo.
 
+- **version: bump release counter N 28→29 for v1.1.29-rc1**. RC cohort update eligibility — the installed binary reports `1.1.29`, the RC manifest advertises `1.1.29-rc1`, `compareVersions` returns `Newer=false` for the prior `1.1.28-rc2` cohort so the updater is gated. No schema or update-flow changes (issue #266 — bug-fix-only release counter bump).
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
