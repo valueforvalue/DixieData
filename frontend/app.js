@@ -5189,7 +5189,34 @@ async function dispatchDixieDataForm(button) {
       form = button;
     } else if (button instanceof HTMLElement) {
       const dataAction = (button.getAttribute && button.getAttribute("data-action")) || "";
-      if (dataAction) {
+      const parentForm = button.closest("form");
+      if (dataAction && parentForm) {
+        // Issue #705: the bulk-delete "Delete Selected Images"
+        // button lives inside the outer images-download form
+        // (which carries the per-image checkboxes). The previous
+        // synthetic-form path (issue #248) dropped the form's
+        // checked checkbox values, so the body went out empty and
+        // the server returned 400 "Select at least one image to
+        // delete." When data-action is present AND the button is
+        // inside a real form with named controls, use the real form
+        // (so all form data is included) and override the form's
+        // action URL with the button's data-action. The synth-form
+        // path is preserved for the bare-button case (e.g. the
+        // per-row "Mark as Resolved" button on /review-queue, which
+        // has data-action but no parent form).
+        form = parentForm;
+        // Override the form's action URL with the button's data-action.
+        // The action attribute is restored in the finally block so
+        // the next dispatch (e.g. a subsequent click on the same
+        // form's native submit button) is unaffected.
+        form.dataset.origAction = form.getAttribute("action") || "";
+        form.setAttribute("action", dataAction);
+        const dataMethod = button.getAttribute("data-method");
+        if (dataMethod) {
+          form.dataset.origMethod = form.getAttribute("method") || "";
+          form.setAttribute("method", dataMethod);
+        }
+      } else if (dataAction) {
         const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
         const synthetic = document.createElement("form");
         synthetic.action = dataAction;
@@ -5208,7 +5235,7 @@ async function dispatchDixieDataForm(button) {
         }
         form = synthetic;
       } else {
-        form = button.closest("form");
+        form = parentForm;
       }
     }
     if (!(form instanceof HTMLFormElement)) {
@@ -5440,7 +5467,9 @@ async function dispatchDixieDataForm(button) {
       // forms without the attribute keep the legacy toast-only path.
       // Issue #134: scan/quality buttons render into #settings-orphan-results
       // and #settings-quality-results via this convention.
-      const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget) || "";
+      const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget)
+        || (submitter instanceof HTMLElement && submitter.dataset && submitter.dataset.resultsTarget)
+        || "";
       // Issue #250: data-reload-on-success is a one-attribute opt-in
       // for "inline action that mutates the page state, no fragment
       // available — just reload the page so the user sees the new
@@ -5583,6 +5612,17 @@ async function dispatchDixieDataForm(button) {
     } finally {
       setBusyState(submitter || form, false);
       setBusyGroupState(submitter || form, false);
+      // Issue #705: restore the parent form's action/method if the
+      // data-action branch overrode them. The synth-form path closes
+      // over the synthetic element so no restore is needed.
+      if (form instanceof HTMLFormElement && form.dataset.origAction !== undefined) {
+        form.setAttribute("action", form.dataset.origAction);
+        delete form.dataset.origAction;
+      }
+      if (form instanceof HTMLFormElement && form.dataset.origMethod !== undefined) {
+        form.setAttribute("method", form.dataset.origMethod);
+        delete form.dataset.origMethod;
+      }
     }
   }
 
