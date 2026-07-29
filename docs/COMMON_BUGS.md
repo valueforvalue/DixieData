@@ -2249,6 +2249,91 @@ modernc.org/sqlite overhead is the residual cost.
 
 ---
 
+### 8.5 Stale `.syso` embeds wrong icon after failed Wails build
+
+**Symptom:** After a Wails build failure (killed, interrupted, or
+errored mid-compile), the next clean rebuild produces a binary with
+the wrong icon — the default Wails icon or a monochrome variant from
+a prior build. Rebuilding repeatedly with `just archive` doesn't fix
+it. Source files (`build/appicon.png`, `build/windows/icon.ico`) are
+verified correct on disk.
+
+**Why it happens:** Wails v2.12's `packageApplicationForWindows()`
+(`pkg/commands/build/packager.go:163`) generates `icon.ico` from
+`appicon.png` via `winicon.GenerateIcon`, then runs `rsrc` to compile
+`icon.ico` into a COFF object file at the project root:
+`DixieData-res.syso`. The Go linker picks up all `.syso` files in the
+build directory and links their `.rsrc` section into the binary.
+After linking, a `defer os.Remove(...-res.syso)` cleans up the file.
+
+If the build fails or is killed *after* the `.syso` is written but
+*before* the `defer` runs, the stale `.syso` stays on disk. On the
+next build, Wails sees the existing `.syso` and **skips regeneration**
+— it does not re-run `compileResources()`. The old `.syso` (carrying
+the wrong icon from a prior build or the Wails template default) gets
+linked into the new binary. The `.syso` is a Go object file and
+appears identical to the build system.
+
+**Find it:**
+```bash
+# Before every release build, verify no stale .syso
+ls -la DixieData-res.syso 2>/dev/null && echo 'STALE SYSO — DELETE IT' || echo 'clean'
+# Force clean before rebuild
+rm -f DixieData-res.syso && rm -rf build/bin/
+```
+
+**Fix:**
+- **Immediate:** `rm -f DixieData-res.syso && rm -rf build/bin/` before
+  every release build. The clean bin directory ensures Wails writes a
+  fresh `.syso` from the current icon sources.
+- **Long-term:** Consider a `just clean` recipe or a pre-build guard in
+  `scripts/build-release.ps1` that deletes any existing `*-res.syso`
+  before invoking `wails build`.
+
+**Real examples:**
+- v1.1.31-rc3 rebuild — user reported icon reverted to Wails default
+  after a prior build was killed mid-compile. The stale
+  `DixieData-res.syso` (81,892 bytes, dated 16:09) was left behind and
+  reused on the next clean `just archive` invocation.
+- At least one prior RC release cycle spent ~30 minutes chasing the
+  same symptom before the root cause was identified.
+
+**Quick diagnostic — is the icon embedded in the binary?**
+```bash
+# Walk the PE .rsrc section to confirm RT_ICON entries are present
+python -c "
+import struct
+with open('build/bin/DixieData.exe','rb') as f: data=f.read()
+pe_off=struct.unpack('<I',data[0x3c:0x40])[0]
+coff=pe_off+4
+ns=struct.unpack('<H',data[coff+2:coff+4])[0]
+ohs=struct.unpack('<H',data[coff+16:coff+18])[0]
+opt=coff+20
+magic=struct.unpack('<H',data[opt:opt+2])[0]
+dd_off=opt+(112 if magic==0x20b else 96)
+for i in range(ns):
+  b=coff+20+ohs+i*40
+  nm=data[b:b+8].rstrip(b'\x00')
+  if nm==b'.rsrc':
+    raw=struct.unpack('<I',data[b+20:b+24])[0]
+    sz=struct.unpack('<I',data[b+16:b+20])[0]
+    rsrc=data[raw:raw+sz]
+    # Walk 2 levels to find RT_ICON_GROUP (type 14)
+    o=0
+    nn=struct.unpack('<H',rsrc[o+12:o+14])[0]
+    ni=struct.unpack('<H',rsrc[o+14:o+16])[0]
+    for j in range(nn+ni):
+      e=16+j*8
+      tid=struct.unpack('<I',rsrc[e:e+4])[0]
+      ch=struct.unpack('<I',rsrc[e+4:e+8])[0]
+      if tid==14: print(f'RT_ICON_GROUP found (has icon)')
+      elif tid==3: print(f'RT_ICON entries found')
+"
+# If neither RT_ICON_GROUP nor RT_ICON prints, the .syso was not linked
+```
+
+---
+
 ## 9. Database bugs
 
 ### 9.1 FTS5 delete not actually deleting
@@ -2363,6 +2448,8 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Mobile layout broken | Section 3.1 | viewport test |
 | Memory grows over time | Section 4.1, 4.2 | leak/race |
 | Works in dev, fails in release | Section 4.7 | hardcoded paths |
+| Save Changes 400 error in Wails, works in browser | Section 3.8 | Wails-PATCH body stripped, form.action shadowing |
+| Icon wrong after rebuild (default Wails icon) | Section 8.5 | stale DixieData-res.syso from failed build |
 | Tests crash on missing frontend | Section 4.8 | wails runtime nil |
 
 For copy-paste greps for each pattern, see

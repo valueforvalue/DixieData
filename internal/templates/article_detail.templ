@@ -44,7 +44,7 @@ templ ArticleDetailShell(view viewmodel.Article) {
 					// to handleDeleteArticle. The confirm message names
 					// the cascade (article + snapshots + refs) so the
 					// user knows what they're deleting.
-					<form action={ templ.SafeURL(routebuilder.ArticleDelete(view.ID)) } method="post" data-method="DELETE" data-dixie-submit="true" data-confirm={ "Delete article " + view.DisplayID + " and all its revisions? The snapshots will be removed too." } class="inline-flex">
+					<form action={ templ.SafeURL(fmt.Sprintf("/articles/%d/delete", view.ID)) } method="post" data-dixie-submit="true" data-confirm={ "Delete article " + view.DisplayID + " and all its revisions? The snapshots will be removed too." } class="inline-flex">
 						@components.Button("Delete", components.ButtonDanger, "", templ.Attributes{"type": "submit"})
 					</form>
 				</div>
@@ -124,7 +124,6 @@ templ ArticleRefsPanel(view viewmodel.Article) {
 						</div>
 						@components.Button("Unlink", components.ButtonSecondary, "", templ.Attributes{
 							"data-action":                    templ.SafeURL(routebuilder.ArticleRefsDetach(view.ID, ref.PersonRecordID)),
-							"data-method":                    "DELETE",
 							"data-dixie-submit":              "true",
 							"data-confirm":                   "Unlink this Person Record from the article?",
 							"data-article-refs-unlink":       "",

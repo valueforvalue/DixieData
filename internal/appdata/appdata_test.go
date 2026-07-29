@@ -3,8 +3,48 @@ package appdata
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestWebViewUserDataPathPreservesStableDefaultAndIsolatesRCArchives(t *testing.T) {
+	appDataRoot := t.TempDir()
+	archiveA := filepath.Join(t.TempDir(), ".dixiedata")
+	archiveB := filepath.Join(t.TempDir(), ".dixiedata")
+
+	if got, err := WebViewUserDataPath("", archiveA, appDataRoot); err != nil || got != "" {
+		t.Fatalf("stable WebViewUserDataPath = %q, %v; want empty Wails default", got, err)
+	}
+
+	rc1A, err := WebViewUserDataPath("rc1", archiveA, appDataRoot)
+	if err != nil {
+		t.Fatalf("RC1 archive A: %v", err)
+	}
+	rc2A, err := WebViewUserDataPath("rc2", archiveA, appDataRoot)
+	if err != nil {
+		t.Fatalf("RC2 archive A: %v", err)
+	}
+	rc1B, err := WebViewUserDataPath("rc1", archiveB, appDataRoot)
+	if err != nil {
+		t.Fatalf("RC1 archive B: %v", err)
+	}
+
+	if rc1A == "" {
+		t.Fatal("RC WebViewUserDataPath must be explicit; empty path shares stable profile")
+	}
+	if rc1A != rc2A {
+		t.Fatalf("RC profile changed across RC tags: rc1=%q rc2=%q", rc1A, rc2A)
+	}
+	if rc1A == rc1B {
+		t.Fatalf("distinct Local Archives share RC profile %q", rc1A)
+	}
+	if !strings.HasPrefix(rc1A, filepath.Join(appDataRoot, "DixieData-RC")+string(filepath.Separator)) {
+		t.Fatalf("RC profile %q is outside DixieData-RC root", rc1A)
+	}
+	if strings.Contains(strings.ToLower(rc1A), strings.ToLower(archiveA)) {
+		t.Fatalf("RC profile leaks raw Local Archive path: %q", rc1A)
+	}
+}
 
 func TestProjectRootFromFindsNearestWailsConfig(t *testing.T) {
 	root := t.TempDir()

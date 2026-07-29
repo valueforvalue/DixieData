@@ -12,7 +12,7 @@
 ## Project snapshot
 
 - **App:** DixieData
-- **Version:** `1.1.4` (issue #266 v{MAJOR}.{U}.{N} split; U=1 implicit for legacy v1.2.N releases, release counter N=4)
+- **Version:** `1.1.29` (issue #266 v{MAJOR}.{U}.{N} split; U=1 implicit for legacy v1.2.N releases, release counter N=29)
 - **Schema version:** `68`
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite

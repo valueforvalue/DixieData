@@ -10,6 +10,28 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+func TestEntryFormEditSubmitsAsPost(t *testing.T) {
+	var buf bytes.Buffer
+	if err := EntryForm(viewmodel.Soldier{ID: 497, DisplayID: "TDM65-00486"}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render edit form: %v", err)
+	}
+	content := buf.String()
+	formStart := strings.Index(content, `<form`)
+	formEnd := strings.Index(content[formStart:], `>`)
+	if formStart < 0 || formEnd < 0 {
+		t.Fatal("edit form opening tag not found")
+	}
+	openingTag := content[formStart : formStart+formEnd+1]
+	for _, want := range []string{`action="/soldiers/497"`, `method="post"`, `data-dixie-submit="true"`} {
+		if !strings.Contains(openingTag, want) {
+			t.Errorf("edit form opening tag missing %s: %s", want, openingTag)
+		}
+	}
+	if strings.Contains(openingTag, `data-method=`) {
+		t.Errorf("edit form must not carry data-method attribute")
+	}
+}
+
 func TestEntryFormOmitsInlineScratchPadLauncher(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
@@ -245,7 +267,7 @@ func TestShareLandingIsSubOverview(t *testing.T) {
 		"Export & Backup",
 		"Import & Restore",
 		"Google Integration",
-		"/import/backup",         // on the imports subpage now
+		"/import/backup",          // on the imports subpage now
 		"/export/shared-archive",  // on the exports subpage now
 		"/export/static-archive",  // on the exports subpage now
 		"/import/shared-archive",  // on the imports subpage now

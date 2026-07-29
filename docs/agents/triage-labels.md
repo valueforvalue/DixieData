@@ -1,6 +1,6 @@
 # Triage Labels
 
-DixieData uses a 6-axis label taxonomy on every GitHub issue.
+DixieData uses a **7-axis** label taxonomy on every GitHub issue.
 Each axis answers a different question; together they let
 maintainers filter the backlog by component, urgency, and triage
 state without re-reading every issue title.
@@ -11,6 +11,7 @@ state without re-reading every issue title.
 | **Status** | Where is it in triage? | `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human` |
 | **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug`, `area:build`, `area:ci` |
 | **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
+| **Target** | Which branch should the fix land on? | `target:dev`, `target:rc`, `target:stable` |
 | **Cohort** | What batch does it belong to? | `audit-fallout` |
 | **Meta** | Process state, not work state | `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix`, `safe-for-in-place`, `unsafe-for-in-place`, `release-blocker` |
 
@@ -19,7 +20,7 @@ The full label set with colors + descriptions is defined in
 Run `./scripts/sync-labels.sh --dry-run` to see what would change;
 run `./scripts/sync-labels.sh` to apply.
 
-## Why six axes
+## Why seven axes
 
 - **Type × Status** distinguishes bugs from features without
   losing triage routing. A bug and an enhancement can both be
@@ -34,6 +35,21 @@ run `./scripts/sync-labels.sh` to apply.
   `priority:high` is reserved for known regressions, lost-data
   bugs, and the issues a user is actively blocked on.
   `priority:medium` is the default. `priority:low` is polish.
+- **Target** (added 2026-07-26, ADR 0011) is the branch
+  routing signal. The repo carries four branches (`dev` /
+  `rc/v*` / `stable` / `main`, per AGENTS.md §Four-branch
+  model); the Target axis tells the agent + the operator
+  which branch the fix should land on. `target:dev` is the
+  default for new features + new bugs found during normal
+  development. `target:rc` is for stabilization fixes that
+  block a release-in-progress (the operator assigns the
+  specific `rc/v*` line during triage by commenting
+  “target: rc/v1.1”). `target:stable` is rare — it’s for
+  urgent hotfixes on the released-code home after a promote.
+  Every PR opened against `rc/v*` must carry BOTH a
+  `target:rc` label AND the `release-blocker` meta label;
+  the rc-lint CI workflow enforces this combination. See
+  ADR 0011 for the full policy.
 - **Cohort** groups issues that share a discovery context (e.g.
   `audit-fallout` for the 2026-06-24 audit sweep). Lets a
   maintainer filter the audit work without re-reading every
@@ -124,6 +140,37 @@ taxonomy probably needs to be split by sub-area
 `priority:high` issues should be in the current sprint.
 `priority:medium` issues are the backlog. `priority:low` issues
 are tracked but not actively worked.
+
+## Target — which branch the fix should land on
+
+| Label | When to apply |
+|---|---|
+| `target:dev` | New feature or bug found during normal development. Lands on `dev` for the next release. The default. |
+| `target:rc` | Stabilization fix blocking a release-in-progress. The PR opens against the active `rc/v*` branch. Operator adds a comment with the specific `rc/vN.M` line (e.g. “target: rc/v1.1”) so the agent knows which RC branch to base the PR on. |
+| `target:stable` | Urgent hotfix on the released-code home after a promote. Rare; the regression slipped past `make promote` and the fix can't wait for the next release. Requires a maintainer's review. |
+
+The Target axis was added 2026-07-26 as part of [ADR 0011](../../adr/0011-rc-branch-policy.md).
+The reason it exists: the repo carries four branches
+(`dev` / `rc/v*` / `stable` / `main`) with very different
+acceptance policies. Without an explicit target signal, an
+agent reading the issue body has to guess which branch the
+fix should land on — and the guess is often wrong (the
+v1.1 RC1 cohort shipped 8 RCs that mixed real fixes with
+new features because there was no Target axis to tell
+“this is an RC blocker, not a new feature”).
+
+**Rule:** every issue that becomes a PR must carry a Target
+label before merge. A PR opened without one gets a
+`needs-info` label and a bot comment asking the contributor
+to set the target. The PR's `target:*` label MUST match the
+PR's base branch (a `target:rc` PR opening against `dev`
+gets the same `needs-info` flag).
+
+**PR-to-RC special case:** every PR to `rc/v*` must carry
+BOTH `target:rc` AND the `release-blocker` meta label. The
+`lint-rc-commits` CI workflow enforces this combination on
+top of the commit-message + diff-size policy. See ADR 0011
+§Decision 3 for the rationale.
 
 ## Cohort — the batch labels
 

@@ -59,7 +59,6 @@ templ ArticleRevisionsList(articleID int64, snapshots []viewmodel.Article) {
 							})
 							@Button("Delete", ButtonDanger, "", templ.Attributes{
 								"data-action":                       templ.SafeURL(routebuilder.ArticleSnapshotDelete(articleID, snap.ID)),
-								"data-method":                       "DELETE",
 								"data-dixie-submit":                 "true",
 								"data-confirm":                      "Delete this snapshot? The live article will not be touched.",
 								"data-article-revisions-delete":     "",

@@ -5474,6 +5474,9 @@ async function dispatchDixieDataForm(button) {
         }
       }
       return true;
+    } catch (error) {
+      console.error("DixieData form dispatch failed", error);
+      showToast(error instanceof Error ? error.message : "Save failed. Check the debug console for details.", "error");
     } finally {
       setBusyState(submitter || form, false);
       setBusyGroupState(submitter || form, false);

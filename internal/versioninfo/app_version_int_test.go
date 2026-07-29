@@ -8,6 +8,16 @@
 // advertise 1.1.5-rc1, making compareVersions see Newer=true
 // against the installed 1.1.4 binary.
 //
+// RC cohort N progression on the rc/v1.1 branch:
+//
+//	N=5  (2026-07-26, #658)     1.1.5-rc1
+//	N=25 (2026-07-27, #674)     1.1.25-rc1
+//	N=26 (2026-07-27, #674)     1.1.26-rc1
+//	N=28 (2026-07-27, #674)     1.1.28-rc2
+//	N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
+//	N=30 (2026-07-28, rc/v1.1)  1.1.30-rc2 — bug-fix RC2 (Wails cache reuse shipped stale binary)
+//	N=31 (2026-07-28, rc/v1.1)  1.1.31-rc3 — clean rebuild, re-bump so updater offers it
+//
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
 // release-time PR (issue #578, ADR 0009 stable-promotion
@@ -23,12 +33,12 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// Catch-up value (issue #578 slice 1, 2026-07-14):
-	// accounts for the documented post-2026-07-03 release
-	// work — the #544 + #566 feedback chain, the #561
-	// microcopy sweep, and the #570 buildinfo consolidation.
-	if CurrentAppVersionInt != 17 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 17 (RC1 --seed flag + seed-fixture.ps1, issue #667)", CurrentAppVersionInt)
+	// rc/v1.1 RC1: N=32 bumps after method-override elimination
+	// across all form/button delete and update paths. The previous
+	// RC3 (N=31) shipped with silently-broken save + delete buttons
+	// in the Wails desktop build due to data-method + Clone issues.
+	if CurrentAppVersionInt != 32 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 32 (v1.1.32-rc1)", CurrentAppVersionInt)
 	}
 }
 

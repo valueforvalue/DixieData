@@ -550,8 +550,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-review-red)]">Danger Zone</p>
 					<div class="mt-4">
 						@components.Button("Delete Person Record", components.ButtonDanger, "", templ.Attributes{
-							"data-action": fmt.Sprintf("/soldiers/%d", s.ID),
-							"data-method": "DELETE",
+							"data-action": fmt.Sprintf("/soldiers/%d/delete", s.ID),
 							"data-confirm": "Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover.",
 							"data-dixie-submit": "true",
 						})

@@ -63,8 +63,7 @@ templ EventDetail(event viewmodel.EventRecord, linked []viewmodel.PersonRecord) 
 				<button
 					type="button"
 					class="secondary-button w-full justify-center sm:w-auto"
-					data-action={ fmt.Sprintf("/events/%d", event.ID) }
-					data-method="DELETE"
+					data-action={ fmt.Sprintf("/events/%d/delete", event.ID) }
 					data-dixie-submit="true"
 				>Delete Event</button>
 					</div>

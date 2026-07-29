@@ -1,0 +1,7 @@
+{
+  "version": "1.1.29-rc1",
+  "asset_url": "https://github.com/valueforvalue/DixieData/releases/download/v1.1.29-rc1/DixieData-release-v1.1.29-rc1.zip",
+  "sha256": "5b75f6dd97d626e582a195153b5cb83b1f68bf16aa80a293ba8f3df26c863015",
+  "release_notes": "v1.1.29-rc1 — RC cohort rebuild baking the 2 unlanded commits on rc/v1.1 (monochrome icon + PowerShell env preservation). RC manifest gating: installed binary reports 1.1.29, compareVersions returns Newer=false for prior 1.1.28-rc2 cohort. See DixieData CHANGELOG.md for the commit log.",
+  "published_at": "2026-07-28T01:33:23Z"
+}

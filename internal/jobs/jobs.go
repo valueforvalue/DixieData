@@ -123,6 +123,14 @@ type Job struct {
 	registry             *Registry // set at registration so Progress can broadcast
 }
 
+// MemorialSkipDetail is the job-layer representation of one skipped memorial row.
+type MemorialSkipDetail struct {
+	Row        int    `json:"row"`
+	MemorialID string `json:"memorial_id"`
+	Name       string `json:"name"`
+	Reason     string `json:"reason"`
+}
+
 // JobResult is the worker-supplied completion payload. Populated
 // by Registry.SetResult before the worker returns nil so /jobs/{id}
 // can render per-kind stats on the terminal summary card:
@@ -142,14 +150,6 @@ type Job struct {
 // Fields default to zero; Summary() renders a stat line only
 // when the corresponding field is > 0 (or true for MigrationRan),
 // so legacy kinds that don't fill the struct are unaffected.
-// MemorialSkipDetail is the job-layer representation of one skipped memorial row.
-type MemorialSkipDetail struct {
-	Row        int    `json:"row"`
-	MemorialID string `json:"memorial_id"`
-	Name       string `json:"name"`
-	Reason     string `json:"reason"`
-}
-
 type JobResult struct {
 	// Path is promoted to Job.ResultPath on SetResult so the
 	// /jobs/{id}/artifact endpoint still streams the saved file

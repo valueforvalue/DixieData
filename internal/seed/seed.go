@@ -583,7 +583,7 @@ func createImage(dataDir string, rng *rand.Rand, soldier models.Soldier, index i
 	if err != nil {
 		return models.Image{}, err
 	}
-	defer func() { debug.DeferCloseLog(output, "createImage.output")() }()
+	defer debug.DeferCloseLog(output, "createImage.output")
 	if err := png.Encode(output, img); err != nil {
 		return models.Image{}, err
 	}

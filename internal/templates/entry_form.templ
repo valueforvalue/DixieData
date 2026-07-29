@@ -55,11 +55,13 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 		<form
 			if isEdit {
 				action={ fmt.Sprintf("/soldiers/%d", s.ID) }
+				method="post"
 				data-dixie-submit="true"
 				data-draft-key={ draftKey(s, isEdit) }
 				data-draft-record-version={ draftRecordVersion(s, isEdit) }
 			} else {
 				action={ templ.SafeURL(routebuilder.SoldierCreate()) }
+				method="post"
 				data-dixie-submit="true"
 				data-draft-key={ draftKey(s, isEdit) }
 			}

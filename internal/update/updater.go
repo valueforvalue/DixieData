@@ -1068,7 +1068,7 @@ func copyFile(sourcePath, destinationPath string) error {
 	if _, err := io.Copy(destination, source); err != nil {
 		return err
 	}
-	return destination.Close()
+	return nil
 }
 
 func (s *Service) loadApplyStatus() *ApplyStatus {

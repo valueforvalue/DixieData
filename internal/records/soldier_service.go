@@ -15,10 +15,10 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
-	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/db/repo"
 	sqliterepo "github.com/valueforvalue/DixieData/internal/db/repo/sqlite"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
@@ -565,7 +565,7 @@ func (s *SoldierService) CountNeedsReview() (int, error) {
 // are excluded by the storage query so the activity count
 // matches the existing Articles inventory headline number.
 type InventoryMetricsRaw struct {
-	EntriesPerDay  map[string]int
+	EntriesPerDay map[string]int
 	// EntriesPerDayByKind is the per-kind per-day breakdown
 	// the /inventory Activity metrics line graph renders
 	// (issue #583). The outer map is keyed by kind
@@ -574,11 +574,11 @@ type InventoryMetricsRaw struct {
 	// so the templ partial never has to nil-check an inner
 	// map. The inner map is keyed by YYYY-MM-DD with the
 	// day's per-kind count; missing days are absent (not zero).
-	EntriesPerDayByKind  map[string]map[string]int
-	FirstEntryDate string
-	LatestEntryDate string
-	ActiveDayCount int
-	TotalsByType   InventoryMetricTotalsRaw
+	EntriesPerDayByKind map[string]map[string]int
+	FirstEntryDate      string
+	LatestEntryDate     string
+	ActiveDayCount      int
+	TotalsByType        InventoryMetricTotalsRaw
 }
 
 // InventoryMetricTotalsRaw is the per-entry-type activity count
@@ -586,11 +586,11 @@ type InventoryMetricsRaw struct {
 // headline counts in ArchiveCounts so a future storage
 // regression that drops an entry type trips the smoke probe.
 type InventoryMetricTotalsRaw struct {
-	Soldiers       int
-	SpouseRecords  int
-	LinkedPersons  int
-	EventRecords   int
-	Articles       int
+	Soldiers      int
+	SpouseRecords int
+	LinkedPersons int
+	EventRecords  int
+	Articles      int
 }
 
 // ActivityMetrics returns the activity rollup that powers the
@@ -2244,45 +2244,45 @@ func scanRecentSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
 // so the values stay at their model zero.
 func recentScanDest(s *models.Soldier) []interface{} {
 	var (
-		displayID            sql.NullString
-		syncID               sql.NullString
-		entryType            sql.NullString
-		spouseSoldierID      sql.NullInt64
-		relationshipLabel    sql.NullString
-		maidenName           sql.NullString
-		pensionID            sql.NullString
-		applicationID        sql.NullString
-		prefix               sql.NullString
-		showPrefixBeforeName sql.NullBool
-		firstName            sql.NullString
-		middleName           sql.NullString
-		lastName             sql.NullString
-		suffix               sql.NullString
-		rank                 sql.NullString
-		rankIn               sql.NullString
-		rankOut              sql.NullString
-		unit                 sql.NullString
-		pensionState         sql.NullString
+		displayID             sql.NullString
+		syncID                sql.NullString
+		entryType             sql.NullString
+		spouseSoldierID       sql.NullInt64
+		relationshipLabel     sql.NullString
+		maidenName            sql.NullString
+		pensionID             sql.NullString
+		applicationID         sql.NullString
+		prefix                sql.NullString
+		showPrefixBeforeName  sql.NullBool
+		firstName             sql.NullString
+		middleName            sql.NullString
+		lastName              sql.NullString
+		suffix                sql.NullString
+		rank                  sql.NullString
+		rankIn                sql.NullString
+		rankOut               sql.NullString
+		unit                  sql.NullString
+		pensionState          sql.NullString
 		confederateHomeStatus sql.NullString
-		confederateHomeName  sql.NullString
-		deathYear            sql.NullInt64
-		deathMonth           sql.NullInt64
-		deathDay             sql.NullInt64
-		birthDate            sql.NullString
-		deathDate            sql.NullString
-		birthInfo            sql.NullString
-		buriedIn             sql.NullString
-		reviewReason         sql.NullString
-		addedBy              sql.NullString
-		lastEditedBy         sql.NullString
-		lastEditedFields     sql.NullString
-		lastEditedAt         sql.NullString
-		createdAt            sql.NullString
-		updatedAt            sql.NullString
-		kind                 sql.NullString
-		beginDate            sql.NullString
-		endDate              sql.NullString
-		description          sql.NullString
+		confederateHomeName   sql.NullString
+		deathYear             sql.NullInt64
+		deathMonth            sql.NullInt64
+		deathDay              sql.NullInt64
+		birthDate             sql.NullString
+		deathDate             sql.NullString
+		birthInfo             sql.NullString
+		buriedIn              sql.NullString
+		reviewReason          sql.NullString
+		addedBy               sql.NullString
+		lastEditedBy          sql.NullString
+		lastEditedFields      sql.NullString
+		lastEditedAt          sql.NullString
+		createdAt             sql.NullString
+		updatedAt             sql.NullString
+		kind                  sql.NullString
+		beginDate             sql.NullString
+		endDate               sql.NullString
+		description           sql.NullString
 	)
 
 	return []interface{}{
@@ -2562,11 +2562,11 @@ func spouseReference(conn *sql.DB, spouseSoldierID int64) string {
 		spouseSoldierID,
 	).Scan(&prefix, &first, &middle, &last, &suffix); err == nil {
 		spouse := models.Soldier{
-			Prefix:    prefix,
-			FirstName: first,
+			Prefix:     prefix,
+			FirstName:  first,
 			MiddleName: middle,
-			LastName:  last,
-			Suffix:    suffix,
+			LastName:   last,
+			Suffix:     suffix,
 		}
 		if fullName := strings.TrimSpace(spouse.GetFullName()); fullName != "" {
 			return fullName
@@ -3033,7 +3033,6 @@ func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
 	return out, nil
 }
 
-
 // LinkedEventTimelineMarker moved to event_service.go as part
 // of issue #343 finding #5 — the JOIN against event_person_links
 // belongs on EventService, not SoldierService. ServiceTimeline
@@ -3101,6 +3100,65 @@ func (s *SoldierService) RecoverDisplayID(id int64) (string, error) {
 	return minted, nil
 }
 
+// moveSourceRowToPosition rewrites one owner's ordered rows to dense
+// one-based ordinals with sourceID inserted at position. selectSQL
+// must return row IDs for one owner in current display order; updateSQL
+// must assign (sort_order, row_id). Callers validate ownership first.
+func moveSourceRowToPosition(tx *sql.Tx, selectSQL, updateSQL string, ownerID, sourceID, position int64) error {
+	rows, err := tx.Query(selectSQL, ownerID)
+	if err != nil {
+		return err
+	}
+	var orderedIDs []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		orderedIDs = append(orderedIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if len(orderedIDs) == 0 {
+		return errors.New("no source rows to reorder")
+	}
+
+	current := -1
+	for i, id := range orderedIDs {
+		if id == sourceID {
+			current = i
+			break
+		}
+	}
+	if current < 0 {
+		return fmt.Errorf("source %d is not in owner %d order", sourceID, ownerID)
+	}
+	if position < 1 {
+		position = 1
+	}
+	if position > int64(len(orderedIDs)) {
+		position = int64(len(orderedIDs))
+	}
+	target := int(position - 1)
+	orderedIDs = append(orderedIDs[:current], orderedIDs[current+1:]...)
+	orderedIDs = append(orderedIDs, 0)
+	copy(orderedIDs[target+1:], orderedIDs[target:])
+	orderedIDs[target] = sourceID
+
+	for i, id := range orderedIDs {
+		if _, err := tx.Exec(updateSQL, int64(i+1), id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // MoveRecordWithinPerson reorders a Source Record within its
 // owning Person so it lands at `position` (1-indexed) in the
 // sort_order sequence. The method writes a single transaction
@@ -3135,67 +3193,13 @@ func (s *SoldierService) MoveRecordWithinPerson(personID, recordID, position int
 		return fmt.Errorf("record %d is not attached to person %d", recordID, personID)
 	}
 
-	// Count N (the current row count for this person) so we can
-	// clamp position. N is stable within a single transaction.
-	var n int64
-	if err := tx.QueryRow(
-		`SELECT COUNT(*) FROM records WHERE person_record_id = ?`,
-		personID,
-	).Scan(&n); err != nil {
-		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("no records to reorder for person %d", personID)
-	}
-	if position < 1 {
-		position = 1
-	}
-	if position > n {
-		position = n
-	}
-
-	// Shift every other row's sort_order so the requested row
-	// can take its new slot. Two strategies depending on whether
-	// the row is moving up or down.
-	//
-	// The shift is +1 for every row between the requested row's
-	// current position and the new position (inclusive on one
-	// end, exclusive on the other), then the requested row gets
-	// `position`. The single-transaction shape avoids an interim
-	// state where two rows share a sort_order.
-	//
-	// First: read the requested row's current sort_order.
-	var currentOrder int64
-	if err := tx.QueryRow(
-		`SELECT sort_order FROM records WHERE id = ?`,
-		recordID,
-	).Scan(&currentOrder); err != nil {
-		return err
-	}
-
-	if currentOrder < position {
-		// Moving down: rows between currentOrder+1 and position
-		// shift up by -1.
-		if _, err := tx.Exec(
-			`UPDATE records SET sort_order = sort_order - 1 WHERE person_record_id = ? AND id <> ? AND sort_order > ? AND sort_order <= ?`,
-			personID, recordID, currentOrder, position,
-		); err != nil {
-			return err
-		}
-	} else if currentOrder > position {
-		// Moving up: rows between position and currentOrder-1
-		// shift down by +1.
-		if _, err := tx.Exec(
-			`UPDATE records SET sort_order = sort_order + 1 WHERE person_record_id = ? AND id <> ? AND sort_order >= ? AND sort_order < ?`,
-			personID, recordID, position, currentOrder,
-		); err != nil {
-			return err
-		}
-	}
-
-	if _, err := tx.Exec(
+	if err := moveSourceRowToPosition(
+		tx,
+		`SELECT id FROM records WHERE person_record_id = ? ORDER BY sort_order, id`,
 		`UPDATE records SET sort_order = ? WHERE id = ?`,
-		position, recordID,
+		personID,
+		recordID,
+		position,
 	); err != nil {
 		return err
 	}

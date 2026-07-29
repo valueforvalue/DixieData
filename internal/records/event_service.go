@@ -54,9 +54,9 @@ type EventWithLinks struct {
 // transactional discipline intact: every Event write goes
 // through the same tx pool as Person Record writes.
 type EventService struct {
-	soldiers *SoldierService
+	soldiers  *SoldierService
 	eventRepo repo.EventRecordRepo
-	registry EventRegistry
+	registry  EventRegistry
 }
 
 // NewEventService constructs an EventService that borrows the
@@ -377,6 +377,7 @@ func (e *EventService) LookupPersonIDByDisplayID(displayID string) (int64, error
 	return row.ID, nil
 
 }
+
 // LookupPersonIDByName resolves a Person Record by free-text
 // name fragment (issue #373). Used by the Event editor's
 // Add Linked Person form as the FALLBACK path when the
@@ -427,7 +428,6 @@ func (e *EventService) LookupPersonIDByName(nameFragment string) (int64, error) 
 	}
 	return id, nil
 }
-
 
 // ListEvents returns a page of Event Records sorted by updated_at
 // DESC. Excludes the linked-Person-Records subquery for
@@ -649,7 +649,6 @@ func (e *EventService) linksForEvent(eventID int64) ([]EventLink, error) {
 	return links, rows.Err()
 }
 
-
 // ErrDuplicateLink is returned by AttachEventToPerson when the
 // (event_id, person_id) pair already exists in event_person_links.
 var ErrDuplicateLink = errors.New("event-person link already exists")
@@ -830,50 +829,13 @@ func (e *EventService) MoveEventSource(eventID, sourceID, position int64) error 
 		return fmt.Errorf("source %d is not attached to event %d", sourceID, eventID)
 	}
 
-	var n int64
-	if err := tx.QueryRow(
-		`SELECT COUNT(*) FROM event_sources WHERE event_id = ?`,
-		eventID,
-	).Scan(&n); err != nil {
-		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("no event sources to reorder for event %d", eventID)
-	}
-	if position < 1 {
-		position = 1
-	}
-	if position > n {
-		position = n
-	}
-
-	var currentOrder int64
-	if err := tx.QueryRow(
-		`SELECT sort_order FROM event_sources WHERE id = ?`,
-		sourceID,
-	).Scan(&currentOrder); err != nil {
-		return err
-	}
-
-	if currentOrder < position {
-		if _, err := tx.Exec(
-			`UPDATE event_sources SET sort_order = sort_order - 1 WHERE event_id = ? AND id <> ? AND sort_order > ? AND sort_order <= ?`,
-			eventID, sourceID, currentOrder, position,
-		); err != nil {
-			return err
-		}
-	} else if currentOrder > position {
-		if _, err := tx.Exec(
-			`UPDATE event_sources SET sort_order = sort_order + 1 WHERE event_id = ? AND id <> ? AND sort_order >= ? AND sort_order < ?`,
-			eventID, sourceID, position, currentOrder,
-		); err != nil {
-			return err
-		}
-	}
-
-	if _, err := tx.Exec(
+	if err := moveSourceRowToPosition(
+		tx,
+		`SELECT id FROM event_sources WHERE event_id = ? ORDER BY sort_order, id`,
 		`UPDATE event_sources SET sort_order = ? WHERE id = ?`,
-		position, sourceID,
+		eventID,
+		sourceID,
+		position,
 	); err != nil {
 		return err
 	}

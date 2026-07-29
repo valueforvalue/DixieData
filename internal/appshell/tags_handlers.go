@@ -363,7 +363,7 @@ func (a *App) handleMergeTag(w http.ResponseWriter, r *http.Request) {
 // to 404 so the dispatch surface stays consistent with the other
 // DELETE handlers.
 func (a *App) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

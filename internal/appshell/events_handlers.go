@@ -40,6 +40,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
@@ -280,6 +281,25 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// handleEventDeleteRoute handles POST /events/{id}/delete — the
+// button-based delete path that avoids method-override in Wails.
+func (a *App) handleEventDeleteRoute(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id < 1 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := a.events.DeleteEvent(id); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not delete event record %d.", id), err)
+		return
+	}
+	writeExportRedirect(w, "/events")
 }
 
 // handleEditEvent renders the /events/{id}/edit form on GET

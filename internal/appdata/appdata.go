@@ -2,13 +2,46 @@
 package appdata
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 const folderName = ".dixiedata"
+
+// WebViewUserDataPath returns an explicit WebView2 profile for
+// pre-release builds and the empty Wails default for stable builds.
+// Pre-release profiles are stable across RC numbers but isolated by
+// canonical Local Archive path. Stable intentionally keeps the empty
+// path so existing users retain Wails' historical
+// %APPDATA%/DixieData.exe profile without migration.
+func WebViewUserDataPath(releaseTag, dataDir, appDataRoot string) (string, error) {
+	if strings.TrimSpace(releaseTag) == "" {
+		return "", nil
+	}
+	if strings.TrimSpace(dataDir) == "" {
+		return "", errors.New("Local Archive path is required for pre-release WebView profile")
+	}
+	if strings.TrimSpace(appDataRoot) == "" {
+		return "", errors.New("AppData path is required for pre-release WebView profile")
+	}
+
+	canonical, err := filepath.Abs(filepath.Clean(strings.TrimSpace(dataDir)))
+	if err != nil {
+		return "", fmt.Errorf("resolve Local Archive path for WebView profile: %w", err)
+	}
+	canonical = filepath.ToSlash(canonical)
+	if runtime.GOOS == "windows" {
+		canonical = strings.ToLower(canonical)
+	}
+	digest := sha256.Sum256([]byte(canonical))
+	archiveID := fmt.Sprintf("%x", digest[:10])
+	return filepath.Join(filepath.Clean(appDataRoot), "DixieData-RC", archiveID, "EBWebView"), nil
+}
 
 // DefaultDir returns the canonical DixieData Local Archive root
 // directory the binary should use. Resolution order:

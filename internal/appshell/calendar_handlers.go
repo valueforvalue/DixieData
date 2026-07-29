@@ -210,7 +210,7 @@ func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
 		case http.MethodPut:
 			a.handleUpdateCalendarItem(w, r, month, day, itemID)
 			return
-		case http.MethodDelete:
+		case http.MethodPost, http.MethodDelete:
 			a.handleDeleteCalendarItem(w, r, month, day, itemID)
 			return
 		}
