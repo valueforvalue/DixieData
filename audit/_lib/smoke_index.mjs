@@ -48,6 +48,13 @@ export const SURFACES = [
     note: 'issue #380 -- post-#380 Share & Review mega-menu regression net',
   },
   {
+    name: 'article-edit',
+    file: 'audit/smoke_article_edit.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class (image picker modal must be a sibling of the article form, not a descendant)
+    note: 'issue #321 slice 3.7 -- article edit + new surface (Save / EditorToolbar / Preview / Cheatsheet / Image picker)',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',

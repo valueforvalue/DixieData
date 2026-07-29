@@ -81,7 +81,8 @@ abstraction in the handler — `/articles/{id}/edit` literal).
 | `data-image-picker-insert-url` (button) | — | — | `#article-body` (cursor) | none (insertTextAtCursor) | Inserts `![alt](url)` |
 | `data-md-cheatsheet-insert-key` (menuitem) | — | — | `#article-body` (cursor) | none (insertTextAtCursor) | Inserts the example Markdown |
 | `data-md-cheatsheet-copy-key` (button) | — | — | clipboard | none | Copies the example to clipboard |
-| `data-article-md-cheatsheet-open` (Foldout trigger) | — | — | `#panel.article.markdown-cheatsheet` | none (Foldout show) | aria-expanded toggles |
+| `data-article-md-cheatsheet-open` (DELETED — see correction) | — | — | — | — | **Correction (post-36d42c7 probe work):** the cheatsheet trigger uses the Foldout primitive's `data-foldout-trigger="<menuID>"` contract, where `menuID = panel.article.markdown-cheatsheet`. The literal `data-article-md-cheatsheet-open` marker is **not** present in the rendered HTML. See the Foldout primitive at `internal/templates/components/foldout.templ:54` + `:96` for the canonical attribute. Use `[data-foldout-trigger="panel.article.markdown-cheatsheet"]` instead. |
+| `data-foldout-trigger="panel.article.markdown-cheatsheet"` (Foldout trigger) | — | — | `#panel.article.markdown-cheatsheet` | none (Foldout show) | aria-expanded toggles. The Foldout primitive uses `data-foldout-trigger=<menuID>` as the trigger contract; menuID = `panel.article.markdown-cheatsheet`. |
 | `data-history-back` (button) | — | — | history back | none | Falls back to `routebuilder.Articles()` if no history |
 
 ## Canonical DOM surface IDs
