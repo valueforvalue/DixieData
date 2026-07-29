@@ -1090,10 +1090,11 @@
     document.querySelectorAll("[data-tab-group][data-tab-target]").forEach((button) => {
       // Issue #685: per-button idempotency guard so htmx:load
       // swaps don't double-activate the same tab group. The
-      // pattern mirrors __articlePreviewWired / __termDisclosureWired
-      // (per-element dataset.<feature>Wired = "1" sentinel).
-      if (button.dataset.tabsWired === "1") return;
-      button.dataset.tabsWired = "1";
+      // sentinel lives on the element itself (not on the
+      // dataset) so Node test harnesses without a real DOM
+      // dataset still pass the guard.
+      if (button.__tabsWired === true) return;
+      button.__tabsWired = true;
       const group = button.getAttribute("data-tab-group");
       if (!defaults.has(group) || button.hasAttribute("data-tab-default")) {
         defaults.set(group, button);
@@ -3965,16 +3966,18 @@ function serializeDraftFields(form) {
   }
 
   function initializeEntryTypeForms() {
-    // Issue #685: per-form idempotency guard. The form attribute
-    // carries the sentinel so the JS dispatcher + htmx:load
-    // swaps don't re-run syncEntryTypeFields (which the #689 fix
-    // removed the form.action mutation from, but the field
-    // sync still does work that should not double-fire).
+    // Issue #685: per-form idempotency guard so htmx:load
+    // swaps don't re-run syncEntryTypeFields (which the #689
+    // fix removed the form.action mutation from, but the
+    // field sync still does work that should not double-
+    // fire). The sentinel lives on the element itself (not
+    // on the dataset) so Node test harnesses without a real
+    // DOM dataset still pass the guard.
     if (typeof document === "undefined") return;
     document.querySelectorAll("form").forEach((form) => {
       if (!(form instanceof HTMLFormElement)) return;
-      if (form.dataset.entryTypeFormsWired === "1") return;
-      form.dataset.entryTypeFormsWired = "1";
+      if (form.__entryTypeFormsWired === true) return;
+      form.__entryTypeFormsWired = true;
       syncEntryTypeFields(form);
     });
   }
@@ -4863,11 +4866,14 @@ function currentBrowseStateFromForm(form) {
     // swaps don't re-run applyBrowseColumns / applyBrowseSelection
     // / saveBrowseState (which would otherwise churn the
     // selection restore for every swap, including pure
-    // re-renders that shouldn't touch browse state).
-    if (page.dataset.browseViewWired === "1") {
+    // re-renders that shouldn't touch browse state). The
+    // sentinel lives on the element itself (not on the
+    // dataset) so Node test harnesses without a real DOM
+    // dataset still pass the guard.
+    if (page.__browseViewWired === true) {
       return;
     }
-    page.dataset.browseViewWired = "1";
+    page.__browseViewWired = true;
     const form = document.getElementById("browse-filters");
     if (!(form instanceof HTMLFormElement)) {
       return;
