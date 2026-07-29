@@ -3320,7 +3320,7 @@ function serializeDraftFields(form) {
    * @param {number} max upper bound
    * @returns {number} clamped value
    */
-  function clamp(n, min, max) {
+  function clampNumber(n, min, max) {
     if (Number.isNaN(n)) return min;
     if (n < min) return min;
     if (n > max) return max;
@@ -6694,8 +6694,8 @@ function onPrintRecordsFragmentReady(modal) {
       if (!hasImage) return; // non-image file paste — let browser handle
 
       event.preventDefault();
-      for (var i = 0; i < clipboardData.files.length; i += 1) {
-        var file = clipboardData.files[i];
+      for (var fileIdx = 0; fileIdx < clipboardData.files.length; fileIdx += 1) {
+        var file = clipboardData.files[fileIdx];
         if (file.type.startsWith("image/")) {
           uploadAndInsert(file);
         }
@@ -6727,8 +6727,8 @@ function onPrintRecordsFragmentReady(modal) {
       if (!hasImage) return;
 
       event.preventDefault();
-      for (var i = 0; i < dt.files.length; i += 1) {
-        var file = dt.files[i];
+      for (var fileIdx = 0; fileIdx < dt.files.length; fileIdx += 1) {
+        var file = dt.files[fileIdx];
         if (file.type.startsWith("image/")) {
           uploadAndInsert(file);
         }
