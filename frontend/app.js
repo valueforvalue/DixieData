@@ -1088,6 +1088,12 @@
   function initializeTabs() {
     const defaults = new Map();
     document.querySelectorAll("[data-tab-group][data-tab-target]").forEach((button) => {
+      // Issue #685: per-button idempotency guard so htmx:load
+      // swaps don't double-activate the same tab group. The
+      // pattern mirrors __articlePreviewWired / __termDisclosureWired
+      // (per-element dataset.<feature>Wired = "1" sentinel).
+      if (button.dataset.tabsWired === "1") return;
+      button.dataset.tabsWired = "1";
       const group = button.getAttribute("data-tab-group");
       if (!defaults.has(group) || button.hasAttribute("data-tab-default")) {
         defaults.set(group, button);
@@ -3959,7 +3965,16 @@ function serializeDraftFields(form) {
   }
 
   function initializeEntryTypeForms() {
+    // Issue #685: per-form idempotency guard. The form attribute
+    // carries the sentinel so the JS dispatcher + htmx:load
+    // swaps don't re-run syncEntryTypeFields (which the #689 fix
+    // removed the form.action mutation from, but the field
+    // sync still does work that should not double-fire).
+    if (typeof document === "undefined") return;
     document.querySelectorAll("form").forEach((form) => {
+      if (!(form instanceof HTMLFormElement)) return;
+      if (form.dataset.entryTypeFormsWired === "1") return;
+      form.dataset.entryTypeFormsWired = "1";
       syncEntryTypeFields(form);
     });
   }
@@ -4844,6 +4859,15 @@ function currentBrowseStateFromForm(form) {
     if (!(page instanceof HTMLElement)) {
       return;
     }
+    // Issue #685: per-page idempotency guard so htmx:load
+    // swaps don't re-run applyBrowseColumns / applyBrowseSelection
+    // / saveBrowseState (which would otherwise churn the
+    // selection restore for every swap, including pure
+    // re-renders that shouldn't touch browse state).
+    if (page.dataset.browseViewWired === "1") {
+      return;
+    }
+    page.dataset.browseViewWired = "1";
     const form = document.getElementById("browse-filters");
     if (!(form instanceof HTMLFormElement)) {
       return;

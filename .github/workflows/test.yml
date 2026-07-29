@@ -187,6 +187,20 @@ jobs:
           just lint-dispatcher-patch-method
         timeout-minutes: 2
 
+      # JS initializer guard lint (issue #685). Asserts every
+      # initializer dispatched by initializeDynamicContent has a
+      # __<feature>Wired/Bound/Installed sentinel inside its first
+      # ~40 lines. The 13-assertion source-scan probe + 3-test
+      # regression net ship in this PR; --strict is the gate so a
+      # future addition of an unguarded initializer fails the
+      # build. Sibling to lint-no-nested-forms and verify-embed-tree.
+      - name: JS initializer guard lint (issue #685)
+        shell: bash
+        run: |
+          just lint-js-init-guards-strict
+          just lint-js-init-guards-test
+        timeout-minutes: 2
+
       # UX microcopy lint (issue #561). Static source scan over
       # every .templ file under internal/templates/** that catches
       # the three rule classes documented in
