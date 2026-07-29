@@ -67,7 +67,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			}
 			
 			enctype="multipart/form-data"
-			id="entry-edit-form"
 			data-record-persistence-kind={ draftMode(isEdit) }
 			data-draft-reset-path={ draftResetPath(s, isEdit) }
 			class="card rounded-3xl p-5 sm:p-8 space-y-5"
@@ -438,9 +437,9 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			</div>
 			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
 				if isEdit {
-					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "form": "entry-edit-form"})
+					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				} else {
-					@components.Button("Create Person Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "form": "entry-edit-form"})
+					@components.Button("Create Person Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				}
 				<button
 					type="button"
