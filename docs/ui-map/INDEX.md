@@ -68,6 +68,8 @@ below but worth knowing:
 | 26 | Event New | — | — | — | [wireframes/26-event-new.md](wireframes/26-event-new.md) |
 | 27 | Event Edit | `panel.event.form.sources`, `panel.event.form.linked-persons`, `panel.event.form.tags` | — | — | [wireframes/27-event-edit.md](wireframes/27-event-edit.md) |
 | 28 | Event PDF | — | — | `overlay.print-config.modal` (via popout) | [wireframes/28-event-pdf.md](wireframes/28-event-pdf.md) |
+| 29 | Articles List | (canonical markers only — see wireframe) | — | — | [wireframes/15-articles.md](wireframes/15-articles.md) |
+| 29a | Article Edit (new + edit share the form) | `panel.article.markdown-cheatsheet` | — | `overlay.article-preview-modal`, `overlay.image-picker-modal`, `overlay.table-builder-modal` | [wireframes/15a-articles-edit.md](wireframes/15a-articles-edit.md) |
 
 > All 30 wireframes drafted (v60 Event Records added in #342, top-nav
 > Share foldout + floating-dock Menu + Tags link folded into the

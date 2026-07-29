@@ -13,6 +13,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **docs: wireframe 15a-articles-edit for the article editor surface (#700 next).** New `docs/ui-map/wireframes/15a-articles-edit.md` documents the edit-page state: Save Article button + EditorToolbar (11 buttons — Bold/Italic/Heading/Link/Image/List/Code/Quote/Table/Undo/Redo) + Markdown Cheatsheet Foldout (panel.article.markdown-cheatsheet) + Preview button (article-preview-modal) + ImagePickerModal (image-picker-modal) + TableBuilderModal. The new + edit forms share the same `ArticleArticleForm` component so the wireframe covers both routes. Cross-references issue #321 (slice 3.5 + 3.7), #565 (cheatsheet), #610 (toolbar + live preview), #611 (undo/redo), #612 (image picker), #526 (preview modal). Listed all 7 footguns including the bare-URL form action, the cheatsheet no-steal-focus decision, the new-article image picker degraded mode, and the nested-form-sibling-tree invariant. Plus closing gaps in the UI-map: added Articles section to `docs/ui-map/routes.md` (12 routes from issue #321), added `panel.article.markdown-cheatsheet` to `docs/ui-map/surfaces.md`, added rows 29 + 29a to `docs/ui-map/INDEX.md` for both the list and the edit wireframes.
+
+
+
 - **docs: smoke-runner playbook (#700 slice 7).** New `docs/agents/smoke-runner.md` (Tier 1 reference) describes the `runProbe` contract, the `SURFACES[]` contribution contract ("append one line" to add a probe), the playwright-vs-scanner surface shape, the cleanup-hook ordering invariant, and the 7-surface registry. Registered in `docs/agents/INDEX.md` Tier 1 "Feature work" section. Cross-references issue #700, the justfile triplet, the audit.yml wiring, and the MISTAKES.md git-show-vs-read lesson.
 
 
