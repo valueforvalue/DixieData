@@ -150,13 +150,26 @@ lint-all-frontend:
     just lint-bake-bootstrap
     just verify-embed-tree
     just lint-no-nested-forms
+    just lint-js-init-guards
+    just lint-button-actions-resolve
+    just lint-orphan-handlers
 
 # Aggregate test target: runs every node-based probe test suite.
+# Note: lint-orphan-handlers-test is intentionally NOT wired here
+# because the unit test has pre-existing failures (audit/
+# discover_orphan_handlers.test.mjs expects older linter output
+# that was rewritten since). Wired into the triplet for parity
+# with the other 3 scanners so individual contributors can run
+# `just lint-orphan-handlers-test` for triage, but excluded from
+# the aggregate test-lint gate until the unit test is repaired.
+# Tracked as a follow-up issue.
 test-lint:
     just lint-htmx-guard-test
     just lint-bake-bootstrap-test
     just verify-embed-tree-test
     just lint-no-nested-forms-test
+    just lint-js-init-guards-test
+    just lint-button-actions-resolve-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 
@@ -205,6 +218,22 @@ lint-button-actions-resolve-strict:
     node scripts/lint-button-actions-resolve.mjs --strict
 lint-button-actions-resolve-test:
     node --test scripts/lint-button-actions-resolve.test.mjs
+
+# discover_orphan_handlers (audit/discover_orphan_handlers.mjs):
+# walks internal/appshell/routes.go + every .templ file +
+# every generated *_templ.go to confirm every registered
+# handler has at least one templ/data-action invoker. Catches
+# the "handler returns 200 but renders nothing" bug class.
+# Triplet added in #700 slice 5 to mirror the convention used
+# by the other 3 scanners (lint-no-nested-forms,
+# lint-button-actions-resolve, lint-js-init-guards). The unit
+# test audit/discover_orphan_handlers_test.mjs already exists.
+lint-orphan-handlers:
+    node audit/discover_orphan_handlers.mjs
+lint-orphan-handlers-strict:
+    node audit/discover_orphan_handlers.mjs --strict
+lint-orphan-handlers-test:
+    node --test audit/discover_orphan_handlers.test.mjs
 
 # Issue #668 / ADR 0011: commit-type classifier for PRs
 # targeting `rc/v*` branches. Walk every commit between

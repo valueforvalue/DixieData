@@ -60,13 +60,43 @@ async function dispatchSurface(surface) {
     };
   }
   if (surface.kind === 'scanner') {
-    // Slice 5: spawnSync('node', [path, '--strict']) and
-    // aggregate {status, stdout} per scanner. Today this is
-    // a no-op stub.
+    // Slice 5: spawn the CLI linter with `--strict` and
+    // aggregate its exit code. The 4 linters (issue #682
+    // nested forms, #687 invoker URL drift, #685 init
+    // guards, plus the orphan-handlers sweep) all honour
+    // the `--strict` gate: 0 on clean, non-zero on
+    // violations. Surfacing the exit code in the JSON
+    // summary lets the aggregator produce a single
+    // audit/smoke_summary.json that merges the live
+    // Playwright probes and the static scanners.
+    //
+    // Output shape mirrors the playwright branch:
+    // lastStdoutLines + stderrTail. The full stdout is
+    // larger for scanners (lint-no-nested-forms prints
+    // every .templ it scans); we capture the tail to keep
+    // the JSON summary bounded.
+    //
+    // The aggregator's STRICT flag is threaded as a
+    // second pass-through arg: today all 4 linters
+    // consume `--strict` themselves, but the pattern
+    // generalizes so a future strict-only scanner can
+    // gate behind the aggregator's CLI flag without
+    // touching this branch.
+    const args = [surfacePath(surface.file), '--strict'];
+    if (STRICT) args.push('--strict');
+    const result = spawnSync(
+      process.execPath,
+      args,
+      { encoding: 'utf8', cwd: REPO_ROOT },
+    );
     return {
       name: surface.name,
-      ok: true,
-      details: { stub: true, kind: surface.kind, note: 'slice 5' },
+      ok: result.status === 0,
+      details: {
+        exitCode: result.status,
+        ...(result.stdout ? { lastStdoutLines: result.stdout.trim().split('\n').slice(-20) } : {}),
+        ...(result.stderr ? { stderrTail: result.stderr.split('\n').slice(-12).join('\n') } : {}),
+      },
     };
   }
   return {
