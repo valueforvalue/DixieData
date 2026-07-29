@@ -709,6 +709,40 @@
     return input instanceof HTMLInputElement ? input : null;
   }
 
+  // swapHtmlIntoTarget assigns `html` to `target.innerHTML`, then
+  // fires htmx.process(target) so any hx-* attributes on the new
+  // children are wired by htmx. Without the explicit process call,
+  // non-htmx dispatches (file uploads, dispatcher-driven form posts,
+  // the print-config preview) replace panel contents directly via
+  // innerHTML and the new buttons (e.g. per-card Delete) have no
+  // htmx intercept. htmx.process is idempotent on already-processed
+  // elements (it scans for hx-* attrs and binds each one once).
+  // After processing, the caller should also run initializeDynamicContent()
+  // so any JS initializers (foldouts, image pickers, etc.) are wired.
+  //
+  // Used by: handleImageUpload, dispatchDixieDataForm response swap,
+  // refreshShareQueuePresetsPage, the print-config preview modal,
+  // and the browse-fragment refresh. All 5 sites share the same
+  // pattern (`target.innerHTML = html; initializeDynamicContent();`)
+  // for the same reason: server-side fragment returned as text/html,
+  // client-side innerHTML swap, post-swap dynamic-content wiring.
+  //
+  function swapHtmlIntoTarget(/** @type {Element} */ target, /** @type {string} */ html) {
+    target.innerHTML = html;
+    // The htmx runtime exposes a process(node) method (per the
+    // htmx 2.x docs). The `window.htmx` type is inferred from
+    // earlier uses (which only touch htmx.on / htmx.off), so the
+    // typecheck doesn't know about .process. The runtime check is
+    // the source of truth; the cast is purely for the narrow type
+    // assertion.
+    const htmxRuntime = /** @type {any} */ (window).htmx;
+    if (htmxRuntime && typeof htmxRuntime.process === "function") {
+      htmxRuntime.process(target);
+    }
+    initializeDynamicContent();
+  }
+
+
   function invalidateRecentSearchHydration() {
     recentSearchHydrationState.token += 1;
   }
@@ -4926,8 +4960,7 @@ async function startUpdateProgressPollIfNeeded(target) {
       // parse avoids the cost of a full DOMParser round-trip.
       const phaseMatch = html.match(/data-progress-phase="([^"]+)"/);
       const phase = phaseMatch ? phaseMatch[1] : "";
-      target.innerHTML = html;
-      initializeDynamicContent();
+      swapHtmlIntoTarget(target, html);
       if (TERMINAL_PHASES.has(phase)) break;
     }
   } finally {
@@ -5127,8 +5160,7 @@ function handleImageUpload(input) {
         target = document.querySelector(sel);
       }
       if (target) {
-        target.innerHTML = html;
-        initializeDynamicContent();
+        swapHtmlIntoTarget(target, html);
       }
     })
     .catch(err => console.error("Image upload failed", err))
@@ -5464,8 +5496,7 @@ async function dispatchDixieDataForm(button) {
         );
         if (target instanceof HTMLElement) {
           const html = await response.text();
-          target.innerHTML = html;
-          initializeDynamicContent();
+          swapHtmlIntoTarget(target, html);
           // Issue #661: if the rendered fragment carries
           // data-poll-progress, start polling
           // /settings/updates/progress every 500ms so the user
@@ -7320,7 +7351,7 @@ async function refreshShareQueuePresetsPage(panel) {
         return;
       }
       const html = await response.text();
-      target.innerHTML = html;
+      swapHtmlIntoTarget(target, html);
       if (status instanceof HTMLElement) {
         status.textContent = "";
       }
@@ -8597,8 +8628,7 @@ async function refreshShareQueuePresetsPage(panel) {
                 const html = await response.text();
                 const target = document.querySelector(latestTarget);
                 if (target instanceof HTMLElement) {
-                  target.innerHTML = html;
-                  initializeDynamicContent();
+                  swapHtmlIntoTarget(target, html);
                 }
               } catch (error) {
                 showToast("Browse refresh failed.", "error");
