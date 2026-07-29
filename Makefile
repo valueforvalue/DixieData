@@ -468,6 +468,24 @@ lint-bake-bootstrap-strict: ## bake-script-imports-target lint as a CI failure
 lint-bake-bootstrap-test: ## Run the lint_bake_bootstrap probe test suite
 	node audit/lint_bake_bootstrap.test.mjs
 
+# verify-embed-tree (issue #686): asserts every frontend/**
+# file referenced by index.html or the rendered runtime HTML
+# is reachable via the //go:embed frontend directive at
+# main.go:25. Catches the file-skip-by-prefix class from
+# issue #686 + 12f1834a (the article Preview button bug was
+# caused by `frontend/_lib/debounce.js` being silently dropped
+# by Go's embed package). R1 reports reparent-by-prefix files
+# as informational; R2 + R3 are the strict-mode gates.
+# Sibling to lint-bake-bootstrap + lint-htmx-guard.
+verify-embed-tree: ## embed-tree lint (issue #686); docs/COMMON_BUGS.md
+	node audit/verify_embed_tree.mjs
+
+verify-embed-tree-strict: ## embed-tree lint as a CI failure
+	node audit/verify_embed_tree.mjs --strict
+
+verify-embed-tree-test: ## Run the verify_embed_tree probe test suite
+	node audit/verify_embed_tree.test.mjs
+
 lint-dispatcher-tdz-test: ## Run the dispatcher_tdz_fix regression test (slice-2 typecheck fix)
 	node audit/dispatcher_tdz_fix.test.mjs
 

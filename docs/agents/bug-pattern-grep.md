@@ -533,6 +533,79 @@ branch that uses `button.closest("form")` without the
 
 ---
 
+## 14. `embed-tree-skip` (§8.6, target:rc)
+
+**Symptom:** A frontend JS file is referenced by `index.html`
+or by the rendered runtime HTML in a templ file, but the asset
+is never served by the Wails binary. The browser console shows
+a 404 for the asset path; `window.__<something>` is undefined;
+every dependent button is a no-op. The JS file exists on disk
+at the expected path. The Wails build succeeds.
+
+**Why this grep matters:** Go's `embed` package skips files and
+directories whose names begin with `.` or `_`. The DixieData
+convention has been to put shared JS helpers in `frontend/lib/`
+(after the rename from `_lib/` in `12f1834a`). The article
+Preview button bug (`12f1834a`) was the canonical instance:
+`frontend/_lib/debounce.js` was never embedded,
+`window.__dixieDebounce` was undefined, the article Preview
+button was a no-op.
+
+```bash
+# Find any top-level frontend dir whose name starts with _ or .
+# These would be silently dropped by //go:embed:
+find frontend -mindepth 1 -maxdepth 1 \( -name '_*' -o -name '.*' \)
+
+# Find any nested file under a _-prefixed dir:
+find frontend -name '_*'
+
+# Run the embed-tree sweep (the make target that wraps the probe):
+make verify-embed-tree
+# R1: reparent-by-prefix — files actually excluded by //go:embed
+# R2: index-html-references-resolve — every <script src>/<link href>
+#     in frontend/index.html points to a real file
+# R3: live-html-references-resolve — same shape against the
+#     generated templ runtime HTML
+```
+
+**What the result means:** Any top-level `frontend/_*` or
+`frontend/.*` dir is a regression waiting to happen. The
+fix is to rename the dir to a non-underscore prefix (the
+DixieData convention is `frontend/lib/`). The probe enforces
+the invariant at PR time.
+
+**Audit step:** if a PR adds a new frontend helper, run
+`make verify-embed-tree` (added by #686) before opening the
+PR. The probe fails on:
+
+- A new `_`-prefixed or `.`-prefixed top-level dir under
+  `frontend/` (R1, informational — the convention is no NEW
+  additions; existing files are reported for visibility).
+- A `<script src="/...">` or `<link href="/...">` in
+  `frontend/index.html` that doesn't resolve to a real file
+  in the repo (R2, strict-mode failure).
+- A script/link in the rendered runtime HTML that doesn't
+  resolve (R3, strict-mode failure).
+
+**Real example (the historical fix):**
+
+- `12f1834a` (the article Preview button bug) — renamed
+  `frontend/_lib/` to `frontend/lib/`. The original commit
+  added the file under `frontend/_lib/debounce.js`. The Wails
+  build succeeded but the asset was never embedded; the
+  Preview button was a no-op in production.
+
+**Related:**
+
+- #686 (umbrella child — `make verify-embed-tree` lint)
+- `12f1834a` (the historical fix)
+- `docs/COMMON_BUGS.md` §8.6 (canonical class entry)
+- `docs/COMMON_BUGS.md` §8.5 (sibling: stale `.syso` from failed build)
+- [Go embed package docs](https://pkg.go.dev/embed) — the `_`/`.` prefix rule
+- [golang/go#42328](https://github.com/golang/go/issues/42328) — the upstream issue
+
+---
+
 ## How to use this cookbook
 
 1. Before merging a PR, run the greps relevant to the changed

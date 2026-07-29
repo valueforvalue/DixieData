@@ -300,7 +300,7 @@ Don't disable them. Don't add `[skip ci]` for them.
 | Button-actions-resolve | `lint-button-actions-resolve.py` (planned: #687) | Templ `data-action` / `action="..."` resolving to a 404 |
 | JS-form-mutation | `lint-no-form-mutation.js` (planned: #687 extended scope) | JS-side `form.action` / `form.method` / `form.enctype` mutation outside `dispatchDixieDataForm`'s synthetic-form branch |
 | Nested-form | `lint-no-nested-forms.py` (planned: #682) | `<form>` inside `<form>` in any `.templ` file |
-| Embed-tree | `verify-embed-tree.py` (planned: #686) | `frontend/_lib/*.js` files referenced by `index.html` but skipped by Go `//go:embed` |
+| Embed-tree | `verify-embed-tree.mjs` (planned: #686) | `frontend/_lib/*.js` files referenced by `index.html` but skipped by Go `//go:embed`; the embed-tree sweep wires to `make verify-embed-tree` and `make verify-embed-tree-strict` for CI |
 | Init-guard | `lint-js-init-guards.mjs` (planned: #685) | `__<feature>Wired` idempotency guards missing from `initializeXxx` funcs |
 | Wails-PATCH CI | `audit/dispatcher_patch_method.test.mjs` (planned: #683) | Wails-PATCH body-stripping workaround regressions |
 | Empty-body dispatch | `lint-no-form-mutation.js` (planned: #687 extended scope, class 9) | `button.closest("form")` outside the form-finding branch — body construction uses raw DOM traversal instead of the resolved form |
