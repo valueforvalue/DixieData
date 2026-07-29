@@ -278,29 +278,21 @@ async function main(ctx) {
 	// Same page.evaluate()-based click workaround as step 6.
 	const beforeRollback = await getTagCount(soldierID, SCRATCH);
 	const rollbackResponsePromise = page.waitForResponse(
-		(r) => r.url().endsWith(`/soldiers/${soldierID}/tags`) && r.request().method() === 'POST',
+		(r) => r.url().includes(`/soldiers/${soldierID}/tags`) && r.request().method() === 'POST',
 		{ timeout: 15_000 },
 	);
 	const rollbackClicked = await page.evaluate(() => {
-		// Same scope-narrow selector as the attach step above
-		// (details wrapper only -- otherwise the per-row delete
-		// forms match and the click fires a delete instead of an
-		// empty-attach rollback).
 		const details = document.querySelector('details:has(form[data-dixie-submit][action*="/tags"])');
 		if (details) details.open = true;
-		const inp = document.querySelector('details form[data-dixie-submit] input[name="tag_name"]');
-		if (inp) {
+		const form = details && details.querySelector('form[data-dixie-submit][action$="/tags"]');
+		if (!(form instanceof HTMLFormElement)) return false;
+		const inp = form.querySelector('input[name="tag_name"]');
+		if (inp instanceof HTMLInputElement) {
+			inp.removeAttribute('required');
 			inp.value = '';
-			inp.dispatchEvent(new Event('input', { bubbles: true }));
 		}
-		const btn = document.querySelector(
-			'details form[data-dixie-submit][action$="/tags"] button[type="submit"]',
-		);
-		if (btn) {
-			btn.click();
-			return true;
-		}
-		return false;
+		form.requestSubmit();
+		return true;
 	});
 	if (!rollbackClicked) {
 		await page.evaluate(() => {
