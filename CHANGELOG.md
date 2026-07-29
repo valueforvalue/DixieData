@@ -9,29 +9,26 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
-## [Unreleased]
+## v1.1.33 - Save Button Body Fix
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
-- **audit: 7-class button-bug catalog + 7-gate debug-env hardening sweep** (`#681` umbrella).
-  - `#682` (release-blocker) — fix nested `<form>` rendering defect in `entry_form.templ` + `soldier_card.templ` (the HTML parser silently closes the outer form, breaking Save Changes / Download buttons). Land `make lint-no-nested-forms`.
-  - `#683` — CI gate for WebView2 body-stripping protections (extend `audit/dispatcher_patch_method.test.mjs` to 9 assertions, mirror on Go side via `requestMethodOverride` test).
-  - `#684` — table-driven render-test that every form contract (`name`, `data-method`, `data-results-target`) matches the handler that reads it.
-  - `#685` — `lint-js-init-guards` audit assertion that every `__<feature>Wired` guard is in place for htmx-swap-safe re-binding.
-  - `#686` — `make verify-embed-tree` — assert every `frontend/**` referenced by `index.html` is reachable via `//go:embed`. Catches the `frontend/_lib/` skip class.
-  - `#687` — `lint-button-actions-resolve` + `lint-no-form-mutation` — orphan-handler probe's inverse. Every templ `data-action` / `action="..."` must resolve to a registered route, AND every JS-side `form.action` / `form.method` / `form.enctype` mutation outside `dispatchDixieDataForm`'s synthetic-form branch must be flagged. The JS-side rule was added after class 8 was identified (#689).
-  - `#688` — `frontend/lib/dixie-debug.js` + `/debug/client-logs` ingest for `unhandledrejection` + `error` events. Persistent layer for the class-7 silent-failure class.
-  - `#689` — `fix(frontend): syncEntryTypeFields` clobbers `form.action` (class 8). The Person Record edit save dispatched to `/soldiers` (create URL) instead of `/soldiers/{id}` (edit URL) because the JS-side `syncEntryTypeFields` mutated `form.action` after the server rendered it. One-line fix; cascade cleanup of the band-aid `id="entry-edit-form"` workaround + `button.form` fallback.
-  - `#691` — `fix(frontend): body construction uses button.closest(form) instead of resolved form` (class 9, release-blocker). Save Changes submitted an empty body because the body-construction branch at `frontend/app.js:5206` re-checked `button.closest("form")` (returns null for the reparented Save button) instead of using the resolved `form` variable from the earlier form-finding branch. Server-side `parseSoldierForm` returned all-empty fields; `Update` wrote empty values, wiping the record. One-line fix; cascade cleanup of the band-aids and `[DD DEBUG]` logs.
+- **backfill: merge rc/v1.1 → dev (#680, ADR 0011).** Resolved 3 conflicts
+  in CHANGELOG.md, config.default.json, and buildinfo/release_url.go.
 
-The umbrella catalogs 12 button-failure fixes across the 2026-06 → 2026-07 window
-into 7 distinct bug classes; each child above is one detection gate (or
-detection gate + structural fix) per class. Children are filed against `rc/v1.1`
-per the AGENTS.md branch policy and the umbrella's slice plan. Class 8
-(`#689`) was added after the diagnostic session #676/#682 surfaced a JS-side
-form-action mutation that the original 7-class taxonomy missed. Class 9
-(`#691`) was added after a follow-up diagnostic surfaced a JS-side form-body
-construction bug that the 8-class taxonomy missed.
 
 ## v1.1.32 - RC1 Method-Override Elimination
 
@@ -89,9 +86,35 @@ construction bug that the 8-class taxonomy missed.
 
 - **settings/updates: Save Update Source and Use Default GitHub Feed responses were invisible (missing data-results-target, issue #658)**. Same root cause as Check for Updates — both forms submitted via `data-dixie-submit` with no target. The handler returned the full `SettingsUpdatePanel` HTML but the dispatcher discarded it. Toast was queued but never shown (no navigation). Added `data-results-target="#settings-update-panel"` to both forms so the panel refreshes in-place with the success/error notice visible.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **version: bump release counter N 4→5 for RC1 cohort update eligibility (issue #658)**. The RC manifest advertises `1.1.5-rc1`; the installed RC1 binary reports `1.1.4`. `compareVersions("1.1.5", "1.1.4")` → `Newer=true` so the updater offers the update. Without the bump both sides parse to `1.1.4` and the UI shows "already up to date."
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -128,6 +151,19 @@ construction bug that the 8-class taxonomy missed.
 - **config: replaced JS and remaining Go hard-coded values (follow-up to #636-#639)**. JS: toast duration, recent records cap, research recents cap, back-stack depth all read from window.__dixieConfig via readConfig() helper. Go: browse page sizes (SetBrowsePageSizes), max retained backups (SetMaxRetainedBackups), max restore points (SetMaxRestorePoints), orphan trash retention (SetOrphanTrashRetentionDays), feedback log retention (SetFeedbackRetentionDays) all moved from const to var with setters called from reloadServices. **Files**: 7 (app.js, browse.go, retained_backup_manager.go, restore_point_manager.go, image_service.go, app_feedback.go, app.go). **Regression net**: go test -short ./... 38/38 green.
 
 - **config: externalized application configuration into config.json (issues #636-#639)**. New \`internal/config\` package: \`Config\` struct with Window, UI, Limits, Timing, PDF, Google, Theme blocks. \`Load()\` reads \`<stateDir>/config.json\`, merges partial files with \`Defaults()\`. \`Save()\` writes atomically. \`ForClient()\` extracts the subset injectable as \`window.__dixieConfig\` in the frontend. Config wired into \`App\` struct, loaded at startup, and tagged onto request context in \`ServeHTTP\` so every page ships \`window.__dixieConfig = {...}\`. Window size (1280×800) now read from config in \`main.go\` before \`Wails.Run\`. Shutdown timeout reads from \`cfg.Timing.ShutdownTimeoutS\`. \`config.default.json\` at repo root ships alongside binary in release bundles. Pragmatic Programmer Tip #55 (external config) + Tip #25 (plain text). **Files**: 7 (\`internal/config/config.go\` + \`config_test.go\` new; \`internal/appshell/app.go\` + \`lifecycle.go\` + \`lifecycle.go\` context wiring; \`internal/templates/layout_helpers.go\` + \`layout.templ\` client-config injection; \`main.go\` window-size from config; \`config.default.json\` new). **Regression net**: \`go test -short -count=1 ./...\` all green; \`./internal/config/\` 7/7 tests green.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -255,6 +291,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **ci: batch race-stress into appshell + rest-of-repo (#479, #629)**. Replaced the single `go test -race ./... -timeout 20m` with two batches: appshell-only (`-timeout 12m`, ~8-10min actual) + rest-of-repo (`-timeout 10m`, ~2min actual). Each batch gets its own Go test timeout, avoiding the per-package timeout cliff where appshell dominated the single invocation. The full package split (moving test files into sub-packages with `export_test.go`) is filed as #629 for when the suite grows past 12min. **Files**: 1 (`.github/workflows/race-stress.yml`).
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **session: 2026-07 pragmatic-programmer audit + remediation wrap-up**. New `docs/agents/notes/2026-07-pragmatic-programmer-audit.md` documents the 20 commits + 12 closed issues + 5 new follow-ups shipped during the 2026-07-17/18 session. Quick Diagnostic scores: DB swappable 2→7, end-to-end 7→8, DRY 6.5→7.5, clean code 8→8 (held), estimates 3→5, rollback 6→7.5, knowledge portfolio 7→7.5. Bugs caught + fixed during the session: shared-cache SQLite deadlock (slice 5), stale bake script emitting pre-#588 `Documentation:` field name (slice 5), CHANGELOG `lastIndexOf` bug landing in the wrong Maintenance section (slice 8 / #624), `FindingsForRecordIDs` AND-clause binding bug from SQL operator precedence (slice 8). Open follow-ups in priority order: #625 (slice 9+ of #613 — the work that erodes the 118+ lint-probe offenders), #615 (collapse in-flight globals), #608 (import schema bug), #623 (v60 rename sweep), #622 slice 9 (resolve methods). Calibration: 12 closed issues with both estimate + actual are the first dataset for the 90-day MAPE target.
@@ -355,6 +404,19 @@ construction bug that the 8-class taxonomy missed.
   - **fix(static-archive): printable report duplicates 'Click to view', auto-prints on load, and forces portrait on landscape-designed layout (#519)**. fix(static-archive): printable report dedupes 'Click to view', drops auto-print, flips landscape (issue #519)
   - **fix(browse): Tags filter silently drops all but the first selected tag — AND logic unreachable (#520)**. fix(browse): tags filter preserves multi-value form keys (issue #520)
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
   - **Bulk export: capture baseline performance metrics for typst path (#66)**. bench(export): capture baseline metrics for bulk typst PDF export (issue #66)
@@ -422,6 +484,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **frontend: shared debounce helper (issue #573)**. New `frontend/_lib/debounce.js` exposes `window.__dixieDebounce(fn, ms) -> wrapped fn` with `{ cancel, schedule }` accessors, trailing-edge semantics. Loaded by a new `<script defer src="/_lib/debounce.js">` in `frontend/index.html` ahead of `app.js`. Replaces three inline `clearTimeout`/`setTimeout` patterns: print-config preview (150ms), article preview modal "Preview" button (50ms render-pulse), and browse filter (200ms). Same durations, same semantics, consolidated plumbing. New `frontend/_lib/debounce.test.mjs` pins the contract: burst collapses to one fire, latest args reach wrapped fn, cancel drops pending fire, cancel + fresh schedule still fires, two instances are independent. `window.__dixieDebounce` and `window.__dixieBrowseFilterDebounce` added to `frontend/global.d.ts`.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **docs: correct pragmatic-principles §6 tip-index titles + fill 4 missing tips (follow-up to #561 Pragmatic Programmer audit)**. The §6 100-tip index in `docs/agents/pragmatic-principles.md` shipped with a +4-position title drift starting at row 53 (each row from #53..#79 held the canonical title for the *next* tip, not its own #), and 4 canonical tips were absent (#52 Prefer Interfaces, #58 Random Failures, #80 Project Glossary, #97 Sign Your Work). Root cause: the row builder used a +4 offset when assembling the table; the audit doc (`docs/audit/pragmatic-programmer-audit-2026-07.md`) carried the same drift, so the field guide inherited it. Fix: every row 52..#100 rebuilt against the canonical 20th Anniversary Edition tip list (https://pragprog.com/tips/). The 4 missing tips land with bespoke state + evidence rows that cite the existing repo surface (`internal/local_settings` for #55, the dialog-guard mutex + Wails `App` for #57, `audit/race-stress.yml` for #58, `CONTEXT.md` for #80, the CHANGELOG fixship-by-fixship attribution for #97). Two dead cross-references fixed: rows #10 + #12 pointed at §1.19 WISDOM (the audit-doc number; the field guide places WISDOM at §2.1) and now correctly point at §2.1. Row #13 ("Build Documentation In, Don't Bolt It On") now correctly anchors to §1.16 (It's All Writing) instead of "—". §7 counts updated to the actual computed totals (66 Enforced / 19 Partial / 4 Gap / 11 N/A). Out of scope: rewriting the audit doc itself (the field guide is the source of truth per §7; the audit doc remains the historical artifact). `make test` not applicable (docs-only change). Re-verification script: matches every row against the canonical title list with a 25-char tolerance, reports 0 mismatches and 0 absent.
@@ -461,6 +536,19 @@ construction bug that the 8-class taxonomy missed.
 - **ux: drop duplicated body sentence from /share/exports section (issue #561 slice 3)**. The section inside `<PanelShareExports>` repeated the page-level summary sentence ('Generate portable exports, replacement backups, and merge-ready shared archives.') verbatim. Removed the section copy; the page heading + section heading + button labels (Export JSON / Export Excel / etc.) already carry the meaning. `audit/smoke_microcopy.mjs` R3 count drops 1 → 0 for `share_exports.templ`.
 
 - **ux: drop duplicated body sentence from /share/sync section (issue #561 slice 4)**. The Google Integration section repeated the page-level summary sentence ('Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.') verbatim. Removed; the page heading + section heading + Connect/Sync buttons already convey it. `audit/smoke_microcopy.mjs` R3 count drops 1 → 0 for `share_sync.templ`. Probe is now 0/0/0 across R1/R2/R3.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -657,6 +745,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **mega-menu: drop redundant 'Change Person…' menuitem from Share & Review panel (issue #549)**. The Share & Review mega-menu's first column carried a `Change Person…` item pointing at `/research` — the picker landing itself. The menuitem was redundant for two reasons: (a) every soldier-scoped sub-page in the menu already picks the person from its own URL (`/soldiers/{id}/*`) or its own browse/recents affordance, so there is no "change person" step to expose at the menu level; (b) the picker landing IS the act of choosing a different person, so linking to it adds nothing the sub-pages don't already have. After issue #455 slice 2 deleted the picker cookie machinery, `/research/clear` became a no-op redirect to `/research` and the mega-menu item became the definition of redundant UI. The fix deletes the `<li data-research-menu-change-person>` from `internal/templates/layout.templ`, drops `"Change Person…"` from the audit probe's `expectedLabels` list (`audit/smoke_mega_menu_nav.mjs`), shifts the probe's expected menuitem count 12 → 11, drops the row from `docs/ui-map/wireframes/layout.md`, and updates the `TestLayoutRendersShareReviewMegaMenu` mustContainItems list to remove `href="/research"` from the Review column while gaining a new RED assertion that the `data-research-menu-change-person` marker is absent (so a future refactor that re-adds the item trips the test before the user does). RED-first regression net: `go test -short -count=1 ./internal/templates/...` green; the probe `expectedLabels` + count assertion in `smoke_mega_menu_nav.mjs` pins the post-#549 shape. The picker landing's own `Change Person…` button (inside the Continue panel, posts to `/research/clear`) is the next redundant sibling — kept in this slice per the issue's follow-up question; flagging for a paired slice if the user wants the picker landing cleaned up too.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **tune: regenerate stale snapshots + add determinism self-check (issue #517 slice A)**. The `internal/exportcontract` snapshot suite (12 in-process + 11 CLI PDFs) and `tools/tune`'s `soldier1-landscape.pdf` golden were stale vs the seed-data changes from ee2bfc8 — some PDFs were byte-identical after regen, some drifted (the byte-for-byte drift came from a now-fixed upstream fixture mismatch; the source was the broader v58-v65 surface landing). Both suites are now green. Durably so: every snapshot case in both suites runs a **determinism self-check** that renders the PDF twice and asserts byte-equality *before* the golden comparison. A failure here is a non-determinism regression (time / UUID / map iteration order leaking into the typst data payload or the renderer) and surfaces a distinct error: `determinism self-check failed for <surface>: two consecutive renders differ — do NOT regen the golden, fix the determinism bug first.` This distinguishes the two failure modes that previously both rendered the same red: a stale golden (regen-and-ship) vs a non-determinism regression (fix the bug). `tools/tune/snapshot_test.go::TestTuneListRecordsKindFilter` assertions also updated to match the current seed-data fixture (12 records incl 2 events + 2 articles) so the test reflects reality. `go test -short -count=1 ./...` green across 31 packages. Internal refactor, no user-visible behavior change.
@@ -734,6 +835,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **db: split `ensureSoldierFTS` out of block-60 into its own per-block migration block-67 (issues #457 + #459 + #449 Slice B)**. The restore-validate path in `internal/archive/backup_service.go::validateSQLiteBackupImageEntries` opens a fresh `*sql.DB` on a `os.MkdirTemp` stageDir and runs `applySchema(stagedDB)`. Block-60-v54-to-v60-jump's tx contained the FTS5 rebuild (`DROP TABLE IF EXISTS soldiers_fts` + `CREATE VIRTUAL TABLE` + 6 `CREATE TRIGGER`), all inside the same per-block-commit tx. The `DROP TABLE` acquires a RESERVED lock, and the modernc SQLite driver's `connectionOpener` background goroutine (documented per `internal/leaktest/leaktest.go`) retains a SHARED lock on any other `*sql.DB` the same process holds — production's primary DB, or the test's `localDB`. The SHARED/RESERVED cross-DB collision surfaced as `SQLITE_LOCKED (6)` on every Windows restore, blocking every DixieData installation from importing any `.ddbak` archive (issue #459 production repro). **Fix shape**: move `ensureSoldierFTS(tx)` out of block-60's tx body. Add a new top-level `Migration` entry `block-67-ensure-soldier-fts` at the end of the `migrations = []Migration{...}` slice in `internal/db/migrations.go`, with `Reversibility: Reversible` and `Down: dropSoldierFTS` (the symmetric inverse — drops the FTS5 virtual table + its 6 triggers idempotently). New helper `internal/db/schema.go::dropSoldierFTS` added. `current_schema_version` bumped `66 → 67` in `internal/versioninfo/versioninfo.go::CurrentSchemaVersion`. Fresh-v66 archives (already in the wild) bypass the bump via `applySchema`'s `version >= CurrentSchemaVersion` short-circuit — no need for a back-fill migration; running Open() on a v66 archive with a v67 binary is a no-op block-67 (FTS5 was already set up via the unfixed block-60 path's `ensureSoldierFTS`; the new code's `dropSoldierFTS` is the inverse and idempotent). v54-v66 archives running on a v67 binary land in v67 via block-60 (sets columns) → block-67 (sets FTS5); FTS5 setup happens AFTER block-60's RESERVED lock clears, so the SQLITE_LOCKED collision never fires. RED-first regression net: 3 new tests in `internal/db/migration_block_67_test.go` (`TestBlock67SplitsFTSIntoItsOwnTx` pins FTS5 + 6 triggers exist after applySchema at v67; `TestBlock67SurvivesConcurrentConnection` documents the cross-DB shape; `TestBlock67Reversibility` pins the ApplyDownSchema-to-v60 path dropping FTS5 cleanly). The pre-existing `TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdentity` was FAIL on commit `23563c0` (the issue #459 production repro) and is now PASS — every `.ddbak` restore path is no longer broken on Windows. `internal/db/migrations_test.go::TestMigrationsReversibilityMapping` extended with the new block-67 entry. Wider sweep: `go test -short -count=1 ./internal/archive/...` drops 2 FAIL → 1 FAIL (the lone remaining failure is issue #458's environmental Typst binary drift, unrelated to this fix). `go test -short -count=1 ./internal/db/...` stays green.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **db: split `ensureSoldierFTS` into 3 independently reversible sub-helpers (issue #343 finding #6)**. The 250-LoC `ensureSoldierFTS` in `internal/db/schema.go` did three concerns in one block — install `scratchpad_cache` + cascade-cleanup, (re)create the `soldiers_fts` virtual table + bulk INSERT from soldiers, and install the 6 FTS5 maintenance triggers. Each concern is now its own helper (`ensureScratchpadCache`, `ensureSoldierFTSVirtualTable`, `ensureSoldierFTStriggers`) with a matching inverse (`dropScratchpadCache`, `dropSoldierFTSVirtualTable`, `dropSoldierFTStriggers`); the umbrella `ensureSoldierFTS` composes the three for block-67's Up and `dropSoldierFTS` composes the inverses for the v67→v66 downgrade path (drops the FTS5 artifacts; leaves scratchpad_cache because it pre-dates block-67). No behavior change end-to-end — the existing block-67 regression tests (`TestBlock67SplitsFTSIntoItsOwnTx`, `TestBlock67SurvivesConcurrentConnection`, `TestBlock67Reversibility`) stay green and pin the composer's contract. Four new characterization tests in `internal/db/ensure_soldier_fts_split_test.go` pin each sub-helper in isolation so the seam stays addressable (a future "rebuild FTS index after a soldier-row schema change" slice can call `ensureSoldierFTSVirtualTable` alone without churning scratchpad_cache or the trigger DDL). v54+ is the supported floor per `migrations.go` block-60 preamble; pre-v54 reversibility concerns from the original issue are intentionally out of scope. `go test -short -count=1 ./...` all 30 packages green.
@@ -788,6 +902,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **docs(ui-map): update for v60 Event Records + foldout nav + floating-dock Menu** (issue #342). The UI map was stale relative to the current UI — three feature waves (v60 Event Records, top-nav Share foldout, floating-dock Menu) had landed without corresponding doc updates. Five new wireframes (`24-events-list`, `25-event-detail`, `26-event-new`, `27-event-edit`, `28-event-pdf`) cover the Event Record surface end-to-end. The foldout primitive (Share + Research & Review) and the floating-dock Menu are documented in the Global section of `INDEX.md` + the foldout component entry in `components.md` (they are not routable screens). Twelve new `uiids.*` constants land in `internal/uiids/uiids.go` for the Event sub-panels (`panel.event.detail.{sources,tags,linked-persons,images}`, `panel.event.form.{sources,linked-persons,tags}`), the floating-dock + scratchpad-status surfaces, the Share Queue pill, and the Tags top-nav link. `routes.md` grows two new sections (Events + Tags) plus expanded coverage of the Share subpages, scratchpad, import/export routes, and job log streaming. `gaps.md` records the Event wireframes as covered and notes the foldout / floating-dock / pill surfaces as documented in the Global section. RED-first regression net: `internal/uiids/uiids_test.go::TestRegistryIDsAreUnique` still green (113 surfaces, all unique); full `go test ./internal/uiids/` green. Out of scope: a dedicated `tags_management.templ` wireframe row (deferred until the tags page grows beyond its current single-table shape — `/tags` + `/tags/{id}` are documented in `routes.md`).
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **errors: lint enforcement for swallowed-error patterns** (issue #438, ADR 0010). Three lint rules prevent the #384 + #436 sweeps from regressing: (1) Go `deferclose` analyzer flags `defer X.Close()` that discards the error and suggests `debug.DeferCloseLog`; (2) Go `baretempl` analyzer flags bare `templ.Component.Render(r.Context(), w)` calls that discard the error; (3) JS `eslint-plugin-dixie/no-bare-catch` rule flags `.catch(() => {})` without a `// intentional` marker. All three wired into `make lint` (which also runs the existing htmx-guard probe). Bail-out markers: `//nolint:dixie/<rule>` (Go, same line) and `// intentional: <reason>` (JS, line above). The `audit/smoke_swallowed_errors.mjs` probe keeps positive assertions (per-handler wrap checks, DeferCloseLog counts) and retires negative assertions the lint rules now own. 22 pre-existing violations the #384 sweep missed are temporarily suppressed with nolint markers (tracked in follow-up issue #440).
@@ -832,6 +959,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **errors: defer-close sweep complete (issue #384 Slice 20, final cleanup)**. 10 single-site files converted: `update/retained_backup_manager.go` (copyFileAtomic.source), `records/status_normalization.go` (distinctNormalizedTextValues.rows), `records/share_queue_presets.go` (List.rows), `records/export_templates.go` (List.rows), `records/browse.go` (BrowsePage.rows), `records/anniversary_service.go` (GetByMonthDay.r), `db/scratchpad.go` (scratchpadSoldierIDsByStem.rows), `archive/pdfium_windows.go` (renderPageToJPG.file), `archive/diagnostics_service.go` (addTruncatedLogFile.f), `appshell/app_feedback.go` (appendFeedbackEntry.file). The defer-close meta-assertion is tightened from "informational" to strict `=== 0` so any future commit that reintroduces a plain `defer X.Close()` line fails the regression net. **Issue #384 complete across the Go backend**: 8 slices of bare-Render sweep (75 sites wrapped + 7 http.Error leaks fixed) + 12 slices of defer-close sweep (114 sites wrapped). Total: 189 sites fixed + 116 probe assertions all green. The `internal/debug/close.go` helper itself contains a `\`defer c.Close()\`` comment line in a docstring which the regex correctly ignores. Out of scope for issue #384: errcheck/ESLint enforcement (separate ADR) and JS catches beyond the 3 from slice 1. RED-first regression net: `audit/smoke_swallowed_errors.mjs` grows 10 per-file table-driven assertions + the meta-assertion is now strict, total 116/116 green.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **cli: `dixiedata soldier create` subcommand** (issue #371 Slice 1, tracer bullet). Phase 8 of `docs/agents/cli-plan.md` — the first write verb on the CLI. New `internal/appshell/cli_mutate.go` dispatches write verbs (`soldier create` only in Slice 1; `update`/`delete` + `event create` + `tags list` follow in subsequent slices). Dispatches to existing `*App.soldiers.Create` — no new business logic. Accepts `--from <path>` or `--from-stdin`; `--json` envelope echoes `{"id": N, "display_id": "DXD-XXXXX"}` so a script can chain via `jq -r .id`. `--dry-run` parses + validates without writing. Noun-grouped style: `dixiedata soldier create`. `main.go` gains `runMutateSubcommand` + `HasMutateSubcommand` + help line. RED-first regression net: `internal/appshell/cli_mutate_test.go` (`TestParseMutateCommand_SoldierCreate` table-driven, 4 cases; `TestRunMutateSoldierCreate` integration test). All tests GREEN. Pre-existing baseline failures unrelated. Out of scope: `soldier update`/`delete`, `event create`, `tags list` — follow-up slices.
@@ -853,6 +993,19 @@ construction bug that the 8-class taxonomy missed.
 - **appshell: closure-capture race on jobID in enqueueExport / enqueueExportWithResult** (issue #419). The two helpers used `var jobID string; jobID = a.jobs.Start(...)` and the worker closure read the outer-scope `jobID` to call `SetResultPath` / `SetResult`. Because `a.jobs.Start` returns the ID AFTER spawning the goroutine, the worker's read and the outer code's write had no happens-before edge — under `-race` the detector flagged every concurrent dispatch. In production the failure mode was silent: a worker that fired before the outer assignment would call `SetResultPath("", path)` (no-op, no such job) and the per-job result path or stats would land on the wrong row. Fix: use a one-shot buffered channel as the synchronization point — outer code sends the ID into the channel after Start returns, worker reads it before it needs the value. Channel send happens-before channel receive so the worker always observes the assigned ID without a data race. Same pattern applied to the closure-only reads in `handleGoogleBackup` + `handleGoogleSheetsExport` (the `_ = jobID` lines are gone; outer code still reads `jobID` for the redirect header which is safe), `handleRunDuplicateAudit` (same), and `handleImportBackup` + `handleImportSharedArchive` (the worker uses `id := <-jobIDCh` instead of the outer-scope `jobID` for the `SetResult` call). RED-first regression net in `internal/appshell/exports_handlers_race_test.go` adds 2 tests that hammer 16 concurrent goroutines through each helper and assert every advertised job ID ends up with the per-call unique ResultPath / Result.Records — under the pre-fix code the channel-less closure capture would either race (detector) or land the wrong ID in the worker (test failure). The pre-existing #414 `TestNoPostThenNavigateHXXAttrs` baseline failure is unrelated.
 - **docs: bump version refs in user-manual / implementation-and-features / ai-handoff to v1.1.65** (issue #421). The three user-facing docs were stuck at `v1.1.59` while `internal/versioninfo/versioninfo.go` carried `CurrentSchemaVersion = 65` (bumped from 59 → 63 → 64 → 65 across the source-records + provenance + restore-at slices). `scripts/bump-version.ps1 -VerifyOnly` was failing in CI with three "does not reference 1.1.65" errors. The failure was pre-existing but masked for ~24h by the rapid-flag workflow parse error that #417 fixed. One mechanical edit per doc (the leading "current release line" line + the ai-handoff's two-line version/snapshot block). `pwsh -File scripts/bump-version.ps1 -VerifyOnly` now exits clean: `VERIFY OK: schema 65, update_flow 1, release 1 / app version: 1.1.65 / doc + changelog references intact`.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **routebuilder: remove unused PersonEventAttach helper** (issue #415). The `routebuilder.PersonEventAttach(soldierID, eventID)` function had no `.templ` invoker — confirmed by grepping `internal/templates/` — and the only remaining reference was a stale comment in `person_events_tab.templ` that mis-named the routing surface (the actual handler at `routes.go:252` handles `/soldiers/{id}/events/{eventId}/attach` via the string literal in the handler, not a typed routebuilder call). The sibling helper `PersonEventAttachByDisplayID` (used by the inline "Add existing event" form on the Person Record → Events tab) stays — it's a different URL. Updated the stale comment to point at the route literal. Verified `go build ./...` + `go test ./internal/routebuilder/...` pass; the orphan-handler probe (`audit/discover_orphan_handlers.mjs`) was already flagging the `/soldiers/{id}/events/{eventId}/attach` route as an orphan before the change — no new orphans introduced (the helper had no caller). The pre-existing #414 `TestNoPostThenNavigateHXXAttrs` baseline failure is unrelated.
@@ -860,6 +1013,19 @@ construction bug that the 8-class taxonomy missed.
 ### Fixed
 
 - **frontend: stop .app-shell padding-bottom shrink during hydration** (issue #235). `frontend/app.js::measureFloatingDockHeight` unconditionally overwrote `.app-shell`'s inline `padding-bottom` with `dock-height + 48px` on every `applyResponsiveLayout` call. The CSS baseline (`padding-bottom: 7.5rem` relaxed / `9rem` at the 1040px breakpoint) already accommodates the standard 3-button floating dock; the unconditional JS write shrunk the content area on first hydration (≈dock 66px + 48px breathing = 114px ≈ 7.1rem vs CSS 120px = 7.5rem), causing the visible scrollbar shift + cursor pointer↔text-I-beam swap on the welcome screen (`/setup`) — the only fresh-archive surface where no cached layout-mode preference masks the reflow. Fix: compare the measured value with the CSS-computed `padding-bottom` and only write the inline style when the measurement EXCEEDS the CSS baseline. Standard dock = no inline write = no hydration reflow; oversized dock (wrapped buttons on narrow viewports) still gets the protective inline override. No new tests — the regression surface is browser-only (forced layout timing) and the fix is a one-line guard inside an existing function with no Go-side test seam.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -891,6 +1057,19 @@ construction bug that the 8-class taxonomy missed.
 - **tools/tune: `--mode event` for Event Record PDF iteration** (issue #358). The tune CLI accepted `--mode record` (soldiers) and `--mode bulk` (the archive) but had no path for Event Records; the bridge's `RenderEventSingle` (added in #374) was orphaned on the appshell side only. Added the `event` case to tune's `--mode` switch so `--template event_landscape --mode event --record <event-id>` dispatches through the same render path the appshell's `/events/{id}/pdf` uses; the resulting PDF is byte-identical to the appshell render for the same inputs. `findTemplatesDir` (which only probed for `soldier_landscape.typ`) generalized to accept any `*_landscape.typ` so a future `article_landscape.typ` or `widow_landscape.typ` works without further changes. `tools/tune/README.md` updated with the canonical Event iteration recipe. The issue body's other "required changes" (#358 §Required changes 1: add `RenderEvent` to bridge) were already shipped by issue #374 — verified by re-reading the bridge. The snapshot-test acceptance criterion (#358 AC §5) was deferred: `tools/tune` has zero test infrastructure today and bootstrapping it as a separate Go module is itself a multi-file feature; the handler-side `TestHandleEventPDF` plus `TestHandleEventPDF_OrientationPicker` already pin the bridge → appshell code path end-to-end, so the new tune CLI dispatch is the only unexercised code added.
 - **server-gate `/soldiers/{id}*` to 303-redirect Event rows to `/events/{id}*`** (issue #363). The catch-all `handleSoldierByID` previously dispatched into Person Record–shaped handlers for ANY row in the `soldiers` table — including Event Records (`entry_type="event"`). Event rows are the `event` sub-discriminator on the same table, and their authoring + editing + viewing surface is `/events/{id}*`. Reaching them via `/soldiers/{id}*` rendered the wrong surface (PDF used `soldier_landscape.typ` instead of `event_landscape.typ`; PUT via the catch-all stripped the Event's `kind` / `begin_date` / `description` and defensively rewrote `entry_type`; DELETE would cascade through `event_person_links`). Fix: a single early-return at the top of `handleSoldierByID` checks the row's `entry_type` and, when it's `event`, emits a 303 to the `/events/{id}` equivalent — same shape for all sub-paths (`edit`, `pdf`, `jpg`, etc.); all HTTP methods (GET / POST / PUT / DELETE) covered. The redirect emits BOTH the standard `Location` header AND the `X-DixieData-Redirect` contract header the `frontend/app.js` Option C dispatcher reads; `TestPostThenNavigateUsesDixieRedirect` pins that contract on every 303 in the chain. RED-first regression net: 6 new tests in `internal/appsshell/soldiers_handlers_test.go` — `TestHandleSoldierByID_RedirectsEventRowsToEventsDetail`, `…ForEditSuffix`, `…PUTOnEventRowRedirectsAndDoesNotMutate`, `…DELETEOnEventRowRedirects`, `…PDFOnEventRowRedirects`, `…PersonRowStillRendersSoldierCard` (the last as protection — confirms the gate does NOT regress Person rows). All 6 pass; `TestPostThenNavigateUsesDixieRedirect` + the 3 pre-existing tests listed in the issue (`TestHandleCreateSoldierDispatchesToNewEvent`, `TestHandleEditSoldierPreselectsLinkedSpouse`, `TestHandleUpdateSoldierRendersFormErrorOnUploadFailure`) stay green. Sub-routing for PDF / JPG paths maps `/soldiers/{id}/pdf` → `/events/{id}/pdf` (so the right Typst template renders); all other sub-paths map straight to `/events/{id}` per the issue's locked decision (the user navigates from detail to editor with the back-link they expect from `/soldiers/{id}/edit` today).
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **docs: `probe-clean.md` — AV / debugger / watcher triage for `make probe-clean`** (issue #367, document-only path per the issue's triage comment). `scripts/probe-clean.ps1` already prints a yellow-banner diagnosis when `taskkill /F` doesn't release the binary within the 1.5-second retry budget, but the actual user-facing failure mode is "I don't know what to do next" — a doc answers that directly. New `docs/agents/probe-clean.md` covers the three causes (AV hold, debugger attached, re-spawning watcher) with how-to-identify + recovery + the idempotency contract (`make probe-clean` is safe to re-run anytime). Cross-linked from `docs/agents/INDEX.md` Tier 1 Bug-work section. The longer-retry-budget alternative was explicitly ruled out by triage — AV / watcher failures are inherently outside the script's control, and the bounded loop would slow every happy-path caller. Defer the optional Pester test (issue body AC flag) until Pester becomes a dev dep for other scripts.
@@ -904,6 +1083,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **soldier(service): guard `Update` against blanking an existing `display_id`** (issue #376 partial fix). The Update path normalized the incoming `DisplayID` via `normalizeDisplayID` (wrapping `db.SanitizeID`) and wrote the result back to the row unconditionally — so an empty or whitespace-only incoming value would silently clear a row's existing `display_id` and leave it without a primary identifier visible to search / browse / quality-scan results. Guard added at `internal/records/soldier_service.go` `Update` (line ~350): if `normalizeDisplayID` returns empty AND a prior row was loaded, preserve `before.DisplayID`; otherwise return an explicit error so callers can't accidentally write a blank `display_id` for a fresh or otherwise id-less row. The event-service Update path (`internal/records/event_service.go:UpdateEvent`) is naturally protected — it unconditionally copies `existing.DisplayID` onto the incoming `event` before delegating to `SoldierService.Update`, so no service change needed there. RED-first regression net: `TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsEmpty` (Create row with `CSA-00411`, Update with `DisplayID=""`, assert row still `CSA-00411`), `TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsWhitespace` (same but incoming `"   "`), `TestSoldierService_UpdateStillNormalizesLegitimateChange` (Create `DXD-00099`, Update to `PENSION-7777`, assert the rename applied — proves the guard doesn't break the happy path). The known corrupted row (soldier id=411, James S. Gillespie) is NOT auto-recovered here — recovery requires the operator to mint a fresh `NextDXDID()` and re-Update with a non-empty value, or patch the SQLite row directly. Per the issue's diagnosis ("root cause undetermined," "filed as a 'keep an eye out'"), this slice closes the latent class-of-bug; the diagnostic trail for the live row's specific corruption mechanism stays open. Audit logs (`stampUpdateAuditFields` -> `auditDisplayID`) are unchanged — the prior `display_id` and the guard-preserved `display_id` now appear in the diff as identical, which is the correct behavior.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **agents: install `repl` skill globally + `docs/agents/repl.md` boundary doc**. Vendored `~/.agents/skills/repl/` from `valueforvalue/my-skill-framework` (Python REPL for the PoT/PAL pattern) to the global agent skills dir — not tracked in repo. New `docs/agents/repl.md` pins the boundary rule: Python is a scratch tool for deterministic investigation (parsing, numeric sweeps, format validation, fixture read-only queries) — NEVER imported by Go code, NEVER in CI. Cross-linked from `AGENTS.md` Agent skills section + `docs/agents/INDEX.md` Tier 1. `.gitignore` grew `tools/scratch/` + `*.py` (with `!tools/scratch/.gitkeep` whitelist) so scratch Python never lands in the repo. Re-install recipe in `docs/agents/repl.md` if the global skills dir is wiped.
@@ -912,6 +1104,19 @@ construction bug that the 8-class taxonomy missed.
 - **research(picker): Continue shortcut shows one button per supported sub-page; sub-screen hides County for soldiers without county data** (issue #422 slice 2). When the current person is set (via `dd_person_ctx` cookie), the Continue shortcut on `/research` now renders one "Continue to <Action>" pill-link per supported sub-page instead of a single "Continue" button — Camaraderie is hidden when the soldier has no `unit`, Research Pack / State / Timeline / Research Log / Conflict Ledger are always shown (each handler gracefully handles empty data, per slice 1). New viewmodel fields `viewmodel.ResearchPickerView.SupportedActions []string` + `viewmodel.ResearchPickerView.HasCountyInBirth bool` carry the per-soldier availability to the templ; the handler computes them via two new public helpers `records.HasUnitForCamaraderie(soldier)` + `records.HasCountyInBirth(soldier)` (both delegate to the existing `parseBirthCountyState` logic in the service layer). The picker sub-screen for `?next=research-pack` now conditionally renders the County `<option>` only when the current person has a county in their `birth_info` — State is always shown because `PensionState` normalizes to `"N/A"` so the state pack is never empty. New templ helper `pickerActionLabel(action string)` maps kebab-case action keys to Title Case display labels (Camaraderie / Timeline / Research Log / Conflict Ledger / Research Pack) — the form values stay kebab-case so the existing `isValidResearchAction` allowlist in `handleResearchSelect` still matches. New `data-research-continue-action="<action>"` attribute on each Continue button for the smoke probe + any future JS hooks. The foldout in `layout.templ` is NOT touched (per the plan — out of scope; the foldout remains a global nav menu, not context-aware). The `pickerNextEcho` helper is kept for the search-results fragment form (which uses `?next=` directly from the URL). RED-first regression net in `internal/appsshell/research_picker_intelligence_test.go`: `TestPickerContinueShortcutHidesCamaraderieForUnitlessSoldier` (unit-less soldier has no Camaraderie button but has timeline/research-log/conflict-ledger/research-pack buttons), `TestPickerContinueShortcutShowsCamaraderieForSoldierWithUnit` (unit-ed soldier shows Camaraderie), `TestPickerContinueShortcutShowsAllActionsForFullyPopulatedSoldier` (unit + birth_info county soldier shows all 5), `TestPickerContinueShortcutHidesCamaraderieWhenNoCookie` (no cookie = no Continue shortcut at all, happy-path regression guard), `TestPickerSubScreenHidesCountyForSoldierWithoutBirthInfo` (`?next=research-pack` + unit-less soldier = State option only), `TestPickerSubScreenShowsBothForSoldierWithCounty` (soldier with county in birth_info = both options). All 6 + the 13 #378 picker tests + the 6 #422 slice-1 tests stay GREEN. The pre-existing #414 baseline failure is not caused by this slice.
 
 - **soldier(images): in-place fragment swap for per-card Delete + Set-Primary** (issue #391, Slice B). The soldier-side images gallery now mirrors the event-side #332 / #341 fragment-swap architecture: per-card Delete + Set-Primary submit `data-results-target="#panel.soldier.detail.images"` and the `handleDeleteSoldierImages` / `handleSetPrimarySoldierImage` handlers return the `SoldierImagesListFragment` instead of `X-Dixiedata-Redirect`. Result: per-card actions swap the gallery wrapper's innerHTML in place — no full-page reload, no scroll loss, no flash. Pre-B.2 every delete or set-primary forced a `window.location.assign(/soldiers/{id})` round trip via the responder. A dedicated `GET /soldiers/{id}/images` chi route (registered before the `/soldiers/*` wildcard in `routes.go`) backs the lazy-load probe + post-action swap target. The outer bulk Delete Selected Images button also gained `data-results-target` so multi-select deletes swap in place instead of stranding the gallery at a stale state. Templ refactor extracted `SoldierImagesListFragment(soldierID, displayID, images)` into `soldier_card.templ` (mirrors `EventImagesListFragment` in `event_panels.templ:93`); per-card Delete form mirrors the event-side `data-dixie-submit` + `data-confirm` + `data-results-target` shape. Bulk-delete + bulk-download forms are preserved (their pre-B.2 functionality is unchanged). Regression net: new `TestHandleSoldierImagesFragmentGET` (route returns fragment, not full page), `TestHandleSoldierImagesDeleteFragmentSwap` (no `X-Dixiedata-Redirect`, fragment returned, per-card markers preserved, DB row updated), `TestHandleSoldierImagesSetPrimaryFragmentSwap` (same for the primary-image path); `audit/smoke_soldier_images.mjs` grows `step-04` (per-card Delete swap, asserts `page.url()` unchanged + card count drops by 1) + `step-05` (per-card Set as Primary swap, asserts `page.url()` unchanged + card count unchanged); `audit/smoke_events.mjs` step-12 + step-14 gain parity `page.url()` assertions so a future regression that reverts event-side fragment swap breaks both probes in lockstep. New `internal/routebuilder.SoldierImagesDelete` accessor (mirrors existing `SoldierImagesPrimary`). See `docs/CODE_CHANGES.md` "When you add (or migrate) a fragment-swap action" for the architectural recipe. Follow-up: the documented `data-image-id` selector collision between the per-card wrapper `<div>` and the Preview `<button>` (soldier_card.templ) is still standing; neither was migrated to a canonical UIID here.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -1674,6 +1879,19 @@ construction bug that the 8-class taxonomy missed.
   hardcoded `<option value="event">`). 28-package test suite + full
   smoke (19 steps) green; no backend behavior change.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **CONTEXT.md typo fix** (issue #364). Line 158 read
@@ -1884,6 +2102,19 @@ construction bug that the 8-class taxonomy missed.
   bulk-import) — a follow-up cleanup issue can delete them
   once user-facing attach-only-via-edit sticks.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **Event Record images facade** (issue #320 child #332
@@ -1993,6 +2224,19 @@ construction bug that the 8-class taxonomy missed.
   and Static-Archive 10k-event bundle (item 6, covered by the
   existing `internal/archive` tests + typst-bulk-export
   baseline).
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -2218,6 +2462,19 @@ construction bug that the 8-class taxonomy missed.
       silently fails (file written, 0 bytes). Smoke step 11
       surfaces this; tests in the appshell package pass
       because Go tests resolve `templates/` from cwd.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -3019,6 +3276,19 @@ construction bug that the 8-class taxonomy missed.
 
   - Audit metric: 71.7% → 74.1% overall; `internal/archive`
     54.2% → 90.4%.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -4700,6 +4970,19 @@ construction bug that the 8-class taxonomy missed.
   `TestRespondErrorPageFullPageRendersLayout`,
   `TestRespondErrorPageFragmentToastOnly`. Closes #219.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - Extracted `blockIfFragment` helper for the HX-Request
@@ -5226,6 +5509,19 @@ construction bug that the 8-class taxonomy missed.
   the change. Phase 2 surface coverage closes the BrowserOpenURL
   gap from the Wails-free test feasibility audit.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
@@ -5288,6 +5584,19 @@ construction bug that the 8-class taxonomy missed.
   natively) and `/export/feedback-log` (no-data early
   return). The previous `/share`-as-success acceptance
   masked the missing save-dialog override.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -5421,6 +5730,19 @@ construction bug that the 8-class taxonomy missed.
     now call `SetResult` with the appropriate counts before
     returning nil. Memorial import also records `LogPath` so a
     future UI iteration can wire the error log download.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -5629,6 +5951,19 @@ construction bug that the 8-class taxonomy missed.
   its dedicated `[5b]` smoke block covers it). The hand-written
   `shareButtons` array now derives from the discovery result.
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **Doc consolidation for click-driven surfaces.** Five
@@ -5660,6 +5995,19 @@ construction bug that the 8-class taxonomy missed.
   `CONTEXT.md` Laws stays slim — the trap is documented in
   `conventions.md` (recipe) + `COMMON_BUGS.md` (postmortem),
   cross-linked from AGENTS.md.
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -6389,6 +6737,19 @@ construction bug that the 8-class taxonomy missed.
   breakpoints (`max-width: 1040px`, `1100px`, `900px`) and content-template
   `md:hidden` / `md:flex` toggles stay (16" monitor split-screen layout).
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - `audit/reports-r3/audit-v3.md` narrative summary written, matching the
@@ -6571,6 +6932,19 @@ construction bug that the 8-class taxonomy missed.
   reflect that all import buttons now redirect to `/jobs/{id}`.
   Regression net: `audit/smoke_memorial_json_preview.mjs`
   (7/7 assertions).
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -6822,6 +7196,19 @@ construction bug that the 8-class taxonomy missed.
 
 - **errors: wrap 3 user-visible JS silent catches + lock debug logger never-throw contract** (issue #436, #384 follow-up). Three previously-silent JS error paths now surface the failure to the operator and (where appropriate) the user: (1) `frontend/app.js::submitExportTemplateUpdate` (`/export/templates/{id}` POST handler) — the bare `response.json().catch(() => ({}))` is replaced with a named `try/catch` that calls `console.warn("export template update: response was not JSON", err)` and writes a modal-local "Server returned an unexpected response." message into the existing inline `status` region. The error-handling doc's "inline message" pattern (fragment target, not toast region) applies because the modal body IS the user signal. (2) `frontend/app.js::loadPrintRecordsFragment` dedup path — the bare `.catch(() => {})` on the inflight-fragment promise gains a `console.warn("print records fragment dedup failed", err)` so the dedup-cache failure stops being invisible; the existing modal status / empty-state plumbing remains the user signal. (3) `frontend/debug.js::window.__dixieDebug.openFolder` + `clear` — the two bare `.catch(function () {})` sites on the toolbox-triggered fetches are replaced with `console.warn("[dixie:debug] …", err)` calls matching the error-handling doc's "Toolbox" section (toolbox is devtools-only, console IS the user). The 6 catch sites inside the `debug.js` IIFE itself (logger internals) carry a `// intentional: never-throw logger — see error-handling.md` comment per the locked decision that the logger is a never-throw component (a throwing logger would crash user code via the `installConsoleHook` console wrappers). RED-first regression net: `audit/smoke_swallowed_errors.mjs` grows 1 new section (5-line source-scan walker that flags any bare `.catch(() => {})` or `.catch((e) => {})` in `frontend/` without a `// intentional` marker in the surrounding 3 lines — total 117/117 green); new `frontend/debug.test.mjs` (node:test, 5 hostile-input assertions: JSON.stringify throw, hostile toString, push throw under console.log, fetch reject, fetch sync throw — total 5/5 green). Out of scope: lint enforcement (#438 — separate ADR), JS Promise chains with no `.catch()` (different bug class), Go defer-Close helpers (covered by #384 slices 9-13).
 
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
+
 ### Maintenance
 
 - **errors: new `frontend/debug.test.mjs` hostile-input regression net** (issue #436 Slice D). 5 node:test assertions prove the debug logger's `// intentional: never-throw logger` markers are honest. The test stubs `console`, `fetch`, `navigator.sendBeacon`, `window`, and `Blob`; loads `frontend/debug.js` once via dynamic import (the IIFE bails on the `window.__dixieDebug` guard, so re-importing wouldn't pick up new stubs); then mutates `fetch` / `debug.push` per test to exercise the 6 catch sites under hostile conditions. Run with `node --test frontend/debug.test.mjs`. Not wired into a CI runner yet — separate task.
@@ -6848,6 +7235,19 @@ construction bug that the 8-class taxonomy missed.
 - **seed-data: --skip-soldiers flag + --tags/--articles/--events counts + broadened vocabulary (issue #447 follow-up, seed-data CLI surface)**. `cmd/seed-data` gains 4 new flags: `--skip-soldiers` (suppress the soldier creation loop so an existing Local Archive can be topped up with the v58-v65 surface only), `--tags=N` (cap how many of the `tagNames` vocabulary are inserted; `0` = full vocabulary, default behavior), `--articles=N` (cap Article row count; `0` = legacy 1-2 random), `--events=N` (cap Event Record count; `0` = legacy ~20%-of-soldier-count). The `seedTags` / `seedEvents` / `seedArticles` helpers now take an explicit `count int` parameter so the legacy default behavior is preserved when callers pass `0` (no flag). `Options.Soldiers <= 0` guard relaxed to honor `SkipSoldiers=true` so a flags-only run does not require a fake `--soldiers=0` workaround. The `tagNames` vocabulary grows from 10 → 30 entries (broad military career taxonomy — Wounded, POW, KIA, Died of Disease, Paroled, Conscript, Discharged, Re-enlisted, Missing in Action, Captured, Hospitalized, Furloughed, AWOL, Court-Martialed, Disabled, Retired, Color Bearer, Sharpshooter, Scout, Courier, Recruit, Veteran, Volunteer, Substitute, Mustered Out, Detailed to Provost, Survived the War, + 4 more); `articleTitles` and `articleBodies` grow from 5 → 30 entries each (plausible Civil-War-era prose covering Bull Run / Petersburg / Wilderness / Andersonville / Appomattox / Reconstruction-era veterans' associations, etc.). The v58+ branch in `Generate` now guards the Event/Article link-table writes behind `if len(soldierIDs) > 0` so a soldier-less archive (e.g. mid-seed crash) cannot crash `rng.Perm(len(soldierIDs))`. Tags still seed even with zero soldiers (the tag inventory is independent); the per-person-record junction only seeds when soldiers exist. CLI summary print gains a conditional "v58-v65 surface" block (tags / events / articles + the 4 junction counts: person_record_tags / event_person_links / event_sources / article_refs) when any surface entity was inserted. RED-first regression net: existing `TestGenerateCreatesDatabaseRecordsAndImages` continues to pass with the new defaults (Tags=30, Events=0 [legacy 20%-of-12], Articles=1-2 [legacy random]) — the assertions are `summary.Events > 0` + `summary.Articles > 0` + `summary.Tags > 0` form, all satisfied. Operator recipe for top-up seeding on a populated Local Archive: `./build/bin/seed-data.exe --skip-soldiers --tags 30 --articles 30 --events 30` (no backup taken — the v58+ INSERT OR IGNORE on `tags.normalized_name UNIQUE` is idempotent; the per-tag/person/event inserts use new IDs so they accumulate rather than overwrite).
 
 - **seed-data: --articles-format flag (plain | markdown) + markdown corpus exercising goldmark feature set (issue #523)**. `cmd/seed-data` gains a `--articles-format` flag accepting `plain` (default, legacy `#447` behavior) or `markdown`. The markdown path uses the same `records.NewMarkdownRenderer()` pipeline the Wails app uses on save, so a fixture article round-trips identically through the static archive export. New `seed.ArticleBodyFormat` enum (zero-value `ArticleBodyPlain`, opt-in `ArticleBodyMarkdown`) with `fmt.Stringer` support. New `articleMarkdownBodies []string` corpus of 30 entries covering headings h1-h6, bold/italic/strikethrough, unordered + ordered + nested lists, blockquote, inline code, fenced code blocks, tables, links (including `[[DXD-NNNNN]]` Person Record tokens), images with alt text (public-domain Wikimedia URLs), and `---` horizontal rules — the kitchen-sink feature set the corpus advertises. `internal/records/markdown.go::MarkdownRenderer` is now exported (`NewMarkdownRenderer` + `Render`) so the seed package can import it without reaching into unexported names; the renderer is otherwise unchanged. The article-creation path lifts out of the v58 `if len(soldierIDs) > 0` guard — articles themselves don't depend on soldiers (only `article_refs` does) — so an operator can run `--skip-soldiers --articles 30 --articles-format markdown` against a populated Local Archive and exercise the goldmark pipeline without touching existing soldiers. RED-first regression net: `TestSeedArticles_MarkdownFormat_RendersViaGoldmark` (asserts `<h1>`, `<h2>`, `<ul>`, `<ol>`, `<li>`, `<strong>`, `<em>`, `<blockquote>`, `<code>`, `<pre>`, `<a href=`, `<img `, `alt="`, `<p>` present in the union of 30 rendered bodies — the kitchen-sink CommonMark + image set the renderer currently supports; tables + `<hr>` are deferred to the GFM-extension follow-up); `TestSeedArticles_PlainFormat_PreservesLegacyPath` (asserts body_md equals prose between `<p>` and `</p>`, body_html contains neither `<table>` nor `<h1>`); new `audit/smoke_seed_markdown_articles.mjs` source-scan probe (8 assertions: enum + corpus + Options field + signature + branch + records export + CLI flag wiring + Set validation). Known gap: the renderer uses `goldmark.New()` with no GFM extension, so `<table>` and `<hr>` from `---` render as paragraphs in the seeded corpus. Tracked as the GFM-extension follow-up. Operator recipe: `./build/bin/seed-data.exe --data-dir .dixiedata --skip-soldiers --tags 0 --events 0 --articles 30 --articles-format markdown` (delete existing `articles` + `event_sources` + `event_person_links` + event-type `soldiers` first if you have a prior top-up run, because the legacy `--events 0` semantics still use the 20%-of-soldiers default).
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
@@ -7002,6 +7402,19 @@ construction bug that the 8-class taxonomy missed.
 - Calendar items and display fixes.
 
 ## v1.2.29 - 2026-05-30
+
+### Fixed
+
+- **save: fix empty-body bug — Save Changes no longer wipes Person Records (#689, #691).**
+  Root cause: dispatchDixieDataForm had two separate button.closest("form")
+  checks — the form-finding one was patched with button.form fallback, but the
+  body-construction one still returned null when the button was reparented
+  outside the form DOM by nested-form HTML-parser restructuring. The else
+  branch created empty FormData, resulting in empty body reaching the server.
+  Additional fixes: removed form.action clobber from syncEntryTypeFields,
+  added form.id fallback in submit listener, and added id/form attributes
+  on the entry form template as a bridge until the nested-form defect is
+  eliminated.
 
 ### Maintenance
 
