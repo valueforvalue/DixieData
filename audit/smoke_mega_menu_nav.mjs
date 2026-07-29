@@ -48,26 +48,37 @@
 //     spread across Review & Research + Share sections
 //   - kb nav behavior, ARIA contract, click-outside detection,
 //     first-click regression, contrast checks all preserved.
+//
+// Migration to runProbe (issue #700 slice 4):
+//   - Module-scope spawn + ready() moved into main(ctx) so the
+//     spawned server handle is captured → ctx.registerCleanup
+//     fires on probe exit. Pre-migration the handle was never
+//     captured (let server; never assigned), so the WEB_BIN
+//     process leaked on Windows when local-dev mode auto-spawned
+//     against BASE_URL=''.
+//   - Hard-coded paths C:/Development/DixieData/.scratch/webmode
+//     and build/bin/dixiedata-web.exe replaced by ctx.scratchDir
+//     (runner-provided mkdtemp) and webBin() (cross-platform).
+//     CI mode (BASE_URL set) is unaffected; local-dev mode no
+//     longer hard-codes to a single Windows host layout.
+//   - The 9 step bodies (Step 1-9) are preserved byte-for-byte
+//     from the cb846e8 baseline. Only the surrounding scaffolding
+//     (imports, server spawn, record→ctx.record, finally→probeFn
+//     return, runProbe wrapper) was restructured.
 
 // Issue #456 follow-up: BASE_URL set (CI mode) skips the spawn.
-// Local-dev mode auto-spawns WEB_BIN against SCRATCH on PORT.
-const PORT = 9993;
-const SCRATCH = "C:/Development/DixieData/.scratch/webmode";
-const WEB_BIN = "C:/Development/DixieData/build/bin/dixiedata-web.exe";
-const BASE_URL = process.env.BASE_URL || "";
-
-const BASE = BASE_URL || `http://127.0.0.1:${PORT}`;
-
+// Local-dev mode auto-spawns WEB_BIN against the runner's
+// scratchDir on PORT.
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 
+const PORT = 9993;
+const BASE_URL = process.env.BASE_URL || "";
+const BASE = BASE_URL || `http://127.0.0.1:${PORT}`;
 const OWN_SERVER = !BASE_URL;
-if (OWN_SERVER) {
-  if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
-  if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
 
-  spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] }).stderr.on("data", () => {});
-}
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function ready() {
@@ -78,25 +89,54 @@ async function ready() {
   throw new Error("server never came up");
 }
 
-let pass = 0, fail = 0;
-function record(name, ok, details = {}) {
-  if (ok) { pass++; console.log(`  ✓ ${name} (${JSON.stringify(details)})`); }
-  else { fail++; console.log(`  ✗ ${name} (${JSON.stringify(details)})`); }
-}
-
 let Playwright = null;
 try { Playwright = await import("playwright"); }
 catch (e) { console.error("playwright import failed:", e.message); process.exit(2); }
 
-let server;
 let browser;
-try {
+let server;
+
+async function main(ctx) {
+  // Probe-local pass/fail tracking mirrors the pre-migration
+  // module-scope counters. The ctx.record() bridge writes
+  // every assertion into the shared reporter (so the
+  // aggregator's audit/smoke_summary.json captures the
+  // detail), but the runner's {ok} return value is computed
+  // from these counters so a failed assertion correctly
+  // surfaces as ok:false.
+  let pass = 0;
+  let fail = 0;
+  const record = (name, ok, details = {}) => {
+    if (ok) pass++; else fail++;
+    ctx.record(name, ok, details);
+  };
+
+  // Local-dev mode auto-spawns WEB_BIN against the runner's
+  // scratchDir. The handle is captured into `server` so the
+  // cleanup hook below can kill the process tree on probe exit;
+  // pre-migration the spawn was fire-and-forget and the
+  // Windows binary leaked. If BASE_URL is set (CI mode), skip
+  // the spawn entirely — the audit workflow already started
+  // the server on :8080.
+  if (OWN_SERVER) {
+    const SCRATCH = ctx.scratchDir;
+    const WEB_BIN = webBin();
+    if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
+    if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
+
+    server = spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] });
+    server.stderr.on("data", () => {});
+    ctx.registerCleanup(() => {
+      try { server.kill(); } catch (_) { /* best effort */ }
+    });
+  }
+
   await ready();
   await wait(2000);
 
   browser = await Playwright.chromium.launch({ headless: true });
-  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
-  const page = await ctx.newPage();
+  const ctx2 = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
+  const page = await ctx2.newPage();
 
   // === Step 1: trigger ARIA contract on /calendar ===
   console.log("\nStep 1: load /calendar + verify trigger ARIA contract");
@@ -343,14 +383,27 @@ try {
   record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
 
   console.log(`\n  mega_menu_nav probe: ${pass} passed, ${fail} failed`);
-} catch (e) {
-  console.error("test harness error:", e.message);
-  process.exitCode = 2;
-} finally {
-  if (browser) {
-    await browser.close().catch(() => {});
-  }
-  if (server && typeof server.kill === "function") server.kill();
-  await wait(500);
-  process.exit(process.exitCode || (fail > 0 ? 1 : 0));
+  // The ctx.record() bridge threads every assertion into the
+  // runner's reporter. Surface the result back via {ok}
+  // computed from the local pass/fail counters (NOT a
+  // hard-coded true like the pre-migration code's `process.exit`
+  // exit code, which masked whenever any assertion failed).
+  // The runner's cleanups (LIFO, best-effort) will fire in
+  // reverse registration order — server.kill() first, then
+  // the per-probe mkdtemp scratchDir is removed by the runner.
+  await browser.close().catch(() => {});
+  return { ok: fail === 0, steps: { pass, fail } };
+}
+
+mainWrapper().catch((err) => {
+  console.error('fatal:', err);
+  process.exit(2);
+});
+
+async function mainWrapper() {
+  const result = await runProbe({
+    name: 'mega-menu-nav',
+    probeFn: main,
+  });
+  process.exit(result.ok ? 0 : 1);
 }

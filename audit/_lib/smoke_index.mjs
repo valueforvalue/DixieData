@@ -40,4 +40,11 @@ export const SURFACES = [
     class: 1, // Wails WebView2 body-stripping class
     note: 'issue #618 -- canonical submit-to-DB-to-render probe',
   },
+  {
+    name: 'mega-menu-nav',
+    file: 'audit/smoke_mega_menu_nav.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class (mega-menu trigger must avoid wrapping/escaping the panel)
+    note: 'issue #380 -- post-#380 Share & Review mega-menu regression net',
+  },
 ];
