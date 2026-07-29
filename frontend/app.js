@@ -3942,10 +3942,10 @@ function serializeDraftFields(form) {
       setSectionEnabled(section, isSoldierEntryType(select.value) || spouseEntry);
     });
     syncConfederateHomeFields(form);
-    if (form.dataset.entryTypeFormAction !== "/soldiers") {
-      form.action = "/soldiers";
-      form.dataset.entryTypeFormAction = "/soldiers";
-    }
+    // syncEntryTypeFields no longer mutates form.action. The form's
+    // action is set by the server (/soldiers/{id} for edit, /soldiers
+    // for new). The v60 entry-type swap to /events/new was removed per
+    // issue #362 — events are authored via /events/new only.
   }
 
   /** @param {string} value */
@@ -5066,6 +5066,31 @@ function dispatchSubmitPrep(form, callback) {
   }
 
   /** @param {EventTarget | HTMLFormElement} button */
+// handleImageUpload manages the image upload div (not a <form>) outside the main form.
+// When a file is selected, it POSTs directly via fetch with FormData.
+function handleImageUpload(input) {
+  const container = input.closest("[data-image-upload]");
+  if (!container) return;
+  const url = container.dataset.uploadUrl;
+  const resultsTarget = container.dataset.resultsTarget;
+  if (!url) return;
+  const fd = new FormData();
+  for (const file of input.files) {
+    fd.append("images", file);
+  }
+  setBusyState(input, true);
+  fetch(url, { method: "POST", body: fd })
+    .then(r => r.text())
+    .then(html => {
+      if (resultsTarget) {
+        const target = document.querySelector(resultsTarget);
+        if (target) { target.innerHTML = html; initializeDynamicContent(); }
+      }
+    })
+    .catch(err => console.error("Image upload failed", err))
+    .finally(() => setBusyState(input, false));
+}
+
 async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the
@@ -5104,7 +5129,7 @@ async function dispatchDixieDataForm(button) {
         }
         form = synthetic;
       } else {
-        form = button.closest("form");
+        form = button.closest("form") || (button.form instanceof HTMLFormElement ? button.form : null);
       }
     }
     if (!(form instanceof HTMLFormElement)) {
@@ -5178,7 +5203,7 @@ async function dispatchDixieDataForm(button) {
         const isSubmitButton = button instanceof HTMLButtonElement
           && button.type === "submit"
           && button.form === form;
-        if (button instanceof HTMLElement && button.closest("form")) {
+        if (form instanceof HTMLFormElement) {
           const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
           if (isSubmitButton && button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
             fd.append(button.name, button.value);
@@ -8346,10 +8371,15 @@ async function refreshShareQueuePresetsPage(panel) {
 
   document.addEventListener("submit", (event) => {
     const form = event.target;
+    // Log ALL submit events temporarily
+    if (form instanceof HTMLFormElement) {
+    } else {
+    }
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    if (!form.matches("[data-dixie-submit]")) {
+    const isDixieForm = form.matches("[data-dixie-submit]") || form.id === "entry-edit-form";
+    if (!isDixieForm) {
       return;
     }
     event.preventDefault();
