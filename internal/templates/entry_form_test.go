@@ -32,6 +32,113 @@ func TestEntryFormEditSubmitsAsPost(t *testing.T) {
 	}
 }
 
+
+// TestEntryFormSaveButtonHasFormAncestor is the regression net for issue #682.
+// The HTML5 parser forbids <form> inside <form>, and the bug was that the
+// inner image-upload form (around line 392 of entry_form.templ) silently
+// closed the outer Person Record edit form at the parser. The Save Changes
+// button ended up reparented out of the outer form, and the dispatcher's
+// button.closest("form") returned null. The fix: lift the inner form's
+// submit to a [data-image-upload] div with a JS handleImageUpload
+// helper. This test asserts the rendered HTML has the Save Changes
+// button at <form> nesting depth 1 — any return to depth 0
+// (button outside the outer form) or depth 2+ (nested <form>
+// re-introduced) is a #682 regression.
+func TestEntryFormSaveButtonHasFormAncestor(t *testing.T) {
+	var buf bytes.Buffer
+	if err := EntryForm(viewmodel.Soldier{ID: 497, DisplayID: "TDM65-00486"}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render edit form: %v", err)
+	}
+	content := buf.String()
+
+	// Find the outer form's opening tag. The Save Changes button
+	// must appear after this opening tag and inside the matching
+	// </form>. We track <form> nesting depth with a simple
+	// linear state machine (no regex — those were O(n^2) on the
+	// large rendered HTML).
+	saveIdx := strings.Index(content, `>Save Changes<`)
+	if saveIdx < 0 {
+		t.Fatal("Save Changes button text not found in rendered HTML")
+	}
+	outerOpen := strings.Index(content, `<form`)
+	if outerOpen < 0 {
+		t.Fatal("outer form opening tag not found")
+	}
+	if saveIdx < outerOpen {
+		t.Errorf("Save Changes button appears before the outer form's opening tag (offset %d < %d). Issue #682 regression.", saveIdx, outerOpen)
+	}
+
+	// Walk forward from outerOpen counting <form> opens and
+	// </form> closes that occur BEFORE saveIdx. The Save Button's
+	// depth must be 1. (Closes past saveIdx are irrelevant for the
+	// test — the button only sees what is lexically before it.)
+	depth := 0
+	pos := outerOpen
+	for pos < saveIdx {
+		nextOpen := indexFrom(content, pos, "<form")
+		nextClose := indexFrom(content, pos, "</form>")
+		if nextOpen < 0 && nextClose < 0 {
+			break
+		}
+		// Pick the earliest tag that is < saveIdx.
+		var chosen int
+		var kind string
+		var kindLen int
+		switch {
+		case nextOpen >= 0 && nextOpen < saveIdx && (nextClose < 0 || nextClose >= saveIdx || nextOpen < nextClose):
+			// Validate the next char is whitespace or > (avoid <formaldehyde>).
+			after := nextOpen + len("<form")
+			if after >= len(content) {
+				break
+			}
+			c := content[after]
+			if c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '>' {
+				chosen = nextOpen
+				kind = "open"
+				kindLen = len("<form")
+			} else {
+				// Not a real <form> tag (e.g. <formaldehyde>). Skip past.
+				pos = nextOpen + 1
+				continue
+			}
+		case nextClose >= 0 && nextClose < saveIdx:
+			chosen = nextClose
+			kind = "close"
+			kindLen = len("</form>")
+		default:
+			// No relevant tag before saveIdx.
+			pos = saveIdx
+			continue
+		}
+		if kind == "open" {
+			depth++
+			pos = chosen + kindLen
+			continue
+		}
+		if kind == "close" {
+			depth--
+			pos = chosen + kindLen
+			continue
+		}
+	}
+	if depth != 1 {
+		t.Errorf("Save Changes button is at <form>-depth %d at the button's position, want 1 (must be inside the outer form, no nested forms). Issue #682 regression.", depth)
+	}
+}
+
+// indexFrom returns the index of needle in haystack starting at from, or
+// -1 if not found. Equivalent to strings.Index but with a start offset.
+func indexFrom(haystack string, from int, needle string) int {
+	if from >= len(haystack) {
+		return -1
+	}
+	idx := strings.Index(haystack[from:], needle)
+	if idx < 0 {
+		return -1
+	}
+	return idx + from
+}
+
 func TestEntryFormOmitsInlineScratchPadLauncher(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)

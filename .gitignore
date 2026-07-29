@@ -174,3 +174,4 @@ docs/renderings/*/round-*.pdf
 # itself lives in internal/versioninfo/versioninfo.go (tracked).
 .release-state/
 .dixiedata-cookies/
+build/logs/

@@ -5129,7 +5129,7 @@ async function dispatchDixieDataForm(button) {
         }
         form = synthetic;
       } else {
-        form = button.closest("form") || (button.form instanceof HTMLFormElement ? button.form : null);
+        form = button.closest("form");
       }
     }
     if (!(form instanceof HTMLFormElement)) {
@@ -8378,7 +8378,7 @@ async function refreshShareQueuePresetsPage(panel) {
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const isDixieForm = form.matches("[data-dixie-submit]") || form.id === "entry-edit-form";
+    const isDixieForm = form.matches("[data-dixie-submit]");
     if (!isDixieForm) {
       return;
     }

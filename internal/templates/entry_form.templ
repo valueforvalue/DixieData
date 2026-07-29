@@ -67,7 +67,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			}
 			
 			enctype="multipart/form-data"
-			id="entry-edit-form"
 			data-record-persistence-kind={ draftMode(isEdit) }
 			data-draft-reset-path={ draftResetPath(s, isEdit) }
 			class="card rounded-3xl p-5 sm:p-8 space-y-5"
@@ -390,26 +389,34 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 										<p>Desktop image uploads use the native file picker.</p>
 										<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 									</div>
-								<form
-									action={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
-									method="post"
-									enctype="multipart/form-data"
-									data-dixie-submit="true"
-									data-results-target={ "#" + uiids.PanelSoldierDetailImages }
-									class="inline"
-								>
-									<label class="primary-button w-full sm:w-auto cursor-pointer">
-										Add Images From Computer
-										<input
-											type="file"
-											name="images"
-											multiple
-											accept={ viewmodel.ImageMIMEAcceptString(s.AllowedImageMIMETypes) }
-											class="hidden"
-											onchange="this.form.requestSubmit()"
-										/>
-									</label>
-								</form>
+															// Issue #682: the inner form was nested inside the
+							// outer Person Record edit form, which violates
+							// HTML5 and silently closes the outer form at the
+							// parser (the Save button ends up reparented). The
+							// upload is now a [data-image-upload] div, not a
+							// <form>, and the file input POSTs via the
+							// handleImageUpload helper (frontend/app.js) which
+							// streams FormData directly to fetch + swaps the
+							// results into the targeting panel.
+							<div
+								data-image-upload
+								data-upload-url={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
+								data-results-target={ "#" + uiids.PanelSoldierDetailImages }
+								class="inline"
+							>
+								<label class="primary-button w-full sm:w-auto cursor-pointer">
+									Add Images From Computer
+									<input
+										type="file"
+										name="images"
+										multiple
+										accept={ viewmodel.ImageMIMEAcceptString(s.AllowedImageMIMETypes) }
+										class="hidden"
+										onchange="handleImageUpload(this)"
+									/>
+								</label>
+							</div>
+
 									</div>
 							} else {
 								<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -430,9 +437,9 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			</div>
 			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
 				if isEdit {
-					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "form": "entry-edit-form"})
+					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				} else {
-					@components.Button("Create Person Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit", "form": "entry-edit-form"})
+					@components.Button("Create Person Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				}
 				<button
 					type="button"
