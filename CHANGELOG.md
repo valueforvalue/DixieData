@@ -13,20 +13,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
-- **ci: dispatcher patch-method regression gate wired (#683).** The
-  6-assertion source-scan probe `audit/dispatcher_patch_method.test.mjs`
-  (the body-stripping workarounds for the Wails-WebView2 PATCH /
-  FormData quirks from #428) is now wired into the PR-time gate via
-  `just lint-dispatcher-patch-method` + `.github/workflows/test.yml`.
-  A future refactor that drops either workaround fails the CI build
-  with a clear assertion message. Mirrored on the Go side by
-  `TestRequestMethodOverride_PreservesBody` in `internal/appshell/
-  app_test.go`, which pins the chi-router-side behavior: POST requests
-  with `X-HTTP-Method-Override: PATCH` rewrite to PATCH while the body
-  round-trips intact through `ParseForm`. Cross-references `docs/COMMON_BUGS.md`
-  §3.8 (regression-net block).
+- **ci: lint-js-init-guards assertion for htmx swap re-binding (#685).** Wired `audit/lint-js-init-guards.mjs` (13-assertion source scan) + `scripts/lint-js-init-guards.test.mjs` (3-assertion regression net). The probe walks every initializer dispatched by initializeDynamicContent and asserts each one has a `__<feature>Wired`-shape sentinel (per-element via `.`__`<x>`Wired or `.`dataset.`<x>`Wired, or per-window). Initial state: 10/13 guarded; the 3 missing initializers (initializeTabs, initializeBrowseView, initializeEntryTypeForms) got `el.__<feature>Wired = true` guards (matching the canonical shape from __articlePreviewWired / __inventoryChartPainted). A follow-up fix (#70b28ac) switches the new guards from `dataset.<feature>Wired = "1"` to `el.__<feature>Wired = true` so the Node browse_frontend_test.go harness (which defines a minimal HTMLElement without `dataset`) can read them. CI gate added to test.yml.
+
+- **ci: lint-button-actions-resolve probe for templ invoker URL drift (#687).** The 2026-06/07 audit surfaced two template-split button URL drift instances (69eb735f + 266db08c). Wired `scripts/lint-button-actions-resolve.mjs` (19 invokers in the canonical repo, all passing) + `scripts/lint-button-actions-resolve.test.mjs`. Walks every `.templ` file under internal/templates/ for invoker URLs (form action, data-action, hx-get/post/put/patch/delete, and fmt.Sprintf templates), normalizes Go chi `{id:[0-9]+}` / `*` placeholders + `%d/%s` to a canonical `:p` token, and asserts each one resolves to a route internal/appshell/routes.go (including chi Router group sub-routes) OR matches the documented allowlist. Verified against a deliberate `/foo/%d/delete` swap to confirm the failure path. CI gate added to test.yml. Slice 2 (JS-side form-action mutation outside the synthetic-form branch, class 8 from #681) remains as a follow-up.
+
+- **ci: dispatcher patch-method regression gate wired (#683).** Wired `audit/dispatcher_patch_method.test.mjs` (6-assertion source scan; the body-stripping workarounds for Wails-WebView2 PATCH / FormData quirks from #428) into `.github/workflows/test.yml` via the `just lint-dispatcher-patch-method` recipe. Mirrored on the Go side by `TestRequestMethodOverride_PreservesBody` in internal/appshell/app_test.go, which pins the chi-router behavior: POST + X-HTTP-Method-Override: PATCH rewrites to PATCH while the form body round-trips intact through ParseForm. Cross-references docs/COMMON_BUGS.md §3.8.
+
+- **test: form-contract render table pins field name + handler agreement (#684).** `internal/templates/form_contract_test.go` walks SettingsView, SettingsAppearancePanel, and SettingsUpdatePanel and asserts every form carries the field name (theme / export_surface / quality_mode / confirmation_word / source_url) AND the data-results-target (#settings-quality-results, #settings-update-panel) AND the data-dixie-submit attribute that the corresponding chi handler expects. The Go-side renderer + handler are the two ends of the seam; the test points at both. Each row failed-message cites the handler file:line. Five historical fix bugs (d6a01e07, 8ac96a59, 8d7989c4, 8087a57d, f330b323) landed one-off regression tests; this is the general property test that catches the next drift without a slice-by-slice test addition. Slice 2 will populate the remaining forms.
+
+
+
+
 
 ## v1.1.34 - Embed-Tree Regression Gate
+
 
 ### Maintenance
 
