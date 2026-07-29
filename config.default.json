@@ -12,7 +12,7 @@
   },
   "services": {
     "update_check_url": "https://api.github.com/repos/valueforvalue/DixieData/releases/latest",
-    "update_source_url": "",
+    "update_source_url": "https://raw.githubusercontent.com/valueforvalue/dixiedata-rc-manifest/main/manifest.json",
     "repository_url": "https://github.com/valueforvalue/DixieData",
     "feedback_endpoint": "https://submit-form.com/vJSONT1nB"
   },
