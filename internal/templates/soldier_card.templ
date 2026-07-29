@@ -581,6 +581,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						// file input POSTs via handleImageUpload.
 						<div
 							data-image-upload
+							data-wails-native-upload="true"
 							data-upload-url={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import", s.ID)) }
 							data-results-target={ "#" + uiids.PanelSoldierDetailImages }
 							class="inline"

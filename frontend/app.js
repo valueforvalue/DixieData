@@ -5137,15 +5137,53 @@ function handleImageUpload(input) {
   const url = container.dataset.uploadUrl;
   const resultsTarget = container.dataset.resultsTarget;
   if (!url) return;
-  const fd = new FormData();
+  const inWails =
+    typeof window !== "undefined" &&
+    window.location &&
+    window.location.hostname === "wails.localhost";
+  const nativeUpload = container.dataset.wailsNativeUpload === "true";
+  if (inWails && nativeUpload) {
+    setBusyState(input, true);
+    fetch(url, { method: "POST", body: new URLSearchParams() })
+      .then(async r => {
+        const html = await r.text();
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (r.redirected || r.headers.get("X-DixieData-Redirect") || html.includes("/jobs/")) {
+          showToast("Images imported. Refreshing…", "success");
+          window.location.reload();
+          return;
+        }
+        throw new Error("Unexpected image import response");
+      })
+      .catch(err => showToast("Image import failed: " + (err.message || "unknown error"), "error"))
+      .finally(() => setBusyState(input, false));
+    return;
+  }
+
   if (!input.files) return;
+  const fd = new FormData();
   for (const file of input.files) {
     fd.append("images", file);
   }
   setBusyState(input, true);
+
   fetch(url, { method: "POST", body: fd })
-    .then(r => r.text())
+    .then(async r => {
+      const html = await r.text();
+      // Wails multipart upload succeeds through native fallback only when
+      // browser file bytes survive; otherwise Go returns a useful error.
+      if (inWails && r.status >= 400) {
+        showToast("Image import failed. Check debug log.", "error");
+      }
+      // Wails native fallback returns a job redirect, not the gallery
+      // fragment. Preserve gallery until job polling/navigation refreshes it.
+      if (inWails && (r.redirected || r.headers.get("X-DixieData-Redirect") || html.includes("/jobs/"))) {
+        return;
+      }
+      return html;
+    })
     .then(html => {
+      if (typeof html !== "string") return;
       // The resultsTarget is a CSS selector from data-results-target.
       // UIID values like "panel.soldier.detail.images" contain literal
       // dots which the CSS selector parser treats as class separators —
@@ -6666,6 +6704,20 @@ function onPrintRecordsFragmentReady(modal) {
       if (!(input instanceof HTMLInputElement)) continue;
       if (input.__imageUploadWired === true) continue;
       input.__imageUploadWired = true;
+      input.addEventListener("click", (event) => {
+        const container = input.closest("[data-image-upload]");
+        const inWails =
+          typeof window !== "undefined" &&
+          window.location &&
+          window.location.hostname === "wails.localhost";
+        if (!(container instanceof HTMLElement) || container.dataset.wailsNativeUpload !== "true" || !inWails) {
+          return;
+        }
+        // Skip browser file chooser in Wails. Go opens one guarded native
+        // picker after handleImageUpload posts its URL-encoded trigger.
+        event.preventDefault();
+        handleImageUpload(input);
+      });
       input.addEventListener("change", () => {
         handleImageUpload(input);
       });
