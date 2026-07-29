@@ -77,6 +77,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { registerCleanup } from './_lib/cleanup.mjs';
 import { setFileChooserFixture } from './_lib/filechooser.mjs';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
 
 const PORT = process.env.PROBE_PORT || '8774';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -200,7 +202,7 @@ async function main() {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
   const scratchDir = path.join(repoRoot, '.scratch', 'smoke-soldier-images');
-  const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
+  const webBinPath = webBin();
   const fixtureSrc = path.join(here, '_lib', 'fixtures', 'soldier-image.png');
 
   try {
@@ -209,9 +211,9 @@ async function main() {
     // ignore
   }
 
-  if (!fs.existsSync(webBin)) {
+  if (!fs.existsSync(webBinPath)) {
     throw new Error(
-      `dixiedata-web binary missing at ${webBin}; run \`just debug\` first`,
+      `dixiedata-web binary missing at ${webBinPath}; run \`just debug\` first`,
     );
   }
   if (!fs.existsSync(fixtureSrc)) {
@@ -234,14 +236,14 @@ async function main() {
   }
 
   const proc = spawn(
-    webBin,
+    webBinPath,
     ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
     {
       cwd: repoRoot,
       env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
     },
   );
-  registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
+  registerCleanup({ proc, processNames: [path.basename(webBinPath)] });
   proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
   proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
 
@@ -738,10 +740,29 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
 
   console.log(`\n${pass} passed, ${fail} failed`);
   console.log(`soldiers touched (created, then cleaned up): ${trackedSoldierIDs.length}`);
-  process.exit(fail === 0 ? 0 : 1);
+  // The runner's runProbe contract returns {ok} from the probeFn;
+  // the aggregator emits the process exit code via renderSummary().
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
 import('./_lib/cleanup.mjs').then(async ({ runWithCleanup }) => {
-  const code = await runWithCleanup(main);
-  process.exit(code === 0 ? 0 : code);
+  // Issue #700 slice 2: this smoke now runs through the
+  // shared Playwright runner (audit/_lib/smoke_runner.mjs)
+  // instead of inlining its own server-spawn + chromium.launch
+  // + cleanup chain. The runner calls main() via the probeFn
+  // contract (returns {ok, ...} or throws) and the shared
+  // reporter emits the process exit code. The registerCleanup()
+  // bridge inside main() still works because cleanup.mjs
+  // exposes registerCleanup as a module-level singleton, and
+  // the runner's own runWithCleanup() is installed at the
+  // aggregator level (audit/smoke_aggregator.mjs). For this
+  // standalone invocation we still wrap in runWithCleanup so
+  // the spawned binary is killed on Ctrl-C / fatal exit.
+  await runWithCleanup(async () => {
+    const result = await runProbe({
+      name: 'soldier-images',
+      probeFn: main,
+    });
+    process.exit(result.ok ? 0 : 1);
+  });
 });

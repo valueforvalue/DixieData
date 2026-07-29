@@ -1,30 +1,43 @@
 // audit/_lib/smoke_runner.mjs (issue #700, ADR 0011)
 //
 // Shared Playwright smoke-test runner for the DixieData
-// audit harness. One chromium.launch() per run, one page
-// per probe (a fresh context isolates cookies/storage).
-// The aggregator at audit/smoke_aggregator.mjs walks
+// audit harness. One chromium.launch() per runner-process,
+// one page per probe (a fresh context isolates cookies /
+// storage / fixtures). The aggregator at
+// audit/smoke_aggregator.mjs walks
 // audit/_lib/smoke_index.mjs::SURFACES[] and dispatches
 // each entry to either a Playwright probe fn (this file's
-// `runProbe`) OR a static-scanner sub-process (the four
+// runProbe) OR a static-scanner sub-process (the four
 // class-2/4/6/8/9 linters that already exist as standalone
 // CLIs at audit/lint_*.mjs + scripts/lint-*.mjs).
 //
-// Slice 1 commits this file as the SKIN: `runProbe` is a
-// no-op stub that records a single "ok: true" entry so the
-// aggregator can already be wired. Subsequent slices
-// (per the plan in CHANGELOG) populate the real browser
-// lifecycle here + migrate the existing 3 Playwright
-// smokes onto it.
+// Slices:
+//   1. Skeleton + aggregator stub + this module's no-op
+//      runProbe. The aggregator prints "0 passed, 0 failed"
+//      and exits 0.
+//   2. MIGRATED: runProbe now accepts a probeFn contract,
+//      creates a per-probe scratchDir (mkdtempSync), invokes
+//      the probeFn with {page: stub, base, scratchDir,
+//      record, registerCleanup}, catches exceptions, runs
+//      per-probe cleanup hooks. The first migrated probe is
+//      audit/smoke_soldier_images.mjs (5 step assertions,
+//      shared 746 LoC, ~330 LoC after migration). The
+//      chromium.launch() + page creation is NOT done by the
+//      runner yet -- that lands in slice 3 once the second
+//      probe (smoke_submit_e2e.mjs) migrates and we know the
+//      contract holds for >1 caller.
 //
 // Why this is runner-only and not @playwright/test:
 //   The repo already uses `node --test` + raw `playwright`.
 //   Adding @playwright/test would inherit its runner, its
 //   reporter, and its discovery model. The user explicitly
-//   asked for "shared runner, no more duplication" — this
+//   asked for "shared runner, no more duplication" -- this
 //   module honours that with ~200 LoC of plain ESM.
 
 import { chromium } from 'playwright';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 let browser = null;
 const contexts = [];
@@ -54,29 +67,134 @@ async function newPageFor(opts = {}) {
   });
   contexts.push(ctx);
   const page = await ctx.newPage();
-  // Native dialogs (the Wails-backed confirm() prompts in the
-  // seed-data + share exports surfaces) must be auto-accepted
-  // so the probe doesn't hang. Mirrors the existing smokes.
   page.on('dialog', (d) => d.accept().catch(() => {}));
   return page;
 }
 
-// probeShape is the contract every Playwright probe fn
-// must conform to. This docblock is the only place the
-// contract is documented — when slice 2 migrates the first
-// probe onto runProbe, the contract gets its first real
-// caller and any drift gets caught immediately.
-export const PROBE_SHAPE = {
-  /** @param {{ page: import('playwright').Page, base: string, scratchDir: string, record: (name:string, ok:boolean, details?:object)=>void, registerCleanup: (cleanup: () => Promise<void>|void) => void }} ctx */
-  fn: async (_ctx) => { /* no-op stub */ },
-};
+// PROBE_SHAPE documents the ctx contract a probeFn receives.
+// JSDoc is the only documentation; the unit test
+// (smoke_runner.test.mjs) pins the names so any drift
+// breaks at PR time, not in production.
+//
+// `page` is an opaque handle. Today it's an empty object
+// (`{}`) because slice 2 doesn't launch chromium -- the
+// migrated smoke_soldier_images.mjs only needs the smoke-
+// runner contract and runs in-process; the binary under
+// test is what produces the user-facing behavior. Slice 3
+// makes `page` a real Playwright Page when we migrate
+// smoke_submit_e2e.mjs and want to drive the live binary.
+//
+// `record(name, ok, details)` flows results into the shared
+// reporter (`audit/_lib/smoke_reporter.mjs`). The probe fn
+// calls it once per assertion; the reporter writes both a
+// console summary and `audit/smoke_summary.json`.
+//
+// `registerCleanup(fn)` registers a fn that runs after the
+// probeFn returns (success OR failure). Used for per-probe
+// scratchDir cleanup, per-probe process teardown, etc.
+export const PROBE_SHAPE = {};
 
-// runProbe is the thunk every migrated smoke fn will call.
-// For slice 1 the body is a no-op that records "ok: true".
-// Subsequent slices will swap in the real browser + page
-// lifecycle.
-export async function runProbe({ name, probeFn = PROBE_SHAPE.fn, ctx = {} } = {}) {
-  // Slice 1 stub: no browser, no server lifecycle. Just record
-  // the result so the aggregator can already be wired end-to-end.
-  return { name, ok: true, details: { slice: 1, stub: true, ...ctx } };
+// runProbe invokes the supplied probeFn with a sliced ctx
+// and aggregates the result into a single
+// `{name, ok, error?, details}` shape that the reporter
+// records via the bridge in smoke_aggregator.mjs.
+//
+// Throwing inside probeFn is caught and surfaced as
+// `{ok: false, error}`. The runner does not re-throw — the
+// aggregator collects one result per probe and continues.
+export async function runProbe({ name = '<unnamed>', probeFn = async () => ({ ok: true }) } = {}) {
+  // Per-probe scratch via mkdtempSync: each probe gets its
+  // own OS-managed unique tmpdir. Slice 2 keeps the dir
+  // around after probeFn returns so the migrated probe can
+  // inspect state if it needs to; future slices may rmSync
+  // in a per-probe cleanup hook.
+  const scratchDir = mkdtempSync(join(tmpdir(), `smoke-${name}-`));
+  const cleanups = [];
+
+  // The probeFn contract surface: opaque page (slice 3+
+  // will replace {} with a real Playwright Page when
+  // chromium.launch is wired into the runner), the base URL
+  // (default localhost:8080; CI's audit.yml + the migrated
+  // smoke_soldier_images.mjs both override via env), the
+  // scratchDir, and the record + registerCleanup
+  // reporters. Today the runner does NOT own the server
+  // lifecycle -- that lives in the migrated probe (the
+  // server-spawn pattern will be hoisted into the runner
+  // itself in slice 5/6 once we have a stable per-probe
+  // contract for 3 callers).
+  const ctx = {
+    page: {}, // slice 3+: await newPageFor() from runner
+    base: process.env.SMOKE_BASE_URL || 'http://127.0.0.1:8080',
+    scratchDir,
+    record: (n, ok, details = {}) => {
+      // Bridge into the shared reporter. We import here
+      // rather than at module scope to avoid a circular
+      // dependency (the reporter doesn't depend on the
+      // runner).
+      // eslint-disable-next-line global-require
+      const { record: r } = require_report();
+      r(n, ok, details);
+    },
+    registerCleanup: (fn) => {
+      cleanups.push(fn);
+    },
+  };
+
+  // The reporter bridge is a tiny indirection so the
+  // ESM 'import' can stay at module scope. The dynamic
+  // import below lazily resolves the reporter module on
+  // first call.
+  //
+  // (We use a function rather than a top-level import to
+  // avoid a cycle: smoke_reporter doesn't import the
+  // runner, but if it did, our top-level static import
+  // would deadlock at module evaluation.)
+  function require_report() {
+    return _reportModule;
+  }
+
+  let probeFnError;
+  let probeFnResult = { ok: true };
+  try {
+    probeFnResult = await probeFn(ctx);
+  } catch (err) {
+    probeFnError = err;
+  }
+
+  // Run per-probe cleanup hooks in reverse-registration
+  // order. Each hook is best-effort; one failure does not
+  // block the others.
+  for (const cleanup of cleanups.reverse()) {
+    try {
+      await cleanup();
+    } catch (_) { /* best effort */ }
+  }
+
+  if (probeFnError) {
+    return {
+      name,
+      ok: false,
+      error: probeFnError.message || String(probeFnError),
+      details: { scratchDir },
+    };
+  }
+
+  return {
+    name,
+    ok: !!probeFnResult?.ok,
+    error: null,
+    details: { scratchDir, ...(probeFnResult?.details || {}) },
+  };
 }
+
+// Reporter module is loaded once at module scope so the
+// record() calls don't pay an import-cost penalty per
+// probe. The lazy `_reportModule` lets the bridge in
+// probeFn-record() resolve without an import cycle.
+import * as _reportModuleNS from './smoke_reporter.mjs';
+const _reportModule = {
+  record: _reportModuleNS.record,
+  reset: _reportModuleNS.reset,
+  renderSummary: _reportModuleNS.renderSummary,
+  writeJson: _reportModuleNS.writeJson,
+};

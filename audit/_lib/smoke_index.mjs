@@ -15,13 +15,22 @@
 //
 // Adding a probe = append one line. That's the entire
 // contribution contract (per docs/agents/tdd.md §What's the
-// seam? — the seam is the DOM surface ID from internal/uiids,
+// seam? -- the seam is the DOM surface ID from internal/uiids,
 // and the index list is the catalog of which surfaces have
 // assertions).
 
-// Slice 1 is a no-op stub. The full population is filled in
-// by slice 2 (smoke_soldier_images.mjs migration), slice 3
-// (smoke_submit_e2e.mjs), slice 4 (smoke_mega_menu_nav.mjs),
-// and slice 5 (the static-scanner bridge that adds the
-// class-2/4/6/8/9 lint entries as kind: 'scanner' rows).
-export const SURFACES = [];
+// Slice 2 populates the first Playwright entry: the
+// soldier-side images panel smoke (issue #392). Subsequent
+// slices migrate smoke_submit_e2e (slice 3) and
+// smoke_mega_menu_nav (slice 4); slice 5 populates the
+// static-scanner kind:'scanner' entries for the class-2/4/6/8/9
+// lints.
+export const SURFACES = [
+  {
+    name: 'soldier-images',
+    file: 'audit/smoke_soldier_images.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class
+    note: 'issue #392 -- soldier-side Images panel UIIDs',
+  },
+];

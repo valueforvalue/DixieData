@@ -1,20 +1,30 @@
 // audit/_lib/smoke_runner.test.mjs (issue #700, ADR 0011)
 //
-// Slice 1 regression net for the shared runner skeleton.
-// Three assertions pin the slice-1 contract:
-//   1. record() from smoke_reporter increments the pass counter
-//      and pushes a record with the right shape.
-//   2. renderSummary() returns 0 when all records pass, 1 when
-//      any fails.
+// Slice 1 regression net for the shared runner skeleton;
+// slice 2 extends with the runProbe contract (probeFn
+// invocation, ctx shape, error catching, scratchDir, and
+// per-probe cleanup hooks).
+//
+// Slice 1 contract:
+//   1. record() from smoke_reporter increments the pass
+//      counter and pushes a record with the right shape.
+//   2. renderSummary() returns 0 when all records pass,
+//      1 when any fails.
 //   3. writeJson() produces a JSON file with the records.
+//   4. webBin() returns the platform-appropriate path.
+//   5. webBinExists() returns a boolean.
 //
-// Subsequent slices (2-7) extend this test with:
-//   - runProbe spawn lifecycle assertions (slice 2).
-//   - scanner-bridge exit-code contract (slice 5).
+// Slice 2 contract (new):
+//   6. runProbe invokes probeFn with {page, base, scratchDir,
+//      record, registerCleanup}.
+//   7. probeFn exceptions yield result {ok: false, error}.
+//   8. scratchDir is a real (mkdtemp) directory that exists
+//      when probeFn runs AND after it returns.
+//   9. registerCleanup(fn) runs the fn after probeFn returns.
 //
-// All probes exit-0 today because the runner skeleton is a
-// no-op stub; the slice-1 contract is "exit 0, write JSON,
-// no exceptions."
+// All probe exits-0 because the runner skeleton either runs
+// the probe fn (slice 2) or no-ops (slice 1). Slice-1 stubs
+// recorded "ok:true"; slice 2 actually invokes probeFn.
 
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -23,27 +33,36 @@ import { join } from 'node:path';
 
 import { record, renderSummary, writeJson, reset, count, getResults } from './smoke_reporter.mjs';
 import { webBin, seedBin, webBinExists } from './smoke_paths.mjs';
+import { runProbe } from './smoke_runner.mjs';
 
 let pass = 0;
 let fail = 0;
-function test(name, fn) {
-  try {
-    fn();
+const failures = [];
+
+function recordTest(name, ok, err) {
+  if (ok) {
     pass++;
     console.log(`  \u2713 ${name}`);
-  } catch (err) {
+  } else {
     fail++;
     console.log(`  \u2717 ${name}`);
-    console.log(`    ${err.message}`);
+    console.log(`    ${err && err.message ? err.message : err}`);
+    failures.push(name);
   }
 }
 
-// Reset the in-memory results before each test run so the
-// assertions below don't pick up state from prior runs in
-// the same `node --test` invocation.
-reset();
+async function test(name, fn) {
+  try {
+    await fn();
+    recordTest(name, true);
+  } catch (err) {
+    recordTest(name, false, err);
+  }
+}
 
-test('record() pushes an entry with {name, ok, ts} and increments the pass counter', () => {
+// --- slice 1 cases ---
+
+await test('record() pushes an entry with {name, ok, ts} and increments the pass counter', async () => {
   reset();
   const before = count();
   assert.equal(before.total, 0, 'fresh state should have 0 results');
@@ -57,7 +76,7 @@ test('record() pushes an entry with {name, ok, ts} and increments the pass count
   assert.equal(after.total, 1);
 });
 
-test('record() with ok: false increments the fail counter', () => {
+await test('record() with ok: false increments the fail counter', async () => {
   reset();
   record('test-b', false, { error: 'sample' });
   const after = count();
@@ -65,7 +84,7 @@ test('record() with ok: false increments the fail counter', () => {
   assert.equal(after.fail, 1);
 });
 
-test('renderSummary() returns 0 when all records pass, 1 when any fails', () => {
+await test('renderSummary() returns 0 when all records pass, 1 when any fails', async () => {
   reset();
   record('pass-1', true);
   record('pass-2', true);
@@ -76,15 +95,15 @@ test('renderSummary() returns 0 when all records pass, 1 when any fails', () => 
   assert.equal(code, 1, 'mixed run should return exit code 1');
 });
 
-test('writeJson() emits the records to disk', () => {
+await test('writeJson() emits the records to disk', async () => {
   reset();
   record('disk-1', true);
   const dir = mkdtempSync(join(tmpdir(), 'smoke-runner-test-'));
   try {
-    const path = join(dir, 'summary.json');
-    writeJson(path);
-    assert.ok(existsSync(path), 'summary file must exist after write');
-    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    const jsonPath = join(dir, 'summary.json');
+    writeJson(jsonPath);
+    assert.ok(existsSync(jsonPath), 'summary file must exist after write');
+    const parsed = JSON.parse(readFileSync(jsonPath, 'utf8'));
     assert.ok(Array.isArray(parsed.results), 'results field must be an array');
     assert.ok(parsed.results[0].name === 'disk-1');
     assert.ok(typeof parsed.finishedAt === 'string');
@@ -93,28 +112,102 @@ test('writeJson() emits the records to disk', () => {
   }
 });
 
-test('smoke_paths: webBin() returns the .exe-suffixed binary on win32, bare on linux', () => {
-  // We cannot assert the literal path here (repo-root location
-  // is environment-dependent) but we can assert the platform
-  // branch: win32 path includes the .exe, others do not.
-  const path = webBin();
+await test('smoke_paths: webBin() returns the .exe-suffixed binary on win32, bare on linux', async () => {
+  const binPath = webBin();
   const isWin = process.platform === 'win32';
   assert.equal(
-    path.endsWith('dixiedata-web.exe'),
+    binPath.endsWith('dixiedata-web.exe'),
     isWin,
-    `webBin() on ${process.platform} should ${isWin ? '' : 'NOT '}end with .exe; got ${path}`,
+    `webBin() on ${process.platform} should ${isWin ? '' : 'NOT '}end with .exe; got ${binPath}`,
   );
 });
 
-test('smoke_paths: webBinExists() returns false when the binary is missing', () => {
-  // On a clean dev tree without `just debug` having run,
-  // build/bin/dixiedata-web(.{exe,}) does not exist. The
-  // assertion guards against the false-positive of returning
-  // true unconditionally.
-  // (Skipped if the binary IS present -- in CI it's built
-  // before the audit step, so we accept either.)
+await test('smoke_paths: webBinExists() returns a boolean', async () => {
   const exists = webBinExists();
   assert.equal(typeof exists, 'boolean', 'webBinExists must return a boolean');
+});
+
+// --- slice 2 cases: runProbe contract ---
+
+await test('runProbe invokes probeFn and threads {page, base, scratchDir, record, registerCleanup}', async () => {
+  reset();
+  let probeFnEntered = false;
+  let observedCtx = null;
+
+  const result = await runProbe({
+    name: 'unit-no-browser',
+    probeFn: async (ctx) => {
+      probeFnEntered = true;
+      observedCtx = ctx;
+      // Every migrated probe destructures these names; assert
+      // they are present and well-typed.
+      assert.ok(typeof ctx === 'object', 'ctx must be an object');
+      assert.ok('base' in ctx, 'ctx must carry base');
+      assert.ok('scratchDir' in ctx, 'ctx must carry scratchDir');
+      assert.ok('record' in ctx, 'ctx must carry record');
+      assert.ok('registerCleanup' in ctx, 'ctx must carry registerCleanup');
+      assert.ok('page' in ctx, 'ctx must carry page');
+      ctx.record('unit-step-1', true, { note: 'first' });
+      ctx.record('unit-step-2', true, { note: 'second' });
+      return { ok: true, steps: 2 };
+    },
+  });
+
+  assert.equal(probeFnEntered, true, 'probeFn MUST be invoked by runProbe (slice-2 contract)');
+  assert.equal(result.ok, true, 'probe completion must yield ok: true');
+  assert.ok(observedCtx, 'ctx must have been observed by probeFn');
+  const all = getResults();
+  assert.ok(all.some((r) => r.name === 'unit-step-1' && r.ok === true), 'step-1 must be recorded');
+  assert.ok(all.some((r) => r.name === 'unit-step-2' && r.ok === true), 'step-2 must be recorded');
+});
+
+await test('runProbe catches probeFn exceptions and surfaces { ok: false, error }', async () => {
+  reset();
+  let entered = false;
+
+  const result = await runProbe({
+    name: 'unit-thrower',
+    probeFn: async () => {
+      entered = true;
+      throw new Error('synthetic failure');
+    },
+  });
+
+  assert.equal(entered, true, 'probeFn must run (slice-2 contract)');
+  assert.equal(result.ok, false, 'thrown probeFn yields ok: false');
+  assert.ok(
+    result.error && String(result.error).includes('synthetic failure'),
+    'error message must propagate',
+  );
+  assert.equal(result.name, 'unit-thrower');
+});
+
+await test('runProbe passes scratchDir that is a real (mkdtemp) directory', async () => {
+  reset();
+  let observed = null;
+  await runProbe({
+    name: 'unit-scratch',
+    probeFn: async (ctx) => {
+      observed = ctx.scratchDir;
+      assert.ok(existsSync(ctx.scratchDir), 'scratchDir must exist when probeFn runs');
+      return { ok: true };
+    },
+  });
+  assert.ok(observed, 'probeFn observed a scratchDir');
+  assert.ok(existsSync(observed), 'scratchDir must persist after probeFn returns');
+});
+
+await test('registerCleanup hook runs after probeFn returns', async () => {
+  reset();
+  let hookCalled = false;
+  await runProbe({
+    name: 'unit-cleanup',
+    probeFn: async ({ registerCleanup }) => {
+      registerCleanup(() => { hookCalled = true; });
+      return { ok: true };
+    },
+  });
+  assert.equal(hookCalled, true, 'per-probe cleanup hook must run after probeFn completes');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
