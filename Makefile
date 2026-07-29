@@ -486,6 +486,28 @@ verify-embed-tree-strict: ## embed-tree lint as a CI failure
 verify-embed-tree-test: ## Run the verify_embed_tree probe test suite
 	node audit/verify_embed_tree.test.mjs
 
+# lint-no-nested-forms (issue #682): walks every .templ file
+# under internal/templates/ and asserts that no <form> tag is
+# opened while another <form> is still on the element stack.
+# HTML5 forbids <form> inside <form>; the parser silently
+# closes the outer form at the inner form's open tag, which
+# reparents submit buttons out of the outer form's DOM tree.
+# The canonical historical instance: the inner image-upload
+# form at entry_form.templ:392 (and soldier_card.templ:574)
+# silently closed the outer form, breaking the Save Changes
+# / Download Selected Images buttons. The structural fix
+# lands in the templ sources; this lint is the gate that fails
+# CI if a future change re-introduces the nesting. Sibling to
+# lint-bake-bootstrap + verify-embed-tree.
+lint-no-nested-forms: ## nested-form lint (issue #682); docs/COMMON_BUGS.md
+	node audit/lint_no_nested_forms.mjs
+
+lint-no-nested-forms-strict: ## nested-form lint as a CI failure
+	node audit/lint_no_nested_forms.mjs --strict
+
+lint-no-nested-forms-test: ## Run the lint_no_nested_forms probe test suite
+	node audit/lint_no_nested_forms.test.mjs
+
 lint-dispatcher-tdz-test: ## Run the dispatcher_tdz_fix regression test (slice-2 typecheck fix)
 	node audit/dispatcher_tdz_fix.test.mjs
 
