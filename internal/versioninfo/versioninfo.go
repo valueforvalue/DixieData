@@ -59,7 +59,7 @@ const CurrentUpdateFlowVersion = 1
 // RC zip: `-X github.com/valueforvalue/DixieData/internal/versioninfo.CurrentReleaseTag=rc1`
 // yields AppVersionFull() == "1.1.4-rc1". The Chrome surfaces
 // read this via buildinfo.AppVersionFull() / AppLabel().
-var CurrentReleaseTag = ""
+var CurrentReleaseTag = "rc1"
 
 // AppVersionFull returns AppVersion with the optional
 // pre-release suffix appended: "1.1.4" when CurrentReleaseTag
@@ -113,7 +113,7 @@ func AppRelease() int {
 // manifest can advertise 1.1.5-rc1, making the updater's
 // compareVersions see Newer=true against the installed 1.1.4
 // binary (issue #658).
-var CurrentAppVersionInt = 32
+var CurrentAppVersionInt = 33
 
 // AppVersionForSchema composes an AppVersion-like string using
 // the historical formula (v1.2.{schema}). Kept for callers

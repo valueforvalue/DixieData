@@ -753,6 +753,113 @@ attribute values verbatim.
   instead of copying `data-action="/export/feedback-log"` +
   `<form action="/export/bug-report">` from entry_form.templ.
 
+### 2.7 Nested `<form>` rendering defect — HTML5 parser silently closes the outer form (#682, release-blocker for rc/v1.1)
+
+**Symptom:** A submit button rendered inside a `<form>` in the
+templ source appears to work — the click event fires, but
+`button.closest('form')` returns `null` and the button has no
+`<form>` ancestor in the live DOM. The user-visible result: click
+does nothing, no submit, no error. The form's `data-dixie-submit`
+attribute is preserved on the outer form element, but the input
+fields between the inner form's open and the outer form's close
+are reparented to the parent section / body.
+
+**Why it happens:** HTML5 forbids `<form>` inside `<form>`. When
+the browser's parser hits an inner `<form>` while a form is in
+scope, it acts as if an end tag for `form` was seen
+([WHATWG HTML §13.2.6.4.3 — "in body" insertion mode](https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody)).
+The outer form is auto-closed; everything between the inner form's
+open and the original closing tag is reparented out. The truncated
+outer form retains its opening-tag attributes (`id`, `action`,
+`data-dixie-submit`), but the inputs that lived inside that span
+are no longer its descendants.
+
+**Two live instances in the codebase at time of writing:**
+
+- `internal/templates/entry_form.templ` — outer Person Record edit
+  form at L55 (`data-dixie-submit="true"`, `id="entry-edit-form"`)
+  closes at L392 where the inner image-upload form opens. The Save
+  Changes button at L432 has no form ancestor.
+- `internal/templates/soldier_card.templ` — outer images-download
+  form at L567 contains an inner image-upload form at L574. The
+  Download Selected Images submit button is orphaned.
+
+**Find it:**
+
+```bash
+# Walk every .templ file for nested <form> patterns. The lint
+# target is scripts/lint-no-nested-forms.py (issue #682) and runs
+# in `make lint`. The check is a stack-based parser: any <form>
+# whose opening tag is more indented than another <form> still on
+# the stack at the same line is a violation.
+python3 scripts/lint-no-nested-forms.py
+```
+
+Manual confirmation:
+
+```js
+// In DevTools on the rendered page:
+document.querySelector('button[type="submit"]').closest('form')
+// Returns null when the bug is present.
+document.querySelector('button[type="submit"]').form
+// Returns the truncated outer form (which has the wrong scope).
+```
+
+**Fix:** Move the inner form out of the outer form's scope. Three
+approaches, in order of preference:
+
+1. **Sibling form** — lift the inner form into a templ component
+   that renders as a sibling of the outer form, not a child. The
+   `data-results-target` on the inner form already points to a
+   sibling-scoped ID (`#panel-soldier-detail-images`), so the
+   conceptual model was always sibling. The outer form wraps the
+   Person Record fields; the inner form wraps the image upload UI.
+2. **Synthetic form via `data-action`** — drop the inner `<form>`
+   entirely. The upload button gets `data-action="..."` and
+   `data-method="POST"` and the dispatcher builds a synthetic form
+   via the existing fallback path in `dispatchDixieDataForm`. This
+   loses `enctype="multipart/form-data"` because the synthetic form
+   cannot carry the body — use `fetch` + `FormData` directly from
+   the click handler instead.
+3. **Band-aid** — do NOT do this. The fix in #676's diagnostic
+   session added `id="entry-edit-form"` + `form="entry-edit-form"`
+   to associate the Save button with the truncated outer form. This
+   masks the symptom but the truncated form is missing the input
+   fields that were rendered AFTER the inner form, so the save
+   submits incomplete data. The Band-Aid is removed as part of the
+   #689 cleanup.
+
+**Real examples (planned fixes):**
+
+- `internal/templates/entry_form.templ` — move image-upload form
+  out (slice 1 of #682).
+- `internal/templates/soldier_card.templ` — same structural fix.
+- `internal/templates/components/image_upload_form.templ` (new,
+  shared) — both call sites consume the same component.
+
+**Checklist when adding a form inside an existing section:**
+
+1. Confirm the section is not already inside a `<form>` element.
+   Use `make verify-embed-tree` (templ lint equivalent — walks the
+   `.templ` source and reports any nested form) before opening
+   the PR.
+2. If the section already wraps a form, lift the new form out as
+   a sibling. Consider whether the parent form's submit should
+   still wrap the new form's inputs (it usually shouldn't).
+3. After the fix, run `node audit/smoke_no_nested_forms.mjs` —
+   added by #682 — to confirm the live page now has every submit
+   button's `closest('[data-dixie-submit="true"]')` non-null.
+
+**Related:**
+
+- #682 (umbrella child — release-blocker for rc/v1.1)
+- `docs/ui-map/wireframes/26-event-new.md` — pre-existing rule
+  documenting the no-nested-forms requirement for the Event forms
+- `docs/ui-map/wireframes/27-event-edit.md` — same, for the Edit
+  page
+- Issue #676 / #428 — the original Wails-PATCH workarounds that
+  masked the symptom during the diagnostic session
+
 ---
 
 ## 3. Frontend JS / CSS bugs
@@ -1016,6 +1123,135 @@ workarounds.
 2. Does the Wails-runtime gate check both `requestUrl` AND `window.location.hostname`?
 3. Run `node audit/dispatcher_patch_method.test.mjs` — all 7 assertions must pass
 
+### 3.9 JS-side `form.action` mutation — JS clobbers the server-rendered URL after init (#689, priority:high, target:rc)
+
+**Note:** §3.8 documents `form.action` being used as a read-side
+IDL property, shadowed by named controls. This section (§3.9)
+documents the *write-side* inverse: JS code mutating `form.action`
+after the server has rendered it. Two different bugs, two
+different fixes, both touch the same `form.action` symbol.
+
+**Symptom:** On `/soldiers/{id}/edit`, the Save Changes button
+submits to `/soldiers` (the create URL) instead of `/soldiers/{id}`
+(the edit URL). The server returns 400; the user sees no toast and
+no save. The form template renders the correct URL — the mutation
+happens client-side after the page loads.
+
+**Why it happens:** any JS code that runs on form initialization
+and assigns to `form.action`, `form.method`, or `form.enctype`
+overwrites the server-rendered values. The single canonical
+exception is the synthetic-form branch in `dispatchDixieDataForm`
+(`frontend/app.js`) that builds a form from a `data-action` URL.
+Any other location is a bug.
+
+`frontend/app.js:3946-3949` in `syncEntryTypeFields`:
+
+```javascript
+if (form.dataset.entryTypeFormAction !== "/soldiers") {
+  form.action = "/soldiers";
+  form.dataset.entryTypeFormAction = "/soldiers";
+}
+```
+
+This ran unconditionally on every `initializeDynamicContent` pass
+(cold-start + every htmx swap). It overwrote the form's
+server-rendered `action` to `/soldiers` regardless of whether the
+form was on `/soldiers/{id}/edit` (where `action="/soldiers/{id}"`
+is the correct URL) or `/soldiers/new` (where `action="/soldiers"`
+is the correct URL). The intent of the original code was to swap
+`/soldiers` → `/events/new` for event entry type; issue #362
+removed that swap but the unconditional assignment to `/soldiers`
+was left behind.
+
+**Find it:**
+
+```bash
+# Any assignment to form.action / form.method / form.enctype in
+# frontend/. The only allowed location is the synthetic-form
+# branch in dispatchDixieDataForm.
+grep -rn 'form\.action\s*=\|form\.method\s*=\|form\.enctype\s*=' frontend/ \
+  | grep -v 'synthetic\|dispatchDixieDataForm'
+```
+
+Verify the rendered DOM, not just the templ source:
+
+```js
+// In DevTools on the rendered page:
+document.querySelector('form[id="entry-edit-form"]').action
+// Should equal the URL the page was loaded from (created with
+// action="/soldiers/{id}" for edit, "/soldiers" for new).
+document.querySelector('form[id="entry-edit-form"]').dataset.entryTypeFormAction
+// Should be null/absent on the edit page. If it's "/soldiers",
+// the JS-side mutation has run.
+```
+
+**Fix:** Remove the `form.action` line from `syncEntryTypeFields`.
+The form's `action` is set by the server; the JS-side swap is
+dead code. Specifically:
+
+```diff
+--- a/frontend/app.js
++++ b/frontend/app.js
+@@ -3943,11 +3943,6 @@
+     syncConfederateHomeFields(form);
+-    if (form.dataset.entryTypeFormAction !== "/soldiers") {
+-      form.action = "/soldiers";
+-      form.dataset.entryTypeFormAction = "/soldiers";
+-    }
+   }
+```
+
+The `data-entry-type-form-action` attribute is now dead and should
+be removed from the template and any cleanup logic.
+
+**Cleanup of related band-aids:** once the JS mutation is fixed,
+the band-aids that worked around this bug become unnecessary:
+
+1. `internal/templates/entry_form.templ:70` — remove `id="entry-edit-form"`.
+2. `internal/templates/entry_form.templ:433,435` — remove `form="entry-edit-form"`.
+3. `frontend/app.js:5110` — restore `form = button.closest("form")` only.
+4. Remove the diagnostic `[DD DEBUG]` console.log lines from `app.js`, `internal/appshell/app.go`, `internal/appshell/soldiers_handlers.go`.
+
+After cleanup, the save flow works as designed: button submit →
+`closest("form")` finds the outer form → POST to `/soldiers/{id}` →
+`handleUpdateSoldier` → 200 with `X-DixieData-Redirect`.
+
+**Why this hides for so long:** Two band-aids (the nested-form
+`id="entry-edit-form"` workaround and the `button.form` fallback)
+masked the mutation. The band-aids let the save flow attempt to
+dispatch, which then revealed the action clobber. Without the
+band-aids, the save would have remained a silent no-op — the
+original symptom of #676.
+
+**Real example:**
+
+- `frontend/app.js:3946` — the `syncEntryTypeFields` mutation
+  (still present at time of writing; fix lands as part of #689).
+- The diagnostic session for #676 / #682 surfaced this bug after
+  the nested-form band-aids accidentally let the dispatch fire.
+
+**Checklist when adding a new JS initializer that touches a form:**
+
+1. Does it assign to `form.action`, `form.method`, or `form.enctype`?
+   If yes: is it inside the synthetic-form branch of
+   `dispatchDixieDataForm`? If no, file a follow-up to remove the
+   mutation or to make the lint gate (`scripts/lint-no-form-mutation.js`)
+   add an exception.
+2. Does it call `form.reset()` or `form.submit()`? These are usually
+   fine but `form.submit()` bypasses the JS dispatcher — use
+   `form.requestSubmit(submitter)` instead.
+3. Run `make lint-no-form-mutation` (added by #687 extended scope) —
+   the lint will fail if any non-allowed mutation is present.
+
+**Related:**
+
+- #689 (umbrella child — fix + cleanup)
+- #684 (form-contract render-test — must run AFTER `initializeDynamicContent`, not before, to catch this class)
+- #687 (lint-button-actions-resolve — extended scope to walk `frontend/**` for JS-side mutations)
+- `frontend/app.js:3946` (the canonical bad site)
+- `internal/appshell/soldiers_handlers.go:381` (the v60 comment that explains the original intent)
+- §3.8 (`form.action` IDL shadowed — the read-side inverse; different bug, related symbol)
+
 ---
 
 ### 3.6 [FUTURE-NAV-AVOID] Outside-click handler closes the panel the trigger just opened
@@ -1196,6 +1432,170 @@ incremented when the trigger is rendered late.
 
 **Real example:**
 - (pending) `fix(foldout): re-init foldouts on htmx swap (issue #285)`
+
+### 3.10 Empty-body dispatch — body construction uses raw `closest()` instead of the resolved form (#691, release-blocker, target:rc)
+
+**Note:** §3.9 documents JS-side `form.action` mutation. This
+section (§3.10) documents the *symmetric* bug: JS-side form
+*body construction* uses raw DOM traversal that doesn't see the
+HTML5 `form` attribute. Two different bugs in the same
+`dispatchDixieDataForm` function, both masked by the form-finding
+branch applying the correct fallback.
+
+**Symptom:** Save Changes submits an empty body. The server logs
+`raw body len=0 body=""` and `parseSoldierForm result
+firstName="" lastName="" displayID="" err=<nil>`. The handler
+runs, the form parses, but every field is empty. The `Update`
+writes empty values to every column, wiping the record.
+
+In the Wails runtime, the symptom is invisible to the user (no
+toast, no error). The user sees the original record after save
+with everything blank. The user has to use a new soldier ID
+each test because the previous soldier's data is wiped.
+
+In the audit harness (vanilla Chromium against `dixiedata-web`),
+the symptom is masked because the same truncation isn't present
+in the test fixture — the save button is inside the form's DOM
+tree in the test, so `closest("form")` returns the form element.
+
+**Why it happens:** the body-construction branch in
+`dispatchDixieDataForm` (frontend/app.js:5206) checks
+`button.closest("form")` to decide whether to build a FormData
+body. The Save button is in the truncated outer form (via the
+`form="entry-edit-form"` HTML5 attribute), but the button is NOT
+a DOM descendant of the truncated form — the HTML5 parser
+reparented it when it auto-closed the outer form at the inner
+form's open tag. `button.closest("form")` returns `null`. The
+else branch fires:
+
+```js
+if (button instanceof HTMLElement && button.closest("form")) {
+  const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
+  fetchOptions.body = fd;
+} else {
+  fetchOptions.body = new FormData(); // ← empty body
+}
+```
+
+**The form-finding branch (line 5110) already handles this correctly:**
+
+```js
+form = button.closest("form") || (button.form instanceof HTMLFormElement ? button.form : null);
+```
+
+This correctly resolves the form via either DOM traversal or the
+HTML5 `form` attribute. But the body-construction branch doesn't
+use this resolved `form` variable — it re-checks `closest()` only.
+
+**Find it:**
+
+```bash
+# Walk frontend/ for body-construction branches that use
+# button.closest("form") without the button.form fallback. The
+# only allowed location is the form-finding branch (which
+# applies the closest() || button.form fallback first).
+grep -rn 'button\.closest("form")' frontend/ \
+  | grep -v 'replace-by-test-results-target\|^\\s*//\|form\\s*='
+
+# Verify the dispatched FormData is non-empty:
+# The [DD DEBUG] FormData entries log line at frontend/app.js:5182
+# dumps the entries. If the body is empty, the bug is present.
+```
+
+Verify the server-side parse:
+
+```bash
+# Add a [DD DEBUG] log to handleUpdateSoldier that dumps
+# r.Body length and the first 200 chars of the parsed form.
+# If len=0, the body is empty.
+grep -n '\[DD DEBUG\] raw body' internal/appshell/soldiers_handlers.go
+# [DD DEBUG] raw body len=0 body=""  ← bug present
+# [DD DEBUG] raw body len=823 body="display_id=DXD-00004&first_name=..."  ← bug fixed
+```
+
+**Fix:** use the already-resolved `form` variable instead of
+re-checking `closest()`:
+
+```diff
+--- a/frontend/app.js
++++ b/frontend/app.js
+@@ -5203,7 +5203,7 @@ async function dispatchDixieDataForm(button) {
+-        if (button instanceof HTMLElement && button.closest("form")) {
++        if (form instanceof HTMLFormElement) {
+           const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
+           if (isSubmitButton && button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
+             fd.append(button.name, button.value);
+```
+
+`form` is already resolved earlier in the function (with the
+`closest() || button.form` fallback). Reusing it is the cleanest
+fix. The body-construction branch can no longer diverge from the
+form-finding branch.
+
+**Cleanup of band-aids:** once this fix lands, the band-aids
+that worked around this bug become unnecessary:
+
+1. `internal/templates/entry_form.templ:70` — remove `id="entry-edit-form"`.
+2. `internal/templates/entry_form.templ:433,435` — remove `form="entry-edit-form"`.
+3. `frontend/app.js:5110` — restore `form = button.closest("form")` only (the band-aid fallback was masking the bug, not fixing it).
+4. Remove the diagnostic `[DD DEBUG]` console.log lines from `frontend/app.js`, `internal/appshell/app.go`, `internal/appshell/soldiers_handlers.go`.
+
+After cleanup, the save flow works as designed: button submit →
+`closest("form")` finds the outer form (because #682 fixes the
+nested form), POST to `/soldiers/{id}` (because #689 fixes the
+action clobber), `dispatchDixieDataForm` builds FormData from
+the resolved form, body is non-empty, `handleUpdateSoldier`
+parses correctly, `Update` writes the data.
+
+**Why this hides for so long:** the diagnostic session for
+#676/#682/#689 applied two band-aids (the
+`id="entry-edit-form"` workaround + the `button.form` fallback
+in the form-finding branch). The band-aids fixed form-finding
+but revealed the body-construction bug. Without the band-aids,
+the save would have remained a silent no-op (the original
+symptom of #676). With the band-aids, the form-finding
+succeeds but the body is empty, so the server sees an empty
+form and `Update` wipes the record.
+
+The user observed the data wipe and reported it as a new bug.
+The deeper cause was masked by the form-finding branch's
+correct fallback. **A band-aid that fixes one branch can mask
+a sibling branch.** Apply the same fallback to every place
+that needs a form reference, not just the first one.
+
+**Real example (planned fix):**
+
+- `frontend/app.js:5206` — the body-construction branch (still
+  present at time of writing; fix lands as part of #691).
+- The diagnostic session for #690/#691 surfaced this bug after
+  the user added a `[DD DEBUG]` log to `handleUpdateSoldier`
+  that showed `raw body len=0 body=""`.
+
+**Checklist when adding a new code path that needs a form reference:**
+
+1. Does the path use `button.closest("form")`? If yes, does it
+   also fall back to `button.form`? If no, file a follow-up
+   to add the fallback.
+2. Does the path use the resolved `form` variable? If yes, the
+   fallback is already applied — no further work needed.
+3. Run `make lint-no-form-mutation` (added by #687 extended
+   scope) — the lint fails on any `button.closest("form")`
+   outside the form-finding branch.
+
+**Related:**
+
+- #691 (umbrella child — fix)
+- #682 (nested form — root cause of the reparenting)
+- #689 (JS-side form.action mutation — sibling bug class)
+- #676 (original Save Changes 400)
+- `frontend/app.js:5110` (form-finding branch with the correct fallback)
+- `frontend/app.js:5206` (body-construction branch missing the fallback)
+- `internal/records/soldier_service.go:2060` (replaceRecords — DELETE + INSERT, the second-order effect that makes the silent data wipe visible)
+- `internal/appshell/soldiers_handlers.go:634` (`[DD DEBUG] handleUpdateSoldier` log added during the diagnostic session)
+- `internal/appshell/soldiers_handlers.go:638` (`[DD DEBUG] raw body` log — the diagnostic that surfaced this bug)
+- `internal/appshell/app.go:1414` (`parseSoldierForm` — returns `models.Soldier{}` when the body is empty)
+- `docs/COMMON_BUGS.md` §3.9 (JS-side form.action mutation — sibling bug class)
+- `docs/CODE_CHANGES.md` "8-class button-bug audit" (the umbrella audit; this bug class is the 9th)
 
 ---
 
@@ -2449,6 +2849,10 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Memory grows over time | Section 4.1, 4.2 | leak/race |
 | Works in dev, fails in release | Section 4.7 | hardcoded paths |
 | Save Changes 400 error in Wails, works in browser | Section 3.8 | Wails-PATCH body stripped, form.action shadowing |
+| Save Changes dispatches to wrong URL (e.g. /soldiers instead of /soldiers/{id}) | Section 3.9 | JS-side form.action mutation clobbers server-rendered URL |
+| Submit button no-op, `closest('[data-dixie-submit]')` returns null | Section 2.7 | nested `<form>` — HTML5 parser auto-closes outer form |
+| Save Changes wipes data, server log shows `raw body len=0 body=""` | Section 3.10 | body construction uses raw `closest()` instead of resolved form |
+| Save fires, server parses, but the parsed fields are all empty | Section 3.10 | body construction path produced empty FormData (often combined with §3.9) |
 | Icon wrong after rebuild (default Wails icon) | Section 8.5 | stale DixieData-res.syso from failed build |
 | Tests crash on missing frontend | Section 4.8 | wails runtime nil |
 

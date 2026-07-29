@@ -296,6 +296,15 @@ Don't disable them. Don't add `[skip ci]` for them.
 | Htmx targets | `TestHXTargetsPreferRegistry` | Ad-hoc `hx-target="#foo"` selectors |
 | Page snapshots | `TestPageSnapshot*` | Top-level page missing required structural element |
 | Debug-overlay | `assertNoDebugOverlayAttrs` | `data-ui-id` reintroduction (PR #0 removed) |
+| Form-contract | `TestFormContractMatchesHandler` (planned: #684) | Form field name / `data-method` / `data-results-target` drift between template and handler |
+| Button-actions-resolve | `lint-button-actions-resolve.py` (planned: #687) | Templ `data-action` / `action="..."` resolving to a 404 |
+| JS-form-mutation | `lint-no-form-mutation.js` (planned: #687 extended scope) | JS-side `form.action` / `form.method` / `form.enctype` mutation outside `dispatchDixieDataForm`'s synthetic-form branch |
+| Nested-form | `lint-no-nested-forms.py` (planned: #682) | `<form>` inside `<form>` in any `.templ` file |
+| Embed-tree | `verify-embed-tree.py` (planned: #686) | `frontend/_lib/*.js` files referenced by `index.html` but skipped by Go `//go:embed` |
+| Init-guard | `lint-js-init-guards.mjs` (planned: #685) | `__<feature>Wired` idempotency guards missing from `initializeXxx` funcs |
+| Wails-PATCH CI | `audit/dispatcher_patch_method.test.mjs` (planned: #683) | Wails-PATCH body-stripping workaround regressions |
+| Empty-body dispatch | `lint-no-form-mutation.js` (planned: #687 extended scope, class 9) | `button.closest("form")` outside the form-finding branch — body construction uses raw DOM traversal instead of the resolved form |
+| Form-construct-runtime | `[DD DEBUG] raw body` log + smoke probe (planned: #691) | Server-side parse of an empty body — `raw body len=0 body=""` + `parseSoldierForm result firstName="" lastName=""` |
 
 When you add a new guard for a new bug class, **add it to this
 table**. Future contributors will need the map.
@@ -440,3 +449,164 @@ readers.
 
 The pattern is: **every layer transition is a place bugs hide.
 Add an assertion at each one.**
+## 8-class button-bug audit (2026-07-28)
+
+**Symptom (then-current state):** the original Save Changes button
+failure on `/soldiers/{id}/edit` (issue #676, the Wails-PATCH
+body-stripping bug) re-surfaced after the 3896b46b + a18f5e1f
+fixes; the data-method elimination (commit `92fb264c`) didn't
+fully resolve it. The user applied two band-aids while chasing a
+nested-form hypothesis (issue #682):
+
+1. `id="entry-edit-form"` on the outer form + `form="entry-edit-form"`
+   on the Save button.
+2. `button.form` fallback in `dispatchDixieDataForm` to associate
+   the button with the truncated outer form via the HTML5 `form`
+   attribute.
+
+These band-aids masked the bug class but revealed a third one:
+`syncEntryTypeFields` (frontend/app.js:3946) was unconditionally
+assigning `form.action = "/soldiers"` on every
+`initializeDynamicContent` pass, clobbering the edit URL
+`/soldiers/{id}` set by the server. The save dispatched to the
+create URL, the create handler returned 400, the user saw no
+toast.
+
+**Investigation:** the diagnostic session ran four discrete layers
+of debugging:
+
+Layer 1 — server routing: confirmed working. `handleSoldierByID`
+dispatches POST to `handleUpdateSoldier` correctly. (Added a
+[DD DEBUG] log to confirm.)
+
+Layer 2 — nested form: confirmed root cause for the *form-finding*
+failure (button has no `<form>` ancestor in the rendered DOM
+after the HTML5 parser auto-closes the outer form at the inner
+form's open tag). Live instances in `entry_form.templ` and
+`soldier_card.templ`.
+
+Layer 3 — band-aids: applied `id="entry-edit-form"` +
+`form="entry-edit-form"` + `button.form` fallback. The Save
+button now finds the truncated outer form via the HTML5 `form`
+attribute. The dispatch fires.
+
+Layer 4 — wrong URL: the truncated outer form has its
+server-rendered `action` attribute preserved (the HTML5 parser
+keeps opening-tag attributes on auto-closed forms), but JS-side
+`syncEntryTypeFields` overwrites `form.action` to `/soldiers`
+on every init pass. The 400 from the create handler is the
+visible symptom.
+
+**The 8-class taxonomy:**
+
+The audit catalogued 12 button-failure fixes across the
+2026-06 → 2026-07 window into 7 distinct bug classes. The
+diagnostic session surfaced an 8th. Children:
+
+1. WebView2 body-stripping (5 fixes)
+2. Dispatcher/form contract drift (5 fixes)
+3. htmx swap re-binding (2 fixes)
+4. Nested `<form>` rendering defect — NEW: 2 live instances
+5. Embed asset skip (`_`/`.` prefix) — 1 fix
+6. Template split / mega-menu refactor — 2 fixes
+7. JS silent failure — 1 fix
+8. JS-side form-action mutation — NEW: `syncEntryTypeFields`
+9. Empty-body dispatch — NEW: body construction uses raw `closest()` instead of the resolved form
+
+**Detection gates** (filed as children of #681):
+
+- #682 — `lint-no-nested-forms.py` (class 4)
+- #683 — `audit/dispatcher_patch_method.test.mjs` CI gate (class 1)
+- #684 — `TestFormContractMatchesHandler` (class 2)
+- #685 — `lint-js-init-guards.mjs` (class 3)
+- #686 — `make verify-embed-tree` (class 5)
+- #687 — `lint-button-actions-resolve.py` + `lint-no-form-mutation.js`
+  (class 6 + class 8)
+- #688 — `frontend/lib/dixie-debug.js` + `/debug/client-logs` ingest
+  (class 7)
+- #689 — `fix(frontend): syncEntryTypeFields` clobber (class 8)
+- #691 — `fix(frontend): body construction uses resolved form` (class 9, release-blocker)
+
+The class-9 lint scope extends the existing `lint-no-form-mutation.js`
+(planned in #687) to catch `button.closest("form")` outside the
+form-finding branch. The scope extension is small (~30 LoC) and
+shares the parser plumbing with the existing form.action mutation
+rule.
+
+**The lesson:** when a fix lands as a band-aid (the
+`id="entry-edit-form"` workaround), the next investigation must
+ask "what does the band-aid actually mask?" The diagnostic session
+correctly identified that the band-aid masked a nested-form
+defect (true) but incorrectly attributed the failure to it. The
+real cause was a JS-side mutation that the band-aids accidentally
+revealed. A band-aid that accidentally makes the next layer of
+the bug visible is doing more work than a band-aid should.
+
+**The corrective discipline:** when a band-aid lands, follow it
+with a "what could this be hiding?" investigation. The
+diagnostic session would have been shorter if the user had
+asked that question after Layer 3 instead of after Layer 4.
+
+**The detection discipline:** every bug class needs a gate that
+fails at PR time. The 9-class taxonomy above has 9 gates. The
+gates are intentionally small (50-100 LoC each) and targeted.
+A `make audit` suite that invokes all 9 in CI is the final
+regression net.
+
+**The class-9 follow-up lesson (2026-07-28, second diagnostic session):**
+
+After the #682 / #689 fixes landed, the user reported "Save
+Changes wipes out all of the existing data for a record." The
+user had to use a new soldier ID each test because the previous
+soldier was wiped. Investigation surfaced a server log entry
+that nailed the cause:
+
+```
+[DD DEBUG] raw body len=0 body=""
+[DD DEBUG] parseSoldierForm result firstName="" lastName="" displayID="" err=<nil>
+```
+
+The body was empty. The fix found at `frontend/app.js:5206`
+(the body-construction branch) used `button.closest("form")`
+which returns `null` for the reparented Save button. The
+form-finding branch (line 5110) correctly applied the
+`closest() || button.form` fallback, but the body-construction
+branch didn't.
+
+**The second-order lesson:** a band-aid that fixes one branch
+can mask a sibling branch. The form-finding branch's correct
+fallback resolved the form, which made the body-construction
+branch's missing fallback visible: the form was found, but the
+body was empty. **Every place that needs a form reference must
+apply the same fallback, not just the first one.** The
+corrected rule: extract the fallback into a helper at the top of
+`dispatchDixieDataForm` and use it everywhere a form reference
+is needed.
+
+**The diagnostic discipline that surfaced this:** the user
+added a `[DD DEBUG] raw body` log to `handleUpdateSoldier` that
+dumped the request body length and the first 200 chars. Without
+that log, the empty body would have been invisible — the
+server-side parse would have returned an empty `models.Soldier`
+silently, and `Update` would have written empty values without
+an error. The log made the empty body visible. **Server-side
+debug logs that surface the actual request body are
+non-negotiable for any handler that processes form data.** The
+prototype is at `internal/appshell/soldiers_handlers.go:638`;
+the pattern should be added to every handler that calls
+`ParseForm` or `ParseMultipartForm`.
+
+**Related:**
+
+- #681 (umbrella)
+- #682, #683, #684, #685, #686, #687, #688, #689, #691 (children)
+- `docs/COMMON_BUGS.md` §2.7 (class 4), §3.9 (class 8), §3.10 (class 9)
+- `docs/agents/bug-pattern-grep.md` entries 11, 12, 13
+- `docs/ui-map/wireframes/26-event-new.md` and
+  `docs/ui-map/wireframes/27-event-edit.md` (extended cross-references)
+- `AGENTS.md` "Form-attribute mutation hazard",
+  "Nested-form hazard", and "Empty-body dispatch hazard" sections
+- `CHANGELOG.md` [Unreleased] Maintenance block
+- `frontend/app.js:5110` (form-finding branch with the correct fallback)
+- `frontend/app.js:5206` (body-construction branch missing the fallback)
+- `internal/appshell/soldiers_handlers.go:638` (`[DD DEBUG] raw body` log — the diagnostic primitive that surfaced this bug)

@@ -350,6 +350,189 @@ probe, the cold-start bug is reproducing for it.
 
 ---
 
+## 11. `nested-form-rendering-defect` (§2.7, release-blocker for rc/v1.1)
+
+**Symptom:** A submit button inside a templ form appears to work
+but its `closest('form')` returns `null` in the rendered DOM. The
+button has no `<form>` ancestor. The dispatcher silently bails
+(Layer 2 of the #676 diagnostic session).
+
+**Why this grep matters:** HTML5 forbids `<form>` inside `<form>`.
+The browser parser silently closes the outer form when it hits
+the inner one. Any new `.templ` that adds a form inside an
+existing form section is a regression-class bug.
+
+```bash
+# Walk every .templ for nested <form> patterns. The lint target
+# scripts/lint-no-nested-forms.py (issue #682) runs in `make lint`.
+# Manual fallback:
+python3 -c "
+import re, glob
+for path in sorted(glob.glob('internal/templates/**/*.templ', recursive=True)):
+    stack = []
+    for i, line in enumerate(open(path, encoding='utf-8'), 1):
+        m = re.match(r'^(\s*)<form(\s|>|/>)', line)
+        cm = re.match(r'^(\s*)</form>', line)
+        if m and not line.rstrip().endswith('/>'):
+            ind = len(m.group(1))
+            for s in stack:
+                if s[1] < ind:
+                    print(f'{path}:{i}: NESTED <form> inside <form> opened at L{s[0]}')
+            stack.append((i, ind))
+        if cm:
+            for k in range(len(stack)-1, -1, -1):
+                if stack[k][1] >= len(cm.group(1)):
+                    del stack[k:]
+                    break
+"
+
+# Manual confirmation in the rendered DOM:
+# document.querySelector('button[type="submit"]').closest('form')
+# Returns null when the bug is present.
+```
+
+**What the result means:** Any `<form>` whose opening tag is more
+indented than another `<form>` still on the stack at the same
+line is a violation. The fix is mechanical: lift the inner form
+to a sibling of the outer form, or use the synthetic-form path
+in `dispatchDixieDataForm` via `data-action`.
+
+**Audit step:** if a PR adds a new form inside a templ section,
+run `make lint-no-nested-forms` (added by #682) before opening
+the PR. The lint fails on any nested form. The smoke probe
+`audit/smoke_no_nested_forms.mjs` (also added by #682) walks
+every page and asserts every submit button's
+`closest('[data-dixie-submit="true"]')` is non-null.
+
+**Real example:**
+- `internal/templates/entry_form.templ` — outer form at L55 contains
+  inner image-upload form at L392. Save Changes button at L432
+  is orphaned.
+- `internal/templates/soldier_card.templ` — outer images-download
+  form at L567 contains inner image-upload form at L574.
+  Download Selected Images button is orphaned.
+
+---
+
+## 12. `js-side-form-action-mutation` (§3.9, target:rc)
+
+**Symptom:** On `/soldiers/{id}/edit`, the Save Changes button
+submits to `/soldiers` (create URL) instead of `/soldiers/{id}`
+(edit URL). The server returns 400; the user sees no save. The
+form template renders the correct URL — the mutation happens
+client-side after the page loads.
+
+**Why this grep matters:** Any JS code that runs on form
+initialization and assigns to `form.action`, `form.method`, or
+`form.enctype` mutates the server-rendered values. The single
+canonical exception is the synthetic-form branch in
+`dispatchDixieDataForm` that builds a form from a `data-action`
+URL. Any other location is a bug class (see #689).
+
+```bash
+# Any assignment to form.action / form.method / form.enctype in
+# frontend/. The only allowed location is the synthetic-form
+# branch in dispatchDixieDataForm.
+grep -rn 'form\.action\s*=\|form\.method\s*=\|form\.enctype\s*=' frontend/ \
+  | grep -v 'synthetic\|dispatchDixieDataForm'
+
+# Verify the rendered DOM, not just the templ source:
+# document.querySelector('form').action
+# document.querySelector('form').dataset.entryTypeFormAction
+# The second should be null/absent on the edit page. If it's
+# "/soldiers", the JS-side mutation has run.
+```
+
+**What the result means:** Any mutation outside the synthetic-form
+branch of `dispatchDixieDataForm` is a class-8 bug. The fix is
+to remove the mutation. The lint target `scripts/lint-no-form-mutation.js`
+(added by #687 extended scope) walks `frontend/**/*.js` and fails
+CI on any non-allowed mutation.
+
+**Audit step:** if a PR adds a new JS initializer that touches a
+form, run `make lint-no-form-mutation` (added by #687) before
+opening the PR. The lint fails on any form.action/method/enctype
+assignment outside the synthetic-form branch.
+
+**Real example:**
+- `frontend/app.js:3946` — the `syncEntryTypeFields` mutation
+  (still present at time of writing; fix lands as part of #689).
+- The diagnostic session for #676 / #682 surfaced this bug after
+  the nested-form band-aids accidentally let the dispatch fire.
+
+---
+
+## 13. `empty-body-dispatch` (§3.10, release-blocker for rc/v1.1)
+
+**Symptom:** Save Changes submits an empty body. The server logs
+show `raw body len=0 body=""` and `parseSoldierForm result
+firstName="" lastName="" displayID="" err=<nil>`. The handler
+runs, the form parses, but every field is empty. The `Update`
+writes empty values to every column, wiping the record. The user
+sees the original record after save with everything blank.
+
+**Why this grep matters:** the body-construction branch in
+`dispatchDixieDataForm` (frontend/app.js:5206) checks
+`button.closest("form")` to decide whether to build a FormData
+body. The Save button is in the truncated outer form (via the
+`form="entry-edit-form"` HTML5 attribute), but the button is NOT
+a DOM descendant of the truncated form — the HTML5 parser
+reparented it. `button.closest("form")` returns `null`. The else
+branch fires, sending an empty body.
+
+The form-finding branch (line 5110) already handles this correctly
+with `button.closest("form") || button.form`. The
+body-construction branch doesn't apply the same fallback. Any
+new code path that needs a form reference must apply the same
+fallback.
+
+```bash
+# Walk frontend/ for body-construction branches that use
+# button.closest("form") without the button.form fallback. The
+# only allowed location is the form-finding branch (which
+# applies the closest() || button.form fallback first) and the
+# button.form branch of the synthetic-form construction.
+grep -rn 'button\.closest("form")' frontend/ \
+  | grep -v 'form\\s*=\\|synthetic\\|replace-by-test-results-target'
+
+# Verify the server-side body is non-empty:
+grep -n '\[DD DEBUG\] raw body' internal/appshell/soldiers_handlers.go
+# [DD DEBUG] raw body len=0 body=""  ← bug present
+# [DD DEBUG] raw body len=823 body="display_id=DXD-00004&first_name=..."  ← bug fixed
+```
+
+**What the result means:** Any `button.closest("form")` outside
+the form-finding branch is a class-9 bug. The fix is to use the
+already-resolved `form` variable (which has the fallback applied)
+instead of re-checking `closest()`. The lint target
+`scripts/lint-no-form-mutation.js` (added by #687 extended scope)
+walks `frontend/**/*.js` and fails CI on any non-allowed
+`button.closest("form")` site.
+
+**Audit step:** if a PR adds a new code path that needs a form
+reference, run `make lint-no-form-mutation` (added by #687
+extended scope) before opening the PR. The lint fails on any
+branch that uses `button.closest("form")` without the
+`button.form` fallback.
+
+**Real example (planned fix):**
+
+- `frontend/app.js:5206` — the body-construction branch (still
+  present at time of writing; fix lands as part of #691).
+- The diagnostic session for #690/#691 surfaced this bug after
+  the user added a `[DD DEBUG]` log to `handleUpdateSoldier` that
+  showed `raw body len=0 body=""`.
+
+**Related:**
+
+- #691 (release-blocker fix)
+- #682 (nested form — the root cause of the reparenting)
+- #689 (JS-side form.action mutation — sibling bug class)
+- `docs/COMMON_BUGS.md` §3.10 (canonical class entry)
+- `docs/COMMON_BUGS.md` §3.9 (sibling class entry — JS-side form.action mutation)
+
+---
+
 ## How to use this cookbook
 
 1. Before merging a PR, run the greps relevant to the changed

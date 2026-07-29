@@ -103,7 +103,11 @@ None.
   *edit* form (see 27-event-edit.md) render OUTSIDE the main
   `<form>` to avoid HTML-invalid nested forms. The create form has
   neither section (linked persons + tags are post-create concerns
-  per the v1 scope).
+  per the v1 scope). For the canonical bug class entry see
+  [`docs/COMMON_BUGS.md` §2.7](../../COMMON_BUGS.md#27-nested-form-rendering-defect--html5-parser-silently-closes-the-outer-form-682-release-blocker-for-rcv11).
+  Live instances at time of writing: `entry_form.templ` (Person
+  Record edit), `soldier_card.templ` (Person Record detail). Both
+  are fixed by #682.
 - **PDF excerpt override is advanced** — collapsed by default
   inside `<details>` so the simple create path doesn't surface the
   override field.
