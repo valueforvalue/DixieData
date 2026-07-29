@@ -30,35 +30,17 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
 
 const PORT = process.env.PROBE_PORT || '8795';
 const BASE = `http://127.0.0.1:${PORT}`;
-const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), 'dixiedata-smoke-submit-'));
-const WEB_BIN = process.env.WEB_BIN || 'C:/Development/DixieData/build/bin/dixiedata-web.exe';
+const WEB_BIN_PATH = webBin();
 
-if (!fs.existsSync(WEB_BIN)) {
-	console.error(`missing ${WEB_BIN} — build it first (make build)`);
+if (!fs.existsSync(WEB_BIN_PATH)) {
+	console.error(`missing ${WEB_BIN_PATH} — build it first (make build)`);
 	process.exit(2);
 }
-
-const server = spawn(WEB_BIN, ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', SCRATCH], {
-	stdio: ['ignore', 'pipe', 'pipe'],
-});
-server.stderr.on('data', () => {}); // swallow noise
-
-function cleanup() {
-	try {
-		server.kill();
-	} catch (_) {}
-	try {
-		fs.rmSync(SCRATCH, { recursive: true, force: true });
-	} catch (_) {}
-}
-process.on('exit', cleanup);
-process.on('SIGINT', () => {
-	cleanup();
-	process.exit(130);
-});
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -103,9 +85,9 @@ async function seedSoldier() {
 	return { soldierID, soldierURL };
 }
 
-async function getTagCount(personID) {
+async function getTagCount(personID, scratchDir) {
 	// Direct DB read via the SQLite file in the scratch dir.
-	const dbPath = path.join(SCRATCH, 'dixiedata.db');
+	const dbPath = path.join(scratchDir, 'dixiedata.db');
 	if (!fs.existsSync(dbPath)) return -1;
 	// Use sqlite3 CLI for the cross-platform read.
 	try {
@@ -128,23 +110,56 @@ function record(name, ok, details = {}) {
 	console.log(`  ${ok ? '✓' : '✗'} ${name}${ok ? '' : ' — ' + JSON.stringify(details)}`);
 }
 
-async function main() {
+async function main(ctx) {
+	// ctx.page         -- opaque (slice-3 probe doesn't drive a
+	//                     chromium page; the headless setup
+	//                     wizard + DB inspection don't need a page).
+	// ctx.base         -- server URL (unused; PORT set below).
+	// ctx.scratchDir   -- mkdtempSync per-probe scratch.
+	// ctx.registerCleanup(fn) -- fired after main returns; the
+	//                     runner takes care of server SIGTERM
+	//                     and scratch removal when the
+	//                     aggregator pre-spawned the server.
+	//                     For the standalone
+	//                     `node audit/smoke_submit_e2e.mjs`
+	//                     invocation (no server pre-spawned),
+	//                     main() spawns the server itself and
+	//                     uses ctx.registerCleanup() to SIGTERM
+	//                     it on exit.
+	const SCRATCH = ctx.scratchDir;
+
+	const server = spawn(WEB_BIN_PATH, [
+		'-addr',
+		`127.0.0.1:${PORT}`,
+		'-scratch-dir',
+		SCRATCH,
+	], { stdio: ['ignore', 'pipe', 'pipe'] });
+	server.stderr.on('data', () => {}); // swallow noise
+	ctx.registerCleanup(async () => {
+		try { if (!server.killed) server.kill('SIGTERM'); }
+		catch (_) { /* best effort */ }
+	});
+
 	await waitForServer();
 
+	// Issue #700 slice 3: dispatchDixieDataForm-driven forms
+	// inside the runner's probeFn. The seedSoldier helper
+	// creates a Person Record via the headless setup wizard +
+	// /soldiers/new form (the canonical happy-path surface).
 	const { soldierID, soldierURL } = await seedSoldier();
 	record('seed: Person Record created', soldierID > 0, { soldierID, soldierURL });
 
 	// 4. Open the detail page in a browser.
 	const browser = await chromium.launch();
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
+	const browserCtx = await browser.newContext();
+	const page = await browserCtx.newPage();
 	await page.goto(soldierURL, { waitUntil: 'domcontentloaded' });
 
 	// 5. POST a tag-attach form (the canonical data-dixie-submit
 	// form on the detail page). The form posts a tag name;
 	// the handler attaches (or upserts) the tag and refreshes
 	// the tag-list fragment.
-	const beforeCount = await getTagCount(soldierID);
+	const beforeCount = await getTagCount(soldierID, SCRATCH);
 
 	// Find the tag-attach form. The detail page renders it as
 	// a <form> with data-dixie-submit + an <input name="tag">.
@@ -152,7 +167,7 @@ async function main() {
 	if (await tagInput.count() === 0) {
 		record('form: tag-attach input present', false, { url: page.url() });
 		await browser.close();
-		process.exit(1);
+		throw new Error('tag-attach input not present');
 	}
 	record('form: tag-attach input present', true);
 
@@ -169,7 +184,7 @@ async function main() {
 	record('post: response 2xx', response.ok(), { status: response.status() });
 
 	// 7. DB row check.
-	const afterCount = await getTagCount(soldierID);
+	const afterCount = await getTagCount(soldierID, SCRATCH);
 	record('db: person_record_tags row count increased', afterCount === beforeCount + 1, {
 		before: beforeCount,
 		after: afterCount,
@@ -181,7 +196,7 @@ async function main() {
 	record('dom: tag rendered after re-render', tagRendered > 0, { tagRendered });
 
 	// 9. Rollback: submit empty tag name → 400 + no DB change.
-	const beforeRollback = await getTagCount(soldierID);
+	const beforeRollback = await getTagCount(soldierID, SCRATCH);
 	const rollbackResponsePromise = page.waitForResponse(
 		(r) => r.url().includes(`/soldiers/${soldierID}`) && r.request().method() === 'POST',
 		{ timeout: 5_000 },
@@ -189,7 +204,7 @@ async function main() {
 	await tagInput.fill('');
 	await page.locator('form[data-dixie-submit] button[type="submit"]').first().click();
 	const rollbackResponse = await rollbackResponsePromise;
-	const afterRollback = await getTagCount(soldierID);
+	const afterRollback = await getTagCount(soldierID, SCRATCH);
 	record('rollback: empty tag returns 4xx', rollbackResponse.status() >= 400, {
 		status: rollbackResponse.status(),
 	});
@@ -200,16 +215,39 @@ async function main() {
 
 	await browser.close();
 
+	// Issue #700 slice 3: return {ok, steps} for the runner
+	// instead of calling process.exit; the aggregator's reporter
+	// emits the exit code via renderSummary().
 	const failed = results.filter((r) => !r.ok);
 	if (failed.length > 0) {
 		console.error(`\nFAIL: ${failed.length} assertion(s) failed.`);
-		process.exit(1);
+		return { ok: false, steps: { pass: results.length - failed.length, fail: failed.length, failed } };
 	}
 	console.log(`\nPASS: ${results.length} assertion(s).`);
-	process.exit(0);
+	return { ok: true, steps: { pass: results.length, fail: 0 } };
 }
 
-main().catch((err) => {
+// Issue #700 slice 3: wrap main() in the shared Playwright
+// runner (audit/_lib/smoke_runner.mjs). The runner provides
+// {page, base, scratchDir, registerCleanup} via the ctx
+// argument; the server-spawn + cleanup-hook chain that
+// previously inlined at module scope now lives inside main()
+// (which runs as the runner's probeFn). mkdtempSync
+// scratchDir replaces the inline os.tmpdir() one so concurrent
+// runner runs don't collide. The runner's reporter emits the
+// process exit code via renderSummary(), so the standalone
+// `node audit/smoke_submit_e2e.mjs` exit codes (0/1/2) are
+// preserved below.
+
+mainWrapper().catch((err) => {
 	console.error('fatal:', err);
 	process.exit(2);
 });
+
+async function mainWrapper() {
+	const result = await runProbe({
+		name: 'submit-e2e',
+		probeFn: main,
+	});
+	process.exit(result.ok ? 0 : 1);
+}
