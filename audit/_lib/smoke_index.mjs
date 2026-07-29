@@ -33,4 +33,11 @@ export const SURFACES = [
     class: 4, // nested-form regression class
     note: 'issue #392 -- soldier-side Images panel UIIDs',
   },
+  {
+    name: 'submit-e2e',
+    file: 'audit/smoke_submit_e2e.mjs',
+    kind: 'playwright',
+    class: 1, // Wails WebView2 body-stripping class
+    note: 'issue #618 -- canonical submit-to-DB-to-render probe',
+  },
 ];
