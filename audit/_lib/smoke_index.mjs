@@ -55,6 +55,13 @@ export const SURFACES = [
     note: 'issue #321 slice 3.7 -- article edit + new surface (Save / EditorToolbar / Preview / Cheatsheet / Image picker)',
   },
   {
+    name: 'calendar',
+    file: 'audit/smoke_calendar.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class
+    note: 'issue #700 tier-1 -- /calendar month nav + day click + month export',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
