@@ -188,6 +188,42 @@ branch's missing fallback visible: the form was found, but the
 body was empty. **Every place that needs a form reference must
 apply the same fallback**, not just the first one.
 
+## Embed-tree skip hazard (issue #686, class 5, target:rc)
+
+**JS file 404 in Wails, on disk at expected path, `window.__<x>`
+undefined.** The file is silently dropped from the Wails binary.
+The cause is in Go's `embed` package: files and directories whose
+names begin with `.` or `_` are excluded from `//go:embed`. The
+DixieData convention has been to put shared JS helpers in
+`frontend/lib/` (after the rename from `_lib/` in `12f1834a`).
+The article Preview button bug was the canonical instance:
+`frontend/_lib/debounce.js` was never embedded.
+
+The detection gate (`make verify-embed-tree`, added by #686)
+walks `frontend/**` and the assets referenced by `index.html`
+and the rendered runtime HTML, fails if any reference is to a
+file that does not exist, and reports any `_`-prefixed or
+`.`-prefixed top-level dir under `frontend/` as informational
+R1 warnings. The `--strict` flag flips the missing-reference
+failures to CI-blocking. Sibling to `make lint-bake-bootstrap`
+and `make lint-htmx-guard`.
+
+**TL;DR for future agents:** never place a frontend helper
+under a `_`-prefixed or `.`-prefixed top-level dir. The
+DixieData convention is `frontend/lib/` for shared helpers. If
+you need a new shared helper, place it at `frontend/lib/foo.js`
+or `frontend/lib/foo/index.js` and update the `<script src>`
+in `index.html`. Run `make verify-embed-tree` before opening
+the PR. See [`docs/COMMON_BUGS.md` §8.6](docs/COMMON_BUGS.md#86-embed-tree-skip--goembed-silently-drops-_-prefixed-files--the-686-regression-net)
+for the canonical bug class entry.
+
+**The HANDLER_ALLOWLIST caveat:** the `verify-embed-tree` probe
+excludes URLs that Go handlers synthesize (e.g. `/boot-theme.js`
+is served by `internal/appshell/boot_theme.go`, not by the
+embedded frontend). If you add a new Go-handler-served URL that
+the templates reference, add it to the allowlist in
+`audit/verify_embed_tree.mjs`.
+
 ## File map (entry points)
 
 | Path | Role |

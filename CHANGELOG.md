@@ -9,6 +9,28 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
+## v1.1.34 - Embed-Tree Regression Gate
+
+### Maintenance
+
+- **audit: `make verify-embed-tree` gate (#686).** Wires
+  `audit/verify_embed_tree.mjs` (the probe) + `audit/verify_embed_tree.test.mjs`
+  (7 test fixtures) + `make verify-embed-tree[-strict|-test]` (the three
+  Makefile targets). R1 walks `frontend/**` for `_`-prefixed or `.`-prefixed
+  files/dirs that `//go:embed frontend` would silently drop (the
+  `12f1834a` Preview button bug shape). R2 + R3 resolve every
+  `<script src>`/`<link href>` in `frontend/index.html` + the rendered
+  runtime HTML against the embedded frontend tree. The `HANDLER_ALLOWLIST`
+  carve-out covers `/boot-theme.js`, `/boot-config.js`, `/debug/client-logs`,
+  `/wails/runtime.js`, `/wails/ipc.js` — URLs served by Go handlers, not
+  by the embedded frontend. Sibling to `make lint-bake-bootstrap` and
+  `make lint-htmx-guard`. Cross-references `docs/COMMON_BUGS.md` §8.6.
+
+- **docs: 9-class button-bug catalog lands in 5 places (#681).** The
+  umbrella audit child issues close to canonical-only references: each
+  place has a distinct audience and purpose. See `docs/CODE_CHANGES.md`
+  audit entry for the full layout.
+
 ## v1.1.33 - Save Button Body Fix
 
 ### Fixed

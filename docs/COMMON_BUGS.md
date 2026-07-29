@@ -2732,6 +2732,114 @@ for i in range(ns):
 # If neither RT_ICON_GROUP nor RT_ICON prints, the .syso was not linked
 ```
 
+### 8.6 Embed-tree skip — `//go:embed` silently drops `_` / `.` prefixed files + the `#686` regression net
+
+**Symptom:** A frontend JS file is referenced by `index.html`
+(or by the rendered runtime HTML in a templ file) but the
+asset is never served by the Wails binary. The browser console
+shows a 404 for the asset path; `window.__<something>` is
+undefined; every dependent button is a no-op. The JS file
+exists on disk at the expected path. The Wails build
+succeeds. The server logs do not show any error.
+
+**Why it happens:** Go's `embed` package skips files and
+directories whose names begin with `.` or `_`. The DixieData
+convention has been to put shared JS helpers in `frontend/lib/`
+(after the rename from `_lib/` in `12f1834a`). If a future
+contributor re-introduces a `_`-prefixed top-level dir under
+`frontend/` for shared helpers, the Wails binary will silently
+drop every file under it. The article Preview button bug
+(`12f1834a`) was the canonical instance: `frontend/_lib/
+debounce.js` was never embedded, `window.__dixieDebounce` was
+undefined, the article Preview button was a no-op.
+
+The same shape applies to anything that names a file with a
+leading underscore or dot. The `embed` package documents this
+behaviour explicitly: "files and directories whose names
+begin with '.' or '_' are excluded."
+
+**Find it:**
+
+```bash
+# Walk frontend/ for any file/dir whose name starts with _ or .
+find frontend -mindepth 1 \( -name '_*' -o -name '.*' \)
+
+# Run the embed-tree sweep (issue #686 gate):
+make verify-embed-tree
+# R1: reparent-by-prefix — files actually excluded by //go:embed
+# R2: index-html-references-resolve — every <script src>/<link href>
+#     in frontend/index.html points to a real file
+# R3: live-html-references-resolve — same shape against the
+#     generated templ runtime HTML
+```
+
+**Fix:** rename the offending top-level dir to a non-underscore
+prefix. The DixieData convention is `frontend/lib/` for shared
+helpers. The rename + refactor pattern is the same as the
+`12f1834a` fix: rename the dir, update the `<script src>`
+references in `index.html` and any templ file that laid the
+route out, run `make verify-embed-tree` to confirm.
+
+**The regression net (`make verify-embed-tree`):**
+
+- `audit/verify_embed_tree.mjs` — the probe. Three rules:
+  R1 reports `frontend/**` files/dirs that would be skipped
+  by `//go:embed frontend` (informational; the convention is
+  "no NEW additions" so the gate fires only on growing the
+  prefix-excluded set). R2 + R3 are strict-mode gates that fail
+  the build if `index.html` references or the rendered runtime
+  HTML references a missing asset.
+- `audit/verify_embed_tree.test.mjs` — 7 fixtures pin the
+  behaviour. Synthetic fixtures verify the bug shape (a
+  `_`-prefixed dir is flagged; a missing index.html reference
+  is flagged; a missing `//go:embed` directive is flagged in
+  `--strict`; the `/boot-theme.js` Go-handler allowlist is
+  respected; Go-escaped quotes in generated templ files are
+  resolved).
+- `make verify-embed-tree-strict` — the CI gate. Fails on
+  any missing reference.
+
+The `HANDLER_ALLOWLIST` in the probe (`/boot-theme.js`,
+`/boot-config.js`, `/debug/client-logs`, `/wails/runtime.js`,
+`/wails/ipc.js`) is the inverse of the route registry: every
+URL on the list is served by a Go handler, not by the embedded
+frontend. Add to the allowlist only when a new Go handler
+synthesizes a fixed URL that the templates reference.
+
+**Checklist when adding a new frontend asset:**
+
+1. Place the file under `frontend/`. Do NOT use a `_`-prefixed
+   or `.`-prefixed top-level dir; the embed package will skip it.
+2. Reference it from `index.html` or a templ file using
+   `<script src="/...">` or `<link rel="stylesheet" href="/...">`.
+3. Run `make verify-embed-tree` — the probe confirms the
+   reference resolves to a real file under `frontend/`.
+4. If the asset is served by a Go handler (not the embedded
+   frontend), add the URL to `HANDLER_ALLOWLIST` in
+   `audit/verify_embed_tree.mjs` and verify the probe still
+   passes.
+
+**Real example (planned fix):**
+
+- The probe + test + Makefile target are the gate for the
+  bug class. The probe was added as part of #686 in this
+  audit cycle. The DixieData tree is currently clean (no
+  `_`-prefixed dirs under `frontend/`) because the prior
+  `12f1834a` fix renamed `_lib/` to `lib/`. The gate prevents
+  re-introduction.
+
+**Related:**
+
+- #686 (umbrella child — lint + test + Makefile)
+- `12f1834a` (the historical fix that renamed `_lib/` to `lib/`)
+- `c0d89681` (added `clipboard.js` — verify the move landed)
+- [Go embed package docs](https://pkg.go.dev/embed) — the
+  `_`/`.` prefix rule
+- [golang/go#42328](https://github.com/golang/go/issues/42328) —
+  the upstream issue tracking the surprising hidden-file skip
+- `docs/CODE_CHANGES.md` (the guard table entries for the
+  embed-tree class)
+
 ---
 
 ## 9. Database bugs
@@ -2854,6 +2962,7 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Save Changes wipes data, server log shows `raw body len=0 body=""` | Section 3.10 | body construction uses raw `closest()` instead of resolved form |
 | Save fires, server parses, but the parsed fields are all empty | Section 3.10 | body construction path produced empty FormData (often combined with §3.9) |
 | Icon wrong after rebuild (default Wails icon) | Section 8.5 | stale DixieData-res.syso from failed build |
+| JS file 404 in Wails, on disk at expected path, `window.__<x>` undefined | Section 8.6 | `//go:embed` skip — file under `_`-prefixed or `.`-prefixed dir is silently dropped |
 | Tests crash on missing frontend | Section 4.8 | wails runtime nil |
 
 For copy-paste greps for each pattern, see
