@@ -251,6 +251,26 @@ lint-runtime-microcopy-strict:
 lint-runtime-microcopy-test:
     node audit/smoke_runtime_microcopy.test.mjs
 
+# Issue #700: shared Playwright smoke runner. The aggregator
+# walks audit/_lib/smoke_index.mjs::SURFACES[] and dispatches
+# each entry to either kind: 'playwright' (audit/_lib/
+# smoke_runner.mjs::runProbe) or kind: 'scanner' (spawnSync
+# the existing class-2/4/6/8/9 CLI probes). Slice 1 (this
+# commit) ships the skeleton + aggregator stub; SURFACES[]
+# is empty so the runner exits 0 with no assertions.
+# Subsequent slices migrate smoke_soldier_images /
+# smoke_submit_e2e / smoke_mega_menu_nav onto the runner.
+# The aggregator auto-discovers a built build/bin/
+# dixiedata-web{,.exe}; on Linux that path is the bare
+# dixiedata-web (the .github/workflows/audit.yml step
+# already builds it; local Windows devs run `just debug`).
+test-smoke:
+    node audit/smoke_aggregator.mjs
+test-smoke-strict:
+    node audit/smoke_aggregator.mjs --strict
+test-smoke-test:
+    node --test audit/_lib/smoke_runner.test.mjs
+
 # Existing lint aggregate. Individual recipes remain independently runnable.
 lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test lint-dispatcher-patch-method lint-js-init-guards-strict lint-js-init-guards-test lint-button-actions-resolve-strict lint-button-actions-resolve-test
 
