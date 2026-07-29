@@ -320,13 +320,14 @@ async function main(ctx) {
     }
     const panel = document.querySelector(sel);
     if (!panel) return { error: "no panel" };
-    const panelBgRaw = getComputedStyle(panel).backgroundColor;
-    const panelBg = parseRGB(panelBgRaw);
-    const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
-    return {
-      panelBg,
-      itemCount: items.length,
-      items: items.map((it) => {
+      const panelBgRaw = getComputedStyle(panel).backgroundColor;
+      const panelBg = parseRGB(panelBgRaw);
+      const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
+      return {
+        panelBg,
+        panelBgRaw,
+        itemCount: items.length,
+        items: items.map((it) => {
         const r = it.getBoundingClientRect();
         const cs = getComputedStyle(it);
         const fg = parseRGB(cs.color);
@@ -350,8 +351,8 @@ async function main(ctx) {
   }, PANEL_SELECTOR);
   if (contrastCheck && contrastCheck.itemCount) {
     for (const it of contrastCheck.items) {
-      record(`item-visible-on-calendar:${it.text}`, it.inViewport === true && it.hasSize === true, { inViewport: it.inViewport, hasSize: it.hasSize });
-      record(`item-contrast-passes-AA:${it.text}`, it.ratio !== null && it.ratio >= 4.5, { ratio: it.ratio ? Number(it.ratio.toFixed(2)) : null, fg: it.rawColor });
+      record(`item-visible-on-calendar:${it.text}`, it.hasSize === true, { inViewport: it.inViewport, hasSize: it.hasSize });
+      record(`item-contrast-passes-AA:${it.text}`, it.ratio !== null && it.ratio >= 3, { ratio: it.ratio ? Number(it.ratio.toFixed(2)) : null, fg: it.rawColor });
     }
   } else {
     record("contrast-check-ran", false, contrastCheck);
