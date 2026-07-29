@@ -106,8 +106,10 @@ async function main(ctx) {
   // surfaces as ok:false.
   let pass = 0;
   let fail = 0;
+  const results = [];
   const record = (name, ok, details = {}) => {
     if (ok) pass++; else fail++;
+    results.push({ name, ok, details });
     ctx.record(name, ok, details);
   };
 
@@ -124,7 +126,14 @@ async function main(ctx) {
     if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
     if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
 
-    server = spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] });
+    const seedProc = spawn('go', ['run', './cmd/seed-data', '-data-dir', SCRATCH, '-soldiers', '3', '-reset'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let seedOut = '';
+    seedProc.stdout.on('data', (d) => { seedOut += d; });
+    seedProc.stderr.on('data', (d) => { seedOut += d; });
+    const seedExit = await new Promise((resolve) => seedProc.on('exit', resolve));
+    if (seedExit !== 0) throw new Error(`seed-data failed (exit ${seedExit}):\n${seedOut}`);
+
+    server = spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, DIXIEDATA_DATA_DIR: SCRATCH } });
     server.stderr.on("data", () => {});
     ctx.registerCleanup(() => {
       try { server.kill(); } catch (_) { /* best effort */ }
@@ -267,8 +276,8 @@ async function main(ctx) {
   // overall now that Archive Inventory added an item to the
   // Review & Research column; was 6th before issue #491).
   await page.evaluate((sel) => {
-    const items = document.querySelectorAll(`${sel} [role='menuitem']`);
-    if (items[7] instanceof HTMLElement) items[7].click();
+    const link = document.querySelector(`${sel} a[href="/share"]`);
+    if (link instanceof HTMLElement) link.click();
   }, PANEL_SELECTOR);
   await page.waitForURL(/\/share$/, { timeout: 5000 }).catch(() => null);
   const shareUrl = page.url();
@@ -282,8 +291,8 @@ async function main(ctx) {
   await page.evaluate((sel) => document.querySelector(sel)?.click(), TRIGGER_SELECTOR);
   await wait(200);
   await page.evaluate((sel) => {
-    const items = document.querySelectorAll(`${sel} [role='menuitem']`);
-    if (items[9] instanceof HTMLElement) items[9].click();
+    const link = document.querySelector(`${sel} a[data-share-menu-import]`);
+    if (link instanceof HTMLElement) link.click();
   }, PANEL_SELECTOR);
   await page.waitForURL(/\/share\/imports$/, { timeout: 5000 }).catch(() => null);
   const importUrl = page.url();
@@ -383,6 +392,10 @@ async function main(ctx) {
   }, [TRIGGER_SELECTOR, PANEL_SELECTOR]);
   record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
 
+  if (fail > 0) {
+    console.log('\n  failed assertions:');
+    for (const r of results.filter((x) => !x.ok)) console.log(`    ✗ ${r.name}`);
+  }
   console.log(`\n  mega_menu_nav probe: ${pass} passed, ${fail} failed`);
   // The ctx.record() bridge threads every assertion into the
   // runner's reporter. Surface the result back via {ok}
