@@ -205,6 +205,16 @@ lint-button-actions-resolve-strict:
     node scripts/lint-button-actions-resolve.mjs --strict
 lint-button-actions-resolve-test:
     node --test scripts/lint-button-actions-resolve.test.mjs
+
+# Issue #668 / ADR 0011: commit-type classifier for PRs
+# targeting `rc/v*` branches. Walk every commit between
+# BASE_REF..HEAD_REF, reject disallowed types
+# (feat/refactor/perf/build), missing-type commits, and
+# oversized diffs (≥ 50 files per ADR §Diff-size gate).
+lint-rc-commits:
+    BASE_REF="${BASE_REF:-origin/dev}" HEAD_REF="${HEAD_REF:-HEAD}" node scripts/ci/lint-rc-commits.mjs
+lint-rc-commits-test:
+    node --test scripts/ci/lint-rc-commits.test.mjs
 lint-typecheck-augmentations-test:
     node --test audit/typecheck_augmentations.test.mjs
 lint-no-bare-catch:

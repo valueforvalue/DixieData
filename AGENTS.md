@@ -329,6 +329,11 @@ branches with distinct roles:
 - **`dev`** — integration. Agents and humans commit here
   directly per the default flow below; PRs target `dev`.
   No branch protection.
+- **`rc/v*`** — release candidate (per [ADR 0011](docs/adr/0011-rc-branch-policy.md)).
+  Stabilization branch: only `fix/docs/chore/test/ci`
+  commits are allowed. New features belong on `dev` first.
+  Workflow: `.github/workflows/rc-lint.yml`. The current
+  RC line is `rc/v1.1`.
 - **`stable`** — released-code home. Promotion destination
   for `make promote` (per ADR 0008). Future releases tag
   and ship from here.
@@ -355,6 +360,12 @@ flow per §Branch policy below. The rules are documented in
 [`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md)
 so future agents have a checklist to apply them via `gh api`
 or the GitHub UI.
+
+Per [ADR 0011](docs/adr/0011-rc-branch-policy.md), `rc/v*`
+branches carry the standard rules plus the
+`release-blocker` label gate + the `lint-rc-commits` status
+check. The classifier rejects `feat/refactor/perf/build`
+commit types and diffs ≥ 50 files.
 
 ### Promotion: dev → stable
 

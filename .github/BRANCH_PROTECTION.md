@@ -1,8 +1,14 @@
-# Branch protection (main + stable)
+# Branch protection (main + stable + rc/v*)
 
 Per [ADR 0009](../docs/adr/0009-stable-branch-promotion.md),
 both `main` and `stable` get the **same** standard GitHub
 branch protection rules. `dev` is intentionally unprotected.
+
+Per [ADR 0011](../docs/adr/0011-rc-branch-policy.md), `rc/v*`
+branches carry the standard rules plus the `release-blocker`
+label gate + the `lint-rc-commits` status check (rejecting
+`feat/refactor/perf/build` commit types + diffs ≥ 50 files
+on `rc/v*` PRs).
 
 ## Rules (apply to BOTH `main` and `stable`)
 
