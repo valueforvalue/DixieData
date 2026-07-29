@@ -66,14 +66,25 @@ test('HC override for article links covers both selectors (issue #532 slice 1)',
 test('GFM task-list checkbox rule added to both selectors (issue #532 slice 1)', () => {
   // The checkbox rule covers <input type="checkbox"> inside <li>
   // (the GFM task-list shape goldmark + bluemonday emit).
+  // Issue #694: the original regex expected the comma-grouped
+  // form `[data-article-body], [data-article-preview-body]
+  // li > input[type="checkbox"]` (one rule, both selectors
+  // share the descendent). The canonical form in
+  // frontend/tailwind.css is the alternate grouping:
+  // `[data-article-body] li > input[type="checkbox"],
+  // [data-article-preview-body] li > input[type="checkbox"]`
+  // (two selectors, comma between full compounds). Both produce
+  // identical rendered output. The regex now matches either
+  // shape: full-compound pair in any order, OR the
+  // comma-grouped shared-descendent form.
   assert.match(
     css,
-    /\[data-article-body\],\s*\[data-article-preview-body\]\s+li\s*>\s*input\[type="checkbox"\]/,
+    /\[data-article-body\][\s\S]*?li\s*>\s*input\[type="checkbox"\][\s\S]*?\[data-article-preview-body\][\s\S]*?li\s*>\s*input\[type="checkbox"\]|\[data-article-preview-body\][\s\S]*?li\s*>\s*input\[type="checkbox"\][\s\S]*?\[data-article-body\][\s\S]*?li\s*>\s*input\[type="checkbox"\]|\[data-article-body\],\s*\[data-article-preview-body\]\s+li\s*>\s*input\[type="checkbox"\]/,
     'task-list checkbox rule missing for [data-article-body] li > input',
   );
   assert.match(
     css,
-    /\[data-article-body\],\s*\[data-article-preview-body\]\s+li\s*>\s*p\s*>\s*input\[type="checkbox"\]/,
+    /\[data-article-body\][\s\S]*?li\s*>\s*p\s*>\s*input\[type="checkbox"\][\s\S]*?\[data-article-preview-body\][\s\S]*?li\s*>\s*p\s*>\s*input\[type="checkbox"\]|\[data-article-preview-body\][\s\S]*?li\s*>\s*p\s*>\s*input\[type="checkbox"\][\s\S]*?\[data-article-body\][\s\S]*?li\s*>\s*p\s*>\s*input\[type="checkbox"\]|\[data-article-body\],\s*\[data-article-preview-body\]\s+li\s*>\s*p\s*>\s*input\[type="checkbox"\]/,
     'task-list checkbox rule missing for [data-article-body] li > p > input',
   );
 });
