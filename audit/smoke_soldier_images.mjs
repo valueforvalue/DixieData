@@ -342,31 +342,27 @@ async function main() {
         const root = document.querySelector('[id="panel.soldier.form.images"]');
         if (!root) return { found: false };
         const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
-        // Issue #401: the import surface is now a <label
-        // class="primary-button"> wrapping a hidden file input. Walk
-        // labels instead of buttons; pull the hx-post off the file
-        // input for the action-equality check (the input is driven
-        // by htmx, NOT a wrapping <form> — issue #404 swapped the
-        // nested <form> out for a htmx-driven <input> so the HTML
-        // parser no longer drops the inner form's start tag).
+        // Issue #682 structural fix: the image upload is now a
+        // <div data-image-upload data-upload-url="..."> containing a
+        // hidden <input type="file">. The handler is wired via JS
+        // event listener (initializeImageUpload) not inline
+        // onchange/hx-post. Read data-upload-url off the wrapper
+        // div for the action-equality check.
         const labels = Array.from(root.querySelectorAll('label'));
         const importBtn = labels.find(
           (b) => (b.textContent || '').trim() === 'Add Images From Computer',
         );
-        // The hidden <input type="file"> is the inner control of the
-        // primary-button label. Read hx-post directly off it so the
-        // assertion stays structurally correct after the templ
-        // refactor.
         const fileInput = importBtn ? importBtn.querySelector('input[type="file"]') : null;
-        const hxPost = (fileInput && fileInput.getAttribute('hx-post')) || '';
+        const uploadDiv = fileInput ? fileInput.closest('[data-image-upload]') : null;
+        const uploadUrl = (uploadDiv && uploadDiv.getAttribute('data-upload-url')) || '';
         const rect = importBtn ? importBtn.getBoundingClientRect() : null;
         return {
           found: true,
           hasUploadLabel: /Upload Images/i.test(text),
           snippet: text.slice(0, 200),
           hasImportBtn: !!importBtn,
-          importAction: hxPost,
-          importActionMatches: hxPost === `/soldiers/${id}/images/import?return=edit`,
+          importAction: uploadUrl,
+          importActionMatches: uploadUrl === `/soldiers/${id}/images/import?return=edit`,
           importBtnVisible:
             !!rect && rect.width > 0 && rect.height > 0,
         };
@@ -439,18 +435,16 @@ async function main() {
 // leaving 0 visible Set-Primary buttons for step-05.
 const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath]);
         try {
-          // Issue #404: the "Add Images From Computer" label is no
-          // longer scoped to #panel.soldier.detail.images — the
-          // templ refactor pulled the upload <form> out as a
-          // <div data-soldier-image-import-form> sibling. The label
+          // Issue #682 structural fix: the image upload is now a
+          // <div data-image-upload> wrapper (no longer a
+          // <form data-soldier-image-import-form>). The label
           // lives at the page root next to the "Select all images"
-          // checkbox (per soldier_card.templ line ~556) and the
-          // gallery wrapper under #panel.soldier.detail.images is
-          // only the swap target for the response. The data-image
-          // import attribute on the wrapper is what scopes the
-          // selector now.
+          // checkbox (per soldier_card.templ) and the gallery
+          // wrapper under #panel.soldier.detail.images is only
+          // the swap target for the response. The data-image-upload
+          // attribute on the wrapper is what scopes the selector now.
           await page.click(
-            '[data-soldier-image-import-form] label:has-text("Add Images From Computer")',
+            '[data-image-upload] label:has-text("Add Images From Computer")',
           );
 
           await page.waitForFunction(

@@ -4282,6 +4282,7 @@ function serializeDraftFields(form) {
     initializeTableBuilder();
     initializeImagePicker();
     initializeArticleImagePasteDrop();
+    initializeImageUpload();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -5066,8 +5067,11 @@ function dispatchSubmitPrep(form, callback) {
   }
 
   /** @param {EventTarget | HTMLFormElement} button */
-// handleImageUpload manages the image upload div (not a <form>) outside the main form.
-// When a file is selected, it POSTs directly via fetch with FormData.
+// handleImageUpload streams the selected files to the upload URL via fetch
+// with FormData and swaps the response into the results-target panel. The
+// function is called by initializeImageUpload() (the per-element change
+// listener wired in initializeDynamicContent) — inline onchange handlers
+// cannot resolve functions defined inside the app.js IIFE closure.
 function handleImageUpload(input) {
   const container = input.closest("[data-image-upload]");
   if (!container) return;
@@ -5082,9 +5086,22 @@ function handleImageUpload(input) {
   fetch(url, { method: "POST", body: fd })
     .then(r => r.text())
     .then(html => {
-      if (resultsTarget) {
-        const target = document.querySelector(resultsTarget);
-        if (target) { target.innerHTML = html; initializeDynamicContent(); }
+      // The resultsTarget is a CSS selector from data-results-target.
+      // UIID values like "panel.soldier.detail.images" contain literal
+      // dots which the CSS selector parser treats as class separators —
+      // querySelector("#panel.soldier.detail.images") returns null. Use
+      // an attribute selector with the literal id instead.
+      const sel = resultsTarget || "";
+      let target = null;
+      if (sel.startsWith("#")) {
+        const id = sel.slice(1);
+        target = document.getElementById(id) || document.querySelector(`[id="${CSS.escape(id)}"]`);
+      } else {
+        target = document.querySelector(sel);
+      }
+      if (target) {
+        target.innerHTML = html;
+        initializeDynamicContent();
       }
     })
     .catch(err => console.error("Image upload failed", err))
@@ -6528,6 +6545,32 @@ function onPrintRecordsFragmentReady(modal) {
   //
   // Idempotent via the per-textarea __articleImagePasteDropWired
   // sentinel (mirrors __imagePickerWired / __tableBuilderWired).
+  // initializeArticleUpload wires file-input change handlers on
+  // [data-image-upload] divs. The div is the structural fix for the
+  // nested-form defect (#682): the image upload is no longer a
+  // <form> inside the outer Person Record edit / soldier_card
+  // detail form, so the save/dispatch buttons don't get reparented
+  // out of the outer form by the HTML5 parser. The file input
+  // change handler streams the FormData to the upload URL via
+  // fetch and swaps the response into the targets panel.
+  //
+  // The handler is wired via JS event listener (per-element
+  // idempotency via __imageUploadWired) rather than an inline
+  // onchange="..." attribute because inline handlers run in the
+  // global scope and cannot resolve functions defined inside
+  // the app.js IIFE closure.
+  function initializeImageUpload() {
+    const inputs = document.querySelectorAll("[data-image-upload] input[type=\"file\"]");
+    for (const input of inputs) {
+      if (!(input instanceof HTMLInputElement)) continue;
+      if (input.__imageUploadWired === true) continue;
+      input.__imageUploadWired = true;
+      input.addEventListener("change", () => {
+        handleImageUpload(input);
+      });
+    }
+  }
+
   function initializeArticleImagePasteDrop() {
     const textarea = document.getElementById("article-body");
     if (!(textarea instanceof HTMLTextAreaElement)) return;
@@ -8003,6 +8046,7 @@ async function refreshShareQueuePresetsPage(panel) {
     // on modal open is safe.
     installShareQueueGlobals();
     updateShareQueuePill(readShareQueue());
+    initializeImageUpload();
     // Issue #583 slice 3: paint the Activity metrics SVG line
     // graph into data-inventory-metrics-svg-host and wire the
     // legend chips. Idempotent -- the SVG host is checked for
