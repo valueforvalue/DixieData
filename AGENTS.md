@@ -81,6 +81,113 @@ add a per-form workaround. If a fetch in some other path
 wails.localhost gate there too — see the comments for the
 exact checks.
 
+## Form-attribute mutation hazard (issue #689, class 8)
+
+**A new failure mode surfaced in the 2026-07-28 #676/#682
+diagnostic session.** Any JS code that runs on form
+initialization and assigns to `form.action`, `form.method`,
+or `form.enctype` mutates the server-rendered URL and breaks
+the form's submit flow. The single canonical exception is the
+synthetic-form branch in `dispatchDixieDataForm` that builds a
+form from a `data-action` URL. Any other location is a bug.
+
+The canonical offender at time of writing: `syncEntryTypeFields`
+at `frontend/app.js:3946-3949` unconditionally sets
+`form.action = "/soldiers"` on every `initializeDynamicContent`
+pass, clobbering the edit URL `/soldiers/{id}` on the Person
+Record edit form. The fix lands as #689. The detection gate
+(`scripts/lint-no-form-mutation.js`, added by #687 extended scope)
+walks `frontend/**/*.js` and fails CI on any non-allowed mutation.
+
+**TL;DR for future agents:** never assign to `form.action`,
+`form.method`, or `form.enctype` outside `dispatchDixieDataForm`'s
+synthetic-form branch. The form's `action` is set by the server
+(`/soldiers/{id}` for edit, `/soldiers` for new). If you need to
+change the URL dynamically, change the URL on the button's
+`data-action` attribute and let the dispatcher build a synthetic
+form. See [`docs/COMMON_BUGS.md` §3.9](docs/COMMON_BUGS.md#39-js-side-formaction-mutation--js-clobbers-the-server-rendered-url-after-init-689-priorityhigh-targetrc)
+for the canonical bug class entry.
+
+## Nested-form hazard (issue #682, class 4, release-blocker)
+
+**HTML5 forbids `<form>` inside `<form>`.** The browser parser
+silently closes the outer form when it encounters an inner one
+([WHATWG §13.2.6.4.3, "in body" insertion mode](https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody)).
+Anything between the inner form's open and the outer form's close
+is reparented. Submit buttons in the loop end up with no
+`<form>` ancestor in the rendered DOM.
+
+Two live instances at time of writing:
+- `internal/templates/entry_form.templ` — outer form at L55
+  contains inner image-upload form at L392. Save Changes button
+  at L432 is orphaned.
+- `internal/templates/soldier_card.templ` — outer images-download
+  form at L567 contains inner image-upload form at L574.
+  Download Selected Images button is orphaned.
+
+The detection gate (`scripts/lint-no-nested-forms.py`, added by
+#682) walks every `.templ` and fails CI on any nested form. The
+fix is structural: move the inner form out of the outer form's
+scope. The `data-results-target` on the inner form already points
+to a sibling-scoped ID, so the conceptual model was always
+sibling. See [`docs/COMMON_BUGS.md` §2.7](docs/COMMON_BUGS.md#27-nested-form-rendering-defect--html5-parser-silently-closes-the-outer-form-682-release-blocker-for-rcv11)
+for the canonical bug class entry.
+
+**TL;DR for future agents:** never author a `<form>` inside another
+`<form>` in a `.templ` file. If a section needs a form, lift it
+to a sibling of the outer form. The `entry_form.templ` and
+`soldier_card.templ` instances are fixed by #682.
+
+## Empty-body dispatch hazard (issue #691, class 9, release-blocker)
+
+**A new failure mode surfaced in the 2026-07-28 #676 diagnostic
+session (after #682 and #689 landed).** The body-construction
+branch in `dispatchDixieDataForm` (frontend/app.js:5206) checks
+`button.closest("form")` to decide whether to build a FormData
+body. When the Save button is reparented (because of the nested
+form auto-close, or any other invalid HTML structure), the
+button has no form ancestor in the DOM. `button.closest("form")`
+returns `null`. The else branch fires:
+
+```js
+if (button instanceof HTMLElement && button.closest("form")) {
+  const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
+  fetchOptions.body = fd;
+} else {
+  fetchOptions.body = new FormData(); // ← empty body
+}
+```
+
+The form-finding branch above (line 5110) correctly handles this
+with `button.closest("form") || button.form`. The
+body-construction branch doesn't apply the same fallback. The
+body is empty, the server sees an empty form, `parseSoldierForm`
+returns all-empty fields, and `Update` wipes the record.
+
+**The fix:** use the already-resolved `form` variable instead of
+re-checking `closest()`:
+
+```diff
+-        if (button instanceof HTMLElement && button.closest("form")) {
++        if (form instanceof HTMLFormElement) {
+```
+
+**TL;DR for future agents:** any code path that needs a form
+reference must use the resolved `form` variable (which has the
+`closest() || button.form` fallback applied) or apply the same
+fallback. Don't re-check `button.closest("form")` — it returns
+`null` for reparented buttons. See [`docs/COMMON_BUGS.md` §3.10](docs/COMMON_BUGS.md#310-empty-body-dispatch--body-construction-uses-raw-closest-instead-of-the-resolved-form-691-release-blocker-targetrc)
+for the canonical bug class entry. The detection gate
+(`scripts/lint-no-form-mutation.js`, scope extended by #687) fails
+CI on any `button.closest("form")` outside the form-finding branch.
+
+**The lesson:** A band-aid that fixes one branch can mask a
+sibling branch. The form-finding branch's `button.form` fallback
+correctly resolved the form, which made the body-construction
+branch's missing fallback visible: the form was found, but the
+body was empty. **Every place that needs a form reference must
+apply the same fallback**, not just the first one.
+
 ## File map (entry points)
 
 | Path | Role |

@@ -9,6 +9,30 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
+## [Unreleased]
+
+### Maintenance
+
+- **audit: 7-class button-bug catalog + 7-gate debug-env hardening sweep** (`#681` umbrella).
+  - `#682` (release-blocker) — fix nested `<form>` rendering defect in `entry_form.templ` + `soldier_card.templ` (the HTML parser silently closes the outer form, breaking Save Changes / Download buttons). Land `make lint-no-nested-forms`.
+  - `#683` — CI gate for WebView2 body-stripping protections (extend `audit/dispatcher_patch_method.test.mjs` to 9 assertions, mirror on Go side via `requestMethodOverride` test).
+  - `#684` — table-driven render-test that every form contract (`name`, `data-method`, `data-results-target`) matches the handler that reads it.
+  - `#685` — `lint-js-init-guards` audit assertion that every `__<feature>Wired` guard is in place for htmx-swap-safe re-binding.
+  - `#686` — `make verify-embed-tree` — assert every `frontend/**` referenced by `index.html` is reachable via `//go:embed`. Catches the `frontend/_lib/` skip class.
+  - `#687` — `lint-button-actions-resolve` + `lint-no-form-mutation` — orphan-handler probe's inverse. Every templ `data-action` / `action="..."` must resolve to a registered route, AND every JS-side `form.action` / `form.method` / `form.enctype` mutation outside `dispatchDixieDataForm`'s synthetic-form branch must be flagged. The JS-side rule was added after class 8 was identified (#689).
+  - `#688` — `frontend/lib/dixie-debug.js` + `/debug/client-logs` ingest for `unhandledrejection` + `error` events. Persistent layer for the class-7 silent-failure class.
+  - `#689` — `fix(frontend): syncEntryTypeFields` clobbers `form.action` (class 8). The Person Record edit save dispatched to `/soldiers` (create URL) instead of `/soldiers/{id}` (edit URL) because the JS-side `syncEntryTypeFields` mutated `form.action` after the server rendered it. One-line fix; cascade cleanup of the band-aid `id="entry-edit-form"` workaround + `button.form` fallback.
+  - `#691` — `fix(frontend): body construction uses button.closest(form) instead of resolved form` (class 9, release-blocker). Save Changes submitted an empty body because the body-construction branch at `frontend/app.js:5206` re-checked `button.closest("form")` (returns null for the reparented Save button) instead of using the resolved `form` variable from the earlier form-finding branch. Server-side `parseSoldierForm` returned all-empty fields; `Update` wrote empty values, wiping the record. One-line fix; cascade cleanup of the band-aids and `[DD DEBUG]` logs.
+
+The umbrella catalogs 12 button-failure fixes across the 2026-06 → 2026-07 window
+into 7 distinct bug classes; each child above is one detection gate (or
+detection gate + structural fix) per class. Children are filed against `rc/v1.1`
+per the AGENTS.md branch policy and the umbrella's slice plan. Class 8
+(`#689`) was added after the diagnostic session #676/#682 surfaced a JS-side
+form-action mutation that the original 7-class taxonomy missed. Class 9
+(`#691`) was added after a follow-up diagnostic surfaced a JS-side form-body
+construction bug that the 8-class taxonomy missed.
+
 ## v1.1.32 - RC1 Method-Override Elimination
 
 ### Fixed

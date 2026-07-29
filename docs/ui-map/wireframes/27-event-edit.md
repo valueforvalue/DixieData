@@ -120,7 +120,14 @@ None.
   `<form>`. If a future change moves either section inside, the
   browser will silently drop the inner form, breaking the Add
   Link / Add Tag buttons. Verify by viewing the page source and
-  checking `<form>` tag nesting.
+  checking `<form>` tag nesting. See
+  [`docs/COMMON_BUGS.md` §2.7](../../COMMON_BUGS.md#27-nested-form-rendering-defect--html5-parser-silently-closes-the-outer-form-682-release-blocker-for-rcv11)
+  for the canonical bug class entry and the lint
+  (`scripts/lint-no-nested-forms.py`, added by #682) that catches
+  this regression. Note: the same rule applies to
+  `entry_form.templ` (Person Record edit) and `soldier_card.templ`
+  (Person Record detail) — both have live instances of the bug
+  at time of writing.
 - **`data-results-target` on Add Tag** — the form sets
   `data-results-target="#data-event-tags-list"` so JS swaps the
   new tag list fragment in place, preserving the user's unsaved
