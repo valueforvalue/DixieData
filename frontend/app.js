@@ -3314,18 +3314,6 @@ function serializeDraftFields(form) {
   // clamp constrains a value to [min, max]. Used to keep the
   // tooltip inside the chart wrapper bounds so it never escapes
   // the visible area on edge-of-chart hovers.
-  /**
-   * @param {number} n value
-   * @param {number} min lower bound
-   * @param {number} max upper bound
-   * @returns {number} clamped value
-   */
-  function clampNumber(n, min, max) {
-    if (Number.isNaN(n)) return min;
-    if (n < min) return min;
-    if (n > max) return max;
-    return n;
-  }
 
   // prefersReducedMotion returns true when the user has
   // requested reduced motion. Used by the tooltip's transition
@@ -4896,7 +4884,6 @@ function currentBrowseStateFromForm(form) {
     saveBrowseState(currentBrowseStateFromForm(form));
   }
 
-  /** @param {Element} el @param {boolean} busy */
 // startUpdateProgressPollIfNeeded starts a 500ms polling loop
 // on the given progress target element (issue #661). The loop
 // reads /settings/updates/progress and writes the response HTML
@@ -4907,6 +4894,9 @@ function currentBrowseStateFromForm(form) {
 //
 // Lives next to setBusyState so it's grouped with the other
 // dispatch-side helpers; pure DOM, no framework.
+/**
+ * @param {HTMLElement} target the polling-progress container
+ */
 async function startUpdateProgressPollIfNeeded(target) {
   if (!(target instanceof HTMLElement)) return;
   if (target.dataset.updatePolling === "true") return;
@@ -4945,6 +4935,10 @@ async function startUpdateProgressPollIfNeeded(target) {
   }
 }
 
+/**
+ * @param {HTMLElement} el the group root
+ * @param {boolean} busy true when the group is busy
+ */
 function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
@@ -5096,19 +5090,22 @@ function dispatchSubmitPrep(form, callback) {
     });
   }
 
-  /** @param {EventTarget | HTMLFormElement} button */
 // handleImageUpload streams the selected files to the upload URL via fetch
 // with FormData and swaps the response into the results-target panel. The
 // function is called by initializeImageUpload() (the per-element change
 // listener wired in initializeDynamicContent) — inline onchange handlers
 // cannot resolve functions defined inside the app.js IIFE closure.
+/**
+ * @param {HTMLInputElement} input the file input that fired
+ */
 function handleImageUpload(input) {
   const container = input.closest("[data-image-upload]");
-  if (!container) return;
+  if (!(container instanceof HTMLElement)) return;
   const url = container.dataset.uploadUrl;
   const resultsTarget = container.dataset.resultsTarget;
   if (!url) return;
   const fd = new FormData();
+  if (!input.files) return;
   for (const file of input.files) {
     fd.append("images", file);
   }
@@ -5138,6 +5135,9 @@ function handleImageUpload(input) {
     .finally(() => setBusyState(input, false));
 }
 
+/**
+ * @param {HTMLButtonElement | Element} button the submitter
+ */
 async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the

@@ -100,6 +100,11 @@ declare global {
   interface Window extends DixieDataWindow {}
   interface HTMLInputElement {
     __dixieLiveCountHandler?: (this: HTMLInputElement, ev?: Event) => void;
+    // Issue #685: initializeImageUpload wires the per-file-input
+    // change handler once per [data-image-upload] input. The
+    // sentinel prevents htmx:load swaps from double-installing
+    // the listener (which would queue the same file twice).
+    __imageUploadWired?: boolean;
   }
   interface HTMLTextAreaElement {
     // initializeLiveCounts walks both input and textarea DOM
@@ -107,6 +112,13 @@ declare global {
     // element actually received the install. The base Element
     // declaration below covers the read sites.
     __dixieLiveCountHandler?: (this: HTMLTextAreaElement, ev?: Event) => void;
+  }
+  interface HTMLFormElement {
+    // Issue #685: initializeEntryTypeForms wires syncEntryTypeFields
+    // once per form. The sentinel prevents htmx:load swaps from
+    // re-running the field sync (which already happened for the
+    // current form fields).
+    __entryTypeFormsWired?: boolean;
   }
   interface Element {
     // initializeCopyPathButtons attaches the copy-path click
@@ -157,6 +169,11 @@ declare global {
     // Issue #612 slice 4: initializeArticleImagePasteDrop
     // wires the textarea once.
     __articleImagePasteDropWired?: boolean;
+    // Issue #685: initializeTabs wires the per-button click
+    // handler once per [data-tab-group][data-tab-target]
+    // button. The sentinel prevents htmx:load swaps from
+    // double-activating the same tab group.
+    __tabsWired?: boolean;
   }
   interface HTMLElement {
     __copyPathBound?: boolean;
@@ -177,6 +194,11 @@ declare global {
     // prevents double-painting on htmx:load re-renders
     // (mirror of __inventoryChartPainted).
     __aboutHeatmapPainted?: boolean;
+    // Issue #685: initializeBrowseView wires the browse-state
+    // restore once per browse page; the guard prevents re-running
+    // applyBrowseStateToForm on htmx swaps that don't carry the
+    // user's filter intent.
+    __browseViewWired?: boolean;
     // Issue #607: initializeArticlePreview wires the
     // Preview button click handler + the modal close +
     // Escape handlers once per modal element. The guard
