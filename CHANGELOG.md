@@ -13,6 +13,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **docs: smoke-runner playbook (#700 slice 7).** New `docs/agents/smoke-runner.md` (Tier 1 reference) describes the `runProbe` contract, the `SURFACES[]` contribution contract ("append one line" to add a probe), the playwright-vs-scanner surface shape, the cleanup-hook ordering invariant, and the 7-surface registry. Registered in `docs/agents/INDEX.md` Tier 1 "Feature work" section. Cross-references issue #700, the justfile triplet, the audit.yml wiring, and the MISTAKES.md git-show-vs-read lesson.
+
+
+
 - **ci: smoke-runner wired into audit workflow (#700 slice 6).** Two changes to `.github/workflows/audit.yml`: (1) `extractions/setup-just@v2` is now installed alongside `setup-go` and `setup-node` (matches the pattern used by build.yml, race-stress.yml, rc-lint.yml, and test.yml — audit.yml was the only workflow missing the just installer). (2) New step "Smoke runner (issue #700 slice 6)" runs `BASE_URL=http://127.0.0.1:8080 just test-smoke-strict` after the existing audit-harness step. The `BASE_URL` env is forwarded to the playwright probes via `spawnSync`'s default env inheritance so the 3 probes skip their own server spawn and exercise the dev server already running on :8080. The aggregator's exit code surfaces in the workflow status (no `if: always()` — a smoke-runner failure should fail the workflow so the operator sees the signal). The artifact upload `audit-reports` now also includes `audit/smoke_summary.json` (the aggregator's output) so the JSON summary ships with the workflow run. Reuses the already-built Linux binary + already-seeded `.scratch/webmode` + already-started server on :8080 — no new build/teardown steps required.
 
 
