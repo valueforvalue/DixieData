@@ -36,7 +36,7 @@
 //   this probe:
 //     make seed
 //     ./build/bin/dixiedata-web.exe --scratch-dir=.scratch/webmode
-//   (or just `make audit`, which boots the server fresh).
+//   (or just `just lint-all-frontend`, which boots the server fresh).
 //
 // How to extend:
 //   Add the (route, method, expected-status-on-empty-body) triple

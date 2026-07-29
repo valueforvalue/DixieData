@@ -361,7 +361,7 @@ async function main() {
 	if (setupStatus === 'needs-setup') {
 		console.log('=== error-surface probe (issue #444) ===');
 		console.log('  ⊘ server at ' + BASE + ' is on the /setup wizard — error surfaces cannot be probed yet.');
-		console.log('    Run `make seed && ./build/bin/dixiedata-web.exe -scratch-dir=.scratch/webmode` after');
+		console.log('    Run `just seed && ./build/bin/dixiedata-web.exe -scratch-dir=.scratch/webmode` after');
 		console.log('    completing setup, then re-run `make probe-error-surfaces`.');
 		process.exit(0);
 	}

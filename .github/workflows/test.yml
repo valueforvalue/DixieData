@@ -55,7 +55,7 @@ jobs:
         run: |
           # Tests under internal/archive and pkg/render shell out to
           # the typst binary at bin/typst-windows.exe. The build
-          # workflow restores it as part of make debug, but the test
+          # workflow restores it as part of just debug, but the test
           # workflow skips the build step. Restore it explicitly so
           # the export tests can run.
           . ./scripts/build-common.ps1
@@ -149,7 +149,7 @@ jobs:
       # Same regex shape the Go binary uses; this is the offline
       # fallback so CI doesn't need a built dixiedata binary.
       # Exit 1 surfaces drift; the Go walker is the source of
-      # truth in `make freshness` and the test suite locks both.
+      # truth in `just verify-fresh-bake` and the test suite locks both.
       - name: Cli-coverage drift detector
         shell: bash
         run: |

@@ -3,7 +3,7 @@
 ## Status
 
 Accepted 2026-07-02. Locks in the safety gate that ships with the
-build-protocol pack (PR for `make freshness`, `make release-
+build-protocol pack (PR for `just verify-fresh-bake`, `just release-
 pipeline`, `dixiedata debug in-place-safety`, `safe-for-in-place`
 label, schema-touching detector in CI).
 
@@ -124,7 +124,7 @@ tag>..HEAD` and flags:
 
 Exit code = count of high-severity findings (0 = clean).
 The check is INFORMATIONAL — it does not block the merge.
-`make release-pipeline` runs it as one of the gates.
+`just release-pipeline` runs it as one of the gates.
 
 ### Relationship to ADR 0001 (Restore Points)
 
@@ -166,7 +166,7 @@ above cover the current shape. The expansion is a follow-up.
   rules. The label is the paper trail; the warning comment
   is the loud prompt.
 - The `dixiedata debug in-place-safety` check catches the
-  most common violations automatically. `make release-pipeline`
+  most common violations automatically. `just release-pipeline`
   surfaces the findings before the tag is pushed.
 - The PR template places the safety question at the top so
   the reviewer can't miss it.
@@ -196,8 +196,8 @@ above cover the current shape. The expansion is a follow-up.
   (the operator applies `safe-for-in-place` by default for
   PRs that don't touch schema).
 - `dixiedata debug in-place-safety` is additive to the
-  existing debug subcommands. Existing `make release` flows
-  are unchanged; `make release-pipeline` is opt-in.
+  existing debug subcommands. Existing `just release` flows
+  are unchanged; `just release-pipeline` is opt-in.
 
 ## References
 

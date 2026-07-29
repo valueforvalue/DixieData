@@ -1,6 +1,6 @@
 # probe-clean.ps1 -- kill any straggler dixiedata-* processes from a
 # previous probe run, then verify the file handles are released so
-# the next `make debug` doesn't fail with:
+# the next `just debug` doesn't fail with:
 #
 #   unlinkat ... dixiedata-web.exe: The process cannot access the
 #   file because it is being used by another process.

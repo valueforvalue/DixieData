@@ -57,36 +57,36 @@ on at that moment.
 
 ## Decision
 
-`make promote` is the single entry point for `dev → main`. It
-runs the same gate chain as `make release-pipeline`, with one
+`just promote` is the single entry point for `dev → main`. It
+runs the same gate chain as `just release-pipeline`, with one
 extra step that lifts the ADR 0007 label from informational to
 hard-enforced.
 
 ### The promotion command
 
 ```bash
-make promote          # user-driven (default)
-make promote-dry-run  # prints gate status + diff summary, no push
+just promote          # user-driven (default)
+just promote-dry-run  # prints gate status + diff summary, no push
 ```
 
-`make promote` is the runnable form of this ADR. The gate
+`just promote` is the runnable form of this ADR. The gate
 chain below is what `promote` invokes. `promote-dry-run` is the
 explicit pre-flight the user reviews before committing to the
 real run.
 
 ### Gate chain (in order)
 
-1. **`make test`** — `go test -short ./...` passes. Halts on
+1. **`just test-lint && go test -short ./...`** — `go test -short ./...` passes. Halts on
    any failure.
-2. **`make tpl`** — templ files current. Halts if any `.templ`
+2. **`just tpl`** — templ files current. Halts if any `.templ`
    source has drifted from the generated `_templ.go`.
-3. **`make css`** — Tailwind classes current. Halts if
+3. **`just css`** — Tailwind classes current. Halts if
    `frontend/app.css` is stale relative to `frontend/tailwind.css`.
-4. **`make bump -VerifyOnly`** — `versioninfo.go`,
+4. **`just bump -VerifyOnly`** — `versioninfo.go`,
    `CHANGELOG.md`, and the docs references are consistent.
    Halts on drift.
-5. **`make debug`** — main binary builds + smoke-tests pass.
-6. **`make freshness`** — subtools + CLI coverage + the two
+5. **`just debug`** — main binary builds + smoke-tests pass.
+6. **`just verify-fresh-bake`** — subtools + CLI coverage + the two
    info-only Nix-cache probes are clean.
 7. **`make in-place-safety`** — `dixiedata debug in-place-safety
    <base-ref> <head-ref>` where `base-ref` is the last release
@@ -94,9 +94,9 @@ real run.
    HIGH-severity finding. This is the gate that lifts ADR 0007
    from label-not-block to hard-enforced at the right moment
    (the last step before users get the binary).
-8. **`make archive`** — release zip exists, contains the right
+8. **`just archive`** — release zip exists, contains the right
    binary + DLLs + README.
-9. **`make release-github`** — tag + push + draft gh release
+9. **`just release-github`** — tag + push + draft gh release
    (with the gate check before the actual tag).
 
 ### What `dev` HEAD looks like at promotion time
@@ -125,14 +125,14 @@ Each gate's failure has a defined recovery path:
 Two paths:
 
 a. **User-driven** (current flow, what this ADR ships): the
-   maintainer runs `make promote` when ready. The gate chain
+   maintainer runs `just promote` when ready. The gate chain
    tells the maintainer what's missing. The dry-run variant
    exists explicitly for "show me the state without
    committing."
 
 b. **Cadence-driven** (future, follow-up issue): after every
    schema bump, a CI job opens a draft promotion PR. Manual
-   review + `make promote` to ship. This is the next step but
+   review + `just promote` to ship. This is the next step but
    NOT in this ADR — the cadence question is its own decision
    (how often, what marks "ready", who reviews the draft).
 
@@ -143,7 +143,7 @@ gets its promotion paragraph).
 ### Pre-promotion checklist (PR review)
 
 The maintainer reviews the diff visually before running
-`make promote`. The default is:
+`just promote`. The default is:
 
 - `git diff <last-tag>..origin/dev --stat` — the surface area
   (how many files, how many lines, how many new files).
@@ -154,9 +154,9 @@ The maintainer reviews the diff visually before running
   `code-review-global`) on the diff, if the surface is
   non-trivial.
 
-`make promote-dry-run` exposes the gate chain output as a
+`just promote-dry-run` exposes the gate chain output as a
 single ingest; the maintainer reads that output before
-committing to `make promote`.
+committing to `just promote`.
 
 ## Alternatives considered
 
@@ -183,7 +183,7 @@ tracked as path (b) under "When does promotion happen?" above.
 ### Alt 3: Manual `release-github.ps1` (current flow) + better docs
 
 The minimum-change path: improve `release-github.ps1`'s inline
-help + a `RELEASING.md` walkthrough, no `make promote` target.
+help + a `RELEASING.md` walkthrough, no `just promote` target.
 Rejected because the script-based flow has no failure-mode
 documentation; the maintainer runs the steps, watches stderr,
 and improvises recovery. A target-based gate chain documents
@@ -196,12 +196,12 @@ the steps in code (executable) rather than prose.
 - Every PR to `main` has its four ADR 0007 rules reviewed at
   the gate, not at PR time. Reviewers can still apply the
   label informally; the gate is the hard check.
-- `make promote-dry-run` is a no-risk pre-flight that the
+- `just promote-dry-run` is a no-risk pre-flight that the
   maintainer can run any time without affecting the working
   tree (it doesn't push; it doesn't tag; it only reads).
-- The gate chain is encoded as code — `make promote` is
+- The gate chain is encoded as code — `just promote` is
   discoverable, executable, and CI-runnable. Future agents
-  (human or LLM) can read `make help` to learn the flow
+  (human or LLM) can read `just --list` to learn the flow
   rather than memorising `release-github.ps1` steps.
 - The cadence question (path b) is now visible: with the
   gate chain in code, the cadence is the only thing missing
@@ -209,27 +209,27 @@ the steps in code (executable) rather than prose.
 
 ### Negative
 
-- The maintainer must run `make promote-dry-run` before
-  `make promote`; the dry-run is not the default. Drift risk:
+- The maintainer must run `just promote-dry-run` before
+  `just promote`; the dry-run is not the default. Drift risk:
   on a tired evening, the maintainer may skip the dry-run and
   find out at gate 7 (in-place-safety). Mitigation: gate 7 has
   a fast sub-second path on a clean diff, so skipping the
   dry-run costs ~1s on average; not worth enforcing.
-- The gate chain assumes `make test`, `make tpl`, etc. each
+- The gate chain assumes `just test-lint && go test -short ./...`, `just tpl`, etc. each
   exist and work. If a future refactor removes one, the
   promote target's behaviour changes silently. Mitigation: a
   separate "AGENTS.md §Branches" review notes that any
   removal of a `make` target needs the companion check in
-  `make promote` reviewed in the same commit.
+  `just promote` reviewed in the same commit.
 
 ### Compatibility
 
-- `make release-pipeline` is unchanged — it already runs the
-  subset of these gates as opt-in. The new `make promote`
+- `just release-pipeline` is unchanged — it already runs the
+  subset of these gates as opt-in. The new `just promote`
   adds gate 7 (in-place-safety) as a HARD gate; the existing
   pipeline uses it as INFORMATIONAL only.
 - `scripts/release-github.ps1` continues to handle the tag +
-  draft-release mechanics. The `make promote` target calls it
+  draft-release mechanics. The `just promote` target calls it
   at gate 9.
 - The `safe-for-in-place` / `unsafe-for-in-place` labels are
   unchanged. ADR 0007's label protocol continues to apply at
@@ -244,8 +244,8 @@ the steps in code (executable) rather than prose.
 
 ### Existing infra this ADR composes with
 
-- `Makefile` — `make help` already lists the related targets;
-  add `make promote` and `make promote-dry-run`.
+- `Makefile` — `just --list` already lists the related targets;
+  add `just promote` and `just promote-dry-run`.
 - `internal/appshell/cli_debug_test.go` — already covers the
   `dixiedata debug in-place-safety` walker; the gate at step
   7 is the CLI binary's contract.
@@ -257,7 +257,7 @@ the steps in code (executable) rather than prose.
 ### Files this ADR will touch (NOT this commit)
 
 - `Makefile` — add `promote` and `promote-dry-run` targets
-- `CONTEXT.md` §Laws — add "Promotion to main = `make promote`"
+- `CONTEXT.md` §Laws — add "Promotion to main = `just promote`"
 - `AGENTS.md` §Branch policy — cross-reference this ADR
 - `docs/RELEASING.md` — release workflow expansion
 - `scripts/release-github.ps1` — unchanged
@@ -270,7 +270,7 @@ the steps in code (executable) rather than prose.
    Should pre-promotion tags (the base-ref for
    in-place-safety) be different, e.g. `v1.1.{N}-pre` for
    the pre-promotion state? Decide before first
-   `make promote` run.
+   `just promote` run.
 2. **Rollback after a failed in-place update.** ADR 0007 +
    ADR 0001 cover the BEFORE-update state (restore points)
    and the change-shape contracts. They don't cover the
@@ -279,7 +279,7 @@ the steps in code (executable) rather than prose.
    (tag a new release that re-applies the previous? user
    manually rolls back?) is its own decision; track in a
    follow-up issue.
-3. **Multi-platform release artifacts.** `make archive`
+3. **Multi-platform release artifacts.** `just archive`
    produces a Windows zip. macOS/Linux users currently have
    no in-place update path because there's no artifact for
    their platform. Out of scope for this ADR; tracked in
@@ -288,7 +288,7 @@ the steps in code (executable) rather than prose.
 ### Regression net (this ADR carries no code; the gate chain's
 regression is its first run)
 
-- After this ADR lands, the next `make promote-dry-run` is
+- After this ADR lands, the next `just promote-dry-run` is
   the proof that the gate chain is wired correctly.
 - A follow-up `internal/update/updater_test.go` test should
   exercise the in-place-safety gate (compareVersions reads
