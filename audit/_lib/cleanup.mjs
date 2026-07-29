@@ -10,7 +10,7 @@
 //     2. The probe script throws before its `finally` block, or the
 //        parent `go run` re-spawns a grandchild that SIGTERM doesn't
 //        reach (Windows process tree quirk).
-//   When a probe leaks, the next `make debug` or `make audit` step
+//   When a probe leaks, the next `just debug` or `just lint-all-frontend` step
 //   that rebuilds `dixiedata-web.exe` fails with:
 //     `unlinkat ... dixiedata-web.exe: The process cannot access the
 //      file because it is being used by another process.`

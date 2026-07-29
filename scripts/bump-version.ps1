@@ -355,7 +355,7 @@ switch ($bumpKind) {
         Write-Host ""
         Write-Host "Next steps:" -ForegroundColor Cyan
         Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section."
-        Write-Host "  2. Run the test suite (make test-quiet) to confirm migrations apply cleanly."
+        Write-Host "  2. Run the test suite (go test -short -count=1 ./...) to confirm migrations apply cleanly."
         Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
         Write-Host "  4. git commit -m 'Bump release line to $appVersion'"
         Write-Host "  5. make archive   # builds + zips release/DixieData-release-$appVersion.zip"
@@ -394,7 +394,7 @@ switch ($bumpKind) {
         Write-Host "Next steps:" -ForegroundColor Cyan
         Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section noting the U bump rationale."
         Write-Host "  2. Update docs/RELEASING.md and ADR 0008 if the U bump changes the install/upgrade contract."
-        Write-Host "  3. Run the test suite (make test-quiet) — the in-place update flow's compareVersions will reject U-mismatched releases."
+        Write-Host "  3. Run the test suite (`go test -short -count=1 ./...`) — the in-place update flow's compareVersions will reject U-mismatched releases."
         Write-Host "  4. git add internal/versioninfo/versioninfo.go .release-state/ CHANGELOG.md"
         Write-Host "  5. git commit -m 'Bump update-flow version to $appVersion'"
         Write-Host "  6. make archive && make release-github"
@@ -416,7 +416,7 @@ switch ($bumpKind) {
         Write-Host ""
         Write-Host "Next steps:" -ForegroundColor Cyan
         Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section."
-        Write-Host "  2. Run the test suite (make test-quiet)."
+        Write-Host "  2. Run the test suite (`go test -short -count=1 ./...`)."
         Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
         Write-Host "  4. git commit -m 'Bump release counter to $appVersion'"
         Write-Host "  5. make archive && make release-github"
@@ -450,7 +450,7 @@ switch ($bumpKind) {
         Write-Host ""
         Write-Host "Next steps:" -ForegroundColor Cyan
         Write-Host "  1. Update docs/RELEASING.md 'Choosing the codename' section if the naming rationale changed."
-        Write-Host "  2. Run the test suite (make test-quiet) — versioninfo tests pin the codename."
+        Write-Host "  2. Run the test suite (`go test -short -count=1 ./...`) — versioninfo tests pin the codename."
         Write-Host "  3. git add internal/versioninfo/versioninfo.go"
         Write-Host "  4. git commit -m 'Bump release codename to $name'"
     }

@@ -162,7 +162,7 @@ through `/research/select` with the same `next`).
 - All 6 soldier-scoped handler tests green (no behavior change when
   cookie present).
 - `audit/discover_orphan_handlers.mjs` shows no new orphans.
-- `make test` + `make tpl` clean.
+- `just test-lint && go test -short ./...` + `just tpl` clean.
 - Optional: `audit/smoke.mjs` adds one assertion that
   `page.goto('/soldiers/411/timeline')` with no cookie lands on
   `/research?next=timeline`, with cookie lands on
@@ -248,8 +248,8 @@ commits, separate CHANGELOG touches.)
 ### Regression net
 
 - All slice-1 + slice-2 tests green.
-- `make test` clean.
-- `make audit` clean (smoke probe added).
+- `just test-lint && go test -short ./...` clean.
+- `just lint-all-frontend` clean (smoke probe added).
 
 ---
 

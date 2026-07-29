@@ -33,7 +33,7 @@
 //   node audit/smoke_swallowed_errors.mjs
 //
 // Exit code is non-zero when any assertion fails. Designed to be wired
-// into `make audit` alongside the existing smoke probes.
+// into `just lint-all-frontend` alongside the existing smoke probes.
 
 import { strict as assert } from "node:assert";
 import { readFileSync, readdirSync, statSync } from "node:fs";

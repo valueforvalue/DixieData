@@ -13,7 +13,7 @@ $binDir   = Get-DixieDataBuildBinDir -Root $root
 $exePath  = Join-Path $binDir "DixieData.exe"
 
 if (-not (Test-Path $exePath)) {
-    throw "DixieData.exe not found at $exePath — run 'make debug' first."
+    throw "DixieData.exe not found at $exePath — run 'just debug' first."
 }
 
 $stamp    = Get-Date -Format "yyyyMMdd-HHmmss"

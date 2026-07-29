@@ -31,7 +31,7 @@ make it a regression net, not a prevention net:
    warn` and no `showToast`" without a flood of false positives.
 3. **It is the only defense.** If the probe is bypassed (a future
    contributor edits the assertion list, or the probe is split out
-   of `make test`), the patterns return silently.
+   of `just test-lint && go test -short ./...`), the patterns return silently.
 
 Issue #384 captured the lessons. This ADR encodes the prevention
 layer as a normal part of the toolchain: two Go analyzer rules
@@ -103,7 +103,7 @@ imports it via the workspace alias.
 
 - `.github/workflows/test.yml` gains two steps after the
   existing "htmx-guard lint (issue #316)" step (~line 131):
-  - `make lint-swallowed-errors` — runs the Go `lintrules` binary
+  - `just lint-no-bare-catch` — runs the Go `lintrules` binary
     and ESLint in sequence.
 - `Makefile` gains the following targets near the
   `lint-htmx-guard` block (~line 248):
@@ -124,7 +124,7 @@ imports it via the workspace alias.
       make lint-no-bare-catch
   ```
 
-- `make audit` chains the new target as a backstop (lint
+- `just lint-all-frontend` chains the new target as a backstop (lint
   enforces pre-merge; audit catches anything lint misses).
 - ESLint runs only against `frontend/**/*.js` — the
   `audit/smoke_swallowed_errors.mjs` walk over `frontend/` is

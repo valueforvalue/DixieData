@@ -88,7 +88,7 @@ jobs:
         run: |
           # Issue #464: tests under internal/archive and pkg/render
           # shell out to the typst binary at bin/typst-windows.exe.
-          # The build workflow restores it as part of make debug,
+          # The build workflow restores it as part of just debug,
           # but race-stress.yml skips the build step. Mirror
           # test.yml:45-55 to restore it explicitly so the export
           # tests can run.
@@ -192,6 +192,6 @@ jobs:
           # regression that was masked by the rapid-flag workflow
           # parse error for 24h). Without this workflow the next
           # similar regression would only surface when a developer
-          # happened to run `make stress` locally.
+          # happened to run `just stress` locally.
           go test ./tests/stress/... -count=1
         timeout-minutes: 15

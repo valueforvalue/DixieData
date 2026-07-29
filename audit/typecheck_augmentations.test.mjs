@@ -41,7 +41,7 @@
 // Static source-scan is the right shape here because:
 //   - It mirrors the dispatcher_tdz_fix.test.mjs pattern.
 //   - The augmentations are textual invariants; their effect on
-//     tsc is verified by `make lint-typecheck` separately.
+//     tsc is verified by `just lint-typecheck` separately.
 //   - Adding a runtime JSDOM harness for these checks would add
 //     zero signal: the .d.ts file is consumed only at type-check
 //     time, never at runtime.

@@ -199,21 +199,21 @@ DixieData convention has been to put shared JS helpers in
 The article Preview button bug was the canonical instance:
 `frontend/_lib/debounce.js` was never embedded.
 
-The detection gate (`make verify-embed-tree`, added by #686)
+The detection gate (`just verify-embed-tree`, added by #686)
 walks `frontend/**` and the assets referenced by `index.html`
 and the rendered runtime HTML, fails if any reference is to a
 file that does not exist, and reports any `_`-prefixed or
 `.`-prefixed top-level dir under `frontend/` as informational
 R1 warnings. The `--strict` flag flips the missing-reference
-failures to CI-blocking. Sibling to `make lint-bake-bootstrap`
-and `make lint-htmx-guard`.
+failures to CI-blocking. Sibling to `just lint-bake-bootstrap`
+and `just lint-htmx-guard`.
 
 **TL;DR for future agents:** never place a frontend helper
 under a `_`-prefixed or `.`-prefixed top-level dir. The
 DixieData convention is `frontend/lib/` for shared helpers. If
 you need a new shared helper, place it at `frontend/lib/foo.js`
 or `frontend/lib/foo/index.js` and update the `<script src>`
-in `index.html`. Run `make verify-embed-tree` before opening
+in `index.html`. Run `just verify-embed-tree` before opening
 the PR. See [`docs/COMMON_BUGS.md` §8.6](docs/COMMON_BUGS.md#86-embed-tree-skip--goembed-silently-drops-_-prefixed-files--the-686-regression-net)
 for the canonical bug class entry.
 
@@ -236,7 +236,7 @@ the templates reference, add it to the allowlist in
 | `internal/htmxattr/` | Typed `htmxattr.Mux` builder — use instead of raw `hx-*` strings |
 | `internal/routebuilder/` | Typed URL builders — use instead of string route literals |
 | `internal/records/` | Person Record, Source Record, Claim, Finding model logic |
-| `internal/templates/` | Templ HTML templates (regenerate with `make tpl`) |
+| `internal/templates/` | Templ HTML templates (regenerate with `just tpl`) |
 | `internal/uiids/` | Canonical DOM ID constants (used by goquery invariant tests) |
 | `internal/exportcontract/` | Shared types between Go export pipeline and JS frontend |
 | `frontend/` | Static assets, Tailwind input, `app.js`, `app.css` output |
@@ -246,7 +246,7 @@ the templates reference, add it to the allowlist in
 | `docs/` | User manual, ADRs, audit narrative, release docs |
 | `docs/ui-map/` | **UI reference** — screen × component matrix, per-screen ASCII wireframes, route/surface lookup, gaps. Read first for any UI bug hunt or redesign. |
 | `scripts/` | PowerShell + bash build/test helpers (`build-common.ps1`, `run-crash-dump.ps1`, `debug-crash.dlv`) |
-| `Makefile` | Top-level DX (run `make help` for all targets) |
+| `justfile` / `Justfile` | Top-level DX (run `just --list` for all recipes) |
 | `CONTEXT.md` | **Glossary + Laws source of truth** — read first |
 
 ## Commits and branches
@@ -385,7 +385,7 @@ The promote flow (PR via GitHub UI) is:
 If `dev` has commits `stable` doesn't have, `make promote`
 aborts and instructs the operator to run `make promote-prep`
 to sync. See ADR 0009 §"Conflict policy" for the resolution
-flow. Until `make promote` is implemented, do not promote
+flow. Until `just promote` is implemented, do not promote
 `dev` to `stable` without explicit user direction. If you
 think a promotion is needed, ask first.
 
@@ -429,32 +429,32 @@ is a separate ADR; this ADR explicitly preserves `main`.
 
 ### Pushing and verification
 
-- **Before pushing:** `make test` (runs `go test ./...
-  -short`) and `make tpl` (regenerates
+- **Before pushing:** `just test-lint` (runs the Node lint-gate test suite) and `go test -short ./...` (Go tests). For templ changes, run `just tpl` (regenerates
   `internal/templates/*_templ.go` from the `.templ` sources
   — these generated files are **gitignored**, so the diff
-  after `make tpl` only shows up in your working tree,
+  after `just tpl` only shows up in your working tree,
   never in the PR. CI regenerates them in the workflow
   step before tests run). If you touched htmx or templ
   markup, run `node audit/smoke.mjs` against a live
-  `dixiedata-web` server. `make audit` runs the full
-  visual sweep.
+  `dixiedata-web` server. The audit smoke probes (`audit/smoke_*.mjs`)
+  are runnable directly via `node`; the `just lint-all-frontend`
+  gate is the CI-friendly aggregate.
 - **Bake-style generator discipline (issue #589 / #591):**
   any PR that touches a script under `scripts/bake-*/` or
   a package whose directory contains a gitignored
-  `baked*.go` MUST run `make verify-fresh-bake` before
+  `baked*.go` MUST run `just verify-fresh-bake` before
   `git commit`. That target deletes every gitignored
   generated artifact (`internal/templates/*_templ.go`,
   `internal/releasehistory/baked.go`,
   `internal/activityhistory/baked.go`), regenerates them
-  via `make tpl`, then runs `make test`. Issue #588's
+  via `just tpl`, then runs `go test -short ./...`. Issue #588's
   bootstrap-ordering bug class was missed by the standard
   pre-push discipline because stale gitignored files on the
   contributor's machine masked the real compile failure —
   the clean-tree gate closes that gap. The deletion list
   lives inline in the Makefile target; update it when adding
   a new bake-style generator so the gate stays accurate.
-  The `make lint-bake-bootstrap` probe is the structural
+  The `just lint-bake-bootstrap` probe is the structural
   counterpart: it walks every `scripts/bake-*/main.go` and
   asserts no script imports the package it is responsible
   for generating (the exact bug shape from #588). CI runs

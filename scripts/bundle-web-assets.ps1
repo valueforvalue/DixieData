@@ -6,13 +6,13 @@
 # (scripts/build-debug.ps1 → Restore-DixieDataTypstAssets) bundles
 # templates/bin/typst-windows.exe + build/bin/templates/*.typ
 # next to DixieData.exe. The plain `go build -o build/bin/
-# dixiedata-web.exe ./cmd/dixiedata-web` (used by `make web`)
+# dixiedata-web.exe ./cmd/dixiedata-web` (used by `just web`)
 # skips that step, so the web-mode binary boots without the
 # event_landscape.typ template it needs for /events/{id}/pdf
 # (slot #320.3).
 #
 # Mirrors Restore-DixieDataTypstAssets (build-common.ps1) but is
-# callable standalone from `make web` without going through the
+# callable standalone from `just web` without going through the
 # full debug chain (no wails build, no PDFium download, no
 # app.css rebuild). Idempotent: re-running is a no-op except
 # for file mtime changes.

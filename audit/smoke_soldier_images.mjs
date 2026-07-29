@@ -211,7 +211,7 @@ async function main() {
 
   if (!fs.existsSync(webBin)) {
     throw new Error(
-      `dixiedata-web binary missing at ${webBin}; run \`make build\` first`,
+      `dixiedata-web binary missing at ${webBin}; run \`just debug\` first`,
     );
   }
   if (!fs.existsSync(fixtureSrc)) {

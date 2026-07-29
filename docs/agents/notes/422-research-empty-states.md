@@ -69,7 +69,7 @@ Commit shape: `research(picker): hide unsupported sub-pages when soldier data is
 
 ## Ship check
 
-- [ ] `make test` → all GREEN (including new RED-first tests)
+- [ ] `just test-lint && go test -short ./...` → all GREEN (including new RED-first tests)
 - [ ] `audit/discover_orphan_handlers.mjs` → no new orphans
 - [ ] Manual: create soldier with empty unit + empty birth_info → picker opens → click Camaraderie → empty-state page (not 500)
 - [ ] Manual: same soldier → Research Pack → County → empty-state page (not 500)

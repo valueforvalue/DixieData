@@ -114,6 +114,49 @@ lint-bake-bootstrap-strict:
     node audit/lint_bake_bootstrap.mjs --strict
 lint-bake-bootstrap-test:
     node --test audit/lint_bake_bootstrap.test.mjs
+
+# verify-embed-tree (issue #686): assert every frontend/** file
+# referenced by index.html is reachable via //go:embed frontend.
+# Catches the file-skip-by-prefix class from Go's embed package
+# (the 12f1834a article Preview button bug shape).
+verify-embed-tree:
+    node audit/verify_embed_tree.mjs
+verify-embed-tree-strict:
+    node audit/verify_embed_tree.mjs --strict
+verify-embed-tree-test:
+    node audit/verify_embed_tree.test.mjs
+
+# lint-no-nested-forms (issue #682): walks every .templ file
+# and asserts that no <form> tag opens while another <form> is
+# still on the element stack. HTML5 forbids <form> inside <form>;
+# the parser silently closes the outer form at the inner form's
+# open tag, reparenting submit buttons out of the outer form's
+# DOM tree. The canonical historical instance: the inner image-
+# upload form at entry_form.templ:392 (and soldier_card.templ:574)
+# silently closed the outer form, breaking the Save Changes /
+# Download Selected Images buttons.
+lint-no-nested-forms:
+    node audit/lint_no_nested_forms.mjs
+lint-no-nested-forms-strict:
+    node audit/lint_no_nested_forms.mjs --strict
+lint-no-nested-forms-test:
+    node audit/lint_no_nested_forms.test.mjs
+
+# lint-all-frontend: aggregate gate that runs all the frontend
+# lint gates in one shot. Used by CI as the PR-time frontend
+# invariant check.
+lint-all-frontend:
+    just lint-htmx-guard
+    just lint-bake-bootstrap
+    just verify-embed-tree
+    just lint-no-nested-forms
+
+# Aggregate test target: runs every node-based probe test suite.
+test-lint:
+    just lint-htmx-guard-test
+    just lint-bake-bootstrap-test
+    just verify-embed-tree-test
+    just lint-no-nested-forms-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 lint-typecheck-augmentations-test:
@@ -153,7 +196,7 @@ lint-runtime-microcopy-test:
     node audit/smoke_runtime_microcopy.test.mjs
 
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test
 
 tune:
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"

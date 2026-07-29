@@ -398,7 +398,7 @@ to a sibling of the outer form, or use the synthetic-form path
 in `dispatchDixieDataForm` via `data-action`.
 
 **Audit step:** if a PR adds a new form inside a templ section,
-run `make lint-no-nested-forms` (added by #682) before opening
+run `just lint-no-nested-forms` (added by #682) before opening
 the PR. The lint fails on any nested form. The smoke probe
 `audit/smoke_no_nested_forms.mjs` (also added by #682) walks
 every page and asserts every submit button's
@@ -450,7 +450,7 @@ to remove the mutation. The lint target `scripts/lint-no-form-mutation.js`
 CI on any non-allowed mutation.
 
 **Audit step:** if a PR adds a new JS initializer that touches a
-form, run `make lint-no-form-mutation` (added by #687) before
+form, run `just lint-no-form-mutation` (added by #687) before
 opening the PR. The lint fails on any form.action/method/enctype
 assignment outside the synthetic-form branch.
 
@@ -510,7 +510,7 @@ walks `frontend/**/*.js` and fails CI on any non-allowed
 `button.closest("form")` site.
 
 **Audit step:** if a PR adds a new code path that needs a form
-reference, run `make lint-no-form-mutation` (added by #687
+reference, run `just lint-no-form-mutation` (added by #687
 extended scope) before opening the PR. The lint fails on any
 branch that uses `button.closest("form")` without the
 `button.form` fallback.
@@ -560,7 +560,7 @@ find frontend -mindepth 1 -maxdepth 1 \( -name '_*' -o -name '.*' \)
 find frontend -name '_*'
 
 # Run the embed-tree sweep (the make target that wraps the probe):
-make verify-embed-tree
+just verify-embed-tree
 # R1: reparent-by-prefix — files actually excluded by //go:embed
 # R2: index-html-references-resolve — every <script src>/<link href>
 #     in frontend/index.html points to a real file
@@ -575,7 +575,7 @@ DixieData convention is `frontend/lib/`). The probe enforces
 the invariant at PR time.
 
 **Audit step:** if a PR adds a new frontend helper, run
-`make verify-embed-tree` (added by #686) before opening the
+`just verify-embed-tree` (added by #686) before opening the
 PR. The probe fails on:
 
 - A new `_`-prefixed or `.`-prefixed top-level dir under
@@ -597,7 +597,7 @@ PR. The probe fails on:
 
 **Related:**
 
-- #686 (umbrella child — `make verify-embed-tree` lint)
+- #686 (umbrella child — `just verify-embed-tree` lint)
 - `12f1834a` (the historical fix)
 - `docs/COMMON_BUGS.md` §8.6 (canonical class entry)
 - `docs/COMMON_BUGS.md` §8.5 (sibling: stale `.syso` from failed build)

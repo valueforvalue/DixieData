@@ -104,7 +104,7 @@ func TestPersonRecordRepo_WithBusyRetry(t *testing.T) {
 6. RED: write parity test (compares new path to legacy inline path on same fixture).
 7. GREEN: parity test passes (both paths produce identical results).
 8. Wire repo construction in app startup.
-9. `make verify-fresh-bake` + `make test` clean.
+9. `just verify-fresh-bake` + `just test-lint && go test -short ./...` clean.
 10. CHANGELOG bullet.
 11. Commit + push.
 
@@ -127,5 +127,5 @@ No new ADR. The seam decision is documented in #613 (the issue body). If slice 4
 ## Verification
 
 - `go test -short -count=1 ./internal/db/repo/... ./internal/records/...` — new tests pass; existing tests unchanged.
-- `make verify-fresh-bake` clean.
+- `just verify-fresh-bake` clean.
 - Manual smoke: `dixiedata-web` boots, browse page loads (exercises List), soldier detail page loads (exercises GetByID).

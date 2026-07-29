@@ -491,7 +491,7 @@ function Write-DixieDataDebugLauncher {
     #     without rebuilding (handy when reproducing a crash).
     #   - GOTRACEBACK=all gives a full stack on panic.
     # The launcher does NOT enable the race detector; that lives
-    # on the binary itself (make debug uses -gcflags=-N -l so a
+    # on the binary itself (just debug uses -gcflags=-N -l so a
     # debugger can attach; the race detector is added via
     # `make race` / wails build -race).
     $script = @'
@@ -516,7 +516,7 @@ if (-not (Test-Path $exePath)) {
 # .\Run-DixieData-Debug.ps1`.
 if (-not $env:GOTRACEBACK) { $env:GOTRACEBACK = "all" }
 if (-not $env:DIXIEDATA_DEVTOOLS) { $env:DIXIEDATA_DEVTOOLS = "1" }
-# Issue #309: also default Debug Mode ON for `make debug` so the
+# Issue #309: also default Debug Mode ON for `just debug` so the
 # new dev badge (bottom-right corner) appears without the user
 # having to toggle it in Settings first. appshell seeds its
 # debugMode flag from this env var; the existing 🐞 Debug
@@ -529,7 +529,7 @@ if (-not $env:DIXIEDATA_DEBUG) { $env:DIXIEDATA_DEBUG = "1" }
 # noise.
 if (-not $env:DIXIEDATA_LOG_TO_STDERR) { $env:DIXIEDATA_LOG_TO_STDERR = "1" }
 # Allow the user to attach a Go debugger on a fixed port. The
-# binary's symbols are intact (make debug uses -gcflags=-N -l)
+# binary's symbols are intact (just debug uses -gcflags=-N -l)
 # so dlv attach --pid <pid> works after the process is up.
 if (-not $env:DIXIEDATA_WAIT_FOR_DEBUGGER) { $env:DIXIEDATA_WAIT_FOR_DEBUGGER = "0" }
 
