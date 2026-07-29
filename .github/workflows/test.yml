@@ -201,6 +201,21 @@ jobs:
           just lint-js-init-guards-test
         timeout-minutes: 2
 
+      # Templ invoker-resolve lint (issue #687). Walks every
+      # .templ file for invoker URLs (form action, data-action,
+      # hx-get/post/put/patch/delete, Sprintf templates) and
+      # asserts each one resolves to a route registered in
+      # internal/appshell/routes.go (or matches the allowlist).
+      # Catches the template-split button URL drift class
+      # (fixes 69eb735f + 266db08c). Companion probe to the
+      # orphan-handlers audit probe (inverse direction).
+      - name: Templ invoker-resolve lint (issue #687)
+        shell: bash
+        run: |
+          just lint-button-actions-resolve-strict
+          just lint-button-actions-resolve-test
+        timeout-minutes: 2
+
       # UX microcopy lint (issue #561). Static source scan over
       # every .templ file under internal/templates/** that catches
       # the three rule classes documented in
