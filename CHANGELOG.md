@@ -9,6 +9,23 @@ Release dates are the commit date of the tagged release. Internal refactors
 that do not change user-visible behavior live under `### Maintenance` so
 the Added / Changed / Fixed / Removed lists stay scannable.
 
+## [Unreleased]
+
+### Maintenance
+
+- **ci: dispatcher patch-method regression gate wired (#683).** The
+  6-assertion source-scan probe `audit/dispatcher_patch_method.test.mjs`
+  (the body-stripping workarounds for the Wails-WebView2 PATCH /
+  FormData quirks from #428) is now wired into the PR-time gate via
+  `just lint-dispatcher-patch-method` + `.github/workflows/test.yml`.
+  A future refactor that drops either workaround fails the CI build
+  with a clear assertion message. Mirrored on the Go side by
+  `TestRequestMethodOverride_PreservesBody` in `internal/appshell/
+  app_test.go`, which pins the chi-router-side behavior: POST requests
+  with `X-HTTP-Method-Override: PATCH` rewrite to PATCH while the body
+  round-trips intact through `ParseForm`. Cross-references `docs/COMMON_BUGS.md`
+  §3.8 (regression-net block).
+
 ## v1.1.34 - Embed-Tree Regression Gate
 
 ### Maintenance

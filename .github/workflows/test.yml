@@ -172,6 +172,21 @@ jobs:
           just lint-htmx-guard-test
         timeout-minutes: 5
 
+      # Dispatcher patch-method regression net (issue #683). Pins
+      # the Wails-WebView2 body-stripping workarounds in
+      # dispatchDixieDataForm (PATCH/PUT/DELETE → POST +
+      # X-HTTP-Method-Override, FormData → URLSearchParams). The
+      # 7-assertion source-scan probe catches a future refactor
+      # that drops either workaround, complemented by
+      # TestRequestMethodOverride_PreservesBody on the Go side.
+      # Cheap (~1s); runs on every PR via the npm/Node 20
+      # toolchain already configured above.
+      - name: Dispatcher patch-method regression net (issue #683)
+        shell: bash
+        run: |
+          just lint-dispatcher-patch-method
+        timeout-minutes: 2
+
       # UX microcopy lint (issue #561). Static source scan over
       # every .templ file under internal/templates/** that catches
       # the three rule classes documented in

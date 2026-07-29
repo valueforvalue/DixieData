@@ -1123,6 +1123,18 @@ workarounds.
 2. Does the Wails-runtime gate check both `requestUrl` AND `window.location.hostname`?
 3. Run `node audit/dispatcher_patch_method.test.mjs` — all 7 assertions must pass
 
+**Regression net (issue #683):**
+- `audit/dispatcher_patch_method.test.mjs` (6 assertions) is wired
+  into `.github/workflows/test.yml` via the
+  `just lint-dispatcher-patch-method` recipe. The CI gate fires
+  on every PR; a future refactor that drops either Wails-runtime
+  workaround fails the build with a clear assertion message.
+- The Go-side mirror `TestRequestMethodOverride_PreservesBody`
+  in `internal/appshell/app_test.go` pins that the
+  `requestMethodOverride` middleware delivers the form body
+  intact to the rewritten-method handler — the chi-router-side
+  counterpart of the dispatcher test.
+
 ### 3.9 JS-side `form.action` mutation — JS clobbers the server-rendered URL after init (#689, priority:high, target:rc)
 
 **Note:** §3.8 documents `form.action` being used as a read-side

@@ -159,6 +159,21 @@ test-lint:
     just lint-no-nested-forms-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
+
+# Issue #683: dispatchDixieDataForm body-stripping regression
+# net (issue #428, AGENTS.md §Wails runtime hazards, quirks
+# 1 + 2). Two workarounds live in the dispatcher:
+#   1. PATCH/PUT/DELETE → POST + X-HTTP-Method-Override when
+#      the request is going to wails.localhost. Plain-Chromium
+#      requests (audit harness) keep the real PATCH so the
+#      Playwright probes still see the genuine method.
+#   2. FormData → URLSearchParams.toString() so the Wails asset
+#      server delivers the body to the Go handler.
+# Both fixes are pinned by this 7-assertion probe; future
+# refactors that drop a workaround fail the probe at editor
+# time. Wired into CI by test.yml as a PR-time gate.
+lint-dispatcher-patch-method:
+    node audit/dispatcher_patch_method.test.mjs
 lint-typecheck-augmentations-test:
     node --test audit/typecheck_augmentations.test.mjs
 lint-no-bare-catch:
@@ -196,7 +211,7 @@ lint-runtime-microcopy-test:
     node audit/smoke_runtime_microcopy.test.mjs
 
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test lint-dispatcher-patch-method
 
 tune:
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"
