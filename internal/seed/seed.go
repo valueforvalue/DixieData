@@ -438,7 +438,33 @@ func Generate(options Options) (Summary, error) {
 		}
 	}
 
+	// Stamp the test identity so the running app's
+	// IdentitySetupRequired() returns false. Audit smokes seed via
+	// seed-data (not via /setup), so the seed must leave the
+	// archive in the same post-setup state.
+	if err := finalizeIdentity(database); err != nil {
+		return Summary{}, fmt.Errorf("finalize identity: %w", err)
+	}
+
 	return summary, nil
+}
+
+// finalizeIdentity stamps the test identity (Test Researcher, 1990)
+// after the seed completes. Without this, the running app's
+// IdentitySetupRequired() returns true and the user is sent to
+// /setup on first navigation -- a regression that broke every
+// smoke probe that hits a soldier-bearing page without first
+// walking the /setup wizard. Issue #700 smokes seed via
+// seed-data, not via /setup; the seed must leave the archive in
+// the same state /setup would have.
+//
+// The identity is fixed (not random) so the seeded soldiers' audit
+// fields (created_by, updated_by) are deterministic across runs --
+// the gold-master fixture (cmd/gold-master) and the smoke probes
+// share the same prefix.
+func finalizeIdentity(database *db.DB) error {
+	_, err := database.ConfigureUserIdentity("Test", "Smoke", "Researcher", 1990, db.IdentityForceOverwrite())
+	return err
 }
 
 func normalizeOptions(options Options) Options {

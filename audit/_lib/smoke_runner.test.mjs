@@ -194,7 +194,10 @@ await test('runProbe passes scratchDir that is a real (mkdtemp) directory', asyn
     },
   });
   assert.ok(observed, 'probeFn observed a scratchDir');
-  assert.ok(existsSync(observed), 'scratchDir must persist after probeFn returns');
+  // Note: as of the per-probe state-root fix, the runner
+  // auto-cleans the scratch tree after probeFn returns. The
+  // scratchDir-exists assertion is therefore inside probeFn
+  // (above). The post-return check is intentionally removed.
 });
 
 await test('registerCleanup hook runs after probeFn returns', async () => {

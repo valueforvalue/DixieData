@@ -35,7 +35,7 @@
 //   module honours that with ~200 LoC of plain ESM.
 
 import { chromium } from 'playwright';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -103,13 +103,17 @@ export const PROBE_SHAPE = {};
 // `{ok: false, error}`. The runner does not re-throw — the
 // aggregator collects one result per probe and continues.
 export async function runProbe({ name = '<unnamed>', probeFn = async () => ({ ok: true }) } = {}) {
-  // Per-probe scratch via mkdtempSync: each probe gets its
-  // own OS-managed unique tmpdir. Slice 2 keeps the dir
-  // around after probeFn returns so the migrated probe can
-  // inspect state if it needs to; future slices may rmSync
-  // in a per-probe cleanup hook.
-  const scratchDir = mkdtempSync(join(tmpdir(), `smoke-${name}-`));
-  const cleanups = [];
+  // Per-probe PARENT directory so the state root (which the
+  // server computes as `<parent-of-dataDir>/.dixiedata-state`)
+  // is also per-probe. Without this, every probe would share
+  // `<tmpdir>/.dixiedata-state` and a settings change from
+  // one probe (e.g. smoke_settings_appearance picking
+  // `toast-only` export surface) would leak into every
+  // subsequent probe on the same machine.
+  const parentDir = mkdtempSync(join(tmpdir(), `smoke-${name}-`));
+  const scratchDir = join(parentDir, '.dixiedata');
+  mkdirSync(scratchDir, { recursive: true });
+  const cleanups = [() => rmSync(parentDir, { recursive: true, force: true })];
 
   // The probeFn contract surface: opaque page (slice 3+
   // will replace {} with a real Playwright Page when

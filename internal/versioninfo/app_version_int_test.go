@@ -17,6 +17,8 @@
 //	N=29 (2026-07-28, rc/v1.1)  1.1.29-rc1 — v1.1.29-rc1.zip rebuild
 //	N=30 (2026-07-28, rc/v1.1)  1.1.30-rc2 — bug-fix RC2 (Wails cache reuse shipped stale binary)
 //	N=31 (2026-07-28, rc/v1.1)  1.1.31-rc3 — clean rebuild, re-bump so updater offers it
+//	N=32 (2026-07-28, rc/v1.1)  1.1.32-rc1 — data-method elimination across all forms + buttons (issue #676 follow-up, commit 92fb264c)
+//	N=33 (2026-07-30, rc/v1.1)  1.1.33-rc1 — include_tags checkbox auto-submit wiring (issue #705 fix, commit 146ea1b1) + tier-2/3 audit probes + class 3/5/9 regression nets (commits 532af5d, 67b165b, e5a97e3)
 //
 // Going forward, the slice-2 CI gate in
 // .github/workflows/test.yml enforces a +1 bump on every
@@ -33,12 +35,16 @@ package versioninfo
 import "testing"
 
 func TestCurrentAppVersionIntReflectsPostCutoverWork(t *testing.T) {
-	// rc/v1.1 RC1: N=32 bumps after method-override elimination
-	// across all form/button delete and update paths. The previous
-	// RC3 (N=31) shipped with silently-broken save + delete buttons
-	// in the Wails desktop build due to data-method + Clone issues.
-	if CurrentAppVersionInt != 32 {
-		t.Fatalf("CurrentAppVersionInt = %d; want 32 (v1.1.32-rc1)", CurrentAppVersionInt)
+	// rc/v1.1 RC1: N=33 bumps after the issue #705 include_tags
+	// checkbox auto-submit wiring (commit 146ea1b) + the issue #700
+	// tier-2 + tier-3 audit probe sweep (commits 532af5d, 67b165b)
+	// + the class 3/5/9 regression nets (commits e5a97e3 + 67b165b
+	// scanner-embed-tree + empty-body-dispatch). N=32 was the
+	// data-method elimination (issue #676 follow-up, commit
+	// 92fb264c); N=33 picks up the include_tags + tier-2/3 sweep
+	// on top of that.
+	if CurrentAppVersionInt != 33 {
+		t.Fatalf("CurrentAppVersionInt = %d; want 33 (v1.1.33-rc1)", CurrentAppVersionInt)
 	}
 }
 

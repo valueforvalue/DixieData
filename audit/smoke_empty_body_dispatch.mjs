@@ -74,14 +74,21 @@ async function main(ctx) {
   const soldierId = Number((firstHref || '').match(/\/soldiers\/(\d+)/)?.[1] || 0);
   if (!Number.isFinite(soldierId) || soldierId <= 0) throw new Error('cannot discover soldier id from /browse');
 
-  // Capture the outgoing fetch via page.route. The form
-  // action is /soldiers/{id}; we match the prefix.
+  // Capture the outgoing POST fetch via page.route. The form
+  // action is /soldiers/{id}; we match the prefix AND filter
+  // for POST (the page's initial GET to /soldiers/{id}/edit
+  // would also match the URL pattern; only the POST is the
+  // class 9 dispatch event).
   let capturedMethod = null;
   let capturedUrl = null;
   let capturedContentType = null;
   let capturedBody = null;
   await page.route(/\/soldiers\/\d+$/, async (route) => {
     const req = route.request();
+    if (req.method() !== 'POST') {
+      await route.continue();
+      return;
+    }
     capturedMethod = req.method();
     capturedUrl = req.url();
     capturedContentType = req.headers()['content-type'] || '';
