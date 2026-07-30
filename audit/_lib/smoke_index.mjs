@@ -125,6 +125,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /settings/data Initialize Local Archive confirmation-word guard + wipe round-trip',
   },
   {
+    name: 'share-exports',
+    file: 'audit/smoke_share_exports.mjs',
+    kind: 'playwright',
+    class: 6, // button-URL drift (data-action attrs on the 5 export buttons must resolve to /export/...)
+    note: 'issue #700 tier-2 -- /share/exports 5 export data-action buttons + static-archive form contract + include-tags form contract (round-trip blocked: #705 dead-UI)',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
