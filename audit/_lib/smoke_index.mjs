@@ -216,6 +216,13 @@ export const SURFACES = [
     note: 'class 9 regression net -- /soldiers/{id}/edit Save Changes fires a fetch with a non-empty body that includes the filled field values + hidden fields',
   },
   {
+    name: 'htmx-swap-rebind',
+    file: 'audit/smoke_htmx_swap_rebind.mjs',
+    kind: 'playwright',
+    class: 3, // htmx swap re-binding (the cb4ac34 fix -- swapHtmlIntoTarget must call htmx.process(target) for swapped-in hx-* attrs to fire)
+    note: 'class 3 regression net -- /browse pagination swap: page 1 -> Next -> swapped-in Prev pager link is htmx-wired and clickable (issue #706)',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
