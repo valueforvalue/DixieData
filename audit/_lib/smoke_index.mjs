@@ -83,6 +83,13 @@ export const SURFACES = [
     note: 'issue #700 tier-1 -- /events/{id}/edit save flow + tags + linked persons forms',
   },
   {
+    name: 'soldier-new',
+    file: 'audit/smoke_soldier_new.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class (soldier new form must avoid wrapping issue #689/691 hazards)
+    note: 'issue #700 tier-1 -- /soldiers/new save flow + /soldiers/{id} detail render + display_id readonly invariant',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
