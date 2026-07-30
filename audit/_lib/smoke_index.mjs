@@ -111,6 +111,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /settings/maintenance image-orphan + data-quality scan form contracts + fragment-swap round-trip',
   },
   {
+    name: 'settings-diagnostics',
+    file: 'audit/smoke_settings_diagnostics.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (debug-mode toggle contract is #685-protected but the visual path is a regression net)
+    note: 'issue #700 tier-2 -- /settings/diagnostics debug-mode toggle round-trip + bug-report form contract + feedback-log data-action',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
