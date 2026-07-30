@@ -160,6 +160,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /soldiers/{id}/research-log Add Research Task form contract + task create round-trip + per-task resolve data-action regression net',
   },
   {
+    name: 'initial-setup',
+    file: 'audit/smoke_initial_setup.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (first_name + middle_name + last_name + birth_year must all be present per BuildUserNodePrefix)
+    note: 'issue #700 tier-3 -- /setup first-launch wizard form contract + identity save round-trip + setupRequired-clear verification',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
