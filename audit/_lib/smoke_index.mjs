@@ -153,6 +153,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /settings/updates source_url save + Use Default + Check for Updates form contracts + round-trip',
   },
   {
+    name: 'research-log',
+    file: 'audit/smoke_research_log.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (research-log task create contract; title + evidence_type + notes field names must match handler)
+    note: 'issue #700 tier-2 -- /soldiers/{id}/research-log Add Research Task form contract + task create round-trip + per-task resolve data-action regression net',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
