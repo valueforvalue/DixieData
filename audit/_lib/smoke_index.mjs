@@ -97,6 +97,13 @@ export const SURFACES = [
     note: 'issue #700 tier-1 -- /events/new save flow + /events/{id} detail render + display_id readonly invariant',
   },
   {
+    name: 'settings-appearance',
+    file: 'audit/smoke_settings_appearance.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (settings appearance is the canonical #684 surface; field names must match handler)
+    note: 'issue #700 tier-2 -- /settings/appearance theme + export-surface save round-trip',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
