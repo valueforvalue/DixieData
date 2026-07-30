@@ -209,6 +209,13 @@ export const SURFACES = [
     note: 'issue #700 tier-3 -- /jobs/active quiet-state 204 + live export triggers enqueueExport -> /jobs/{id} redirect + page renders + back-link to /share',
   },
   {
+    name: 'empty-body-dispatch',
+    file: 'audit/smoke_empty_body_dispatch.mjs',
+    kind: 'playwright',
+    class: 9, // empty-body dispatch (issue #691 -- body-construction uses raw closest() instead of the resolved form)
+    note: 'class 9 regression net -- /soldiers/{id}/edit Save Changes fires a fetch with a non-empty body that includes the filled field values + hidden fields',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
@@ -235,5 +242,12 @@ export const SURFACES = [
     kind: 'scanner',
     class: 2, // handler-without-invoker class (the "handler returns 200 but renders nothing" bug class)
     note: 'discover_orphan_handlers -- every registered route must have at least one templ/data-action invoker',
+  },
+  {
+    name: 'scanner-embed-tree',
+    file: 'audit/verify_embed_tree.mjs',
+    kind: 'scanner',
+    class: 5, // embed asset skip (issue #686; `//go:embed frontend` skips `_`/`.` prefixed files)
+    note: 'verify_embed_tree -- every frontend asset referenced by live HTML is reachable via the go:embed directive',
   },
 ];
