@@ -139,6 +139,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /review-queue empty-state + 2 NeedsReview entries + bulk-action form contract + Mark-as-Resolved data-action regression net',
   },
   {
+    name: 'tags',
+    file: 'audit/smoke_tags.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (the rename / merge / delete forms on /tags must agree with handlers; survivor_id exclusion is the canonical #282 contract)
+    note: 'issue #700 tier-2 -- /tags rename + merge-survivor-picker + delete form contracts + rename + merge round-trip',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
