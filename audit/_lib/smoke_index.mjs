@@ -132,6 +132,27 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /share/exports 5 export data-action buttons + static-archive form contract + include-tags form contract (round-trip blocked: #705 dead-UI)',
   },
   {
+    name: 'share-queue',
+    file: 'audit/smoke_share_queue.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (the subset-export form action URL pattern is the canonical regression net)
+    note: 'issue #700 tier-2 -- /share/queue empty-state + staged-rows + bulk-export form contract + per-row Remove round-trip',
+  },
+  {
+    name: 'share-imports',
+    file: 'audit/smoke_share_imports.mjs',
+    kind: 'playwright',
+    class: 6, // button-URL drift (3 import data-action buttons must resolve to /import/...)
+    note: 'issue #700 tier-2 -- /share/imports 3 import data-action buttons + backup data-confirm',
+  },
+  {
+    name: 'share-sync',
+    file: 'audit/smoke_share_sync.mjs',
+    kind: 'playwright',
+    class: 6, // button-URL drift (10 Google Integration data-action buttons must resolve to /integrations/google/...)
+    note: 'issue #700 tier-2 -- /share/sync 10 Google Integration data-action buttons + Unsync data-confirm + status region',
+  },
+  {
     name: 'review-queue-bulk',
     file: 'audit/smoke_review_queue_bulk.mjs',
     kind: 'playwright',
@@ -179,6 +200,13 @@ export const SURFACES = [
     kind: 'playwright',
     class: 1, // /jobs/active 204 in quiet state is a load-bearing contract for the layout progress-slot poll
     note: 'issue #700 tier-3 -- /jobs/active empty-state 204 + /jobs/{id} crash-resistance on non-existent + malformed IDs',
+  },
+  {
+    name: 'jobs-active',
+    file: 'audit/smoke_jobs_active.mjs',
+    kind: 'playwright',
+    class: 1, // /jobs/{id} live-render regression net (the handler chain is a load-bearing contract)
+    note: 'issue #700 tier-3 -- /jobs/active quiet-state 204 + live export triggers enqueueExport -> /jobs/{id} redirect + page renders + back-link to /share',
   },
   {
     name: 'scanner-nested-forms',
