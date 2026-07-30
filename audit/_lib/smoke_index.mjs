@@ -62,6 +62,13 @@ export const SURFACES = [
     note: 'issue #700 tier-1 -- /calendar month nav + day click + month export',
   },
   {
+    name: 'browse',
+    file: 'audit/smoke_browse.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class (filters form + bulk toolbar)
+    note: 'issue #700 tier-1 -- /browse filter drawer + sort + row select + reset',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
