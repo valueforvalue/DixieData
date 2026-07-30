@@ -69,6 +69,13 @@ export const SURFACES = [
     note: 'issue #700 tier-1 -- /browse filter drawer + sort + row select + reset',
   },
   {
+    name: 'article-new',
+    file: 'audit/smoke_article_new.mjs',
+    kind: 'playwright',
+    class: 4, // nested-form regression class
+    note: 'issue #700 tier-1 -- /articles/new save flow + /articles/{id} detail render',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
