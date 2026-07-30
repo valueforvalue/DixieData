@@ -118,6 +118,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /settings/diagnostics debug-mode toggle round-trip + bug-report form contract + feedback-log data-action',
   },
   {
+    name: 'settings-data',
+    file: 'audit/smoke_settings_data.mjs',
+    kind: 'playwright',
+    class: 8, // class 8 in spirit -- the .dixiedata base-name check is the operational guard; a future refactor that drops it is the regression
+    note: 'issue #700 tier-2 -- /settings/data Initialize Local Archive confirmation-word guard + wipe round-trip',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
