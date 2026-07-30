@@ -132,6 +132,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /share/exports 5 export data-action buttons + static-archive form contract + include-tags form contract (round-trip blocked: #705 dead-UI)',
   },
   {
+    name: 'review-queue-bulk',
+    file: 'audit/smoke_review_queue_bulk.mjs',
+    kind: 'playwright',
+    class: 6, // button-URL drift (the per-row Mark-as-Resolved data-action URL must include /review/resolve?context=queue -- issue #248 fix regression net)
+    note: 'issue #700 tier-2 -- /review-queue empty-state + 2 NeedsReview entries + bulk-action form contract + Mark-as-Resolved data-action regression net',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
