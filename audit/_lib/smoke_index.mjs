@@ -167,6 +167,20 @@ export const SURFACES = [
     note: 'issue #700 tier-3 -- /setup first-launch wizard form contract + identity save round-trip + setupRequired-clear verification',
   },
   {
+    name: 'recovery',
+    file: 'audit/smoke_recovery.mjs',
+    kind: 'playwright',
+    class: 1, // pendingRecovery is the canonical regression net -- a guard regression would let a broken update proceed past the recovery gate
+    note: 'issue #700 tier-3 -- /recovery healthy-state guard (303 -> /calendar) + no-render-of-recovery-markup verification',
+  },
+  {
+    name: 'jobs-status',
+    file: 'audit/smoke_jobs_status.mjs',
+    kind: 'playwright',
+    class: 1, // /jobs/active 204 in quiet state is a load-bearing contract for the layout progress-slot poll
+    note: 'issue #700 tier-3 -- /jobs/active empty-state 204 + /jobs/{id} crash-resistance on non-existent + malformed IDs',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
