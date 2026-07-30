@@ -104,6 +104,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /settings/appearance theme + export-surface save round-trip',
   },
   {
+    name: 'settings-maintenance',
+    file: 'audit/smoke_settings_maintenance.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (settings subpages are the canonical #684 surface; form actions + field names must match handlers)
+    note: 'issue #700 tier-2 -- /settings/maintenance image-orphan + data-quality scan form contracts + fragment-swap round-trip',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
