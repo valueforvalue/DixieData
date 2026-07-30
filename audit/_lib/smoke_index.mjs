@@ -146,6 +146,13 @@ export const SURFACES = [
     note: 'issue #700 tier-2 -- /tags rename + merge-survivor-picker + delete form contracts + rename + merge round-trip',
   },
   {
+    name: 'settings-updates',
+    file: 'audit/smoke_settings_updates.mjs',
+    kind: 'playwright',
+    class: 2, // form-contract drift (settings update panel is the canonical #684 surface for fragment-swap + field name agreement)
+    note: 'issue #700 tier-2 -- /settings/updates source_url save + Use Default + Check for Updates form contracts + round-trip',
+  },
+  {
     name: 'scanner-nested-forms',
     file: 'audit/lint_no_nested_forms.mjs',
     kind: 'scanner',
