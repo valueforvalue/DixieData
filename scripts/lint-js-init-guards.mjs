@@ -53,6 +53,7 @@ const INITIALIZERS = [
   { name: 'initializeImagePicker', file: 'frontend/app.js', fnDecl: 'function initializeImagePicker' },
   { name: 'initializeArticleImagePasteDrop', file: 'frontend/app.js', fnDecl: 'function initializeArticleImagePasteDrop' },
   { name: 'initializeImageUpload', file: 'frontend/app.js', fnDecl: 'function initializeImageUpload' },
+  { name: 'initializeShareIncludeTags', file: 'frontend/app.js', fnDecl: 'function initializeShareIncludeTags' },
   { name: 'initializeArticlePreview', file: 'frontend/app.js', fnDecl: 'function initializeArticlePreview' },
 ];
 

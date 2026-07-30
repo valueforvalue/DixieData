@@ -4323,6 +4323,7 @@ function serializeDraftFields(form) {
     initializeImagePicker();
     initializeArticleImagePasteDrop();
     initializeImageUpload();
+    initializeShareIncludeTags();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -6724,6 +6725,50 @@ function onPrintRecordsFragmentReady(modal) {
     }
   }
 
+  
+  
+  
+  
+  
+  /**
+   * Wire the "Include tags" checkbox on /share/exports so the
+   * underlying form auto-submits on change. The form has
+   * data-dixie-submit="true" data-reload-on-success="true" but
+   * NO <button type="submit"> -- the templ render only exposes
+   * the checkbox + a hidden include_tags=0 sibling. Without this
+   * wiring (issue #705), toggling the checkbox does nothing
+   * observable: the form never submits, archive_meta.include_tags
+   * is never written, and the next shared-archive export ignores
+   * the user's intent. The change handler calls form.requestSubmit()
+   * which routes through the standard data-dixie-submit dispatcher
+   * (the same path used by clicking a Save button). Each input
+   * carries a per-element __shareIncludeTagsWired guard so a
+   * subsequent initializeDynamicContent pass on the reloaded
+   * page does not double-wire. Mirrors the __articlePreviewWired
+   * / __inventoryChartPainted sentinel pattern.
+   */
+  function initializeShareIncludeTags() {
+    const inputs = document.querySelectorAll("input[data-share-include-tags]");
+    for (const input of inputs) {
+      if (!(input instanceof HTMLInputElement)) continue;
+      if (input.__shareIncludeTagsWired === true) continue;
+      input.__shareIncludeTagsWired = true;
+      input.addEventListener("change", () => {
+        const form = input.closest("form");
+        if (!(form instanceof HTMLFormElement)) return;
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          // Older browsers (pre-Chromium 76) lack requestSubmit;
+          // .submit() bypasses the submit event so the data-dixie-submit
+          // dispatcher will not intercept -- acceptable fallback for
+          // a non-critical toggle on a non-IE-supporting surface.
+          form.submit();
+        }
+      });
+    }
+  }
+
   function initializeArticleImagePasteDrop() {
     const textarea = document.getElementById("article-body");
     if (!(textarea instanceof HTMLTextAreaElement)) return;
@@ -8200,6 +8245,7 @@ async function refreshShareQueuePresetsPage(panel) {
     installShareQueueGlobals();
     updateShareQueuePill(readShareQueue());
     initializeImageUpload();
+    initializeShareIncludeTags();
     // Issue #583 slice 3: paint the Activity metrics SVG line
     // graph into data-inventory-metrics-svg-host and wire the
     // legend chips. Idempotent -- the SVG host is checked for

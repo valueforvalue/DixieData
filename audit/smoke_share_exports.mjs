@@ -113,6 +113,24 @@ async function main(ctx) {
   record('share-exports-include-tags-hidden-zero-renders', (await page.locator('input[type="hidden"][name="include_tags"][value="0"]').count()) >= 1, {});
   record('share-exports-include-tags-checkbox-default-unchecked', await page.locator('input[name="include_tags"][value="1"]').isChecked().then((v) => !v).catch(() => false), {});
 
+  // Round-trip: toggle the checkbox ON, expect the auto-submit
+  // wiring (issue #705 fix) to fire the underlying form, server
+  // stores archive_meta.include_tags=true, and the page reloads
+  // with the checkbox now checked.
+  await page.locator('input[name="include_tags"][value="1"]').check();
+  await page.waitForResponse((r) => /\/share\/export-options/.test(r.url()) && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
+  // The form has data-reload-on-success="true"; the dispatcher
+  // reloads after a 200 with no redirect header. Wait briefly
+  // for the re-render to settle, then re-read the checkbox state.
+  await new Promise((r) => setTimeout(r, 600));
+  record('share-exports-include-tags-toggle-on-round-trip', await page.locator('input[name="include_tags"][value="1"]').isChecked().catch(() => false), {});
+
+  // Toggle OFF: same flow, expect checkbox to uncheck on re-render.
+  await page.locator('input[name="include_tags"][value="1"]').uncheck();
+  await page.waitForResponse((r) => /\/share\/export-options/.test(r.url()) && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
+  await new Promise((r) => setTimeout(r, 600));
+  record('share-exports-include-tags-toggle-off-round-trip', !(await page.locator('input[name="include_tags"][value="1"]').isChecked().catch(() => true)), {});
+
   await browser.close().catch(() => {});
 
   const failed = results.filter((r) => !r.ok);
