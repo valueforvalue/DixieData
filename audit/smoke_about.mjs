@@ -38,8 +38,15 @@
 // http://127.0.0.1:8901).
 
 import { chromium } from 'playwright';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const BASE = process.env.DIXIEDATA_BASE || 'http://127.0.0.1:8901';
+// Issue #707 batch 3: replaced `process.env.DIXIEDATA_BASE ||
+// 'http://127.0.0.1:8901'` with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation) wins via
+// resolveBaseUrl; SMOKE_BASE_URL (CI mode) is also honored.
+const cfg = loadConfig();
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 async function expect(cond, msg, details) {
   if (!cond) {
@@ -453,7 +460,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Issue #707 batch 3: this probe used to call main() directly
+// + process.exit on the catch path. Now main() is wrapped in
+// runProbe({name, probeFn: main}) so the runner owns the
+// uniform {ok, steps} return contract + any future
+// per-probe cleanup hooks. Standalone invocation
+// (`node audit/smoke_about.mjs`) still works because
+// runProbe is callable directly.
+runProbe({ name: 'about', probeFn: main })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((err) => { console.error(err); process.exit(2); });

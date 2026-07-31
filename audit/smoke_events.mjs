@@ -67,11 +67,23 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { registerCleanup } from './_lib/cleanup.mjs';
 import { setFileChooserFixture } from './_lib/filechooser.mjs';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin as webBinResolver } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8773';
-const BASE = `http://127.0.0.1:${PORT}`;
+// Issue #707 batch 3: replaced hardcoded PORT = 8773 + manual
+// `http://127.0.0.1:${PORT}` with config.mjs. PROBE_PORT (set
+// by the aggregator's per-probe allocation) wins via
+// resolveBaseUrl; SMOKE_BASE_URL (CI mode) is also honored.
+// The cross-platform webBin() resolver replaces the hardcoded
+// Windows-only `build/bin/dixiedata-web.exe` path. The
+// legacy `cleanup.mjs::registerCleanup({proc, processNames})`
+// wrapper is dropped — runProbe owns server SIGTERM via
+// ctx.registerCleanup().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -191,16 +203,16 @@ async function teardown(page, eventIDs, personID) {
   void personID;
 }
 
-async function main() {
+async function main(ctx) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
-  const scratchDir = path.join(repoRoot, '.scratch', 'smoke-events');
-  const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
-
-  // Best-effort: ensure scratch dir is empty before we start.
-  try {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  } catch {}
+  // Issue #710: scratchDir now comes from ctx.scratchDir
+  // (the runner's per-probe mkdtemp) so concurrent probes
+  // don't collide on the hardcoded `.scratch/smoke-events`
+  // path. The runner's per-probe state root means local
+  // settings (theme, debug_mode, etc.) are isolated too.
+  const scratchDir = ctx.scratchDir;
+  const webBin = webBinResolver();
 
   // Seed the scratch dir via the existing seed-data tool.
   const seedProc = spawn(
@@ -224,7 +236,9 @@ async function main() {
       env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
     },
   );
-  registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
   proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
   proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
 
@@ -1556,14 +1570,18 @@ async function main() {
   console.log(`\n${pass} passed, ${fail} failed`);
   console.log(`events touched (created, then cleaned up): ${trackedEventIDs.length}`);
   console.log(`seeded person (created, then cleaned up): ${seededPersonID}`);
-  process.exit(fail === 0 ? 0 : 1);
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-// Wrap with runWithCleanup so the spawned dixiedata-web.exe is
-// killed even on Ctrl-C / uncaught exception. The function
-// returns the exit code we'd want, but we use process.exit
-// explicitly so a child-kill race can't leave us hanging.
-import('./_lib/cleanup.mjs').then(async ({ runWithCleanup }) => {
-  const code = await runWithCleanup(main);
-  process.exit(code === 0 ? 0 : code);
-});
+// Issue #707 batch 3: this probe used to call main() inside
+// the legacy `import('./_lib/cleanup.mjs').then(...)` wrapper
+// so the spawned binary was killed on Ctrl-C / fatal exit.
+// Now main() takes ctx from runProbe and returns {ok, steps};
+// runProbe handles the per-probe server SIGTERM via
+// ctx.registerCleanup() + scratchDir cleanup via its
+// mkdtemp removal. The legacy cleanup.mjs wrapper is gone.
+// Standalone invocation (`node audit/smoke_events.mjs`) still
+// works because runProbe is callable directly.
+runProbe({ name: 'events', probeFn: main })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((e) => { console.error('FATAL', e); process.exit(2); });
