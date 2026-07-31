@@ -71,13 +71,21 @@
 // scratchDir on PORT.
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 
-const PORT = 9993;
-const BASE_URL = process.env.BASE_URL || "";
-const BASE = BASE_URL || `http://127.0.0.1:${PORT}`;
-const OWN_SERVER = !BASE_URL;
+// Issue #710: replaced hardcoded PORT = 9993 + ad-hoc
+// BASE_URL resolution with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation, #707) wins; the
+// config's defaultPort (8774) is the fallback for standalone
+// runs. SMOKE_BASE_URL (CI mode, points at a server the
+// audit workflow started externally) is honored by
+// config.mjs's resolveBaseUrl().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg);
+const OWN_SERVER = !process.env.SMOKE_BASE_URL;
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

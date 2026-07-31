@@ -72,16 +72,22 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { registerCleanup } from './_lib/cleanup.mjs';
 import { setFileChooserFixture } from './_lib/filechooser.mjs';
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8774';
-const BASE = `http://127.0.0.1:${PORT}`;
+// Issue #710: replaced hardcoded PORT = 8774 + manual
+// `http://127.0.0.1:${PORT}` with config.mjs. PROBE_PORT
+// (set by the aggregator's per-probe allocation, #707)
+// wins; the config's defaultPort (8774) is the fallback
+// for standalone runs. SMOKE_BASE_URL (CI mode) is honored
+// by config.mjs's resolveBaseUrl().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -198,18 +204,18 @@ async function teardown(page, soldierIDs) {
   }
 }
 
-async function main() {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+async function main(ctx) {
+  // Issue #710: scratchDir now comes from ctx.scratchDir (the
+  // runner's per-probe mkdtemp) so concurrent probes don't
+  // collide on the hardcoded `.scratch/smoke-soldier-images`
+  // path. The runner's per-probe state root means local
+  // settings (theme, debug_mode, etc.) are isolated too — a
+  // side benefit of the migration.
+  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
-  const scratchDir = path.join(repoRoot, '.scratch', 'smoke-soldier-images');
+  const scratchDir = ctx.scratchDir;
   const webBinPath = webBin();
   const fixtureSrc = path.join(here, '_lib', 'fixtures', 'soldier-image.png');
-
-  try {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  } catch (_) {
-    // ignore
-  }
 
   if (!fs.existsSync(webBinPath)) {
     throw new Error(
@@ -243,7 +249,9 @@ async function main() {
       env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
     },
   );
-  registerCleanup({ proc, processNames: [path.basename(webBinPath)] });
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
   proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
   proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
 
@@ -730,12 +738,6 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
   } finally {
     await teardown(page, trackedSoldierIDs);
     await browser.close();
-
-    try {
-      fs.rmSync(scratchDir, { recursive: true, force: true });
-    } catch (_) {
-      // ignore
-    }
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
@@ -745,24 +747,15 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
   return { ok: fail === 0, steps: { pass, fail } };
 }
 
-import('./_lib/cleanup.mjs').then(async ({ runWithCleanup }) => {
-  // Issue #700 slice 2: this smoke now runs through the
-  // shared Playwright runner (audit/_lib/smoke_runner.mjs)
-  // instead of inlining its own server-spawn + chromium.launch
-  // + cleanup chain. The runner calls main() via the probeFn
-  // contract (returns {ok, ...} or throws) and the shared
-  // reporter emits the process exit code. The registerCleanup()
-  // bridge inside main() still works because cleanup.mjs
-  // exposes registerCleanup as a module-level singleton, and
-  // the runner's own runWithCleanup() is installed at the
-  // aggregator level (audit/smoke_aggregator.mjs). For this
-  // standalone invocation we still wrap in runWithCleanup so
-  // the spawned binary is killed on Ctrl-C / fatal exit.
-  await runWithCleanup(async () => {
-    const result = await runProbe({
-      name: 'soldier-images',
-      probeFn: main,
-    });
-    process.exit(result.ok ? 0 : 1);
-  });
+// Issue #710: the legacy cleanup.mjs wrapper is gone.
+// runProbe now owns server SIGTERM via the ctx.registerCleanup
+// hook main() registers, and the runner's mkdtemp removal
+// owns the scratch dir cleanup. The standalone invocation
+// path (node audit/smoke_soldier_images.mjs) still works
+// because runProbe is callable directly — no aggregator
+// required.
+const result = await runProbe({
+  name: 'soldier-images',
+  probeFn: main,
 });
+process.exit(result.ok ? 0 : 1);

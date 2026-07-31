@@ -34,8 +34,14 @@ import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
 import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8795';
-const BASE = `http://127.0.0.1:${PORT}`;
+// Issue #710: replaced hardcoded PORT = 8795 + ad-hoc BASE URL
+// with config.mjs. PROBE_PORT (set by the aggregator's per-probe
+// allocation, #707) wins; the config's defaultPort (8774) is
+// the fallback for standalone runs. SMOKE_BASE_URL (CI mode)
+// is honored by config.mjs's resolveBaseUrl().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 const WEB_BIN_PATH = webBin();
 
 if (!fs.existsSync(WEB_BIN_PATH)) {
