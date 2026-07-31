@@ -35,7 +35,7 @@ function surfacePath(file) {
   return isAbsolute(file) ? file : resolve(REPO_ROOT, file);
 }
 
-async function dispatchSurface(surface) {
+async function dispatchSurface(surface, index) {
   if (surface.kind === 'playwright') {
     // The migrated probe file is itself a runner script: it
     // spawns its own server + chromium and calls runProbe()
@@ -44,10 +44,17 @@ async function dispatchSurface(surface) {
     // isolated. stdout carries the per-step PASS/FAIL lines
     // from the probe; the exit code is the probe's pass/fail
     // tally (0 on success, 1 on any failed step).
+    //
+    // PROBE_PORT is allocated per probe from the config's
+    // portRangeBase (8774) + the probe's index in the SURFACES[]
+    // queue. Without unique ports the smoke server's bind() can
+    // fail on Windows when the previous probe's port is still in
+    // TIME_WAIT.
+    const port = 8774 + (index || 0);
     const result = spawnSync(
       process.execPath,
       [surfacePath(surface.file)],
-      { encoding: 'utf8', cwd: REPO_ROOT },
+      { encoding: 'utf8', cwd: REPO_ROOT, env: { ...process.env, PROBE_PORT: String(port) } },
     );
     return {
       name: surface.name,
@@ -108,13 +115,15 @@ async function dispatchSurface(surface) {
 
 async function main() {
   console.log(`Smoke runner: ${SURFACES.length} surface(s) queued.`);
+  let index = 0;
   for (const surface of SURFACES) {
     try {
-      const result = await dispatchSurface(surface);
+      const result = await dispatchSurface(surface, index);
       record(surface.name, !!result?.ok, result?.details || {});
     } catch (err) {
       record(surface.name, false, { error: err?.message || String(err) });
     }
+    index++;
   }
   const exitCode = renderSummary();
   writeJson(resolve('audit/smoke_summary.json'));

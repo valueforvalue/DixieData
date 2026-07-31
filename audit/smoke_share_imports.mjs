@@ -30,9 +30,11 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8797';
-const BASE = `http://127.0.0.1:${PORT}`;
+const cfg = loadConfig();
+const BASE = resolveBaseUrl(cfg);
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
 const WEB_BIN_PATH = webBin();
 if (!existsSync(WEB_BIN_PATH)) { console.error('missing', WEB_BIN_PATH); process.exit(2); }
 

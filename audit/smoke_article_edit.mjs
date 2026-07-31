@@ -79,6 +79,7 @@ import fs from 'node:fs';
 import { registerCleanup } from './_lib/cleanup.mjs';
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
 const PORT = process.env.PROBE_PORT || '8775';
 const BASE = `http://127.0.0.1:${PORT}`;

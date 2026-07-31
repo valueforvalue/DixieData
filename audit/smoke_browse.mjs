@@ -22,6 +22,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
 const PORT = process.env.PROBE_PORT || '8779';
 const BASE = `http://127.0.0.1:${PORT}`;
