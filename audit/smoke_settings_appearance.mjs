@@ -95,14 +95,29 @@ async function main(ctx) {
   await page.goto(`${BASE}/settings/appearance`, { waitUntil: 'networkidle' });
   await new Promise((r) => setTimeout(r, 300));
   await page.locator('input[name="export_surface"][value="toast-only"]').check({ force: true });
-  await Promise.all([
-    page.waitForURL(/\/settings\/appearance/, { timeout: 15_000 }).catch(() => null),
+  // Issue #700 follow-up: the prior pattern was
+  // `Promise.all([page.waitForURL(/\/settings\/appearance/, ...).catch(() => null), click])`
+  // followed by a second `page.goto /settings/appearance`. That
+  // raced with the dispatcher's programmatic navigation: the
+  // POST response was still in flight when the second goto fired,
+  // and the goto's GET fetched the page BEFORE the server had
+  // persisted the POSTed value to atomic — so the radio rendered
+  // with the previous default. waitForResponse pins the POST
+  // before the subsequent read, the same shape as
+  // smoke_soldier_images.mjs (issue #709).
+  const [exportPostResp] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/settings/export-surface') && r.request().method() === 'POST',
+      { timeout: 15_000 },
+    ).catch(() => null),
     page.locator('form[data-dixie-submit][action="/settings/export-surface"] button[type="submit"]').first().click({ timeout: 5_000 }),
   ]);
-  await page.goto(`${BASE}/settings/appearance`, { waitUntil: 'networkidle' });
-  await new Promise((r) => setTimeout(r, 300));
+  // Wait for the dispatcher's reload to settle so the page
+  // reflects the persisted value.
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => null);
+  await new Promise((r) => setTimeout(r, 200));
   const exportChecked = await page.locator('input[name="export_surface"][value="toast-only"]').isChecked().catch(() => false);
-  record('settings-appearance-export-surface-save-round-trip', exportChecked, { exportChecked, url: page.url() });
+  record('settings-appearance-export-surface-save-round-trip', exportChecked, { exportChecked, url: page.url(), exportPostStatus: exportPostResp?.status() });
 
   await browser.close().catch(() => {});
 
