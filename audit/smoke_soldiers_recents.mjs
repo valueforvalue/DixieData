@@ -37,10 +37,20 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { registerCleanup } from './_lib/cleanup.mjs';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin as webBinResolver } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8776';
-const BASE = `http://127.0.0.1:${PORT}`;
+// Issue #707 / #710: replaced hardcoded PORT = 8776 + manual
+// `http://127.0.0.1:${PORT}` with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation) wins; the config's
+// defaultPort (8774) is the fallback. SMOKE_BASE_URL is honored
+// via config.mjs's resolveBaseUrl(). The cross-platform webBin()
+// resolver replaces the hardcoded `build/bin/dixiedata-web.exe`
+// path (worked only on Windows).
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -160,11 +170,11 @@ function sourceScan(name, fn) {
   }
 }
 
-async function main() {
+async function main(ctx) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
-  const scratchDir = path.join(repoRoot, '.scratch', 'smoke-soldiers-recents');
-  const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
+  const scratchDir = ctx.scratchDir;
+  const webBinPath = webBinResolver();
   const soldierCardTempl = path.join(
     repoRoot,
     'internal',
@@ -173,15 +183,9 @@ async function main() {
   );
   const appJs = path.join(repoRoot, 'frontend', 'app.js');
 
-  try {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  } catch (_) {
-    // ignore
-  }
-
-  if (!fs.existsSync(webBin)) {
+  if (!fs.existsSync(webBinPath)) {
     throw new Error(
-      `dixiedata-web binary missing at ${webBin}; run \`just debug\` first`,
+      `dixiedata-web binary missing at ${webBinPath}; run \`just debug\` first`,
     );
   }
 
@@ -232,14 +236,16 @@ async function main() {
   }
 
   const proc = spawn(
-    webBin,
+    webBinPath,
     ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
     {
       cwd: repoRoot,
       env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
     },
   );
-  registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
   proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
   proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
 
@@ -357,13 +363,16 @@ async function main() {
   }
 
   console.log(`\nResults: ${pass} pass, ${fail} fail`);
-  if (fail > 0) {
-    process.exit(1);
-  }
-  process.exit(0);
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-main().catch((e) => {
-  console.error('fatal:', e);
-  process.exit(2);
-});
+// Issue #707 / #710: this probe used to call main() directly and
+// process.exit() itself. Now main() takes ctx from runProbe and
+// returns {ok, steps}; runProbe handles the spawn + scratch +
+// cleanup so the legacy `import './_lib/cleanup.mjs'.then(...)`
+// wrapper is gone. Standalone invocation (`node audit/smoke_
+// soldiers_recents.mjs`) still works because runProbe is callable
+// directly.
+runProbe({ name: 'soldiers-recents', probeFn: main })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((e) => { console.error('fatal:', e); process.exit(2); });

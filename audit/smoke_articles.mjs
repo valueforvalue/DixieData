@@ -43,52 +43,24 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { registerCleanup } from './_lib/cleanup.mjs';
-
-const PORT = process.env.PROBE_PORT || '8775';
-const BASE = `http://127.0.0.1:${PORT}`;
-// Issue #380: smoke_articles previously used a cold scratch dir
-// (.scratch/articles-smoke) which the first request redirected to
-// /setup (initial-setup wizard). That broke the pageerror spam
-// cascade AND the primary-nav-has-tags-link check (no /tags pill
-// pre-#380). Switch to the shared warm scratch dir (.scratch/webmode)
-// so the probe hits an initialized app and finds the Records
-// mega-menu trigger. Per audit harness convention (smoke_tags_nav.mjs
-// already uses .scratch/webmode).
-const SCRATCH = process.env.SCRATCH_DIR || 'C:/Development/DixieData/.scratch/webmode';
-const WEB_BIN = process.env.WEB_BIN || 'C:/Development/DixieData/build/bin/dixiedata-web.exe';
-
 import fs from 'node:fs';
-if (!fs.existsSync(WEB_BIN)) {
-  console.error('missing', WEB_BIN);
-  process.exit(2);
-}
-if (!fs.existsSync(SCRATCH)) {
-  fs.mkdirSync(SCRATCH, { recursive: true });
-}
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin as webBinResolver } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const server = spawn(WEB_BIN, ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', SCRATCH], {
-  stdio: ['ignore', 'pipe', 'pipe'],
-});
-server.stderr.on('data', () => {}); // swallow noise
-registerCleanup(() => {
-  try {
-    server.kill();
-  } catch (_) {}
-});
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function ready() {
-  for (let i = 0; i < 60; i++) {
-    try {
-      const r = await fetch(BASE + '/calendar');
-      if (r.ok) return;
-    } catch (_) {}
-    await wait(500);
-  }
-  throw new Error('server never came up');
-}
+// Issue #707 / #710: replaced hardcoded PORT = 8775 + manual
+// `http://127.0.0.1:${PORT}` with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation) wins; the config's
+// defaultPort (8774) is the fallback. SMOKE_BASE_URL is honored
+// via config.mjs's resolveBaseUrl(). The cross-platform webBin()
+// resolver replaces the hardcoded Windows-only
+// `build/bin/dixiedata-web.exe` path. The hardcoded
+// `C:/Development/DixieData/.scratch/webmode` scratch dir (which
+// leaked state across runs) is replaced by ctx.scratchDir so the
+// runner's per-probe mkdtemp gives this probe its own state root.
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -112,6 +84,8 @@ function record(name, ok, details = {}) {
   }
 }
 
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
 let Playwright = null;
 try {
   Playwright = await import('playwright');
@@ -120,7 +94,37 @@ try {
   process.exit(2);
 }
 
-try {
+async function main(ctx) {
+  const SCRATCH = ctx.scratchDir;
+  const WEB_BIN = webBinResolver();
+  if (!fs.existsSync(WEB_BIN)) {
+    console.error('missing', WEB_BIN);
+    process.exit(2);
+  }
+  if (!fs.existsSync(SCRATCH)) {
+    fs.mkdirSync(SCRATCH, { recursive: true });
+  }
+
+  const server = spawn(WEB_BIN, ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', SCRATCH], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  server.stderr.on('data', () => {}); // swallow noise
+  ctx.registerCleanup(() => {
+    try { server.kill(); } catch (_) {}
+  });
+
+  async function ready() {
+    for (let i = 0; i < 60; i++) {
+      try {
+        const r = await fetch(BASE + '/calendar');
+        if (r.ok) return;
+      } catch (_) {}
+      await wait(500);
+    }
+    throw new Error('server never came up');
+  }
+
+  try {
   await ready();
   await wait(2000);
 
@@ -748,14 +752,26 @@ try {
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
-  process.exit(fail === 0 ? 0 : 1);
+  return { ok: fail === 0, steps: { pass, fail } };
 } catch (e) {
   console.error('FATAL', e);
   console.error('last responses:', JSON.stringify(lastResponses.slice(-5), null, 2));
-  process.exit(2);
+  throw e;
 } finally {
   try {
     server.kill();
   } catch (_) {}
   await wait(500);
 }
+}
+
+// Issue #707 / #710: this probe used to run as a top-level script
+// (import ./cleanup.mjs + registerCleanup + process.exit at the
+// end of every branch). Now main(ctx) takes ctx from runProbe and
+// returns {ok, steps}; runProbe handles the spawn + scratch +
+// cleanup so the legacy cleanup.mjs wrapper is gone. Standalone
+// invocation (`node audit/smoke_articles.mjs`) still works because
+// runProbe is callable directly.
+runProbe({ name: 'articles', probeFn: main })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((e) => { console.error('fatal:', e); process.exit(2); });
