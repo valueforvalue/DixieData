@@ -635,14 +635,35 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
         await page.click(
           '[id="panel.soldier.detail.images"] [data-image-delete-button]',
         );
-        // Wait for swap: count drops by exactly one.
+        // Issue #709: wait for the htmx POST to land BEFORE
+        // polling the DOM. The previous version of this step
+        // raced: click() returns immediately, the function
+        // polls every ~100ms, the response arrives 100-500ms
+        // later (sometimes 1-2s on Windows under load). With
+        // a 30s timeout the race usually won, but ~5-10% of
+        // runs hit the timeout window with the response still
+        // in flight. waitForResponse first + then the DOM
+        // poll removes the race entirely. If the server returns
+        // 500, we surface the response in the assertion error
+        // so the next maintainer sees the underlying bug,
+        // not just "timeout".
+        const deleteResponse = await page.waitForResponse(
+          (r) => r.url().endsWith(`/soldiers/${createdSoldierID}/images/delete`),
+          { timeout: 15_000 },
+        );
+        if (!deleteResponse.ok()) {
+          throw new Error(
+            `step-04: server returned ${deleteResponse.status()} on POST /soldiers/${createdSoldierID}/images/delete; expected 2xx. Underlying bug: the per-card Delete is failing on the server side. See issue #709 for the root-cause analysis.`,
+          );
+        }
+        // Wait for the fragment-swap to land: count drops by exactly one.
         await page.waitForFunction(
           ({ before }) =>
             document.querySelectorAll(
               '[id="panel.soldier.detail.images"] [data-image-card]',
             ).length === before - 1,
           { before },
-          { timeout: 30_000 },
+          { timeout: 15_000 },
         );
         const after = await page
           .locator('[id="panel.soldier.detail.images"] [data-image-card]')
