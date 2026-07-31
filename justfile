@@ -155,14 +155,14 @@ lint-all-frontend:
     just lint-orphan-handlers
 
 # Aggregate test target: runs every node-based probe test suite.
-# Note: lint-orphan-handlers-test is intentionally NOT wired here
-# because the unit test has pre-existing failures (audit/
-# discover_orphan_handlers.test.mjs expects older linter output
-# that was rewritten since). Wired into the triplet for parity
-# with the other 3 scanners so individual contributors can run
-# `just lint-orphan-handlers-test` for triage, but excluded from
-# the aggregate test-lint gate until the unit test is repaired.
-# Tracked as a follow-up issue.
+# Issue #702 closed: lint-orphan-handlers-test is wired in. The
+# pre-#700 unit test was broken (expected stale probe output +
+# a regex that dropped the drive-letter colon). The 4de0ee4
+# rewrite now pins the current contract: 6 assertions covering
+# the summary header lines, the invoker count, the --strict
+# exit-code branch, and the positive-coverage tripwires for
+# /soldiers/{id}/tags (issue #256 fix) + /export/json
+# (canonical "shipped but invisible" regression net).
 test-lint:
     just lint-htmx-guard-test
     just lint-bake-bootstrap-test
@@ -171,6 +171,7 @@ test-lint:
     just lint-js-init-guards-test
     just lint-button-actions-resolve-test
     just lint-so-reuseaddr-test
+    just lint-orphan-handlers-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 
