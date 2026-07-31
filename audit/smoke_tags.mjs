@@ -120,14 +120,26 @@ async function main(ctx) {
   record('tags-merge-picker-has-survivor-option', !!survivorValue && survivorValue !== '', { survivorValue });
   if (survivorValue) {
     await page.locator(`tr#tag-row-${sourceTagId} select[name="survivor_id"]`).selectOption(survivorValue);
-    await Promise.all([
-      page.waitForURL(/\/tags(\b|$|\?)/, { timeout: 15_000 }).catch(() => null),
+    // Issue #714 (same race shape as #709 + #713):
+    // `Promise.all([waitForURL(/tags/, ...).catch(() => null), click])`
+    // resolves before the POST response lands (URL is already at
+    // /tags) and the subsequent defensive `page.goto /tags`
+    // races with `dispatchDixieDataForm`'s programmatic navigation
+    // -- the second goto's GET fetches the page BEFORE the server
+    // has persisted the merge to the database, so the source row
+    // re-renders as still-present. waitForResponse pins the POST
+    // before the row-count read.
+    const [mergePostResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/tags/') && r.url().includes('/merge') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+      ).catch(() => null),
       page.locator(`tr#tag-row-${sourceTagId} form[action*="/merge"] button[type="submit"]`).first().click({ timeout: 5_000 }),
     ]);
-    await page.goto(`${BASE}/tags`, { waitUntil: 'networkidle' });
-    await new Promise((r) => setTimeout(r, 400));
+    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => null);
+    await new Promise((r) => setTimeout(r, 200));
     const sourceRowGone = (await page.locator(`tr#tag-row-${sourceTagId}`).count()) === 0;
-    record('tags-merge-round-trip-removes-source-row', sourceRowGone, { sourceTagId });
+    record('tags-merge-round-trip-removes-source-row', sourceRowGone, { sourceTagId, mergePostStatus: mergePostResp?.status() });
   }
 
   await browser.close().catch(() => {});
