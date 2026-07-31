@@ -13,8 +13,31 @@
 // silently break every form with a name="action" submit button.
 
 import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const BASE = process.env.BASE || 'http://127.0.0.1:8900';
+// Issue #697: this test used to assume the caller had already
+// started a web binary on port 8900 (no spawn in the test).
+// It now spawns its own server on a per-probe mkdtemp scratch
+// dir, mirroring the smoke_soldier_images.mjs pattern. The
+// test is runnable standalone (`node audit/dispatcher_action_
+// getter.test.mjs`) or via the runner.
+//
+// BASE is no longer hardcoded to port 8900; the per-probe
+// port allocation in the runner (or PROBE_PORT for
+// standalone) wins via resolveBaseUrl().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
+const WEB_BIN_PATH = webBin();
+
 let pass = 0;
 let fail = 0;
 const failures = [];
@@ -136,20 +159,51 @@ async function run() {
   }
 }
 
-async function main() {
+async function main(ctx) {
+  // Issue #697: spawn a web binary on the per-probe mkdtemp
+  // scratch dir (the runner's ctx.scratchDir is a sibling
+  // of .dixiedata so the server's state root is also
+  // per-probe — no cross-test state contamination).
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
+  if (!fs.existsSync(WEB_BIN_PATH)) {
+    console.error(`missing ${WEB_BIN_PATH} — run \`just web\` first`);
+    process.exit(2);
+  }
+  const scratchDir = ctx.scratchDir;
+  const proc = spawn(
+    WEB_BIN_PATH,
+    ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
+    },
+  );
+  proc.stderr.on('data', () => {}); // swallow server noise
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
+  // Wait for the server to come up (max 10s).
+  for (let i = 0; i < 40; i++) {
+    try {
+      const r = await fetch(`${BASE}/`);
+      if (r.status < 500) break;
+    } catch {}
+    await sleep(250);
+  }
+  await sleep(500); // let the page JS + htmx listeners initialize
+
   console.log(`\n[dispatcher-action-getter] Browser probe against ${BASE}`);
   await run();
   console.log(`\n[dispatcher-action-getter] Result: ${pass} pass / ${fail} fail`);
-  if (fail > 0) {
-    console.log('\nFailures:');
-    for (const f of failures) {
-      console.log(`  - ${f.name}: ${JSON.stringify(f.detail)}`);
-    }
-    process.exit(1);
-  }
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-main().catch((err) => {
-  console.error('dispatcher_action_getter.test.mjs crashed:', err);
-  process.exit(2);
-});
+// Issue #697: this test used to call main() directly +
+// process.exit on every branch. Now main(ctx) takes ctx
+// from runProbe and returns {ok, steps}; runProbe handles
+// the per-probe server SIGTERM via ctx.registerCleanup()
+// + scratchDir cleanup via its mkdtemp removal.
+runProbe({ name: 'dispatcher-action-getter', probeFn: main })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((err) => { console.error('FATAL', err); process.exit(2); });

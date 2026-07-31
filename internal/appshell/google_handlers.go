@@ -54,8 +54,19 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	backupPath := filepath.Join(tempDir, backupArchiveName(time.Now()))
 
-	var jobID string
-	jobID = a.jobs.Start("google_drive_backup", func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #695: the worker reads outer-scope `jobID` to call
+	// SetResult. The go-statement's happens-before is enough
+	// in practice, but the audit/discover_closure_race probe
+	// flags the pattern (it can't tell that the read is
+	// safe). Use the channel-handoff shape (#419 fix): the
+	// outer code sends the ID into the channel after Start
+	// returns; the worker receives it before it needs the
+	// value. The channel send happens-before the receive,
+	// so the worker observes the assigned ID without a data
+	// race and the probe no longer flags this as a #419-pattern
+	// closure-capture race.
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start("google_drive_backup", func(ctx context.Context, p *jobs.Progress) error {
 		// tempDir cleanup MUST run after the worker, not via defer
 		// in the request goroutine which returns immediately.
 		defer os.RemoveAll(tempDir)
@@ -77,7 +88,7 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		// beyond drive.DriveFileScope, but the synthesized Sheets /
 		// Drive URL fallback in googleDriveUploadResult covers the
 		// common cases (see integrations/google_service.go).
-		a.jobs.SetResult(jobID, jobs.JobResult{
+		a.jobs.SetResult(<-jobIDCh, jobs.JobResult{
 			RemoteURL:  uploaded.WebViewLink,
 			RemoteName: uploaded.Name,
 			RemoteKind: "drive",
@@ -85,6 +96,7 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		p.Set(100, fmt.Sprintf("Uploaded %d soldiers, %d images.", manifest.Soldiers, manifest.Images))
 		return nil
 	})
+	jobIDCh <- jobID
 	setInfoToastHeader(w, "Google Drive upload started…")
 	// Option C: dispatchDixieDataForm in frontend/app.js reads
 	// X-DixieData-Redirect and navigates via window.location.assign.
@@ -105,8 +117,10 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 	}
 	csvPath := filepath.Join(tempDir, "dixiedata-export.csv")
 
-	var jobID string
-	jobID = a.jobs.Start("google_sheets_export", func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #695: see handleGoogleBackup above for the channel-
+	// handoff shape + rationale.
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start("google_sheets_export", func(ctx context.Context, p *jobs.Progress) error {
 		defer os.RemoveAll(tempDir)
 
 		p.Set(10, "Building CSV")
@@ -125,7 +139,7 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		// helper in google_service.go, which synthesises a Sheets
 		// fallback URL when Drive omits WebViewLink for
 		// application/vnd.google-apps.spreadsheet MIME types.
-		a.jobs.SetResult(jobID, jobs.JobResult{
+		a.jobs.SetResult(<-jobIDCh, jobs.JobResult{
 			RemoteURL:  uploaded.WebViewLink,
 			RemoteName: uploaded.Name,
 			RemoteKind: "sheets",
@@ -133,6 +147,7 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		p.Set(100, "Google Sheet ready.")
 		return nil
 	})
+	jobIDCh <- jobID
 	setInfoToastHeader(w, "Google Sheets export started…")
 	// Option C: see handleGoogleBackup above.
 	writeExportRedirect(w, "/jobs/"+jobID)
