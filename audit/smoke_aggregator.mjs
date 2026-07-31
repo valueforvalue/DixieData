@@ -119,9 +119,15 @@ async function main() {
   for (const surface of SURFACES) {
     try {
       const result = await dispatchSurface(surface, index);
-      record(surface.name, !!result?.ok, result?.details || {});
+      // Issue #703: forward kind + class from the SURFACES[]
+      // entry so the JSON consumer can distinguish a runtime
+      // regression (playwright) from a static-source regression
+      // (scanner) + group by the 9-class button-bug catalog
+      // (issue #681).
+      const meta = { kind: surface.kind, class: surface.class };
+      record(surface.name, !!result?.ok, result?.details || {}, meta);
     } catch (err) {
-      record(surface.name, false, { error: err?.message || String(err) });
+      record(surface.name, false, { error: err?.message || String(err) }, { kind: surface.kind, class: surface.class });
     }
     index++;
   }

@@ -159,7 +159,9 @@ after the audit-harness step; the upload-artifact step ships
 
 ## The surface registry
 
-Today the `SURFACES[]` array lists seven entries:
+Today the `SURFACES[]` array lists the registered surfaces
+(see `audit/_lib/smoke_index.mjs` for the canonical list --
+the table here is illustrative, not authoritative):
 
 | name | kind | class | issue |
 |---|---|---|---|
@@ -171,12 +173,62 @@ Today the `SURFACES[]` array lists seven entries:
 | `scanner-init-guards` | scanner | 9 | #685 |
 | `scanner-orphan-handlers` | scanner | 2 | discover_orphan_handlers |
 
+The `kind` field is `'playwright'` for runtime regression
+probes (Playwright drives a real browser against a real
+server) or `'scanner'` for static-source probes (the
+aggregator spawns the scanner binary with `--strict` and
+records the exit code). A future CI annotation tool uses
+`kind` to decide whether a failure is a runtime regression
+or a static-source regression -- different teams may own
+each, with different triage paths.
+
+The `class` field is the 9-class button-bug catalog from
+issue #681. The mapping per probe is set when the probe is
+added; see `docs/CODE_CHANGES.md` for the canonical class
+assignment per bug class. The aggregator surfaces `class`
+in the JSON summary so a future PR-comment poster can group
+failures by class (e.g. "3 class-4 nested-form failures
+this run").
+
 **Adding a probe is append one line.** Removing a probe (e.g.
 when a screen is retired) is delete one line. Renaming a probe
 is edit the `name` field — the JSON key in
 `audit/smoke_summary.json` follows the `name`. Renaming
 without changing the issue is a smell; rename only when the
 issue number also changes.
+
+## The JSON summary schema
+
+`audit/smoke_summary.json` is the machine-readable artifact
+that the CI workflow uploads after `just test-smoke-strict`
+(see `.github/workflows/audit.yml`). The shape (issue #703):
+
+```jsonc
+{
+  "schemaVersion": 1,            // smoke_summary.json shape contract
+  "runnerVersion": 1,            // runProbe() shape contract (from smoke_runner.mjs::RUNNER_VERSION)
+  "finishedAt": "2026-07-31T...", // ISO timestamp of writeJson() call
+  "results": [                   // one entry per SURFACE, in registration order
+    {
+      "name": "soldier-images",  // mirrors SURFACES[].name
+      "ok": true,                // exit-0 = pass, non-0 = fail
+      "kind": "playwright",      // mirrors SURFACES[].kind ('playwright' | 'scanner')
+      "class": 4,                // mirrors SURFACES[].class (9-class button-bug catalog)
+      "runnerVersion": 1,        // stamped from smoke_runner.mjs::RUNNER_VERSION on every record()
+      "ts": "2026-07-31T...",    // ISO timestamp of record() call
+      "...details": "..."         // probe-specific (lastResponses, bodySnippet, etc.)
+    }
+  ]
+}
+```
+
+`schemaVersion` is the smoke_summary.json shape itself
+(bumped when the JSON structure changes). `runnerVersion`
+is the `runProbe({name, probeFn, ctx})` contract (bumped
+when the ctx shape, return shape, or record() payload
+changes). Both are pinned by `audit/_lib/smoke_runner.test.mjs`
+so a future breaking change fails the test at PR time, not
+in production.
 
 ## Lifecycle: spawn, register cleanup, exit
 

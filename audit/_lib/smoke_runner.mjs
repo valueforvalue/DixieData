@@ -94,6 +94,27 @@ async function newPageFor(opts = {}) {
 // scratchDir cleanup, per-probe process teardown, etc.
 export const PROBE_SHAPE = {};
 
+// RUNNER_VERSION is the audit/_lib/smoke_runner.mjs schema
+// contract version. The reporter stamps every record() call
+// + the JSON summary's top-level payload with this value
+// so a future CI annotation tool can detect a breaking
+// change to the runProbe({name, probeFn, ctx}) contract
+// without parsing the JSON. Bump this when:
+//   - the ctx shape changes (new field added, existing
+//     field renamed, required field removed)
+//   - the runProbe() return shape changes
+//   - the record() payload shape changes
+// Do NOT bump for internal refactors that preserve the
+// external surface.
+//
+// History:
+//   1 -- initial shape (page, base, scratchDir, record,
+//         registerCleanup). Issue #703 introduced the
+//         version constant + the kind/class fields on
+//         record() + the runnerVersion field on the
+//         JSON summary.
+export const RUNNER_VERSION = 1;
+
 // runProbe invokes the supplied probeFn with a sliced ctx
 // and aggregates the result into a single
 // `{name, ok, error?, details}` shape that the reporter

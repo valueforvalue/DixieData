@@ -1,4 +1,4 @@
-// audit/_lib/smoke_runner.test.mjs (issue #700, ADR 0011)
+// audit/_lib/smoke_runner.test.mjs (issue #700, ADR 0011, #703)
 //
 // Slice 1 regression net for the shared runner skeleton;
 // slice 2 extends with the runProbe contract (probeFn
@@ -14,7 +14,7 @@
 //   4. webBin() returns the platform-appropriate path.
 //   5. webBinExists() returns a boolean.
 //
-// Slice 2 contract (new):
+// Slice 2 contract:
 //   6. runProbe invokes probeFn with {page, base, scratchDir,
 //      record, registerCleanup}.
 //   7. probeFn exceptions yield result {ok: false, error}.
@@ -22,8 +22,19 @@
 //      when probeFn runs AND after it returns.
 //   9. registerCleanup(fn) runs the fn after probeFn returns.
 //
+// Slice 3 contract (issue #703 — JSON summary schema):
+//   10. record() accepts a 4th `meta` arg ({kind, class}) and
+//       stamps every entry with runnerVersion from
+//       smoke_runner.mjs::RUNNER_VERSION.
+//   11. writeJson() emits a top-level payload with
+//       {schemaVersion, runnerVersion, finishedAt, results}.
+//   12. ctx.record() in the runner bridge still works with
+//       3 args (backward compatibility) and produces the same
+//       per-entry shape (runnerVersion stamped automatically).
+//   13. RUNNER_VERSION is exported from smoke_runner.mjs.
+//
 // All probe exits-0 because the runner skeleton either runs
-// the probe fn (slice 2) or no-ops (slice 1). Slice-1 stubs
+// the probe fn (slice 2+) or no-ops (slice 1). Slice-1 stubs
 // recorded "ok:true"; slice 2 actually invokes probeFn.
 
 import { strict as assert } from 'node:assert';
@@ -31,9 +42,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { record, renderSummary, writeJson, reset, count, getResults } from './smoke_reporter.mjs';
+import { record, renderSummary, writeJson, reset, count, getResults, SCHEMA_VERSION } from './smoke_reporter.mjs';
 import { webBin, seedBin, webBinExists } from './smoke_paths.mjs';
-import { runProbe } from './smoke_runner.mjs';
+import { runProbe, RUNNER_VERSION } from './smoke_runner.mjs';
 
 let pass = 0;
 let fail = 0;
@@ -211,6 +222,88 @@ await test('registerCleanup hook runs after probeFn returns', async () => {
     },
   });
   assert.equal(hookCalled, true, 'per-probe cleanup hook must run after probeFn completes');
+});
+
+// --- slice 3 cases: JSON summary schema (issue #703) ---
+
+await test('RUNNER_VERSION is exported as a positive integer from smoke_runner.mjs', async () => {
+  assert.equal(typeof RUNNER_VERSION, 'number', 'RUNNER_VERSION must be a number');
+  assert.ok(Number.isInteger(RUNNER_VERSION), 'RUNNER_VERSION must be an integer');
+  assert.ok(RUNNER_VERSION >= 1, `RUNNER_VERSION must be >= 1, got ${RUNNER_VERSION}`);
+});
+
+await test('record() stamps every entry with runnerVersion from smoke_runner.mjs', async () => {
+  reset();
+  const entry = record('schema-a', true, { step: 1 });
+  assert.equal(
+    entry.runnerVersion,
+    RUNNER_VERSION,
+    `entry.runnerVersion must equal RUNNER_VERSION (${RUNNER_VERSION}); got ${entry.runnerVersion}`,
+  );
+});
+
+await test('record() 4th arg (meta) carries kind + class from the SURFACE entry', async () => {
+  reset();
+  const entry = record('schema-b', true, { step: 1 }, { kind: 'playwright', class: 4 });
+  assert.equal(entry.kind, 'playwright', 'meta.kind must propagate to entry');
+  assert.equal(entry.class, 4, 'meta.class must propagate to entry');
+  assert.equal(entry.runnerVersion, RUNNER_VERSION, 'runnerVersion still stamped when meta is provided');
+});
+
+await test('record() 3-arg form (back-compat) still stamps runnerVersion + ts', async () => {
+  reset();
+  const entry = record('schema-c', true, { step: 1 });
+  // No meta passed -- kind/class should be absent (not undefined).
+  assert.equal('kind' in entry, false, 'kind absent when no meta passed');
+  assert.equal('class' in entry, false, 'class absent when no meta passed');
+  assert.equal(entry.runnerVersion, RUNNER_VERSION);
+  assert.ok(typeof entry.ts === 'string');
+});
+
+await test('writeJson() emits top-level {schemaVersion, runnerVersion, finishedAt, results}', async () => {
+  reset();
+  record('schema-d', true, { step: 1 }, { kind: 'scanner', class: 6 });
+  const dir = mkdtempSync(join(tmpdir(), 'smoke-runner-schema-test-'));
+  try {
+    const jsonPath = join(dir, 'summary.json');
+    writeJson(jsonPath);
+    const parsed = JSON.parse(readFileSync(jsonPath, 'utf8'));
+    assert.equal(parsed.schemaVersion, SCHEMA_VERSION, `schemaVersion must equal ${SCHEMA_VERSION}`);
+    assert.equal(parsed.runnerVersion, RUNNER_VERSION, 'top-level runnerVersion must match');
+    assert.ok(typeof parsed.finishedAt === 'string');
+    assert.ok(Array.isArray(parsed.results));
+    assert.equal(parsed.results[0].kind, 'scanner');
+    assert.equal(parsed.results[0].class, 6);
+    assert.equal(parsed.results[0].runnerVersion, RUNNER_VERSION);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test('ctx.record() in runProbe still works with 3-arg form (back-compat)', async () => {
+  reset();
+  await runProbe({
+    name: 'unit-ctx-record-backcompat',
+    probeFn: async ({ record: ctxRecord }) => {
+      // Slice-2 probes call ctx.record(name, ok, details)
+      // without the meta arg. The runner bridge must still
+      // produce a valid entry shape (runnerVersion stamped
+      // automatically, kind/class absent since the probe
+      // itself doesn't know its SURFACE class).
+      ctxRecord('compat-1', true, { step: 1 });
+      ctxRecord('compat-2', false, { step: 2, error: 'synthetic' });
+      return { ok: true };
+    },
+  });
+  const all = getResults();
+  const ok = all.find((r) => r.name === 'compat-1');
+  const fail = all.find((r) => r.name === 'compat-2');
+  assert.ok(ok, 'compat-1 must be recorded');
+  assert.equal(ok.runnerVersion, RUNNER_VERSION, 'compat-1 entry must carry runnerVersion');
+  assert.equal('kind' in ok, false, 'compat-1 has no kind (probe did not pass meta)');
+  assert.ok(fail, 'compat-2 must be recorded');
+  assert.equal(fail.ok, false);
+  assert.equal(fail.runnerVersion, RUNNER_VERSION);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
