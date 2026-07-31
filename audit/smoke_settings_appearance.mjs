@@ -29,6 +29,7 @@ import { existsSync } from 'node:fs';
 import { runProbe } from './_lib/smoke_runner.mjs';
 import { webBin } from './_lib/smoke_paths.mjs';
 import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
+import { submitAndWait } from './_lib/smoke_form.mjs';
 
 const cfg = loadConfig();
 const BASE = resolveBaseUrl(cfg);
@@ -85,37 +86,38 @@ async function main(ctx) {
   // probe stable across theme-picker DOM refactors that change
   // label layout but not the input semantics.
   await page.locator('input[name="theme"][value="high-contrast"]').check({ force: true });
-  await Promise.all([
-    page.waitForURL(/\/settings\/appearance/, { timeout: 15_000 }).catch(() => null),
-    page.locator('form[data-dixie-submit][action="/settings/theme"] button[type="submit"]').first().click({ timeout: 5_000 }),
-  ]);
+  // Issue #715: use submitAndWait helper for the form
+  // submit + post-POST read. The previous
+  // `Promise.all([page.waitForURL(/settings/appearance/, ...).catch(() => null), click])`
+  // shape had a latent race (URL was already at
+  // /settings/appearance from the initial goto, so waitForURL
+  // resolved immediately; #713 was the deterministic
+  // failure on the export-surface branch which had a
+  // defensive second goto that raced with the dispatcher's
+  // programmatic navigation). submitAndWait pins the POST
+  // response BEFORE the DOM read, then waits for the
+  // dispatcher's navigation to settle via networkidle.
+  const themeSubmit = page.locator('form[data-dixie-submit][action="/settings/theme"] button[type="submit"]').first();
+  await submitAndWait(page, {
+    submit: themeSubmit,
+    urlPredicate: (u) => u.endsWith('/settings/theme'),
+  });
   const themeChecked = await page.locator('input[name="theme"][value="high-contrast"]').isChecked().catch(() => false);
   record('settings-appearance-theme-save-round-trip', themeChecked, { themeChecked, url: page.url() });
 
   await page.goto(`${BASE}/settings/appearance`, { waitUntil: 'networkidle' });
   await new Promise((r) => setTimeout(r, 300));
   await page.locator('input[name="export_surface"][value="toast-only"]').check({ force: true });
-  // Issue #700 follow-up: the prior pattern was
-  // `Promise.all([page.waitForURL(/\/settings\/appearance/, ...).catch(() => null), click])`
-  // followed by a second `page.goto /settings/appearance`. That
-  // raced with the dispatcher's programmatic navigation: the
-  // POST response was still in flight when the second goto fired,
-  // and the goto's GET fetched the page BEFORE the server had
-  // persisted the POSTed value to atomic — so the radio rendered
-  // with the previous default. waitForResponse pins the POST
-  // before the subsequent read, the same shape as
-  // smoke_soldier_images.mjs (issue #709).
-  const [exportPostResp] = await Promise.all([
-    page.waitForResponse(
-      (r) => r.url().includes('/settings/export-surface') && r.request().method() === 'POST',
-      { timeout: 15_000 },
-    ).catch(() => null),
-    page.locator('form[data-dixie-submit][action="/settings/export-surface"] button[type="submit"]').first().click({ timeout: 5_000 }),
-  ]);
-  // Wait for the dispatcher's reload to settle so the page
-  // reflects the persisted value.
-  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => null);
-  await new Promise((r) => setTimeout(r, 200));
+  // Issue #715: same submitAndWait helper as the theme step above.
+  // The export-surface round-trip was the deterministic-failing case
+  // (#713) before this helper existed — the previous
+  // `Promise.all([waitForURL, click])` + defensive `page.goto` shape
+  // raced with the dispatcher's programmatic navigation.
+  const exportSubmit = page.locator('form[data-dixie-submit][action="/settings/export-surface"] button[type="submit"]').first();
+  const { response: exportPostResp } = await submitAndWait(page, {
+    submit: exportSubmit,
+    urlPredicate: (u) => u.includes('/settings/export-surface'),
+  });
   const exportChecked = await page.locator('input[name="export_surface"][value="toast-only"]').isChecked().catch(() => false);
   record('settings-appearance-export-surface-save-round-trip', exportChecked, { exportChecked, url: page.url(), exportPostStatus: exportPostResp?.status() });
 

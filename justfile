@@ -173,6 +173,7 @@ test-lint:
     just lint-so-reuseaddr-test
     just lint-orphan-handlers-test
     just lint-foldout-trigger-marker-test
+    just lint-smoke-form-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 
@@ -223,6 +224,19 @@ lint-foldout-trigger-marker-strict:
     node audit/discover_foldout_trigger_marker.mjs --strict
 lint-foldout-trigger-marker-test:
     node --test audit/discover_foldout_trigger_marker.test.mjs
+
+# smoke-form (issue #715): the canonical
+# "submit a form + wait for response + wait for dispatcher's
+# programmatic navigation to settle" helper for DixieData audit
+# probes. Encodes the race fix that #709 + #713 + #714
+# applied independently. New audit probes that need to submit
+# a data-dixie-submit form and read DOM state should use
+# submitAndWait from audit/_lib/smoke_form.mjs rather than
+# reproducing the racy Promise.all([waitForURL, click])
+# + second-goto shape. Test suite uses mocked Playwright Page
+# + Locator so no browser is needed.
+lint-smoke-form-test:
+    node --test audit/_lib/smoke_form.test.mjs
 
 # lint-button-actions-resolve (issue #687): walks every
 # .templ file for invoker URLs (form action, data-action,
