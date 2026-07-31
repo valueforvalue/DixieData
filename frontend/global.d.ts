@@ -105,6 +105,12 @@ declare global {
     // sentinel prevents htmx:load swaps from double-installing
     // the listener (which would queue the same file twice).
     __imageUploadWired?: boolean;
+    // Issue #705: initializeShareIncludeTags wires the per-checkbox
+    // change handler once per [data-share-include-tags] input. The
+    // sentinel prevents initializeDynamicContent re-init passes from
+    // double-installing the listener (which would fire two form
+    // submits for one toggle).
+    __shareIncludeTagsWired?: boolean;
   }
   interface HTMLTextAreaElement {
     // initializeLiveCounts walks both input and textarea DOM
