@@ -24,8 +24,8 @@
  *
  * Note: clicking "Export Selected as .ddshare" triggers
  * a native save dialog (out of scope for headless).
- * The bulk-export round-trip is covered by the legacy
- * probe audit/smoke_share_queue_clear_after_export.mjs.
+ * The bulk-export round-trip is exercised in-line below
+ * via the page.request.export() shortcut.
  *
  * Run: `node audit/smoke_share_queue.mjs`
  * Exits 0 on all-pass, 1 on any-fail, 2 on fatal.

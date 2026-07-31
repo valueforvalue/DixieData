@@ -19,7 +19,6 @@
  * file-picker dialog (out of scope for headless). Coverage
  * for the individual import handlers lives in
  * internal/appshell/imports_handlers_test.go + the
- * smoke_memorial_json_preview.mjs and
  * smoke_static_archive_revamp.mjs probes.
  *
  * Run: `node audit/smoke_share_imports.mjs`

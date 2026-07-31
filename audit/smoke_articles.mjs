@@ -36,8 +36,7 @@
  *     2000-char DOM snippet.
  *   - Exits 0 on all-pass, 1 on any-fail, 2 on fatal.
  *
- * Reference: pattern follows `audit/smoke_tags_nav.mjs` (small)
- * + `audit/smoke_events.mjs` (full lifecycle).
+ * Reference: pattern follows `audit/smoke_events.mjs` (full lifecycle).
  */
 
 import { chromium } from 'playwright';
