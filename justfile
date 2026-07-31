@@ -170,6 +170,7 @@ test-lint:
     just lint-no-nested-forms-test
     just lint-js-init-guards-test
     just lint-button-actions-resolve-test
+    just lint-so-reuseaddr-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 
@@ -257,6 +258,13 @@ lint-dialog-guard-strict:
     node audit/smoke_dialog_guard.mjs --strict
 lint-dialog-guard-test:
     node --test audit/smoke_dialog_guard.test.mjs
+# Issue #708: regression net for SO_REUSEADDR on the smoke
+# server listener. Boots two dixiedata-web processes on the
+# same port sequentially and asserts the second one comes up
+# without a bind error. Requires build/bin/dixiedata-web.exe
+# to exist (run `just web` first on local Windows).
+lint-so-reuseaddr-test:
+    node --test audit/probe_so_reuseaddr.test.mjs
 lint-microcopy:
     node audit/smoke_microcopy.mjs
 lint-microcopy-strict:
