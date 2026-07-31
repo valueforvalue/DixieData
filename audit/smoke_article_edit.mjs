@@ -23,9 +23,12 @@
  *       on first Preview click (initializeArticlePreview).
  *   4.  Markdown syntax cheatsheet renders the Foldout popover
  *       (panel.article.markdown-cheatsheet). The trigger is
- *       data-article-md-cheatsheet-open; the panel is rendered
- *       initially hidden and toggled by the Foldout JS handler.
- *       The cheatsheet does NOT steal focus from the editor
+ *       data-foldout-trigger="panel.article.markdown-cheatsheet"
+ *       (the canonical Foldout primitive trigger marker — see
+ *       internal/templates/components/foldout.templ + issue
+ *       #704 for the contract). The panel is rendered initially
+ *       hidden and toggled by the Foldout JS handler. The
+ *       cheatsheet does NOT steal focus from the editor
  *       textarea (per the issue #565 decision).
  *   5.  Image picker modal opens from the toolbar's Image
  *       button via data-editor-toolbar-opens-modal=

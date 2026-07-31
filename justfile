@@ -172,6 +172,7 @@ test-lint:
     just lint-button-actions-resolve-test
     just lint-so-reuseaddr-test
     just lint-orphan-handlers-test
+    just lint-foldout-trigger-marker-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
 
@@ -204,6 +205,24 @@ lint-js-init-guards-strict:
     node scripts/lint-js-init-guards.mjs --strict
 lint-js-init-guards-test:
     node --test scripts/lint-js-init-guards.test.mjs
+
+# discover-foldout-trigger-marker (issue #704): walks
+# frontend/, internal/, audit/, docs/ for any
+# `data-article-md-cheatsheet-open` literal (the stale
+# early-#565 wireframe marker that does not exist in the
+# rendered HTML; the cheatsheet uses the Foldout primitive's
+# `data-foldout-trigger="<menuID>"` contract). Path-based
+# exclusions whitelist the probe's own files + the corrected
+# wireframe row + the Foldout unit test (which intentionally
+# references the marker as a negative-control assertion).
+# Comment-only mentions are stripped before matching. In
+# strict mode exits 1 on any offender.
+lint-foldout-trigger-marker:
+    node audit/discover_foldout_trigger_marker.mjs
+lint-foldout-trigger-marker-strict:
+    node audit/discover_foldout_trigger_marker.mjs --strict
+lint-foldout-trigger-marker-test:
+    node --test audit/discover_foldout_trigger_marker.test.mjs
 
 # lint-button-actions-resolve (issue #687): walks every
 # .templ file for invoker URLs (form action, data-action,
@@ -310,7 +329,7 @@ test-smoke-test:
     node --test audit/_lib/smoke_runner.test.mjs
 
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test lint-dispatcher-patch-method lint-js-init-guards-strict lint-js-init-guards-test lint-button-actions-resolve-strict lint-button-actions-resolve-test
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test lint-dispatcher-patch-method lint-js-init-guards-strict lint-js-init-guards-test lint-button-actions-resolve-strict lint-button-actions-resolve-test lint-foldout-trigger-marker
 
 tune:
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"
