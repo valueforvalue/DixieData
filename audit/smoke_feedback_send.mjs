@@ -24,8 +24,18 @@
 // Exit code: 0 on full pass, 1 on any assertion failure.
 
 import { chromium } from 'playwright';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const BASE = process.env.BASE || 'http://127.0.0.1:8900';
+// Issue #707 batch 3: replaced hardcoded `process.env.BASE ||
+// 'http://127.0.0.1:8900'` with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation) wins via
+// resolveBaseUrl; SMOKE_BASE_URL (CI mode) is also honored.
+// The browser probe is opt-in via SMOKE_FEEDBACK_SEND_BROWSER=1
+// (network probe always runs against the live Formspark
+// endpoint).
+const cfg = loadConfig();
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 const FORMSPARK_ENDPOINT = 'https://submit-form.com/vJSONT1nB';
 let pass = 0;
 let fail = 0;
@@ -207,11 +217,14 @@ async function main() {
     for (const f of failures) {
       console.log(`  - ${f.name}: ${JSON.stringify(f.detail)}`);
     }
-    process.exit(1);
   }
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-main().catch((err) => {
-  console.error('smoke_feedback_send.mjs crashed:', err);
-  process.exit(2);
-});
+// Issue #707 batch 3: this probe only runs the network probe by
+// default (the browser probe is opt-in via
+// SMOKE_FEEDBACK_SEND_BROWSER=1). The runner provides the
+// uniform {ok, steps} return contract + per-probe cleanup.
+runProbe({ name: 'feedback-send', probeFn: async () => main() })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((err) => { console.error('FATAL', err); process.exit(2); });

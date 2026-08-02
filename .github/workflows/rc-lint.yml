@@ -1,32 +1,60 @@
-# rc-lint.yml — gate PRs to rc/v* branches via the
-# commit-message + diff-size policy in ADR 0011.
-# Mirrors the `lint-bake-bootstrap` pattern in build.yml:
-# a lightweight job that runs before the heavy test suite
-# so the policy violation fails fast.
+# RC lint workflow — issue #668 / ADR 0011.
+# Runs the commit-type classifier on every PR to an rc/v*
+# branch and the release-blocker label check on the PR.
+# Mirrors the lint-bake-bootstrap pattern in build.yml: a
+# lightweight job that fails fast.
+
 name: rc-lint
 
 on:
   pull_request:
-    branches:
-      - 'rc/v*'
+    branches: ['rc/**']
+  push:
+    branches: ['rc/**']
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
-  lint-rc-commits:
-    name: lint-rc-commits (ADR 0011)
+  rc-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 10
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: setup-node
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: lint-rc-commits
+          node-version: '20'
+
+      - name: Install Just
+        uses: extractions/setup-just@v2
+        with:
+          just-version: 1.57.0
+
+      # Commit-type classifier (issue #668 / ADR 0011).
+      # Walks every commit between the PR base (the merge-base
+      # vs the rc/v* branch tip) and HEAD; rejects
+      # feat/refactor/perf/build + missing-type commits
+      # + oversized diffs (≥ 50 files).
+      - name: lint-rc-commits (ADR 0011)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-        run: node scripts/ci/lint-rc-commits.mjs
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          if [ -z "$BASE_REF" ] || [ -z "$HEAD_REF" ]; then
+            echo "BASE_REF or HEAD_REF not set; skipping"
+            exit 0
+          fi
+          just lint-rc-commits
+        timeout-minutes: 3
+
+      # Regression net on the classifier shape.
+      - name: lint-rc-commits test (ADR 0011)
+        shell: bash
+        run: |
+          just lint-rc-commits-test
+        timeout-minutes: 2

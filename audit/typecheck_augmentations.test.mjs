@@ -119,33 +119,72 @@ test('DixieDataWindow interface is declared with all install-once markers', () =
 });
 
 test('per-element marker interfaces are still declared', () => {
-  // The marker `__dixieLiveCountHandler` only exists on
-  // HTMLInputElement (the liveCount walker installs the
-  // per-input handler on `<input>` elements). Without the
-  // augmentation, the install line at app.js:2955 throws TS2339
-  // again. Pin both: the interface + the marker.
-  if (!dts.includes('interface HTMLInputElement')) {
-    throw new Error('`interface HTMLInputElement` augmentation missing — __dixieLiveCountHandler no longer compiles.');
+  // Each per-element sentinel hung off an HTML element (any
+  // combination of HTMLInputElement, HTMLTextAreaElement,
+  // HTMLFormElement, Element, HTMLElement) must have a
+  // matching declaration in frontend/global.d.ts. The marker
+  // name list is discovered by scanning app.js for
+  // `<elem>.__<name> = ...` assignments and `<elem>.__<name> ===`
+  // comparisons. If a new sentinel is added in app.js without
+  // the corresponding augmentation, the discoverer's named-
+  // capture group pulls it into the assertion set, the test
+  // fails on the missing marker, and the developer is forced
+  // to update global.d.ts before the tsc gate goes green.
+  //
+  // Origin: issue #711 — the `__shareIncludeTagsWired` sentinel
+  // (from #705) shipped in app.js but never made it into the
+  // .d.ts. The earlier version of this test only pinned three
+  // markers by name (`__dixieLiveCountHandler`, `__copyPathBound`,
+  // `__inventoryChartPainted`) and missed the new one.
+  const sentinelRegex = /\.__([a-zA-Z][a-zA-Z0-9_]*)\s*(?:=|[!=]==)/g;
+  const appMarkers = new Set();
+  for (const match of app.matchAll(sentinelRegex)) {
+    appMarkers.add(match[1]);
   }
-  if (!dts.includes('__dixieLiveCountHandler')) {
-    throw new Error('`__dixieLiveCountHandler` marker missing from any element-type augmentation.');
+  if (appMarkers.size === 0) {
+    throw new Error('discoverer failed to find any `__<name> = / __<name> ===` patterns in app.js — regex is stale, fix the discoverer before relying on this test.');
   }
-  // The `__copyPathBound` marker exists on Element (per the
-  // generic selector on [data-copy-path]) and HTMLElement
-  // (per-element read sites via instanceof narrowing). Pin
-  // both interfaces and the marker.
-  if (!dts.includes('interface Element') || !dts.includes('interface HTMLElement')) {
-    throw new Error('Element or HTMLElement interface augmentation missing — `__copyPathBound` no longer compiles.');
+  // Required interface declarations (Element / HTMLElement are the
+  // base augmentations; HTMLInputElement / HTMLTextAreaElement /
+  // HTMLFormElement extend them).
+  for (const iface of ['interface HTMLInputElement', 'interface HTMLTextAreaElement', 'interface HTMLFormElement', 'interface Element', 'interface HTMLElement']) {
+    if (!dts.includes(iface)) {
+      throw new Error(`\`${iface}\` augmentation missing — per-element markers can no longer compile.`);
+    }
   }
-  if (!dts.includes('__copyPathBound')) {
-    throw new Error('`__copyPathBound` marker missing.');
+  // Every sentinel written/read in app.js must appear in global.d.ts.
+  // Skip the window-scoped helpers that live on DixieDataWindow
+  // (and are pinned by the earlier test). Discovered by the
+  // regex but not per-element sentinels: `window.__<name>`-style
+  // installs of WeakSets, install counters, debounce wrappers,
+  // and helper functions.
+  const windowHelpers = new Set([
+    '__dixieBrowseFilterDebounce',
+    '__dixieDebounce',
+    '__dixieInsertTextAtCursor',
+    '__floatingNavBoundTriggers',
+    '__floatingNavInstallN',
+    '__foldoutBoundTriggers',
+    '__foldoutDocHandlerBound',
+    '__foldoutInstallN',
+    '__foldoutProbeReinit',
+    '__megaMenuBoundTriggers',
+    '__megaMenuDocHandlerBound',
+    '__megaMenuInstallN',
+  ]);
+  const missing = [];
+  for (const marker of appMarkers) {
+    if (windowHelpers.has(marker)) continue;
+    if (!dts.includes(marker)) {
+      missing.push(marker);
+    }
   }
-  // Issue #583: __inventoryChartPainted is the install-once
-  // guard on the Activity metrics SVG chart wrapper. Same
-  // idempotent-install discipline as the other per-element
-  // markers.
-  if (!dts.includes('__inventoryChartPainted')) {
-    throw new Error('`__inventoryChartPainted` marker missing from HTMLElement augmentation — slice-3 SVG renderer would re-emit TS2339.');
+  if (missing.length > 0) {
+    throw new Error(
+      `per-element marker(s) declared in app.js but missing from frontend/global.d.ts: ${missing.join(', ')}. ` +
+      `Add the corresponding \`__${missing[0]}?: boolean;\` (or typed signature) under the appropriate \`interface HTML…Element\` / \`interface Element\` / \`interface HTMLElement\` block. ` +
+      `See issue #711 for the canonical example.`,
+    );
   }
 });
 

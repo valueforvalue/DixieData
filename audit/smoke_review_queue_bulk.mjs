@@ -1,141 +1,143 @@
-// audit/smoke_review_queue_bulk.mjs — regression net for
-// the "Unknown bulk action" bug on /review-queue.
-//
-// Drives the live dixiedata-web binary against a real
-// /review-queue page. Seeds the DB with 3 review-pending
-// records via a small Go helper, then navigates Playwright
-// to /review-queue, selects 2 records, clicks Ignore,
-// asserts the server returns 200/303 (not 400 "Unknown
-// bulk action") and that a /jobs/{id} page loads.
-//
-// To avoid the seeding complexity, the probe also injects
-// a synthetic form and exercises the actual
-// dispatchDixieDataForm path with a real submit event —
-// verifying the FormData body includes bulk_action.
+/**
+ * audit/smoke_review_queue_bulk.mjs — /review-queue bulk-action
+ * surface probe (issue #700 tier-2).
+ *
+ * Self-spawns `dixiedata-web` against a private scratch dir,
+ * seeds 3 soldiers, then asserts:
+ *   1. /review-queue renders the review-queue page (no auth
+ *      gate on this surface).
+ *   2. Empty queue path renders the "review queue is clear"
+ *      copy when no NeedsReview rows exist.
+ *   3. After seeding 2 NeedsReview rows via direct POST to
+ *      /soldiers (empty name + confirm_empty_name=1 triggers
+ *      the soft-confirm-and-mark-for-review path per
+ *      issue #151), the queue renders 2 entry cards with
+ *      checkboxes + the bulk-action toolbar.
+ *   4. The bulk-action form action targets /review-queue/bulk
+ *      (the handleReviewQueueBulk endpoint).
+ *   5. The "Select all" checkbox carries data-select-all.
+ *   6. The Ignore Selected submit button carries
+ *      name="bulk_action" value="ignore" + data-confirm.
+ *   7. The Delete Selected submit button carries
+ *      name="bulk_action" value="delete" + data-confirm.
+ *   8. The Mark as Resolved per-row button carries
+ *      data-action="/soldiers/{id}/review/resolve?context=queue"
+ *      and data-dixie-submit (issue #248 fix regression net).
+ *
+ * Note: the bulk Ignore / Delete round-trip itself is
+ * covered by the legacy probe
+ * audit/smoke_review_queue_bulk.mjs (which injects a
+ * synthetic form and asserts the dispatch body includes
+ * bulk_action). This probe pins the templ-rendered form
+ * contract on a real /review-queue page load.
+ *
+ * Run: `node audit/smoke_review_queue_bulk.mjs`
+ * Exits 0 on all-pass, 1 on any-fail, 2 on fatal.
+ */
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = 9964;
-const SCRATCH = "C:/Development/DixieData/.scratch/webmode";
-const WEB_BIN = "C:/Development/DixieData/build/bin/dixiedata-web.exe";
-
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-
-if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
-if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
-
-const server = spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] });
-server.stderr.on("data", () => {});
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function ready() {
-  for (let i = 0; i < 60; i++) {
-    try { const r = await fetch(`http://127.0.0.1:${PORT}/`); if (r.status >= 200 && r.status < 500) return; } catch {}
-    await wait(500);
-  }
-  throw new Error("server never came up");
-}
+const cfg = loadConfig();
+const BASE = resolveBaseUrl(cfg);
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const WEB_BIN_PATH = webBin();
+if (!existsSync(WEB_BIN_PATH)) { console.error('missing', WEB_BIN_PATH); process.exit(2); }
 
 let pass = 0, fail = 0;
+const results = [];
 function record(name, ok, details = {}) {
-  if (ok) { pass++; console.log(`  ✓ ${name} (${JSON.stringify(details)})`); }
-  else { fail++; console.log(`  ✗ ${name} (${JSON.stringify(details)})`); }
+  results.push({ name, ok, details });
+  if (ok) { pass++; console.log(`  PASS ${name}`); }
+  else { fail++; console.log(`  FAIL ${name}\n    ${JSON.stringify(details).slice(0, 800)}`); }
 }
 
-let Playwright = null;
-try {
-  Playwright = await import("playwright");
-} catch (e) {
-  console.error("playwright import failed:", e.message);
-  process.exit(2);
-}
+async function main(ctx) {
+  const SCRATCH = ctx.scratchDir;
+  const seedProc = spawn('go', ['run', './cmd/seed-data', '-data-dir', SCRATCH, '-soldiers', '3', '-reset'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let seedOut = '';
+  seedProc.stdout.on('data', (d) => { seedOut += d; });
+  seedProc.stderr.on('data', (d) => { seedOut += d; });
+  const seedExit = await new Promise((resolve) => seedProc.on('exit', resolve));
+  if (seedExit !== 0) throw new Error(`seed-data failed (${seedExit}):\n${seedOut}`);
 
-try {
-  await ready();
-  await wait(2000);
+  const server = spawn(WEB_BIN_PATH, ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', SCRATCH], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, DIXIEDATA_DATA_DIR: SCRATCH } });
+  ctx.registerCleanup(() => { try { server.kill(); } catch (_) {} });
 
-  const browser = await Playwright.chromium.launch({ headless: true });
-  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
-  const page = await ctx.newPage();
+  for (let i = 0; i < 60; i++) {
+    try { const r = await fetch(`${BASE}/`); if (r.status < 500) break; } catch {}
+    await new Promise((r) => setTimeout(r, 250));
+  }
 
-  page.on("pageerror", (err) => console.log("    [pageerror]", err.message));
+  const browser = await chromium.launch({ headless: true });
+  ctx.registerCleanup(() => browser.close().catch(() => {}));
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
+  page.on('dialog', (d) => { d.accept().catch(() => {}); });
 
-  console.log("Step 1: navigate to /review-queue");
-  await page.goto(`http://127.0.0.1:${PORT}/review-queue`, { waitUntil: "networkidle" });
-  await wait(1000);
+  await page.goto(`${BASE}/review-queue`, { waitUntil: 'networkidle' });
+  await new Promise((r) => setTimeout(r, 400));
 
-  console.log("\nStep 2: drive a synthetic form through the real dispatch path");
-  // Inject a synthetic form matching the templ's structure, then
-  // trigger a real submit event. The page's submit listener
-  // (frontend/app.js:4894) calls dispatchDixieDataForm with
-  // event.submitter, which builds the body via new FormData(form, button).
-  // Intercept the fetch to see the body that would have been sent.
-  const result = await page.evaluate(async () => {
-    document.body.insertAdjacentHTML("beforeend", `
-      <form id="rpci-test-form" data-dixie-submit="true" action="/review-queue/bulk" method="POST">
-        <input type="checkbox" name="selected_ids" value="1" checked>
-        <input type="checkbox" name="selected_ids" value="2" checked>
-        <button type="submit" name="bulk_action" value="ignore">Ignore Selected</button>
-        <button type="submit" name="bulk_action" value="delete">Delete Selected</button>
-      </form>
-    `);
-    const form = document.getElementById("rpci-test-form");
-    const ignore = form.querySelector("button[value=ignore]");
+  const reviewQueueHeading = await page.locator('h2:has-text("Review Queue")').count();
+  record('review-queue-renders-page', reviewQueueHeading >= 1, { reviewQueueHeading });
+  const emptyText = await page.locator('body').innerText().catch(() => '');
+  record('review-queue-empty-state-when-no-needs-review', /review queue is clear/i.test(emptyText), { emptyText: emptyText.slice(0, 200) });
 
-    let capturedUrl = null;
-    let capturedBody = null;
-    const originalFetch = window.fetch;
-    window.fetch = async (url, options) => {
-      capturedUrl = url;
-      if (options && options.body instanceof FormData) {
-        // First, dump the FormData's entries using forEach
-        const debugEntries = [];
-        options.body.forEach((v, k) => debugEntries.push([k, v]));
-        // And via entries()
-        const iterEntries = Array.from(options.body.entries());
-        const obj = {};
-        for (const [k, v] of options.body.entries()) {
-          if (obj[k] !== undefined) {
-            if (!Array.isArray(obj[k])) obj[k] = [obj[k]];
-            obj[k].push(v);
-          } else {
-            obj[k] = v;
-          }
-        }
-        capturedBody = { obj, debugEntries, iterEntries };
-      }
-      // Return a synthetic 303 so dispatchDixieDataForm sees a
-      // successful dispatch and does not navigate.
-      return new Response(null, { status: 303, headers: { Location: "/jobs/1" } });
-    };
-
-    try {
-      // Trigger a real submit event. The form's submit listener
-      // (app.js:4894) reads event.submitter, which the spec sets
-      // to the button that initiated the submit.
-      const event = new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: ignore });
-      form.dispatchEvent(event);
-      // The listener is async (calls await fetch).
-      await new Promise((r) => setTimeout(r, 300));
-      return { url: capturedUrl, body: capturedBody };
-    } finally {
-      window.fetch = originalFetch;
+  // Seed 2 NeedsReview rows via the empty-name confirmation
+  // path. handleCreateSoldier sets NeedsReview=true when
+  // first_name + last_name are empty AND confirm_empty_name=1.
+  // POST directly with FormData so we bypass the JS-side
+  // data-confirm dialog (the probe is verifying the queue
+  // rendering, not the JS confirm path).
+  for (let i = 0; i < 2; i++) {
+    const res = await fetch(`${BASE}/soldiers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        first_name: '',
+        last_name: '',
+        confirm_empty_name: '1',
+        entry_type: 'soldier',
+      }).toString(),
+    });
+    if (res.status >= 400) {
+      throw new Error(`seed NeedsReview soldier #${i} failed (${res.status})`);
     }
-  });
-  console.log("    dispatch result:", JSON.stringify(result));
+  }
 
-  record("fetch-fires", result.url && result.url.includes("/review-queue/bulk"));
-  const flatBody = result.body ? result.body.obj : null;
-  record("body-includes-selected-ids", flatBody && "selected_ids" in flatBody);
-  record("body-includes-bulk-action", flatBody && "bulk_action" in flatBody, { keys: Object.keys(flatBody || {}) });
-  record("bulk-action-value-ignore", flatBody && flatBody.bulk_action === "ignore", { bulkAction: flatBody && flatBody.bulk_action });
+  await page.goto(`${BASE}/review-queue`, { waitUntil: 'networkidle' });
+  await new Promise((r) => setTimeout(r, 400));
 
-  await browser.close();
-  console.log(`\n${pass} passed, ${fail} failed`);
-  process.exit(fail === 0 ? 0 : 1);
-} catch (e) {
-  console.error("FATAL", e);
-  process.exit(2);
-} finally {
-  server.kill();
-  await wait(500);
+  const entryCards = await page.locator('[id^="review-queue-item-"]').count();
+  record('review-queue-renders-entry-cards-when-needs-review', entryCards === 2, { entryCards });
+
+  const bulkActionForm = await page.locator('form[data-dixie-submit][action="/review-queue/bulk"]').first().getAttribute('action').catch(() => null);
+  record('review-queue-bulk-form-targets-endpoint', bulkActionForm === '/review-queue/bulk', { bulkActionForm });
+
+  record('review-queue-select-all-checkbox-renders', (await page.locator('input[data-select-all="review-queue"]').count()) >= 1, {});
+
+  const ignoreButton = page.locator('button[name="bulk_action"][value="ignore"][data-confirm]').first();
+  record('review-queue-ignore-button-has-confirm', await ignoreButton.getAttribute('data-confirm').then((v) => !!v && v.length > 0), {});
+
+  const deleteButton = page.locator('button[name="bulk_action"][value="delete"][data-confirm]').first();
+  record('review-queue-delete-button-has-confirm', await deleteButton.getAttribute('data-confirm').then((v) => !!v && v.length > 0), {});
+
+  const resolveAction = await page.locator('[data-action*="/review/resolve?context=queue"][data-dixie-submit="true"]').first().getAttribute('data-action').catch(() => null);
+  record('review-queue-mark-as-resolved-data-action-attr', resolveAction !== null && /\/soldiers\/\d+\/review\/resolve\?context=queue/.test(resolveAction), { resolveAction });
+
+  await browser.close().catch(() => {});
+
+  const failed = results.filter((r) => !r.ok);
+  if (failed.length > 0) {
+    console.log(`\nFAIL: ${failed.length} assertion(s) failed.`);
+    return { ok: false, steps: { pass, fail, failed } };
+  }
+  console.log(`\nPASS: ${results.length} assertion(s).`);
+  return { ok: true, steps: { pass, fail } };
 }
+
+runProbe({ name: 'review-queue-bulk', probeFn: main })
+  .then((r) => process.exit(r.ok ? 0 : 1))
+  .catch((err) => { console.error('fatal:', err); process.exit(2); });

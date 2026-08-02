@@ -72,14 +72,22 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { registerCleanup } from './_lib/cleanup.mjs';
 import { setFileChooserFixture } from './_lib/filechooser.mjs';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const PORT = process.env.PROBE_PORT || '8774';
-const BASE = `http://127.0.0.1:${PORT}`;
+// Issue #710: replaced hardcoded PORT = 8774 + manual
+// `http://127.0.0.1:${PORT}` with config.mjs. PROBE_PORT
+// (set by the aggregator's per-probe allocation, #707)
+// wins; the config's defaultPort (8774) is the fallback
+// for standalone runs. SMOKE_BASE_URL (CI mode) is honored
+// by config.mjs's resolveBaseUrl().
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -196,22 +204,22 @@ async function teardown(page, soldierIDs) {
   }
 }
 
-async function main() {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+async function main(ctx) {
+  // Issue #710: scratchDir now comes from ctx.scratchDir (the
+  // runner's per-probe mkdtemp) so concurrent probes don't
+  // collide on the hardcoded `.scratch/smoke-soldier-images`
+  // path. The runner's per-probe state root means local
+  // settings (theme, debug_mode, etc.) are isolated too — a
+  // side benefit of the migration.
+  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
-  const scratchDir = path.join(repoRoot, '.scratch', 'smoke-soldier-images');
-  const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
+  const scratchDir = ctx.scratchDir;
+  const webBinPath = webBin();
   const fixtureSrc = path.join(here, '_lib', 'fixtures', 'soldier-image.png');
 
-  try {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  } catch (_) {
-    // ignore
-  }
-
-  if (!fs.existsSync(webBin)) {
+  if (!fs.existsSync(webBinPath)) {
     throw new Error(
-      `dixiedata-web binary missing at ${webBin}; run \`just debug\` first`,
+      `dixiedata-web binary missing at ${webBinPath}; run \`just debug\` first`,
     );
   }
   if (!fs.existsSync(fixtureSrc)) {
@@ -234,14 +242,16 @@ async function main() {
   }
 
   const proc = spawn(
-    webBin,
+    webBinPath,
     ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
     {
       cwd: repoRoot,
       env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
     },
   );
-  registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
   proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
   proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
 
@@ -625,14 +635,35 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
         await page.click(
           '[id="panel.soldier.detail.images"] [data-image-delete-button]',
         );
-        // Wait for swap: count drops by exactly one.
+        // Issue #709: wait for the htmx POST to land BEFORE
+        // polling the DOM. The previous version of this step
+        // raced: click() returns immediately, the function
+        // polls every ~100ms, the response arrives 100-500ms
+        // later (sometimes 1-2s on Windows under load). With
+        // a 30s timeout the race usually won, but ~5-10% of
+        // runs hit the timeout window with the response still
+        // in flight. waitForResponse first + then the DOM
+        // poll removes the race entirely. If the server returns
+        // 500, we surface the response in the assertion error
+        // so the next maintainer sees the underlying bug,
+        // not just "timeout".
+        const deleteResponse = await page.waitForResponse(
+          (r) => r.url().endsWith(`/soldiers/${createdSoldierID}/images/delete`),
+          { timeout: 15_000 },
+        );
+        if (!deleteResponse.ok()) {
+          throw new Error(
+            `step-04: server returned ${deleteResponse.status()} on POST /soldiers/${createdSoldierID}/images/delete; expected 2xx. Underlying bug: the per-card Delete is failing on the server side. See issue #709 for the root-cause analysis.`,
+          );
+        }
+        // Wait for the fragment-swap to land: count drops by exactly one.
         await page.waitForFunction(
           ({ before }) =>
             document.querySelectorAll(
               '[id="panel.soldier.detail.images"] [data-image-card]',
             ).length === before - 1,
           { before },
-          { timeout: 30_000 },
+          { timeout: 15_000 },
         );
         const after = await page
           .locator('[id="panel.soldier.detail.images"] [data-image-card]')
@@ -728,20 +759,24 @@ const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath])
   } finally {
     await teardown(page, trackedSoldierIDs);
     await browser.close();
-
-    try {
-      fs.rmSync(scratchDir, { recursive: true, force: true });
-    } catch (_) {
-      // ignore
-    }
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
   console.log(`soldiers touched (created, then cleaned up): ${trackedSoldierIDs.length}`);
-  process.exit(fail === 0 ? 0 : 1);
+  // The runner's runProbe contract returns {ok} from the probeFn;
+  // the aggregator emits the process exit code via renderSummary().
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-import('./_lib/cleanup.mjs').then(async ({ runWithCleanup }) => {
-  const code = await runWithCleanup(main);
-  process.exit(code === 0 ? 0 : code);
+// Issue #710: the legacy cleanup.mjs wrapper is gone.
+// runProbe now owns server SIGTERM via the ctx.registerCleanup
+// hook main() registers, and the runner's mkdtemp removal
+// owns the scratch dir cleanup. The standalone invocation
+// path (node audit/smoke_soldier_images.mjs) still works
+// because runProbe is callable directly — no aggregator
+// required.
+const result = await runProbe({
+  name: 'soldier-images',
+  probeFn: main,
 });
+process.exit(result.ok ? 0 : 1);

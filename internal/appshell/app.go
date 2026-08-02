@@ -1282,8 +1282,32 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 	}
 
 	for _, image := range selected {
-		if err := os.Remove(image.FilePath); err != nil && !os.IsNotExist(err) {
-			respondInternal(w, r, fmt.Sprintf("Could not delete image file %s.", image.FilePath), err)
+		// Issue #709: on Windows the image file may be briefly
+		// held by another handle (anti-virus scanner, OS file
+		// indexer, headless-chromium's image cache) even after
+		// the upload handler's `os.Create` + `defer dst.Close()`
+		// cycle. os.Remove fails with ERROR_SHARING_VIOLATION
+		// (32 = "The process cannot access the file because it
+		// is being used by another process") when any other
+		// process holds the file without FILE_SHARE_DELETE.
+		// Retry with short exponential backoff so a fast click
+		// right after upload doesn't fail the user-facing
+		// delete with a 500. 5 attempts × 50/100/200/400/800ms
+		// = 1.55s total wait, well under the 30s probe timeout.
+		// Linux/macOS don't have this contention (unlink works
+		// while open) so the loop exits on attempt 1.
+		var removeErr error
+		for attempt := 0; attempt < 5; attempt++ {
+			if attempt > 0 {
+				time.Sleep(time.Duration(50<<attempt) * time.Millisecond)
+			}
+			removeErr = os.Remove(image.FilePath)
+			if removeErr == nil || os.IsNotExist(removeErr) {
+				break
+			}
+		}
+		if removeErr != nil && !os.IsNotExist(removeErr) {
+			respondInternal(w, r, fmt.Sprintf("Could not delete image file %s.", image.FilePath), removeErr)
 			return
 		}
 	}

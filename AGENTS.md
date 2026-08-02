@@ -321,21 +321,19 @@ one of these criteria:
 | User explicitly says "branch this" | whatever the user says |
 | New screen or sub-system | `feature/<short-kebab>` + PR |
 
-### Four-branch model (dev / rc/v* / stable / main)
+### Three-branch model (dev / stable / main)
 
-As of 2026-07-26 (ADR 0009 + ADR 0011), the repo carries four
-named branches with distinct roles:
+As of 2026-07-03 (ADR 0009), the repo carries three named
+branches with distinct roles:
 
 - **`dev`** — integration. Agents and humans commit here
   directly per the default flow below; PRs target `dev`.
   No branch protection.
-- **`rc/v<MAJOR>.<MINOR>`** — release-candidate stabilization
-  branch. Created from `dev` when RC1 cuts; receives only
-  bug fixes, docs, tests, CI fixes, and regression nets
-  (ADR 0011). Long-lived: stays around after the release as
-  the patch-release maintenance line (`v1.1.1`, `v1.1.2`...).
-  Protected by the commit-message + diff-size gate in
-  `.github/workflows/rc-lint.yml`.
+- **`rc/v*`** — release candidate (per [ADR 0011](docs/adr/0011-rc-branch-policy.md)).
+  Stabilization branch: only `fix/docs/chore/test/ci`
+  commits are allowed. New features belong on `dev` first.
+  Workflow: `.github/workflows/rc-lint.yml`. The current
+  RC line is `rc/v1.1`.
 - **`stable`** — released-code home. Promotion destination
   for `make promote` (per ADR 0008). Future releases tag
   and ship from here.
@@ -346,7 +344,7 @@ named branches with distinct roles:
   production state is recoverable even after multiple
   releases have shipped from `stable`.
 
-### Branch protection (main + stable + rc/v*)
+### Branch protection (both `main` and `stable`)
 
 Per ADR 0009, both `main` and `stable` get the **same**
 standard GitHub branch protection rules:
@@ -357,100 +355,46 @@ standard GitHub branch protection rules:
 - Require CI green (`build`, `test`, `audit` workflows)
   before merge.
 
-Per ADR 0011, `rc/v*` is stricter than `stable` + `main`:
-the commit-message + diff-size gate (`lint-rc-commits`
-workflow) must also pass, and the `release-blocker` label
-is required on every PR. The full ruleset is documented in
-[`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md).
-
 `dev` is **not** protected — direct commits are the default
 flow per §Branch policy below. The rules are documented in
 [`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md)
 so future agents have a checklist to apply them via `gh api`
 or the GitHub UI.
 
-### RC branch policy (ADR 0011, Zephyr-style feature freeze)
+Per [ADR 0011](docs/adr/0011-rc-branch-policy.md), `rc/v*`
+branches carry the standard rules plus the
+`release-blocker` label gate + the `lint-rc-commits` status
+check. The classifier rejects `feat/refactor/perf/build`
+commit types and diffs ≥ 50 files.
 
-The `rc/v*` branch is in **feature freeze** the moment it is
-cut from `dev`. Only stabilization changes are allowed:
-
-| Commit type | Allowed on `rc/v*`? |
-|---|---|
-| `fix:` | ✓ (the entire point) |
-| `docs:` | ✓ |
-| `test:` | ✓ (regression net for existing features) |
-| `ci:` | ✓ (build / CI fixes) |
-| `chore:` | ✓ (must reference the fix it supports) |
-| `feat:` | ✗ — open on `dev` for the next release |
-| `refactor:` | ✗ — open on `dev` |
-| `perf:` | ✗ — open on `dev` |
-| `build:` | ✗ — open on `dev` |
-
-A commit that touches ≥ 50 files is **always** rejected,
-regardless of type — large diffs are the canonical signal
-of a refactor or feature masquerading as a fix.
-
-**Sync direction: RC → dev (VisIt pattern).** Fixes land
-on `rc/v*` first, then get merged into `dev` as a
-follow-up commit. The follow-up commit's message
-references the RC commit by SHA:
-
-```
-fix(tags): add data-method=DELETE to tag delete form (#664)
-
-Backport of rc/v1.1 commit 8d7989c4 to dev.
-```
-
-The opposite direction (dev → RC) is allowed for the
-special case where a fix is developed on `dev` first and
-backported. The PR description must say "backport from dev"
-and link the original `dev` commit SHA.
-
-**Enforcement.** The CI gate at
-`.github/workflows/rc-lint.yml` parses every commit's
-conventional-commit type prefix and fails the build on
-disallowed types. The script at
-`scripts/ci/lint-rc-commits.mjs` also has a `--local
-<base>..<head>` mode for pre-push checks. The companion
-test at `scripts/ci/lint-rc-commits.test.mjs` (run in CI
-on every PR to dev + stable via the test workflow) pins
-the classifier behavior on each allowed + disallowed type.
-
-### Promotion: dev → rc/v* → stable → tag
+### Promotion: dev → stable
 
 **`stable` is always releasable.** No direct commits to
 `stable`. No merge into `stable` that does not first pass
-the full test suite + visual sweep on `rc/v*`, per the
-gate chain in ADR 0008.
+the full test suite + visual sweep on `dev`, per the gate
+chain in ADR 0008.
 
 The promote flow (PR via GitHub UI) is:
 
-1. **When RC1 cuts: create `rc/v<MAJOR>.<MINOR>` from
-   `dev` HEAD.** This is the moment the v1.1 line enters
-   feature freeze per ADR 0011. New features keep going
-   to `dev` for the next release; `rc/v*` accepts only
-   fixes. The commit cut + the manifest's first RC entry
-   happen in the same slice.
-2. **Operator runs `make promote-dry-run`** — runs the
-   gate chain (gates 1-9 from ADR 0008) against
-   `rc/v*` HEAD and prints the result. No push, no tag,
-   no PR.
-3. **Operator runs `make promote`** — runs the gate chain
+1. **Operator runs `make promote-dry-run`** — runs the
+   gate chain (gates 1-9 from ADR 0008) and prints the
+   result. No push, no tag, no PR.
+2. **Operator runs `make promote`** — runs the gate chain
    (halts on failure). On success, it opens a PR
-   `rc/v* → stable` via `gh pr create` with the gate-chain
+   `dev → stable` via `gh pr create` with the gate-chain
    output in the PR body. No code is merged yet.
-4. **Operator reviews the PR in the GitHub UI** — reads
+3. **Operator reviews the PR in the GitHub UI** — reads
    the diff, the gate-chain output, the commit log, and
    any CI annotations. The operator is the merge
    authority; no auto-merge is configured.
-5. **Operator merges the PR via the GitHub UI** — CI
+4. **Operator merges the PR via the GitHub UI** — CI
    re-runs as part of the merge branch protection rules.
-6. **Operator runs `scripts/release-github.ps1`** — tags
-   the merge commit on `stable`, pushes the tag, opens a
-   draft GitHub release.
+5. **Operator runs `scripts/release-github.ps1`** — tags
+   the merge commit, pushes the tag, opens a draft GitHub
+   release.
 
-If `dev` has commits `stable` doesn't have, `just promote`
-aborts and instructs the operator to run `just promote-prep`
+If `dev` has commits `stable` doesn't have, `make promote`
+aborts and instructs the operator to run `make promote-prep`
 to sync. See ADR 0009 §"Conflict policy" for the resolution
 flow. Until `just promote` is implemented, do not promote
 `dev` to `stable` without explicit user direction. If you

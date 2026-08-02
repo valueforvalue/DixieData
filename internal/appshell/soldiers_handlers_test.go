@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -292,6 +293,124 @@ func TestHandleSoldierImagesDeleteFragmentSwap(t *testing.T) {
 // response is the fragment that the data-results-target
 // selector (set in B.1) swaps into place. Mirrors the
 // post-#341 /events fragment-swap test pattern.
+
+// TestHandleSoldierImagesDeleteRetriesOnFileLock (issue #709)
+// pins the file-locking retry on Windows. The per-card
+// Delete handler calls os.Remove on the image file. On
+// Windows, anti-virus scanners / OS file indexers /
+// headless-chromium's image cache can briefly hold a read
+// handle on the file (no FILE_SHARE_DELETE on os.Create).
+// os.Remove returns ERROR_SHARING_VIOLATION while any other
+// handle is open; the handler must retry with short
+// backoff so a fast click right after upload doesn't fail
+// with a 500.
+//
+// This test simulates the contention by opening a read
+// handle on the file in the test process before POSTing the
+// delete. On Linux, os.Remove on an open file succeeds
+// (unlink-while-open is allowed), so the test passes
+// trivially. On Windows, the test would race the
+// contention; with the retry loop in place the handler
+// still succeeds because the test holds the handle open
+// for the entire POST + handler runtime (1-2s typical),
+// which exceeds the 1.55s retry budget. To make the test
+// deterministic on both platforms, the test releases the
+// read handle after 50ms — well within the retry budget —
+// so the handler's next retry attempt succeeds.
+//
+// The deterministic part of the test is the FIRST os.Remove
+// attempt that the handler makes while the read handle is
+// still open: on Windows this returns ERROR_SHARING_VIOLATION;
+// on Linux it succeeds. The test confirms that EITHER outcome
+// (first-attempt success on Linux, retry-then-success on
+// Windows) produces a 200 response. If the retry loop is
+// removed, this test still passes on Linux (unlink succeeds)
+// but fails on Windows (the first os.Remove would 500).
+func TestHandleSoldierImagesDeleteRetriesOnFileLock(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "ImagesDeleteRetry")
+	imageDir, relativeDir := appdata.RecordImageDir(app.dataDir, s.DisplayID)
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll imageDir: %v", err)
+	}
+	targetPath := filepath.Join(imageDir, "locked.png")
+	if err := os.WriteFile(targetPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+	if err := app.soldiers.AddImage(s.ID, "locked.png", filepath.Join(relativeDir, "locked.png"), "Locked"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	refreshed, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID pre-delete: %v", err)
+	}
+	dropID := refreshed.Images[0].ID
+
+	// Open a read handle on the image file to simulate a
+	// contending process. On Windows this prevents
+	// os.Remove from succeeding until the handle is
+	// released. On Linux unlink-while-open is allowed so
+	// the delete succeeds on the first try.
+	holdHandle, err := os.Open(targetPath)
+	if err != nil {
+		t.Fatalf("Open holdHandle: %v", err)
+	}
+	defer holdHandle.Close()
+
+	// Release the handle after 50ms — inside the handler's
+	// retry budget (5 attempts × 50/100/200/400/800ms
+	// = 1.55s total). On Windows the first 1-2 attempts
+	// fail with ERROR_SHARING_VIOLATION; the subsequent
+	// attempts succeed once the test releases the handle.
+	// On Linux the first attempt succeeds and the release
+	// is a no-op.
+	releaseTime := time.Now().Add(50 * time.Millisecond)
+	go func() {
+		time.Sleep(time.Until(releaseTime))
+		holdHandle.Close()
+	}()
+
+	deleteStart := time.Now()
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(s.ID)+"/images/delete", url.Values{
+		"image_ids": {intStr(dropID)},
+	})
+	if err != nil {
+		t.Fatalf("POST images/delete: %v", err)
+	}
+	deleteDuration := time.Since(deleteStart)
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("POST delete status = %d, want 200 (handler retried past the 50ms hold); the file-locking retry logic on Windows is not working", resp.StatusCode)
+	}
+	// Sanity: the delete should have completed within the
+	// retry budget (1.55s) plus a small margin. If the
+	// handler returned 200 in <10ms, the retry loop was
+	// not exercised; if it took >3s, the retry budget
+	// overflowed. The expected window is 50-1600ms.
+	if deleteDuration < 50*time.Millisecond {
+		t.Logf("note: delete returned in %v; the retry loop may not have been exercised on this platform (Linux unlink-while-open is allowed; the loop exits on the first attempt)", deleteDuration)
+	}
+	if deleteDuration > 3*time.Second {
+		t.Errorf("delete took %v; the 1.55s retry budget overflowed", deleteDuration)
+	}
+
+	// DB: image should be gone.
+	afterDelete, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID post-delete: %v", err)
+	}
+	for _, img := range afterDelete.Images {
+		if img.ID == dropID {
+			t.Errorf("image %d should be deleted from DB but is still present", dropID)
+		}
+	}
+}
+
 func TestHandleSoldierImagesSetPrimaryFragmentSwap(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)

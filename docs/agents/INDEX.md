@@ -57,6 +57,7 @@ all of them; load only the ones that match your task.
 | [`docs/agents/typst-layout-tips.md`](typst-layout-tips.md) | Typst layout work (alongside tune-iteration.md). |
 | [`docs/agents/domain.md`](domain.md) | Skills reading domain docs. |
 | [`docs/agents/repl.md`](repl.md) | Python REPL scratch discipline — when to use `.agents/skills/repl/` for deterministic investigation, boundary rule (Python NEVER in Go build). |
+| [`docs/agents/smoke-runner.md`](smoke-runner.md) | Adding a probe to the audit smoke runner (issue #700). `runProbe` contract, how to add a `playwright` or `scanner` entry, the surface registry, cleanup-hook ordering. Load when working on audit automation or adding a new probe. |
 
 ### UI hunt / redesign
 

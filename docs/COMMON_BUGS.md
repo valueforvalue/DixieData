@@ -1123,6 +1123,18 @@ workarounds.
 2. Does the Wails-runtime gate check both `requestUrl` AND `window.location.hostname`?
 3. Run `node audit/dispatcher_patch_method.test.mjs` — all 7 assertions must pass
 
+**Regression net (issue #683):**
+- `audit/dispatcher_patch_method.test.mjs` (6 assertions) is wired
+  into `.github/workflows/test.yml` via the
+  `just lint-dispatcher-patch-method` recipe. The CI gate fires
+  on every PR; a future refactor that drops either Wails-runtime
+  workaround fails the build with a clear assertion message.
+- The Go-side mirror `TestRequestMethodOverride_PreservesBody`
+  in `internal/appshell/app_test.go` pins that the
+  `requestMethodOverride` middleware delivers the form body
+  intact to the rewritten-method handler — the chi-router-side
+  counterpart of the dispatcher test.
+
 ### 3.9 JS-side `form.action` mutation — JS clobbers the server-rendered URL after init (#689, priority:high, target:rc)
 
 **Note:** §3.8 documents `form.action` being used as a read-side
@@ -1431,9 +1443,54 @@ this re-install step OR verify the install counter
 incremented when the trigger is rendered late.
 
 **Real example:**
-- (pending) `fix(foldout): re-init foldouts on htmx swap (issue #285)`
+### 3.11 Wails native image upload opens two dialogs or imports invisibly
 
-### 3.10 Empty-body dispatch — body construction uses raw `closest()` instead of the resolved form (#691, release-blocker, target:rc)
+**Symptom:** Browser image upload works. Wails opens one browser
+file chooser, then a second native chooser; or the native chooser
+opens once but no import, toast, or visible failure follows. Earlier
+attempts could replace the gallery with an empty fragment until refresh.
+
+**Why it happens:** Wails WebView2 strips multipart file bytes from
+requests sent through `wails.localhost`. `input.files` still contains
+metadata, so JavaScript assumes upload succeeded. Go receives an empty
+or zero-byte multipart file and falls through to
+`OpenMultipleFilesDialog`. The first browser chooser is wasted. If the
+native job response is treated as gallery HTML, the response can replace
+existing cards even though database rows remain intact.
+
+**Fix:** Mark soldier image upload controls with
+`data-wails-native-upload="true"`. In `handleImageUpload`:
+
+- detect `window.location.hostname === "wails.localhost"`;
+- prevent the browser file chooser on click;
+- POST an empty `URLSearchParams` trigger so urlencoded body survives
+  Wails transport;
+- let guarded Go `OpenMultipleFilesDialog` own file selection;
+- treat `/jobs/` / redirect response as job status, not gallery HTML;
+- show import success/failure toast and reload page after success.
+
+Keep browser mode unchanged: HTML file input + multipart `FormData`.
+Do not send browser `File` objects through Wails expecting bytes to
+survive.
+
+**Find it:**
+
+```bash
+grep -n 'data-wails-native-upload\\|function handleImageUpload' \\
+  internal/templates frontend/app.js
+grep -n 'readUploadedImagePaths\\|OpenMultipleFilesDialog' \\
+  internal/appshell/app.go
+```
+
+**Regression net:**
+- live Wails test: one native chooser, import job, success toast,
+  automatic reload, new image visible;
+- browser smoke: multipart upload remains functional;
+- verify existing gallery remains present during job response.
+
+---
+
+
 
 **Note:** §3.9 documents JS-side `form.action` mutation. This
 section (§3.10) documents the *symmetric* bug: JS-side form

@@ -52,6 +52,83 @@ func TestFoldout_ARIAContract(t *testing.T) {
 	}
 }
 
+// TestFoldout_TriggerMenuIDContract (issue #704) pins the
+// relationship between the menuID arg + the data-foldout-trigger
+// attribute + the panel id. The trigger button MUST carry
+// `data-foldout-trigger="<menuID>"` (verbatim the menuID arg)
+// AND the panel MUST carry `id="<menuID>"` + `data-foldout-panel="<menuID>"`.
+// This is the canonical contract that audit probes (smoke_article_edit.mjs,
+// the new discover_foldout_trigger_marker.mjs) target. A
+// future refactor that drops the data-foldout-trigger attribute
+// (e.g. switches to a hand-rolled `data-<thing>-open` marker)
+// would regress all audit probes that use the Foldout primitive.
+//
+// The test calls Foldout with three distinct menuIDs (one from
+// internal/uiids, one from layout.templ, one custom) to confirm
+// the contract holds across all callers, not just the Share
+// foldout. If a future caller passes an empty menuID, the
+// primitive should still emit the empty data-foldout-trigger=""
+// attribute (the JS handler filters empty strings) — the test
+// asserts the empty-string case is handled consistently.
+func TestFoldout_TriggerMenuIDContract(t *testing.T) {
+	menuIDs := []string{
+		"layout.share.menu",                  // Share foldout (pre-#380 mega-menu)
+		"panel.article.markdown-cheatsheet",  // Markdown syntax cheatsheet (issue #565)
+		"custom-future-menu-id",               // arbitrary new caller
+	}
+	for _, menuID := range menuIDs {
+		menuID := menuID
+		t.Run(menuID, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := Foldout("Test", menuID, nil).Render(context.Background(), &buf); err != nil {
+				t.Fatalf("Render(%q): %v", menuID, err)
+			}
+			got := buf.String()
+			// Trigger carries the canonical marker with the
+			// menuID verbatim. The trigger button is the
+			// FIRST <button> on the page (before any
+			// data-* child spans the badge variant might
+			// render).
+			triggerIdx := strings.Index(got, "<button")
+			if triggerIdx < 0 {
+				t.Fatalf("no <button> tag in render:\n%s", got)
+			}
+			triggerEnd := strings.Index(got[triggerIdx:], ">")
+			if triggerEnd < 0 {
+				t.Fatalf("malformed <button> tag in render:\n%s", got)
+			}
+			triggerTag := got[triggerIdx : triggerIdx+triggerEnd+1]
+			wantTriggerAttr := `data-foldout-trigger="` + menuID + `"`
+			if !strings.Contains(triggerTag, wantTriggerAttr) {
+				t.Errorf("trigger <button> missing %q (issue #704 trigger marker contract)\ntrigger tag: %s\nfull render:\n%s", wantTriggerAttr, triggerTag, got)
+			}
+			// aria-controls must point at the menuID too
+			// (the ARIA + the data-* marker must stay in
+			// lockstep).
+			if !strings.Contains(triggerTag, `aria-controls="`+menuID+`"`) {
+				t.Errorf("trigger <button> missing aria-controls=%q\ntrigger tag: %s", menuID, triggerTag)
+			}
+			// Panel carries both id and data-foldout-panel
+			// with the menuID.
+			if !strings.Contains(got, `id="`+menuID+`"`) {
+				t.Errorf("panel <ul> missing id=%q\nfull render:\n%s", menuID, got)
+			}
+			if !strings.Contains(got, `data-foldout-panel="`+menuID+`"`) {
+				t.Errorf("panel <ul> missing data-foldout-panel=%q\nfull render:\n%s", menuID, got)
+			}
+			// Regression net (issue #704): the trigger must
+			// NOT carry any hand-rolled `data-<thing>-open`
+			// marker that the wireframe author might have
+			// inferred from a Foldout consumer's comment. The
+			// canonical trigger marker is the data-foldout-trigger
+			// attribute only.
+			if strings.Contains(got, `data-article-md-cheatsheet-open`) {
+				t.Errorf("rendered foldout carries the stale data-article-md-cheatsheet-open marker (issue #704); use data-foldout-trigger instead\nfull render:\n%s", got)
+			}
+		})
+	}
+}
+
 // TestFoldout_TriggerAttrsPassThrough asserts that the spread
 // triggerAttrs are rendered on the <button> (minus the class
 // attribute which the primitive owns). This is what the

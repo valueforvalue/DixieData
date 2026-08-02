@@ -7,6 +7,20 @@
 // pre-wired Foldout whose children are the rows from
 // internal/articles.Rows().
 //
+// Trigger marker contract (issue #704): the trigger
+// button carries `data-foldout-trigger="<menuID>"` where
+// menuID is the second arg to Foldout. Here that's
+// uiids.PanelArticleMarkdownCheatsheet, which renders as
+// `data-foldout-trigger="panel.article.markdown-cheatsheet"`.
+// Audit probes (smoke_article_edit.mjs + the new
+// audit/discover_foldout_trigger_marker.mjs) target the
+// canonical `data-foldout-trigger="panel.article.markdown-cheatsheet"`
+// attribute — not a hand-rolled `data-article-md-cheatsheet-open`
+// (which does not exist in the rendered DOM). If a future
+// caller needs a different trigger marker, add it via the
+// triggerAttrs map (folded into the spread attrs on the
+// <button>) — do NOT bypass the Foldout primitive.
+//
 // Locked design decisions (from RPCI Critique):
 //   - Trigger label: "Markdown syntax" with ▾ chevron
 //     (matches the Foldout primitive's visual vocabulary).

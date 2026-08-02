@@ -97,6 +97,23 @@ templ screen that renders it. URL builders live in
 | `/soldiers/{id:[0-9]+}/events/quick-add` POST | `routebuilder.PersonEventQuickAdd(id)` | — | Quick-add an event from the person detail page |
 | `/soldiers/{id:[0-9]+}/events/attach-by-display-id` POST | `routebuilder.PersonEventAttachByDisplayID(id)` | — | Attach by Display ID |
 
+## Articles (v62 — issue #321)
+
+| Path | Builder | Templ | Notes |
+| --- | --- | --- | --- |
+| `/articles` | — (handler direct) | `articles.templ` | List page |
+| `/articles/new` | `routebuilder.ArticleNew()` | `article_new.templ:ArticleNewShell` | New article form |
+| `/articles/{id}` | `routebuilder.ArticleByID(id)` | `article_detail.templ` | Detail page |
+| `/articles/{id}/edit` | `routebuilder.ArticleEdit(id)` | `article_edit.templ:ArticleEditShell` | Edit form (shares markup with New) |
+| `/articles/{id}/pdf` | `routebuilder.ArticlePDF(id)` | — (PDF) | Printable article |
+| `/articles/{id}/images/import` POST | — | `image_picker_modal.templ` (inline form) | Image import (sibling form, not nested) |
+| `/articles/{id}/images` | — | `image_picker_modal.templ` (htmx swap) | Article images list (Pick existing tab) |
+| `/articles/{id}/refs` POST | — | — | Add Person Record ref |
+| `/articles/{id}/refs/{personId}` DELETE | — | — | Remove Person Record ref |
+| `/articles/{id}/snapshot` POST | — | — | Snapshot the article |
+| `/articles/{id}/restore` DELETE | — | — | Restore the live row from snapshot |
+| `/articles/{id}/snapshot/{id}` DELETE | — | — | Delete a snapshot |
+
 ## Tags (issue #256, #342)
 
 | Path | Builder | Templ | Notes |

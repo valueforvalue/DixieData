@@ -616,6 +616,57 @@ func TestAppServeHTTPMethodOverrideFromFormValue(t *testing.T) {
 	}
 }
 
+// TestRequestMethodOverride_PreservesBody is the Go-side mirror of
+// audit/dispatcher_patch_method.test.mjs (issue #683). It pins the
+// dispatchDixieDataForm ↔ requestMethodOverride contract: the Wails
+// WebView2 strips bodies for non-GET/POST, so the JS dispatcher
+// rewrites PATCH/PUT/DELETE → POST + X-HTTP-Method-Override. The Go
+// handler must receive the original form body intact after the
+// middleware rewrites the method — otherwise the handler reads an
+// empty r.Form and the chi router 400s (the original #428 symptom:
+// "Position must be a positive integer" toast on every source-record
+// reorder). The probe-style test fires a POST request with the
+// override header AND a non-trivial body, and asserts the handler
+// sees both the rewritten method AND every body field.
+func TestRequestMethodOverride_PreservesBody(t *testing.T) {
+	app := NewApp()
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	// Capture the method AND the body that the handler sees. Both
+	// must round-trip; if either is dropped, the Wails gate is broken.
+	app.muxRaw.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
+		body := r.FormValue("position")
+		kind := r.FormValue("kind")
+		_, _ = fmt.Fprintf(w, "%s|position=%s|kind=%s", r.Method, body, kind)
+	})
+
+	formBody := url.Values{
+		"position": {"7"},
+		"kind":     {"source"},
+	}.Encode()
+	req := httptest.NewRequest(http.MethodPost, "/override", strings.NewReader(formBody))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-HTTP-Method-Override", http.MethodPatch)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	got := rec.Body.String()
+	wantPrefix := http.MethodPatch
+	if !strings.HasPrefix(got, wantPrefix) {
+		t.Fatalf("method not rewritten: got body %q, want prefix %q", got, wantPrefix)
+	}
+	if !strings.Contains(got, "position=7") {
+		t.Fatalf("body field position lost in override; got %q", got)
+	}
+	if !strings.Contains(got, "kind=source") {
+		t.Fatalf("body field kind lost in override; got %q", got)
+	}
+}
+
 func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 	app := NewApp()
 	app.setupRoutes()

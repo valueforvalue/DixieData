@@ -150,15 +150,135 @@ lint-all-frontend:
     just lint-bake-bootstrap
     just verify-embed-tree
     just lint-no-nested-forms
+    just lint-js-init-guards
+    just lint-button-actions-resolve
+    just lint-orphan-handlers
 
 # Aggregate test target: runs every node-based probe test suite.
+# Issue #702 closed: lint-orphan-handlers-test is wired in. The
+# pre-#700 unit test was broken (expected stale probe output +
+# a regex that dropped the drive-letter colon). The 4de0ee4
+# rewrite now pins the current contract: 6 assertions covering
+# the summary header lines, the invoker count, the --strict
+# exit-code branch, and the positive-coverage tripwires for
+# /soldiers/{id}/tags (issue #256 fix) + /export/json
+# (canonical "shipped but invisible" regression net).
 test-lint:
     just lint-htmx-guard-test
     just lint-bake-bootstrap-test
     just verify-embed-tree-test
     just lint-no-nested-forms-test
+    just lint-js-init-guards-test
+    just lint-button-actions-resolve-test
+    just lint-so-reuseaddr-test
+    just lint-orphan-handlers-test
+    just lint-foldout-trigger-marker-test
+    just lint-smoke-form-test
 lint-dispatcher-tdz-test:
     node --test audit/dispatcher_tdz_fix.test.mjs
+
+# Issue #683: dispatchDixieDataForm body-stripping regression
+# net (issue #428, AGENTS.md §Wails runtime hazards, quirks
+# 1 + 2). Two workarounds live in the dispatcher:
+#   1. PATCH/PUT/DELETE → POST + X-HTTP-Method-Override when
+#      the request is going to wails.localhost. Plain-Chromium
+#      requests (audit harness) keep the real PATCH so the
+#      Playwright probes still see the genuine method.
+#   2. FormData → URLSearchParams.toString() so the Wails asset
+#      server delivers the body to the Go handler.
+# Both fixes are pinned by this 7-assertion probe; future
+# refactors that drop a workaround fail the probe at editor
+# time. Wired into CI by test.yml as a PR-time gate.
+lint-dispatcher-patch-method:
+    node audit/dispatcher_patch_method.test.mjs
+
+# lint-js-init-guards (issue #685): walks frontend/app.js for
+# the 13 initializers dispatched by initializeDynamicContent
+# and asserts each one has a __<feature>Wired/Bound/Installed
+# sentinel inside its first ~40 lines. Prevents the
+# htmx-swap-re-binding bug class (fixes 87645011 + c0d89681)
+# from returning. Pairs with lint-no-nested-forms and
+# verify-embed-tree as the third editor-level sweep of the
+# audit-fallout cohort.
+lint-js-init-guards:
+    node scripts/lint-js-init-guards.mjs
+lint-js-init-guards-strict:
+    node scripts/lint-js-init-guards.mjs --strict
+lint-js-init-guards-test:
+    node --test scripts/lint-js-init-guards.test.mjs
+
+# discover-foldout-trigger-marker (issue #704): walks
+# frontend/, internal/, audit/, docs/ for any
+# `data-article-md-cheatsheet-open` literal (the stale
+# early-#565 wireframe marker that does not exist in the
+# rendered HTML; the cheatsheet uses the Foldout primitive's
+# `data-foldout-trigger="<menuID>"` contract). Path-based
+# exclusions whitelist the probe's own files + the corrected
+# wireframe row + the Foldout unit test (which intentionally
+# references the marker as a negative-control assertion).
+# Comment-only mentions are stripped before matching. In
+# strict mode exits 1 on any offender.
+lint-foldout-trigger-marker:
+    node audit/discover_foldout_trigger_marker.mjs
+lint-foldout-trigger-marker-strict:
+    node audit/discover_foldout_trigger_marker.mjs --strict
+lint-foldout-trigger-marker-test:
+    node --test audit/discover_foldout_trigger_marker.test.mjs
+
+# smoke-form (issue #715): the canonical
+# "submit a form + wait for response + wait for dispatcher's
+# programmatic navigation to settle" helper for DixieData audit
+# probes. Encodes the race fix that #709 + #713 + #714
+# applied independently. New audit probes that need to submit
+# a data-dixie-submit form and read DOM state should use
+# submitAndWait from audit/_lib/smoke_form.mjs rather than
+# reproducing the racy Promise.all([waitForURL, click])
+# + second-goto shape. Test suite uses mocked Playwright Page
+# + Locator so no browser is needed.
+lint-smoke-form-test:
+    node --test audit/_lib/smoke_form.test.mjs
+
+# lint-button-actions-resolve (issue #687): walks every
+# .templ file for invoker URLs (form action, data-action,
+# hx-get/post/put/patch/delete, Sprintf templates) and
+# asserts each one resolves to a route registered in
+# internal/appshell/routes.go OR matches the allowlist
+# (external / templ.SafeURL + htmx dev paths). Catches
+# the template-split button URL drift class (fixes
+# 69eb735f + 266db08c — fictional /share/feedback-log
+# URLs).
+lint-button-actions-resolve:
+    node scripts/lint-button-actions-resolve.mjs
+lint-button-actions-resolve-strict:
+    node scripts/lint-button-actions-resolve.mjs --strict
+lint-button-actions-resolve-test:
+    node --test scripts/lint-button-actions-resolve.test.mjs
+
+# discover_orphan_handlers (audit/discover_orphan_handlers.mjs):
+# walks internal/appshell/routes.go + every .templ file +
+# every generated *_templ.go to confirm every registered
+# handler has at least one templ/data-action invoker. Catches
+# the "handler returns 200 but renders nothing" bug class.
+# Triplet added in #700 slice 5 to mirror the convention used
+# by the other 3 scanners (lint-no-nested-forms,
+# lint-button-actions-resolve, lint-js-init-guards). The unit
+# test audit/discover_orphan_handlers_test.mjs already exists.
+lint-orphan-handlers:
+    node audit/discover_orphan_handlers.mjs
+lint-orphan-handlers-strict:
+    node audit/discover_orphan_handlers.mjs --strict
+lint-orphan-handlers-test:
+    node --test audit/discover_orphan_handlers.test.mjs
+
+# Issue #668 / ADR 0011: commit-type classifier for PRs
+# targeting `rc/v*` branches. Walk every commit between
+# BASE_REF..HEAD_REF, reject disallowed types
+# (feat/refactor/perf/build), missing-type commits, and
+# oversized diffs (≥ 50 files per ADR §Diff-size gate).
+lint-rc-commits:
+    BASE_REF="${BASE_REF:-origin/dev}" HEAD_REF="${HEAD_REF:-HEAD}" node scripts/ci/lint-rc-commits.mjs
+lint-rc-commits-test:
+    node --test scripts/ci/lint-rc-commits.test.mjs
 lint-typecheck-augmentations-test:
     node --test audit/typecheck_augmentations.test.mjs
 lint-no-bare-catch:
@@ -172,6 +292,13 @@ lint-dialog-guard-strict:
     node audit/smoke_dialog_guard.mjs --strict
 lint-dialog-guard-test:
     node --test audit/smoke_dialog_guard.test.mjs
+# Issue #708: regression net for SO_REUSEADDR on the smoke
+# server listener. Boots two dixiedata-web processes on the
+# same port sequentially and asserts the second one comes up
+# without a bind error. Requires build/bin/dixiedata-web.exe
+# to exist (run `just web` first on local Windows).
+lint-so-reuseaddr-test:
+    node --test audit/probe_so_reuseaddr.test.mjs
 lint-microcopy:
     node audit/smoke_microcopy.mjs
 lint-microcopy-strict:
@@ -195,8 +322,28 @@ lint-runtime-microcopy-strict:
 lint-runtime-microcopy-test:
     node audit/smoke_runtime_microcopy.test.mjs
 
+# Issue #700: shared Playwright smoke runner. The aggregator
+# walks audit/_lib/smoke_index.mjs::SURFACES[] and dispatches
+# each entry to either kind: 'playwright' (audit/_lib/
+# smoke_runner.mjs::runProbe) or kind: 'scanner' (spawnSync
+# the existing class-2/4/6/8/9 CLI probes). Slice 1 (this
+# commit) ships the skeleton + aggregator stub; SURFACES[]
+# is empty so the runner exits 0 with no assertions.
+# Subsequent slices migrate smoke_soldier_images /
+# smoke_submit_e2e / smoke_mega_menu_nav onto the runner.
+# The aggregator auto-discovers a built build/bin/
+# dixiedata-web{,.exe}; on Linux that path is the bare
+# dixiedata-web (the .github/workflows/audit.yml step
+# already builds it; local Windows devs run `just debug`).
+test-smoke:
+    node audit/smoke_aggregator.mjs
+test-smoke-strict:
+    node audit/smoke_aggregator.mjs --strict
+test-smoke-test:
+    node --test audit/_lib/smoke_runner.test.mjs
+
 # Existing lint aggregate. Individual recipes remain independently runnable.
-lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test
+lint: lint-htmx-guard-strict lint-htmx-guard-test lint-bake-bootstrap-strict lint-bake-bootstrap-test lint-dialog-guard-strict lint-dialog-guard-test lint-microcopy-strict lint-microcopy-test lint-static-archive-microcopy-strict lint-static-archive-microcopy-test lint-pdf-microcopy-strict lint-pdf-microcopy-test lint-icalendar-microcopy-strict lint-icalendar-microcopy-test lint-runtime-microcopy-strict lint-runtime-microcopy-test lint-no-bare-catch lint-typecheck verify-embed-tree-strict verify-embed-tree-test lint-no-nested-forms-strict lint-no-nested-forms-test lint-dispatcher-patch-method lint-js-init-guards-strict lint-js-init-guards-test lint-button-actions-resolve-strict lint-button-actions-resolve-test lint-foldout-trigger-marker
 
 tune:
     pwsh -NoLogo -NoProfile -Command "New-Item -ItemType Directory -Force tools/tune/bin | Out-Null"

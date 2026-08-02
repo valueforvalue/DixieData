@@ -146,3 +146,42 @@ break X" against a clean baseline.
 
 **Rule for future sessions:** when the slice you're about to commit
 includes untracked files, always stash with `-u`.
+
+---
+
+## Migration that copies a code block: `git show HEAD:path` is canonical, `read` can lie
+
+**Symptom (seen 2026-07-29 during the `smoke_soldier_images.mjs`
+migration for issue #700 slice 2):** I was migrating the probe
+file via surgical edits. I used `read audit/smoke_soldier_images.mjs`
+to grab the step-body block lines 280..727, then `write`d a fully
+rewritten file. The resulting probe *failed step-03* with a
+`button:has-text("Add Images From Computer")` selector timeout even
+though the canonical pre-migration probe passed step-03 on the same
+binary + seed. I spent ~25 min debugging the migration as if I'd
+broken something, then realized: I'd copied an *outdated* version of
+step-03. The `read` tool was showing the file-as-it-was at the moment
+of the call, which I'd already partially overwritten in an earlier
+edit. The canonical HEAD version of step-03 actually uses
+`[data-image-upload] label:has-text(...)` + `page.click(...)`, NOT
+`waitForSelector('button:has-text') + addButton.click()` like my copy
+contained. Root cause: I read the file from a stale state, not from
+git's record of truth.
+
+**Rule for future sessions:** when extracting a code block from a
+file (especially for surgical migration to a runner / refactor / port),
+always use one of:
+- `git show HEAD:path/to/file` (or `<sha>:path`) — git's record is
+  canonical and never stale.
+- `git show HEAD:path/to/file | sed -n '280,727p'` to grab a range.
+- After any `read` of a file you've recently touched, verify with a
+  separate command: `git diff path/to/file` should be empty for an
+  untouched file.
+
+Conversely: don't trust the contents of a file you just read IF you've
+already run `write` on it in the same session, OR if the file was
+modified by a concurrent slice that landed on the branch.
+
+The cost of the wrong rule: 25 minutes of debug time + a confused
+sprint cycle ("did the migration regress something?") when in fact
+the regression never existed.

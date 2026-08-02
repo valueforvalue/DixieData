@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -161,8 +162,40 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
+		// Issue #708: bind manually + set SO_REUSEADDR so a new
+		// probe can rebind to a port still in TIME_WAIT from the
+		// previous probe's exit. On Windows the stdlib's default
+		// listener does NOT set SO_REUSEADDR, so back-to-back
+		// probe invocations fail with WSAEACCES (10013) for
+		// 30-60s after the previous probe exits. The per-probe
+		// port allocation in audit/_lib/config.mjs (#707) is a
+		// defense-in-depth workaround; this is the canonical fix.
+		// On Linux SO_REUSEADDR is the default behaviour; setting
+		// it again is a no-op. On macOS the BSD-derived
+		// behaviour matches Linux. The setsockopt call is wrapped
+		// in tcp.SyscallConn().Control so it runs against the
+		// raw file descriptor regardless of platform.
+		ln, err := net.Listen("tcp", *addr)
+		if err != nil {
+			log.Fatalf("listen %s: %v", *addr, err)
+		}
+		if tcp, ok := ln.(*net.TCPListener); ok {
+			if rawConn, scErr := tcp.SyscallConn(); scErr == nil {
+				if ctrlErr := rawConn.Control(func(fd uintptr) {
+					// syscall.Handle(fd) is uintptr on Linux
+					// and Handle (a uintptr alias) on Windows;
+					// syscall.SetsockoptInt accepts both.
+					_ = syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+				}); ctrlErr != nil {
+					// SO_REUSEADDR is best-effort: on Linux the
+					// default already allows TIME_WAIT rebind, so
+					// a failure here is informational, not fatal.
+					log.Printf("dixiedata-web: SO_REUSEADDR control failed (non-fatal on Linux/macOS): %v", ctrlErr)
+				}
+			}
+		}
 		log.Printf("dixiedata-web: serving on http://%s (Ctrl+C to stop)", *addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("http server: %v", err)
 		}
 	}()

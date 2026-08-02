@@ -172,6 +172,50 @@ jobs:
           just lint-htmx-guard-test
         timeout-minutes: 5
 
+      # Dispatcher patch-method regression net (issue #683). Pins
+      # the Wails-WebView2 body-stripping workarounds in
+      # dispatchDixieDataForm (PATCH/PUT/DELETE → POST +
+      # X-HTTP-Method-Override, FormData → URLSearchParams). The
+      # 7-assertion source-scan probe catches a future refactor
+      # that drops either workaround, complemented by
+      # TestRequestMethodOverride_PreservesBody on the Go side.
+      # Cheap (~1s); runs on every PR via the npm/Node 20
+      # toolchain already configured above.
+      - name: Dispatcher patch-method regression net (issue #683)
+        shell: bash
+        run: |
+          just lint-dispatcher-patch-method
+        timeout-minutes: 2
+
+      # JS initializer guard lint (issue #685). Asserts every
+      # initializer dispatched by initializeDynamicContent has a
+      # __<feature>Wired/Bound/Installed sentinel inside its first
+      # ~40 lines. The 13-assertion source-scan probe + 3-test
+      # regression net ship in this PR; --strict is the gate so a
+      # future addition of an unguarded initializer fails the
+      # build. Sibling to lint-no-nested-forms and verify-embed-tree.
+      - name: JS initializer guard lint (issue #685)
+        shell: bash
+        run: |
+          just lint-js-init-guards-strict
+          just lint-js-init-guards-test
+        timeout-minutes: 2
+
+      # Templ invoker-resolve lint (issue #687). Walks every
+      # .templ file for invoker URLs (form action, data-action,
+      # hx-get/post/put/patch/delete, Sprintf templates) and
+      # asserts each one resolves to a route registered in
+      # internal/appshell/routes.go (or matches the allowlist).
+      # Catches the template-split button URL drift class
+      # (fixes 69eb735f + 266db08c). Companion probe to the
+      # orphan-handlers audit probe (inverse direction).
+      - name: Templ invoker-resolve lint (issue #687)
+        shell: bash
+        run: |
+          just lint-button-actions-resolve-strict
+          just lint-button-actions-resolve-test
+        timeout-minutes: 2
+
       # UX microcopy lint (issue #561). Static source scan over
       # every .templ file under internal/templates/** that catches
       # the three rule classes documented in

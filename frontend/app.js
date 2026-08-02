@@ -709,6 +709,40 @@
     return input instanceof HTMLInputElement ? input : null;
   }
 
+  // swapHtmlIntoTarget assigns `html` to `target.innerHTML`, then
+  // fires htmx.process(target) so any hx-* attributes on the new
+  // children are wired by htmx. Without the explicit process call,
+  // non-htmx dispatches (file uploads, dispatcher-driven form posts,
+  // the print-config preview) replace panel contents directly via
+  // innerHTML and the new buttons (e.g. per-card Delete) have no
+  // htmx intercept. htmx.process is idempotent on already-processed
+  // elements (it scans for hx-* attrs and binds each one once).
+  // After processing, the caller should also run initializeDynamicContent()
+  // so any JS initializers (foldouts, image pickers, etc.) are wired.
+  //
+  // Used by: handleImageUpload, dispatchDixieDataForm response swap,
+  // refreshShareQueuePresetsPage, the print-config preview modal,
+  // and the browse-fragment refresh. All 5 sites share the same
+  // pattern (`target.innerHTML = html; initializeDynamicContent();`)
+  // for the same reason: server-side fragment returned as text/html,
+  // client-side innerHTML swap, post-swap dynamic-content wiring.
+  //
+  function swapHtmlIntoTarget(/** @type {Element} */ target, /** @type {string} */ html) {
+    target.innerHTML = html;
+    // The htmx runtime exposes a process(node) method (per the
+    // htmx 2.x docs). The `window.htmx` type is inferred from
+    // earlier uses (which only touch htmx.on / htmx.off), so the
+    // typecheck doesn't know about .process. The runtime check is
+    // the source of truth; the cast is purely for the narrow type
+    // assertion.
+    const htmxRuntime = /** @type {any} */ (window).htmx;
+    if (htmxRuntime && typeof htmxRuntime.process === "function") {
+      htmxRuntime.process(target);
+    }
+    initializeDynamicContent();
+  }
+
+
   function invalidateRecentSearchHydration() {
     recentSearchHydrationState.token += 1;
   }
@@ -1088,6 +1122,13 @@
   function initializeTabs() {
     const defaults = new Map();
     document.querySelectorAll("[data-tab-group][data-tab-target]").forEach((button) => {
+      // Issue #685: per-button idempotency guard so htmx:load
+      // swaps don't double-activate the same tab group. The
+      // sentinel lives on the element itself (not on the
+      // dataset) so Node test harnesses without a real DOM
+      // dataset still pass the guard.
+      if (button.__tabsWired === true) return;
+      button.__tabsWired = true;
       const group = button.getAttribute("data-tab-group");
       if (!defaults.has(group) || button.hasAttribute("data-tab-default")) {
         defaults.set(group, button);
@@ -3307,18 +3348,6 @@ function serializeDraftFields(form) {
   // clamp constrains a value to [min, max]. Used to keep the
   // tooltip inside the chart wrapper bounds so it never escapes
   // the visible area on edge-of-chart hovers.
-  /**
-   * @param {number} n value
-   * @param {number} min lower bound
-   * @param {number} max upper bound
-   * @returns {number} clamped value
-   */
-  function clamp(n, min, max) {
-    if (Number.isNaN(n)) return min;
-    if (n < min) return min;
-    if (n > max) return max;
-    return n;
-  }
 
   // prefersReducedMotion returns true when the user has
   // requested reduced motion. Used by the tooltip's transition
@@ -3959,7 +3988,18 @@ function serializeDraftFields(form) {
   }
 
   function initializeEntryTypeForms() {
+    // Issue #685: per-form idempotency guard so htmx:load
+    // swaps don't re-run syncEntryTypeFields (which the #689
+    // fix removed the form.action mutation from, but the
+    // field sync still does work that should not double-
+    // fire). The sentinel lives on the element itself (not
+    // on the dataset) so Node test harnesses without a real
+    // DOM dataset still pass the guard.
+    if (typeof document === "undefined") return;
     document.querySelectorAll("form").forEach((form) => {
+      if (!(form instanceof HTMLFormElement)) return;
+      if (form.__entryTypeFormsWired === true) return;
+      form.__entryTypeFormsWired = true;
       syncEntryTypeFields(form);
     });
   }
@@ -4283,6 +4323,7 @@ function serializeDraftFields(form) {
     initializeImagePicker();
     initializeArticleImagePasteDrop();
     initializeImageUpload();
+    initializeShareIncludeTags();
     // Issue #607: article preview modal (Preview button
     // on /articles/{id}/edit + /articles/new). Idempotent
     // via the per-modal __articlePreviewWired flag so
@@ -4844,6 +4885,18 @@ function currentBrowseStateFromForm(form) {
     if (!(page instanceof HTMLElement)) {
       return;
     }
+    // Issue #685: per-page idempotency guard so htmx:load
+    // swaps don't re-run applyBrowseColumns / applyBrowseSelection
+    // / saveBrowseState (which would otherwise churn the
+    // selection restore for every swap, including pure
+    // re-renders that shouldn't touch browse state). The
+    // sentinel lives on the element itself (not on the
+    // dataset) so Node test harnesses without a real DOM
+    // dataset still pass the guard.
+    if (page.__browseViewWired === true) {
+      return;
+    }
+    page.__browseViewWired = true;
     const form = document.getElementById("browse-filters");
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -4866,7 +4919,6 @@ function currentBrowseStateFromForm(form) {
     saveBrowseState(currentBrowseStateFromForm(form));
   }
 
-  /** @param {Element} el @param {boolean} busy */
 // startUpdateProgressPollIfNeeded starts a 500ms polling loop
 // on the given progress target element (issue #661). The loop
 // reads /settings/updates/progress and writes the response HTML
@@ -4877,6 +4929,9 @@ function currentBrowseStateFromForm(form) {
 //
 // Lives next to setBusyState so it's grouped with the other
 // dispatch-side helpers; pure DOM, no framework.
+/**
+ * @param {HTMLElement} target the polling-progress container
+ */
 async function startUpdateProgressPollIfNeeded(target) {
   if (!(target instanceof HTMLElement)) return;
   if (target.dataset.updatePolling === "true") return;
@@ -4906,8 +4961,7 @@ async function startUpdateProgressPollIfNeeded(target) {
       // parse avoids the cost of a full DOMParser round-trip.
       const phaseMatch = html.match(/data-progress-phase="([^"]+)"/);
       const phase = phaseMatch ? phaseMatch[1] : "";
-      target.innerHTML = html;
-      initializeDynamicContent();
+      swapHtmlIntoTarget(target, html);
       if (TERMINAL_PHASES.has(phase)) break;
     }
   } finally {
@@ -4915,6 +4969,10 @@ async function startUpdateProgressPollIfNeeded(target) {
   }
 }
 
+/**
+ * @param {HTMLElement} el the group root
+ * @param {boolean} busy true when the group is busy
+ */
 function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
@@ -5066,26 +5124,67 @@ function dispatchSubmitPrep(form, callback) {
     });
   }
 
-  /** @param {EventTarget | HTMLFormElement} button */
 // handleImageUpload streams the selected files to the upload URL via fetch
 // with FormData and swaps the response into the results-target panel. The
 // function is called by initializeImageUpload() (the per-element change
 // listener wired in initializeDynamicContent) — inline onchange handlers
 // cannot resolve functions defined inside the app.js IIFE closure.
+/**
+ * @param {HTMLInputElement} input the file input that fired
+ */
 function handleImageUpload(input) {
   const container = input.closest("[data-image-upload]");
-  if (!container) return;
+  if (!(container instanceof HTMLElement)) return;
   const url = container.dataset.uploadUrl;
   const resultsTarget = container.dataset.resultsTarget;
   if (!url) return;
+  const inWails =
+    typeof window !== "undefined" &&
+    window.location &&
+    window.location.hostname === "wails.localhost";
+  const nativeUpload = container.dataset.wailsNativeUpload === "true";
+  if (inWails && nativeUpload) {
+    setBusyState(input, true);
+    fetch(url, { method: "POST", body: new URLSearchParams() })
+      .then(async r => {
+        const html = await r.text();
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (r.redirected || r.headers.get("X-DixieData-Redirect") || html.includes("/jobs/")) {
+          showToast("Images imported. Refreshing…", "success");
+          window.location.reload();
+          return;
+        }
+        throw new Error("Unexpected image import response");
+      })
+      .catch(err => showToast("Image import failed: " + (err.message || "unknown error"), "error"))
+      .finally(() => setBusyState(input, false));
+    return;
+  }
+
+  if (!input.files) return;
   const fd = new FormData();
   for (const file of input.files) {
     fd.append("images", file);
   }
   setBusyState(input, true);
+
   fetch(url, { method: "POST", body: fd })
-    .then(r => r.text())
+    .then(async r => {
+      const html = await r.text();
+      // Wails multipart upload succeeds through native fallback only when
+      // browser file bytes survive; otherwise Go returns a useful error.
+      if (inWails && r.status >= 400) {
+        showToast("Image import failed. Check debug log.", "error");
+      }
+      // Wails native fallback returns a job redirect, not the gallery
+      // fragment. Preserve gallery until job polling/navigation refreshes it.
+      if (inWails && (r.redirected || r.headers.get("X-DixieData-Redirect") || html.includes("/jobs/"))) {
+        return;
+      }
+      return html;
+    })
     .then(html => {
+      if (typeof html !== "string") return;
       // The resultsTarget is a CSS selector from data-results-target.
       // UIID values like "panel.soldier.detail.images" contain literal
       // dots which the CSS selector parser treats as class separators —
@@ -5100,14 +5199,16 @@ function handleImageUpload(input) {
         target = document.querySelector(sel);
       }
       if (target) {
-        target.innerHTML = html;
-        initializeDynamicContent();
+        swapHtmlIntoTarget(target, html);
       }
     })
     .catch(err => console.error("Image upload failed", err))
     .finally(() => setBusyState(input, false));
 }
 
+/**
+ * @param {HTMLButtonElement | Element} button the submitter
+ */
 async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the
@@ -5127,7 +5228,34 @@ async function dispatchDixieDataForm(button) {
       form = button;
     } else if (button instanceof HTMLElement) {
       const dataAction = (button.getAttribute && button.getAttribute("data-action")) || "";
-      if (dataAction) {
+      const parentForm = button.closest("form");
+      if (dataAction && parentForm) {
+        // Issue #705: the bulk-delete "Delete Selected Images"
+        // button lives inside the outer images-download form
+        // (which carries the per-image checkboxes). The previous
+        // synthetic-form path (issue #248) dropped the form's
+        // checked checkbox values, so the body went out empty and
+        // the server returned 400 "Select at least one image to
+        // delete." When data-action is present AND the button is
+        // inside a real form with named controls, use the real form
+        // (so all form data is included) and override the form's
+        // action URL with the button's data-action. The synth-form
+        // path is preserved for the bare-button case (e.g. the
+        // per-row "Mark as Resolved" button on /review-queue, which
+        // has data-action but no parent form).
+        form = parentForm;
+        // Override the form's action URL with the button's data-action.
+        // The action attribute is restored in the finally block so
+        // the next dispatch (e.g. a subsequent click on the same
+        // form's native submit button) is unaffected.
+        form.dataset.origAction = form.getAttribute("action") || "";
+        form.setAttribute("action", dataAction);
+        const dataMethod = button.getAttribute("data-method");
+        if (dataMethod) {
+          form.dataset.origMethod = form.getAttribute("method") || "";
+          form.setAttribute("method", dataMethod);
+        }
+      } else if (dataAction) {
         const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
         const synthetic = document.createElement("form");
         synthetic.action = dataAction;
@@ -5146,7 +5274,7 @@ async function dispatchDixieDataForm(button) {
         }
         form = synthetic;
       } else {
-        form = button.closest("form");
+        form = parentForm;
       }
     }
     if (!(form instanceof HTMLFormElement)) {
@@ -5378,7 +5506,9 @@ async function dispatchDixieDataForm(button) {
       // forms without the attribute keep the legacy toast-only path.
       // Issue #134: scan/quality buttons render into #settings-orphan-results
       // and #settings-quality-results via this convention.
-      const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget) || "";
+      const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget)
+        || (submitter instanceof HTMLElement && submitter.dataset && submitter.dataset.resultsTarget)
+        || "";
       // Issue #250: data-reload-on-success is a one-attribute opt-in
       // for "inline action that mutates the page state, no fragment
       // available — just reload the page so the user sees the new
@@ -5434,8 +5564,7 @@ async function dispatchDixieDataForm(button) {
         );
         if (target instanceof HTMLElement) {
           const html = await response.text();
-          target.innerHTML = html;
-          initializeDynamicContent();
+          swapHtmlIntoTarget(target, html);
           // Issue #661: if the rendered fragment carries
           // data-poll-progress, start polling
           // /settings/updates/progress every 500ms so the user
@@ -5522,6 +5651,17 @@ async function dispatchDixieDataForm(button) {
     } finally {
       setBusyState(submitter || form, false);
       setBusyGroupState(submitter || form, false);
+      // Issue #705: restore the parent form's action/method if the
+      // data-action branch overrode them. The synth-form path closes
+      // over the synthetic element so no restore is needed.
+      if (form instanceof HTMLFormElement && form.dataset.origAction !== undefined) {
+        form.setAttribute("action", form.dataset.origAction);
+        delete form.dataset.origAction;
+      }
+      if (form instanceof HTMLFormElement && form.dataset.origMethod !== undefined) {
+        form.setAttribute("method", form.dataset.origMethod);
+        delete form.dataset.origMethod;
+      }
     }
   }
 
@@ -6565,8 +6705,66 @@ function onPrintRecordsFragmentReady(modal) {
       if (!(input instanceof HTMLInputElement)) continue;
       if (input.__imageUploadWired === true) continue;
       input.__imageUploadWired = true;
+      input.addEventListener("click", (event) => {
+        const container = input.closest("[data-image-upload]");
+        const inWails =
+          typeof window !== "undefined" &&
+          window.location &&
+          window.location.hostname === "wails.localhost";
+        if (!(container instanceof HTMLElement) || container.dataset.wailsNativeUpload !== "true" || !inWails) {
+          return;
+        }
+        // Skip browser file chooser in Wails. Go opens one guarded native
+        // picker after handleImageUpload posts its URL-encoded trigger.
+        event.preventDefault();
+        handleImageUpload(input);
+      });
       input.addEventListener("change", () => {
         handleImageUpload(input);
+      });
+    }
+  }
+
+  
+  
+  
+  
+  
+  /**
+   * Wire the "Include tags" checkbox on /share/exports so the
+   * underlying form auto-submits on change. The form has
+   * data-dixie-submit="true" data-reload-on-success="true" but
+   * NO <button type="submit"> -- the templ render only exposes
+   * the checkbox + a hidden include_tags=0 sibling. Without this
+   * wiring (issue #705), toggling the checkbox does nothing
+   * observable: the form never submits, archive_meta.include_tags
+   * is never written, and the next shared-archive export ignores
+   * the user's intent. The change handler calls form.requestSubmit()
+   * which routes through the standard data-dixie-submit dispatcher
+   * (the same path used by clicking a Save button). Each input
+   * carries a per-element __shareIncludeTagsWired guard so a
+   * subsequent initializeDynamicContent pass on the reloaded
+   * page does not double-wire. Mirrors the __articlePreviewWired
+   * / __inventoryChartPainted sentinel pattern.
+   */
+  function initializeShareIncludeTags() {
+    const inputs = document.querySelectorAll("input[data-share-include-tags]");
+    for (const input of inputs) {
+      if (!(input instanceof HTMLInputElement)) continue;
+      if (input.__shareIncludeTagsWired === true) continue;
+      input.__shareIncludeTagsWired = true;
+      input.addEventListener("change", () => {
+        const form = input.closest("form");
+        if (!(form instanceof HTMLFormElement)) return;
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          // Older browsers (pre-Chromium 76) lack requestSubmit;
+          // .submit() bypasses the submit event so the data-dixie-submit
+          // dispatcher will not intercept -- acceptable fallback for
+          // a non-critical toggle on a non-IE-supporting surface.
+          form.submit();
+        }
       });
     }
   }
@@ -6664,8 +6862,8 @@ function onPrintRecordsFragmentReady(modal) {
       if (!hasImage) return; // non-image file paste — let browser handle
 
       event.preventDefault();
-      for (var i = 0; i < clipboardData.files.length; i += 1) {
-        var file = clipboardData.files[i];
+      for (var fileIdx = 0; fileIdx < clipboardData.files.length; fileIdx += 1) {
+        var file = clipboardData.files[fileIdx];
         if (file.type.startsWith("image/")) {
           uploadAndInsert(file);
         }
@@ -6697,8 +6895,8 @@ function onPrintRecordsFragmentReady(modal) {
       if (!hasImage) return;
 
       event.preventDefault();
-      for (var i = 0; i < dt.files.length; i += 1) {
-        var file = dt.files[i];
+      for (var fileIdx = 0; fileIdx < dt.files.length; fileIdx += 1) {
+        var file = dt.files[fileIdx];
         if (file.type.startsWith("image/")) {
           uploadAndInsert(file);
         }
@@ -7290,7 +7488,7 @@ async function refreshShareQueuePresetsPage(panel) {
         return;
       }
       const html = await response.text();
-      target.innerHTML = html;
+      swapHtmlIntoTarget(target, html);
       if (status instanceof HTMLElement) {
         status.textContent = "";
       }
@@ -8047,6 +8245,7 @@ async function refreshShareQueuePresetsPage(panel) {
     installShareQueueGlobals();
     updateShareQueuePill(readShareQueue());
     initializeImageUpload();
+    initializeShareIncludeTags();
     // Issue #583 slice 3: paint the Activity metrics SVG line
     // graph into data-inventory-metrics-svg-host and wire the
     // legend chips. Idempotent -- the SVG host is checked for
@@ -8567,8 +8766,7 @@ async function refreshShareQueuePresetsPage(panel) {
                 const html = await response.text();
                 const target = document.querySelector(latestTarget);
                 if (target instanceof HTMLElement) {
-                  target.innerHTML = html;
-                  initializeDynamicContent();
+                  swapHtmlIntoTarget(target, html);
                 }
               } catch (error) {
                 showToast("Browse refresh failed.", "error");

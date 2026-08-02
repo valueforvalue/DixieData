@@ -1,212 +1,182 @@
-# RC branch policy: feature freeze on rc/v* branches (Zephyr-style)
+# RC branch feature-freeze policy
 
 ## Status
 
-Accepted 2026-07-26. Codifies the policy the v1.1 RC1 cohort surfaced as
-needed: the release-candidate line must receive stabilization fixes only,
-not new features.
+Accepted 2026-07-29. Codifies the policy the v1.1 RC1 cohort
+surfaced as needed (issues #665, #666, #667, #668). Closes
+the loop on issue #668.
 
 ## Context
 
-The v1.1 RC1 cycle (issue #658 + the cohort it spawned: #660, #661, #663,
-#664, #665, #666, #667) shipped **eight** RCs in quick succession, each
-one mixing a real bug fix with a brand-new feature:
+The v1.1 RC1 cohort shipped eight RCs before reaching a
+clean state. The early RCs mixed real bug fixes with new
+features in the same commit (per the AGENTS.md "what lands in
+this slice" sections of #658, #660, #661, #665, #666):
 
-| RC | Real fix it shipped | New feature it also shipped |
+| RC | Real fix | New feature |
 |---|---|---|
 | 1.1.5 | theme persistence | debug-mode toggle UI |
-| 1.1.6 | version compare rejected RC1 | Check for Updates button visible |
+| 1.1.6 | version compare | Check for Updates button |
 | 1.1.10 | debug-mode logging | shell theme default |
-| 1.1.13 | tag-delete form | memorial / config / progress bar / PDF linebreak |
-| 1.1.14 | tag-delete dispatcher | (no new features — first clean RC) |
-| 1.1.15 | check-for-updates polling guard | (no new features) |
-| 1.1.16 | article delete affordance | (no new features) |
-| 1.1.17 | (no fix — clean RC) | `--seed` in-app flag + seed-fixture.ps1 |
+| 1.1.13 | tag-delete form | memorial / config / progress bar / PDF |
+| 1.1.14 | tag-delete dispatcher | (clean) |
+| 1.1.15 | check-for-updates polling | (clean) |
+| 1.1.16 | article delete | (clean) |
+| 1.1.17 | (clean) | `--seed` flag + `seed-fixture.ps1` |
 
-The middle three RCs are the model: each one closes a specific bug from
-the cohort and lands zero new surface. That's the policy the user wants
-codified — and the early RCs are the cautionary tale of what happens
-when a release line accepts features in the middle of stabilization.
+The last three RCs were clean — real fixes only. The user
+wants the clean pattern codified so the next RC line (1.2,
+2.0) starts disciplined from RC1 rather than learning the
+pattern mid-cohort.
 
-Three established engineering practices informed this decision:
+The v1.1 RC1 cohort also surfaced that the existing CI
+gates are designed for the `dev → main` flow (ADR 0008) and
+the three-branch model (ADR 0009). Neither covers the
+`rc/v*` lifecycle. The chain today is:
 
-1. **Zephyr Project release process** (`docs.zephyrproject.org/latest/project/release_process.html`):
-   declares a *feature freeze* the moment the first RC is tagged. Only
-   "stabilization-related changes" (bug fixes, doc updates, tests for
-   existing functionality) are accepted on the RC branch. New features
-   require an explicit TSC exception. Their discipline is the model
-   this ADR copies.
+```
+dev (integration) → rc/v* (release candidate) → stable (released)
+                                              → main (legacy anchor)
+```
 
-2. **VisIt RC development** (`visit-sphinx-github-user-manual.readthedocs.io/en/3.4rc/dev_manual/RCDevelopment.html`):
-   maintains a long-lived `3.3RC` branch in parallel with `develop`,
-   requires every RC PR to be followed by a separate PR applying the
-   same change to `develop`, and explicitly disallows "Changes to files
-   impacting communication protocols or public APIs" without team
-   approval. Their workflow is the model for the backport direction
-   (RC → dev).
+The `rc/v*` branch currently accepts anything because no
+gate is wired against it. A `feat(...)` commit that lands
+on `rc/v1.1` mid-cohort can carry user-visible new behavior
+into a release candidate without the user being able to
+distinguish "fix" from "feature" at review time.
 
-3. **Gitflow release branches** (per the Stack Exchange consensus in
-   `softwareengineering.stackexchange.com/q/432957`): the classic
-   gitflow answer to "how do I fix a bug on the RC line without
-   dragging in main-line features" is to branch the fix off the RC
-   branch, merge it back to the RC, then merge the same commit into
-   the integration branch. Cherry-picking is a code smell because it
-   duplicates commit identity.
-
-The gap this ADR closes: DixieData's current `AGENTS.md` says direct
-commits to `dev` are the default. There is no rule for what an RC
-branch accepts. The cohort just shipped an RC line that alternated
-"real fix + new feature" because the rule didn't exist.
+This ADR adopts a [Zephyr-style
+feature-freeze](https://docs.zephyrproject.org/latest/project/release_process.html)
+policy on `rc/v*` branches so the discipline the cohort
+surfaced is codified at the branch level.
 
 ## Decision
 
-Adopt a **hard (Zephyr-style) feature freeze** on `rc/v*` branches. The
-policy is encoded in three places, with enforcement at the layer that
-catches it earliest:
+### Allowed vs disallowed commit types on `rc/v*`
 
-### 1. Branch naming
-
-- `rc/v1.1` — created from `dev` at RC1 cut, receives the next
-  release's stabilization fixes.
-- Future RC lines: `rc/v1.2`, `rc/v2.0`, etc.
-- A long-lived `rc/v*` branch exists for every active release line.
-  It is **not** deleted when the release ships — it stays as the
-  patch-release maintenance line (e.g. `v1.1.1`, `v1.1.2` cherry-picks
-  come from `rc/v1.1`).
-
-### 2. Commit types allowed on `rc/v*`
-
-| Type | Allowed? | Why |
+| Type | Allowed? | Rationale |
 |---|---|---|
-| `fix:` | ✓ | Bug fix — the entire point of the RC line |
-| `docs:` | ✓ | Doc clarifications + corrections |
-| `test:` | ✓ | Regression net for existing features |
-| `ci:` | ✓ | Build / CI fixes (broken workflows block release) |
-| `chore:` | ✓ | Regression net for a fix (must reference the fix) |
-| `feat:` | ✗ | New feature — wait for `dev` to merge into next release |
-| `refactor:` | ✗ | Refactor not tied to a bug fix — wait for `dev` |
-| `perf:` | ✗ | Perf improvement — wait for `dev` |
-| `build:` | ✗ | Build-system change — wait for `dev` |
+| `fix(...)` | yes | Stabilization fixes are the RC purpose |
+| `docs(...)` | yes | Doc changes cannot break the binary |
+| `chore(...)` | yes | Tooling that ships in the release is in scope |
+| `test(...)` | yes | Regression nets are stabilization |
+| `ci(...)` | yes | Lint + test gates ARE RC stabilization |
+| `feat(...)` | **no** | New features belong on `dev` first |
+| `refactor(...)` | **no** | Refactors belong on `dev` first |
+| `perf(...)` | **no** | Performance work belongs on `dev` first |
+| `build(...)` | **no** | Build-system changes belong on `dev` first |
 
-A commit that touches ≥ 50 files is **always** rejected, regardless
-of type — large diffs are the canonical signal of a refactor or
-feature masquerading as a fix.
+**Bypass:** a `release-blocker` label on the PR (set by
+the operator after triage) exempts the PR from the gate,
+with a comment in the PR body explaining why. The label
+is informational in this ADR (a future slice may gate the
+label application; this ADR does not).
 
-### 3. PR requirements
+### Migration story (RC → stable → tag) on top of ADR 0008 / 0009
 
-- **Required label**: every PR to `rc/v*` must have a `release-blocker`
-  label (or `bug` + `ready-for-agent`, see below). The label signals
-  "this is a real fix to a problem the cohort surfaced."
-- **Required reviewers**: 2 maintainer approvals (matches the
-  existing `stable` and `main` rules per ADR 0009).
-- **Required CI**: `lint-rc-commits` job must pass (the
-  commit-message gate described below).
-- **No direct push**: branch protection mirrors `stable` + `main`.
-
-### 4. Commit-message gate (CI)
-
-A new `scripts/ci/lint-rc-commits.mjs` script runs in CI on every PR
-targeting `rc/v*`. It walks the PR's commit list, parses the
-`type:` prefix out of each subject line, and fails the job if any
-commit's type is in the disallowed list. The allowed types are
-defined in the script (no env-var indirection — the rule is the rule).
-
-This catches the failure mode in the table above: a contributor who
-opens a PR to `rc/v1.1` with subject `feat: add per-row tag delete
-affordance` gets a red CI status before any human review happens.
-
-### 5. Sync direction: RC → dev (VisIt pattern)
-
-Fixes land on `rc/v*` first, then get **merged** (not cherry-picked,
-per the gitflow consensus) into `dev` as a follow-up commit. The
-follow-up commit's message references the RC commit by SHA so the
-audit trail is complete:
+ADR 0008 codifies `dev → stable` + tag with a 4-gate
+chain. ADR 0009 codifies the three-branch model (`dev`,
+`stable`, `main`). This ADR adds `rc/v*` in front of
+`stable`. The promotion chain becomes:
 
 ```
-fix(tags): add data-method=DELETE to tag delete form (#664)
-
-Backport of rc/v1.1 commit 8d7989c4 to dev.
+dev (integration) ──┐
+                    ├──> rc/v* (release candidate) ──> stable (released)
+                    │    │                              │
+                    │    └─ feat/refactor/perf/build ── backport to dev
+                    │                                      before next RC line
+                    │
+                    └──> main (frozen legacy anchor)
 ```
 
-The opposite direction (dev → RC) is allowed for the special case
-where a fix is developed on `dev` first and then backported to the
-RC line. The PR description must say "backport from dev" and link
-the original `dev` commit SHA. This is the Zephyr "long term
-enhancements are performed only on the develop branch" exception
-applied in reverse.
+Once `rc/v*` reaches a clean state, the operator merges
+`rc/v*` into `stable` per ADR 0008's gate chain. The
+backport flow is: any `feat/refactor/perf/build` commit
+that landed on `rc/v*` (despite the gate) must be
+backported to `dev` before the next RC line begins, so
+`dev` stays authoritative.
 
-### 6. Migration to `stable`
+### Diff-size gate
 
-The promotion path (RC → stable → release tag) is unchanged from
-ADR 0008 / ADR 0009. The only addition: `make promote-dry-run`
-must pass against `rc/v*` HEAD before the promotion PR opens. The
-promotion PR is the moment a release becomes "always releasable";
-the RC branch continues to receive fixes if a regression is found
-post-promotion, and those fixes trigger a follow-up promotion.
+A PR with ≥ 50 files changed is treated as
+refactor-by-stealth and rejected at lint time. The threshold
+matches ADR 0008's promotion-gate scale; the gate lives in
+the same `scripts/ci/` directory and runs from the same CI
+workflow.
+
+### CI integration
+
+- `scripts/ci/lint-rc-commits.mjs` + `.test.mjs` —
+  commit-type classifier. Walks every commit on a PR
+  targeting `rc/v*`, fails if any has a disallowed type
+  (`feat/refactor/perf/build`) or no type prefix. Also
+  rejects diffs ≥ 50 files as refactor-by-stealth.
+- `.github/workflows/rc-lint.yml` — runs the gate on
+  every PR targeting `rc/v*`. Mirrors the
+  `lint-bake-bootstrap` pattern in `test.yml`: a
+  lightweight job that fails fast.
+- `AGENTS.md` — three-branch model updated to four-branch
+  (`dev` / `rc/v*` / `stable` / `main`), with the RC
+  policy section + the updated promotion flow.
+- `.github/BRANCH_PROTECTION.md` — the `rc/v*` rules
+  (require `release-blocker` label + `lint-rc-commits`
+  status check on top of the standard rules).
+
+### Sources
+
+- [Zephyr Project release process](https://docs.zephyrproject.org/latest/project/release_process.html)
+  — the model for the allowed/disallowed types table.
+- [VisIt RC development](https://visit-sphinx-github-user-manual.readthedocs.io/en/3.4rc/dev_manual/RCDevelopment.html)
+  — the model for the RC → dev backport discipline.
+- [Stack Exchange q/432957](https://softwareengineering.stackexchange.com/questions/432957)
+  — the gitflow consensus on branching off the RC vs
+  cherry-picking.
 
 ## Consequences
 
-### Easier
+Positive:
 
-- The RC cohort gets one job: close real bugs. No more "is this
-  feature ready, can we sneak it into RC2?" decisions.
-- `dev` keeps accepting features at full velocity. The RC line
-  doesn't slow `dev` down; the two branches have orthogonal
-  policies.
-- Audit trail is clean: every commit on `rc/v*` has a
-  release-blocker label, a 2-reviewer approval, and a backport
-  commit on `dev`. The next engineer can grep `git log rc/v1.1
-  --grep='^fix:'` to see the complete stabilization history.
-- Release quality improves because the RC line is small
-  (only `fix:` commits) and predictable. The cohort's 8-RC cycle
-  would have been 3-4 RCs under this policy.
+- The next RC line (1.2, 2.0, ...) starts disciplined
+  from RC1: every commit is either a real fix or a
+  stabilization gate, never a new feature. Reviewers can
+  trust that a green RC is shippable.
+- Mid-cohort feature changes are forced onto `dev` where
+  they belong, eliminating the "RC shipped a feature
+  unexpectedly" surprise from the v1.1 RC1 history.
+- The backport-to-dev discipline on close keeps `dev`
+  authoritative and `rc/v*` short-lived.
 
-### Harder
+Negative:
 
-- Two commits per fix (RC + dev) instead of one. The backport
-  step adds ~10 minutes per fix. For the v1.1 cohort at 8 RCs
-  with ~5 fixes each, that's ~6 hours of extra ceremony.
-- The `lint-rc-commits` CI job must be added to the workflow
-  before the rule takes effect. The script is small but it's a
-  new failure mode for contributors to learn.
-- The 50-file diff cap is a blunt instrument. A genuine 60-file
-  bug fix would be rejected. The escape hatch is the same as
-  the `feat:` exception: a maintainer can override the CI
-  check with a comment explaining the scope.
-
-### Locked in
-
-- The RC branch becomes a "no new features" zone permanently.
-  This is the trade-off Zephyr made and they have not regretted
-  it. If DixieData ever needs a new feature on an RC line, the
-  answer is "no, wait for the next release" — not "make an
-  exception."
-- The sync direction is RC → dev. The opposite direction
-  (dev → RC) requires explicit justification per PR. This
-  prevents the "fix on dev first, cherry-pick to RC" pattern
-  that produces duplicate commit identity and confused
-  bisects.
+- A legitimate `feat(...)` discovered during the RC cohort
+  cannot land on `rc/v*` directly. The operator must
+  either revert it, cherry-pick to `dev` (slow), or apply
+  the `release-blocker` label (requires triage). The
+  `release-blocker` label bypass is the operational
+  pressure-release valve; the gate is intentionally not
+  ironclad.
+- The CI workflow (`rc-lint.yml`) duplicates the shape of
+  `test.yml` and `audit.yml`. A future slice could
+  collapse the three workflows into one matrix-driven
+  workflow; this ADR does not.
+- `git log --grep=feat rc/v1.1` will return zero results
+  in the future RC lines. A maintainer searching for "what
+  feature landed in v1.2.0" must grep `dev` instead.
 
 ## References
 
-- [Three-branch model](0009-stable-branch-promotion.md) — the
-  existing `dev` / `stable` / `main` model this ADR extends with
-  a fourth `rc/v*` layer.
-- [Promotion protocol](0008-promotion-protocol.md) — the
-  `make promote` / `make promote-dry-run` gate chain that
-  migrates RC HEAD to `stable`.
-- Zephyr Project release process:
-  <https://docs.zephyrproject.org/latest/project/release_process.html>
-  — the source of the allowed/disallowed types table and the
-  feature-freeze language.
-- VisIt RC development:
-  <https://visit-sphinx-github-user-manual.readthedocs.io/en/3.4rc/dev_manual/RCDevelopment.html>
-  — the source of the RC → dev backport discipline.
-- Stack Exchange `q/432957` — the gitflow consensus that
-  branching off the RC and merging back is preferable to
-  cherry-picking.
-- Issue #658 — the RC1 cohort that exposed the policy gap.
+- [ADR 0008 — promotion protocol](0008-promotion-protocol.md)
+- [ADR 0009 — stable-branch promotion](0009-stable-branch-promotion.md)
+- [ADR 0010 — lint enforcement](0010-lint-enforcement.md)
+- [AGENTS.md §Three-branch model](../AGENTS.md) — updated to four-branch
+- [.github/BRANCH_PROTECTION.md](../../.github/BRANCH_PROTECTION.md)
+  — updated with `rc/v*` rules
+- `scripts/ci/lint-rc-commits.mjs` — the classifier
+- `.github/workflows/rc-lint.yml` — the CI workflow
+- Issue #668 — the originating issue
+- Issues #658, #660, #661, #665, #666, #667 — the v1.1
+  RC1 cohort that surfaced the discipline this ADR codifies
 
 ## Author
 
-Jeremy Morris (@jeremymorris) — 2026-07-26
+Jeremy Morris (@jeremymorris) — 2026-07-29

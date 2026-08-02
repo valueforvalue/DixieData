@@ -23,8 +23,19 @@
 // Exit code is non-zero when the assertion fails.
 
 import { chromium } from 'playwright';
+import { runProbe } from './_lib/smoke_runner.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:8765';
+// Issue #707 batch 3: replaced hardcoded `process.env.BASE_URL ||
+// 'http://127.0.0.1:8765'` with config.mjs. PROBE_PORT (set by
+// the aggregator's per-probe allocation) wins via
+// resolveBaseUrl; SMOKE_BASE_URL (CI mode) is also honored.
+// The probe mocks /index.html via Playwright's page.route so
+// the server port is irrelevant to the test logic — the value
+// only has to be a valid base URL for the page.route() pattern
+// to match against.
+const cfg = loadConfig();
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 let pass = 0;
 let fail = 0;
@@ -126,10 +137,13 @@ async function run() {
   await browser.close();
 
   console.log(`\n${pass} passed, ${fail} failed`);
-  process.exit(fail === 0 ? 0 : 1);
+  return { ok: fail === 0, steps: { pass, fail } };
 }
 
-run().catch((e) => {
-  console.error('FATAL', e);
-  process.exit(2);
-});
+// Issue #707 batch 3: this probe mocks /index.html via
+// page.route() so it doesn't spawn a server or need a web
+// binary. The runner provides cleanup hooks (none needed here)
+// + a uniform {ok, steps} return contract.
+runProbe({ name: 'fragment-redirect', probeFn: async () => run() })
+  .then((r) => { process.exit(r.ok ? 0 : 1); })
+  .catch((e) => { console.error('FATAL', e); process.exit(2); });

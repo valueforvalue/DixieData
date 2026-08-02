@@ -42,6 +42,18 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # Install just (the canonical command layer per the
+      # repo's Makefile/Justfile recipe convention). Required
+      # by the smoke-runner step below which invokes
+      # `just test-smoke-strict`. Matches the pattern used by
+      # build.yml, race-stress.yml, rc-lint.yml, and test.yml.
+      - uses: extractions/setup-just@v2
+        with:
+          just-version: 1.57.0
+
+      - name: Verify just installation
+        run: just --version
+
       - name: Install npm deps
         run: npm ci
 
@@ -109,6 +121,24 @@ jobs:
           node audit/run-round2.mjs --output-dir audit/reports-ci 2>&1 | tee audit/reports-ci/round2.log
           node audit/run-round3.mjs --output-dir audit/reports-ci 2>&1 | tee audit/reports-ci/round3.log
 
+      # Issue #700 slice 6: smoke runner (Playwright probes +
+      # CLI linter scanners) wired into CI. Reuses the dev
+      # server already running on :8080 (BASE_URL is forwarded
+      # so the 3 Playwright probes skip their own spawn and
+      # exercise the seeded server). The aggregator's exit
+      # code surfaces in the workflow status. Local-dev
+      # posture: 3 playwright probes + 1 scanner pass; 3
+      # playwright probes + 1 scanner fail (orphan handlers,
+      # the canonical pre-existing release-blocker). The
+      # `if: always()` is NOT applied here: a smoke-runner
+      # failure should fail the workflow, so the operator
+      # sees the signal. The artifact upload below still
+      # runs because `Upload audit reports` is `if: always()`.
+      - name: Smoke runner (issue #700 slice 6)
+        run: |
+          BASE_URL=http://127.0.0.1:8080 just test-smoke-strict
+        timeout-minutes: 15
+
       - name: Upload audit reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -119,4 +149,5 @@ jobs:
             audit/reports/
             audit/reports-r2/
             audit/reports-r3/
+            audit/smoke_summary.json
           retention-days: 30
