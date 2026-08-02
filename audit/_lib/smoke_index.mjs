@@ -257,4 +257,11 @@ export const SURFACES = [
     class: 5, // embed asset skip (issue #686; `//go:embed frontend` skips `_`/`.` prefixed files)
     note: 'verify_embed_tree -- every frontend asset referenced by live HTML is reachable via the go:embed directive',
   },
+  {
+    name: 'button-matrix',
+    file: 'audit/smoke_button_matrix.mjs',
+    kind: 'playwright',
+    class: 1, // button-does-nothing class (the dominant UI bug class per docs/COMMON_BUGS.md §3)
+    note: 'plan 2026-08-01 slice 1 (GREEN stub) -- per-button 4-state matrix on every probed surface. Slice 2 ships the real catalog walker.',
+  },
 ];
