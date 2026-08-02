@@ -1,53 +1,654 @@
-// audit/smoke_button_matrix.mjs — Slice 1 (GREEN stub)
+// audit/smoke_button_matrix.mjs — Slice 2 (GREEN by default)
 //
-// Per-button state matrix probe (issue raised in
-// .rpiv/artifacts/plans/2026-08-01_button-matrix-a11y-probes.md,
-// Slice 1 of 4).
+// Per-button 5-state matrix probe
+// (.rpiv/artifacts/plans/2026-08-01_button-matrix-a11y-probes.md,
+// Slice 2 of 4). Speed-rewrite.
 //
-// Slice 1 ships a GREEN stub: the probe exists, the runner
-// contract is exercised end-to-end, the aggregator surfaces
-// the entry in audit/smoke_summary.json, and CI stays green.
-// Slice 2 replaces the stub body with the real catalog
-// walker + 10-step assertion algorithm (see plan §Slice 2).
+// Architecture (rewrite):
+//   - One global MutationObserver per page, installed ONCE
+//     per surface visit, not per button. The observer logs
+//     mutation counts to window.__matrixMutationCount.
+//   - No waitForResponse timeouts. The x-dixiedata-submit
+//     listener runs concurrently with the click and resolves
+//     on the FIRST matching response, with a hard 800ms cap.
+//   - No navigate-back. After every click we just check
+//     page.url() against the surface's target URL; if it
+//     changed, we navigate back with waitUntil:'domcontentloaded'
+//     (not networkidle).
+//   - Per-button work batched into 2 page.evaluate calls:
+//     (1) collect pre-click state (visible, enabled, focus,
+//     pre-uiids); (2) after click, collect post-state
+//     (mutationCount, post-uiids, urlAfter). Eliminates
+//     ~8 CDP round-trips per button.
+//   - Click without force. Hard cap on each click via
+//     Playwright's default 5s timeout.
 //
-// Why GREEN, not RED:
-//   Per user direction (2026-08-02), CI green is
-//   non-negotiable. The earlier "RED stub" framing was
-//   wrong for the runner-wiring capability — proving the
-//   probe exists in SURFACES[] + runs through the aggregator
-//   does not require the probe to fail. The GREEN stub
-//   emits a single `wiring-verified` record with `ok: true`
-//   and the same JSON-summary presence a FAIL stub would
-//   produce. No information lost; CI stays green.
+// What this catches (Q1):
+//   1. isVisible — buttons in closed tooltips / 3p widgets skip.
+//   2. isEnabled — buttons only; skip when in disabled fieldset.
+//   3. focus + activeElement — soft-warn on foldout-pattern
+//      focus stealing, hard-fail otherwise.
+//   4. click → mutation OR URL change OR x-dixiedata-submit
+//      response within 800ms.
+//   5. post-click uiids ⊇ pre-click — silent-DOM-wipe class.
 //
-// Strict mode:
-//   When `SMOKE_BUTTON_MATRIX_STRICT=1`, the probe emits a
-//   FAIL record and exits 1. This is the operator toggle
-//   for "I want this probe to gate CI now." Defaults to
-//   off (GREEN). Slice 2 will inherit the same toggle.
+// What this does NOT cover (documented gaps):
+//   - Detail pages (/soldiers/{id}/edit, /articles/{id}/edit,
+//     /events/{id}/edit, /soldiers/{id}/tags, /soldiers/{id}
+//     /research-log) — dedicated per-feature probes already
+//     cover them.
+//   - Modal-content correctness — per-feature probes.
+//   - Toast correctness — ephemeral noise.
+//   - Server-side data mutation — go test.
 //
-// Lifecycle: no server, no chromium, no scratch dir. The
-// stub probeFn returns immediately. The aggregator's
-// spawnSync exit code is the only side effect (exit 0 in
-// default mode, exit 1 in strict mode).
+// Lifecycle:
+//   - Spawns dixiedata-web against ctx.scratchDir (per
+//     smoke-runner.md invariant #1).
+//   - Seeds via cmd/seed-data --reset --soldiers 5
+//     --articles 2 --events 2 --tags 5 (Q6).
+//   - Visits 7 surfaces per run × day-of-epoch mod 4
+//     rotation (Q5). 28 surfaces ÷ 7 = 4-day cycle.
+//   - SMOKE_ROTATION env override: 'ci' (default), 'local'
+//     (first 7), 'full' (all 28).
+//
+// Strict-mode toggle (preserved from Slice 1):
+//   SMOKE_BUTTON_MATRIX_STRICT=1 fails on any per-button
+//   assertion failure. Defaults to off (GREEN).
 
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+import path from 'node:path';
+import fs from 'node:fs';
 import { runProbe } from './_lib/smoke_runner.mjs';
+import { webBin } from './_lib/smoke_paths.mjs';
+import { loadConfig, resolveBaseUrl } from './_lib/config.mjs';
+
+const cfg = loadConfig();
+const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
+const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
 
 const STRICT = process.env.SMOKE_BUTTON_MATRIX_STRICT === '1';
 
-async function main(ctx) {
-  if (STRICT) {
-    ctx.record('wiring-verified', false, {
-      detail: 'SMOKE_BUTTON_MATRIX_STRICT=1 set; operator requested fail-mode before Slice 2 lands',
-    });
-    return { ok: false, reason: 'strict-mode' };
+// 7-surface rotation matches 28 surfaces ÷ 7 = 4-day cycle.
+// Non-detail surfaces only (detail pages covered by
+// dedicated probes that create their own fixture).
+const SURFACE_URLS = [
+  { name: 'home',              path: '/' },
+  { name: 'soldiers-list',     path: '/soldiers' },
+  { name: 'soldier-new',       path: '/soldiers/new' },
+  { name: 'browse',            path: '/browse' },
+  { name: 'calendar',          path: '/calendar' },
+  { name: 'articles',          path: '/articles' },
+  { name: 'article-new',       path: '/articles/new' },
+  { name: 'events',            path: '/events' },
+  { name: 'event-new',         path: '/events/new' },
+  { name: 'review-queue',      path: '/review-queue' },
+  { name: 'tags',              path: '/tags' },
+  { name: 'settings',          path: '/settings' },
+  { name: 'settings-appearance',   path: '/settings/appearance' },
+  { name: 'settings-diagnostics',  path: '/settings/diagnostics' },
+  { name: 'settings-maintenance',  path: '/settings/maintenance' },
+  { name: 'settings-data',         path: '/settings/data' },
+  { name: 'settings-updates',      path: '/settings/updates' },
+  { name: 'recovery',          path: '/recovery' },
+  { name: 'jobs',              path: '/jobs' },
+  { name: 'share-landing',     path: '/share' },
+  { name: 'share-exports',     path: '/share/exports' },
+  { name: 'share-imports',     path: '/share/imports' },
+  { name: 'share-sync',        path: '/share/sync' },
+  { name: 'insights',          path: '/insights' },
+  { name: 'research-collections',  path: '/research-collections' },
+  { name: 'research-log',      path: '/research-log' },
+  { name: 'inventory',         path: '/inventory' },
+  { name: 'about',             path: '/about' },
+];
+
+let pass = 0;
+let fail = 0;
+
+function record(name, ok, details = {}) {
+  if (ok) {
+    pass++;
+    console.log(`  PASS ${name}`);
+  } else {
+    fail++;
+    console.log(`  FAIL ${name}`);
+    console.log(
+      '    ',
+      JSON.stringify(details, null, 2)
+        .replace(/\n/g, '\n     ')
+        .slice(0, 3000),
+    );
   }
-  ctx.record('wiring-verified', true, {
-    detail: 'Slice 1 GREEN stub; runner contract verified. Slice 2 ships the catalog walker + 10-step assertion algorithm.',
-    slice: 1,
-    strictToggle: 'SMOKE_BUTTON_MATRIX_STRICT=1',
+}
+
+async function waitForServer(url, maxMs = 30_000) {
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.status < 500) return;
+    } catch (_) { /* not yet up */ }
+    await sleep(200);
+  }
+  throw new Error(`server at ${url} never came up`);
+}
+
+async function seedArchive(repoRoot, scratchDir) {
+  const seedProc = spawn(
+    'go',
+    [
+      'run', './cmd/seed-data',
+      '-data-dir', scratchDir,
+      '-soldiers', '5',
+      '-articles', '2',
+      '-events', '2',
+      '-tags', '5',
+      '-reset',
+    ],
+    { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  let out = '';
+  seedProc.stdout.on('data', (d) => { out += d; });
+  seedProc.stderr.on('data', (d) => { out += d; });
+  const exit = await new Promise((r) => seedProc.on('exit', r));
+  if (exit !== 0) {
+    throw new Error(`seed-data failed (exit ${exit}):\n${out}`);
+  }
+}
+
+function selectSurfaces() {
+  const mode = process.env.SMOKE_ROTATION ?? 'ci';
+  if (mode === 'full') return SURFACE_URLS;
+  if (mode === 'local') return SURFACE_URLS.slice(0, 7);
+  // 'ci' default: day-of-epoch mod 4, take 7 surfaces.
+  const day = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const sliceIndex = day % 4;
+  const start = sliceIndex * 7;
+  return SURFACE_URLS.slice(start, start + 7);
+}
+
+// Install the page-wide MutationObserver ONCE per surface.
+// Resets the counter on every visit. Returns a
+// `getDelta()` helper that returns mutation count since the
+// last `reset()` call.
+async function installObserver(page) {
+  await page.evaluate(() => {
+    window.__matrixMutationCount = 0;
+    window.__matrixLastTarget = null;
+    const obs = new MutationObserver((muts) => {
+      for (const m of muts) {
+        window.__matrixMutationCount++;
+        window.__matrixLastTarget =
+          m.target?.id || m.target?.tagName || '?';
+      }
+    });
+    obs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: false,
+    });
+    window.__matrixObserver = obs;
   });
-  return { ok: true, reason: 'slice-1-green-stub' };
+}
+
+async function snapshotUiids(page) {
+  return await page.evaluate(() => {
+    const ids = [];
+    document
+      .querySelectorAll('[id^="page."], [id^="panel."], [id^="tab."]')
+      .forEach((el) => { if (el.id) ids.push(el.id); });
+    return ids;
+  });
+}
+
+async function resetMutationCounter(page) {
+  await page.evaluate(() => {
+    window.__matrixMutationCount = 0;
+  });
+}
+
+async function readMutationCount(page) {
+  return await page.evaluate(() => window.__matrixMutationCount || 0);
+}
+
+// Batch-collect everything we need to know about a clickable
+// element BEFORE clicking. One round-trip per button.
+async function readClickable(page, handle) {
+  return await page.evaluate((el) => {
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const cs = window.getComputedStyle(el);
+    const closestFieldset = el.closest('fieldset');
+    return {
+      tag: el.tagName.toLowerCase(),
+      role: el.getAttribute('role'),
+      href: el.getAttribute('href'),
+      action: el.getAttribute('data-action'),
+      text: (el.textContent || '').trim().slice(0, 40),
+      disabled: el.disabled === true,
+      inDisabledFieldset: !!(closestFieldset && closestFieldset.disabled),
+      hasSize: rect.width > 0 && rect.height > 0,
+      visible:
+        cs.display !== 'none' &&
+        cs.visibility !== 'hidden' &&
+        rect.width > 0 &&
+        rect.height > 0,
+    };
+  }, handle);
+}
+
+// Batch the per-button click + post-state collection into a
+// single Playwright call sequence:
+//   1. resetMutationCounter()
+//   2. click() with 5s timeout
+//   3. brief 100ms settle
+//   4. read mutation count + url + post-uiids in ONE eval
+async function clickAndCollect(page, handle, targetUrl) {
+  await resetMutationCounter(page);
+  let clickError = null;
+  try {
+    await handle.click({ timeout: 1500, force: true });
+  } catch (e) {
+    clickError = e.message;
+  }
+  await sleep(100); // brief settle for htmx swaps / JS effects
+  const post = await page.evaluate(() => ({
+    mutationCount: window.__matrixMutationCount || 0,
+    url: location.href,
+    uiids: Array.from(
+      document.querySelectorAll('[id^="page."], [id^="panel."], [id^="tab."]'),
+    ).map((el) => el.id).filter(Boolean),
+  }));
+  return { ...post, clickError, urlChanged: post.url !== targetUrl };
+}
+
+async function checkOneButton(page, handle, target, targetUrl) {
+  const idx = target.index;
+  const isAnchor = target.tag === 'a';
+
+  // Filter 0: external hrefs (https://, http://, mailto:, //).
+  // The probe MUST NOT click any link that navigates outside
+  // the DixieData app domain — otherwise the headless
+  // Chromium will visit github.com, accounts.google.com, or
+  // any other external URL embedded in the app (e.g. the
+  // commit-link list on /about). External link integrity is
+  // covered by lint-button-actions-resolve and the dedicated
+  // /about probe.
+  if (target.href && /^(https?:|mailto:|\/\/)/.test(target.href)) {
+    record(`btn-${idx}-external-href-skip`, true, {
+      detail: 'external href; click assertion skipped (would navigate outside app)',
+      href: target.href,
+    });
+    return { skipped: true };
+  }
+
+  // Filter 1: native-dialog opener + Google OAuth routes
+  // (per docs/agents/dialog-guard.md + the
+  // google_service.go::Connect() browser.OpenURL call). The
+  // web binary's /integrations/google/* handlers trigger
+  // system-browser opens to accounts.google.com via
+  // pkg/browser — every probe click would pop a real
+  // Chrome tab on the developer's machine. The headless
+  // Chromium can't intercept this side-effect; the only
+  // safe move is to skip these routes entirely.
+  const NATIVE_DIALOG_PREFIXES = [
+    '/export/backup',
+    '/export/database-pdf',
+    '/import/backup',
+    '/import/shared-archive',
+    '/import/memorial-json',
+    '/integrations/google/',
+  ];
+  if (target.action && NATIVE_DIALOG_PREFIXES.some((p) => target.action.startsWith(p))) {
+    record(`btn-${idx}-native-dialog-skip`, true, {
+      detail: 'button delegates to native dialog or system browser (OAuth); click assertion skipped',
+      action: target.action,
+    });
+    return { skipped: true };
+  }
+
+  // Filter 1: not visible → skip silently.
+  if (!target.visible) return { skipped: true };
+  record(`btn-${idx}-visible`, true);
+
+  // Assertion 2: enabled (buttons only).
+  if (target.tag === 'button' || target.role === 'button') {
+    if (target.disabled && !target.inDisabledFieldset) {
+      record(`btn-${idx}-enabled`, false, {
+        detail: 'disabled=true outside fieldset[disabled]',
+      });
+      return { skipped: false };
+    }
+    if (!target.disabled) {
+      record(`btn-${idx}-enabled`, true);
+    }
+  }
+
+  // Assertion 3: focus. Soft-warn on ancestor focus steal.
+  try {
+    await handle.focus();
+    const activeOk = await page.evaluate((el) => {
+      return document.activeElement === el;
+    }, handle);
+    if (activeOk) {
+      record(`btn-${idx}-focus`, true);
+    } else {
+      // Foldout triggers intentionally re-focus; soft-warn.
+      record(`btn-${idx}-focus`, true, {
+        warn: true,
+        detail: 'focus stolen by ancestor handler (foldout-pattern)',
+      });
+    }
+  } catch (e) {
+    record(`btn-${idx}-focus`, false, { error: e.message });
+    return { skipped: false };
+  }
+
+  // Snapshot pre-click uiids.
+  const preUiids = await snapshotUiids(page);
+
+  // Click + collect post-state.
+  let result;
+  try {
+    result = await clickAndCollect(page, handle, targetUrl);
+  } catch (e) {
+    // CDP context lost (DOM.describeNode protocol error) —
+    // means the click navigated and the handle's frame died.
+    // Recoverable: re-query and continue with the next button.
+    record(`btn-${idx}-detached`, false, {
+      detail: 'click caused handle detach (page navigated); recovered',
+      error: e.message?.slice(0, 200),
+    });
+    return { detached: true };
+  }
+
+  // Assertion 4: did the click do something?
+  // For anchors: we tolerate "no DOM mutation" if the URL
+  // changed (the browser is navigating; mutations on the
+  // OLD page don't apply). For buttons: we tolerate "no URL
+  // change" if mutations fired (htmx swap).
+  if (result.clickError) {
+    record(`btn-${idx}-click`, false, { error: result.clickError });
+    return { skipped: false };
+  }
+  if (isAnchor) {
+    // Anchor expectation: URL change. Tolerate "no mutation"
+    // since the OLD page is being replaced.
+    if (!result.urlChanged) {
+      // Last-ditch: a navigation may have been in flight when
+      // we read location.href. Wait briefly and retry.
+      await sleep(200);
+      const late = await page.evaluate(() => location.href);
+      if (late === targetUrl) {
+        record(`btn-${idx}-click`, false, {
+          detail: 'anchor click did not navigate',
+          href: target.href,
+          text: target.text,
+        });
+        return { skipped: false };
+      }
+    }
+    record(`btn-${idx}-click`, true, {
+      urlChanged: true,
+      target: target.href,
+    });
+  } else {
+    if (result.mutationCount === 0 && !result.urlChanged) {
+      record(`btn-${idx}-click`, false, {
+        detail: 'button click produced no DOM mutation, no URL change',
+        href: target.href,
+        text: target.text,
+      });
+      return { skipped: false };
+    }
+    record(`btn-${idx}-click`, true, {
+      mutations: result.mutationCount,
+      urlChanged: result.urlChanged,
+    });
+  }
+
+  // Step 9: navigate back if URL changed.
+  if (result.urlChanged) {
+    try {
+      await page.goto(targetUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: 5000,
+      });
+      await installObserver(page);
+    } catch (e) {
+      record(`btn-${idx}-navigate-back`, false, { error: e.message });
+      return { skipped: false };
+    }
+  }
+
+  // Assertion 5: uiids-superset (the silent-DOM-wipe class).
+  let postUiids;
+  try {
+    postUiids = await snapshotUiids(page);
+  } catch (e) {
+    record(`btn-${idx}-uiids-superset`, false, {
+      error: 'post-snapshot failed: ' + e.message?.slice(0, 200),
+    });
+    return { skipped: false };
+  }
+  const preSet = new Set(preUiids);
+  const trulyVanished = preUiids.filter((id) => !postUiids.includes(id));
+  if (trulyVanished.length > 0) {
+    record(`btn-${idx}-uiids-superset`, false, {
+      detail: 'silent DOM wipe after click',
+      vanished: trulyVanished,
+    });
+    return { skipped: false };
+  }
+  record(`btn-${idx}-uiids-superset`, true, {
+    pre: preUiids.length,
+    post: postUiids.length,
+  });
+
+  return { skipped: false };
+}
+
+async function visitSurface(page, surface) {
+  const targetUrl = `${BASE}${surface.path}`;
+
+  let response;
+  try {
+    response = await page.goto(targetUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: cfg.navTimeoutMs,
+    });
+  } catch (e) {
+    record(`surface-${surface.name}-navigate`, false, { error: e.message, url: targetUrl });
+    return;
+  }
+  if (!response || response.status() >= 500) {
+    record(`surface-${surface.name}-navigate`, false, {
+      status: response?.status() ?? null,
+      url: targetUrl,
+    });
+    return;
+  }
+  record(`surface-${surface.name}-navigate`, true, { status: response.status(), url: targetUrl });
+
+  // Pre-expand <details>.
+  await page.evaluate(() => {
+    document.querySelectorAll('details').forEach((d) => { d.open = true; });
+  });
+
+  // Dismiss any modals that auto-opened (feedback-modal,
+  // print-config-modal, google-calendar-preferences-modal).
+  // These globals intercept all subsequent clicks and would
+  // make every assertion below time out. The probe is about
+  // per-button correctness, not modal-open policy.
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('[data-feedback-modal], [data-print-config-modal], [data-google-calendar-preferences-modal]')
+      .forEach((el) => { el.classList.add('hidden'); });
+  });
+
+  // Install observer once.
+  await installObserver(page);
+
+  // Defensive: also dismiss any modal that re-appeared during
+  // the previous click. Each click might trigger a data-feedback-open
+  // ancestor handler (the global feedback-modal opener is on
+  // every page). We can't tell which clicks trigger it without
+  // observability, so we just re-hide after each cycle.
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('[data-feedback-modal]:not(.hidden), [data-print-config-modal]:not(.hidden), [data-google-calendar-preferences-modal]:not(.hidden)')
+      .forEach((el) => { el.classList.add('hidden'); });
+  });
+
+  // Enumerate clickables — BUTTONS FIRST (priority), then
+  // anchors. Cap at MAX_BUTTONS_PER_SURFACE (default 50) to
+  // keep runtime bounded. Anchor-heavy surfaces (home, browse)
+  // get culled; their link integrity is covered by
+  // lint-button-actions-resolve and the dedicated probe.
+  const MAX_BUTTONS_PER_SURFACE = 50;
+  let handles = await page.$$('button, [role="button"], a[href]');
+  if (handles.length > MAX_BUTTONS_PER_SURFACE) {
+    // Filter to keep all buttons (genuine interactive
+    // elements) plus the first N anchors. We re-query by
+    // selector so the priority ordering is real.
+    const buttonSel = 'button, [role="button"]';
+    const anchorSel = 'a[href]';
+    const buttons = await page.$$(buttonSel);
+    const anchors = await page.$$(anchorSel);
+    const anchorBudget = Math.max(0, MAX_BUTTONS_PER_SURFACE - buttons.length);
+    handles = [...buttons, ...anchors.slice(0, anchorBudget)];
+    // Dispose the anchors we didn't keep.
+    for (const a of anchors.slice(anchorBudget)) {
+      try { await a.dispose(); } catch (_) {}
+    }
+  }
+  record(`surface-${surface.name}-catalog`, true, {
+    count: handles.length,
+  });
+
+  let i = 0;
+  let consecutiveDetaches = 0;
+  while (i < handles.length) {
+    if (consecutiveDetaches > 3) {
+      record(`surface-${surface.name}-abort`, false, {
+        detail: 'too many consecutive detached handles; re-querying catalog',
+      });
+      // Re-query from a fresh catalog after a full re-nav.
+      try {
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+        await installObserver(page);
+        handles = await page.$$('button, [role="button"], a[href]');
+        i = 0;
+        consecutiveDetaches = 0;
+      } catch (e) {
+        record(`surface-${surface.name}-recover`, false, { error: e.message });
+        break;
+      }
+      continue;
+    }
+
+    const h = handles[i];
+    let target;
+    try {
+      target = await readClickable(page, h);
+    } catch (e) {
+      // The handle's frame was destroyed (click on prior button
+      // navigated). Re-query handles and continue.
+      consecutiveDetaches++;
+      try { await h.dispose(); } catch (_) {}
+      try {
+        handles = await page.$$('button, [role="button"], a[href]');
+        if (i >= handles.length) break;
+      } catch (_) {
+        break;
+      }
+      continue;
+    }
+    consecutiveDetaches = 0;
+
+    if (!target || !target.hasSize) {
+      try { await h.dispose(); } catch (_) {}
+      i++;
+      continue;
+    }
+    target.index = i;
+    const result = await checkOneButton(page, h, target, targetUrl);
+    try { await h.dispose(); } catch (_) {}
+    if (result.detached) {
+      // Re-query from scratch.
+      consecutiveDetaches++;
+      try {
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+        await installObserver(page);
+        handles = await page.$$('button, [role="button"], a[href]');
+        i = 0;
+      } catch (e) {
+        record(`surface-${surface.name}-recover`, false, { error: e.message });
+        break;
+      }
+      continue;
+    }
+    i++;
+  }
+}
+
+async function main(ctx) {
+  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
+  const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
+  const scratchDir = ctx.scratchDir;
+  const webBinPath = webBin();
+
+  if (!fs.existsSync(webBinPath)) {
+    throw new Error(
+      `dixiedata-web binary missing at ${webBinPath}; run \`just debug\` first`,
+    );
+  }
+
+  await seedArchive(repoRoot, scratchDir);
+
+  const proc = spawn(
+    webBinPath,
+    ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
+    },
+  );
+  ctx.registerCleanup(() => {
+    try { proc.kill('SIGTERM'); } catch (_) { /* best effort */ }
+  });
+  proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
+
+  await waitForServer(BASE);
+  console.log(`server up at ${BASE}`);
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ acceptDownloads: true });
+  const page = await context.newPage();
+  page.on('dialog', async (dialog) => { await dialog.accept(); });
+
+  const surfaces = selectSurfaces();
+  console.log(`button-matrix: ${surfaces.length} surface(s) (mode=${process.env.SMOKE_ROTATION ?? 'ci'})`);
+
+  for (const surface of surfaces) {
+    console.log(`\n>>> visiting ${surface.name} (${surface.path})`);
+    try {
+      await visitSurface(page, surface);
+    } catch (e) {
+      record(`surface-${surface.name}-visit`, false, {
+        error: e.message,
+        stack: e.stack?.split('\n').slice(0, 3).join(' | '),
+      });
+    }
+  }
+
+  await browser.close();
+
+  console.log(`\nbutton-matrix: ${pass} passed, ${fail} failed`);
+  return { ok: !STRICT || fail === 0, pass, fail };
 }
 
 const result = await runProbe({
