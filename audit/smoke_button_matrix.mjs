@@ -231,6 +231,15 @@ async function readClickable(page, handle) {
       disabled: el.disabled === true,
       inDisabledFieldset: !!(closestFieldset && closestFieldset.disabled),
       hasSize: rect.width > 0 && rect.height > 0,
+      // Mega-menu items inside a closed panel (class="hidden")
+      // are not interactive until the trigger is clicked. The
+      // NN/g mega-menus-work-well pattern used by layout.templ
+      // mounts the menuitems in the DOM and toggles visibility
+      // via .hidden on the panel root. Enumerating + click-
+      // asserting these in their hidden state produces false
+      // FAILs (slice 2 surfaced two: /insights and /about
+      // mega-menu links on /).
+      inClosedMegaMenu: !!el.closest('[data-mega-menu-panel].hidden'),
       visible:
         cs.display !== 'none' &&
         cs.visibility !== 'hidden' &&
@@ -243,10 +252,21 @@ async function readClickable(page, handle) {
 // Batch the per-button click + post-state collection into a
 // single Playwright call sequence:
 //   1. resetMutationCounter()
-//   2. click() with 5s timeout
-//   3. brief 100ms settle
+//   2. click() with 1.5s timeout
+//   3. brief settle
 //   4. read mutation count + url + post-uiids in ONE eval
-async function clickAndCollect(page, handle, targetUrl) {
+//
+// For anchors ({waitForNav: true}) we additionally poll
+// location.href for up to 1500ms after the click, with the
+// poll starting AT click time. The original `Promise.all`
+// with `waitForURL` missed real navigations because
+// `waitForURL` polls on a 100ms interval, and a fast
+// navigation can complete + be replaced before the first
+// poll reads the URL (the source and destination both pass
+// the "url !== source" check transiently). The poll is a
+// more robust read because it captures location.href at the
+// exact moment we ask.
+async function clickAndCollect(page, handle, targetUrl, { waitForNav = false } = {}) {
   await resetMutationCounter(page);
   let clickError = null;
   try {
@@ -254,7 +274,10 @@ async function clickAndCollect(page, handle, targetUrl) {
   } catch (e) {
     clickError = e.message;
   }
-  await sleep(100); // brief settle for htmx swaps / JS effects
+  // Settle. 200ms is enough for htmx swaps + most
+  // navigations; the waitForNav loop below covers anything
+  // slower.
+  await sleep(200);
   const post = await page.evaluate(() => ({
     mutationCount: window.__matrixMutationCount || 0,
     url: location.href,
@@ -262,6 +285,19 @@ async function clickAndCollect(page, handle, targetUrl) {
       document.querySelectorAll('[id^="page."], [id^="panel."], [id^="tab."]'),
     ).map((el) => el.id).filter(Boolean),
   }));
+  if (waitForNav && post.url === targetUrl) {
+    // The 200ms settle saw the source URL. Poll for up to
+    // 3000ms more in case the navigation is still in flight.
+    // The drilldown links on /insights were the worst case
+    // observed in slice 2: ~1.5s of click-to-URL-change lag
+    // in headless Chromium under load. Reading
+    // location.href is cheap and synchronous.
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline && post.url === targetUrl) {
+      await sleep(150);
+      post.url = await page.evaluate(() => location.href);
+    }
+  }
   return { ...post, clickError, urlChanged: post.url !== targetUrl };
 }
 
@@ -310,6 +346,22 @@ async function checkOneButton(page, handle, target, targetUrl) {
     return { skipped: true };
   }
 
+  // Filter 2: closed mega-menu descendants. NN/g mega-menus
+  // mount menuitems in the DOM and toggle visibility via
+  // .hidden on the panel root (layout.templ:145). Click-
+  // asserting them in their hidden state produced two false
+  // FAILs in slice 2 (the /insights and /about mega-menu
+  // links on /). Triage confirmed the links work in real
+  // Chrome once the menu is open.
+  if (target.inClosedMegaMenu) {
+    record(`btn-${idx}-closed-megamenu-skip`, true, {
+      detail: 'element inside a closed [data-mega-menu-panel].hidden; click assertion skipped',
+      href: target.href,
+      text: target.text,
+    });
+    return { skipped: true };
+  }
+
   // Filter 1: not visible → skip silently.
   if (!target.visible) return { skipped: true };
   record(`btn-${idx}-visible`, true);
@@ -350,10 +402,12 @@ async function checkOneButton(page, handle, target, targetUrl) {
   // Snapshot pre-click uiids.
   const preUiids = await snapshotUiids(page);
 
-  // Click + collect post-state.
+  // Click + collect post-state. Anchors get the waitForNav
+  // race so real navigations are detected even when they
+  // take longer than the 100ms settle.
   let result;
   try {
-    result = await clickAndCollect(page, handle, targetUrl);
+    result = await clickAndCollect(page, handle, targetUrl, { waitForNav: isAnchor });
   } catch (e) {
     // CDP context lost (DOM.describeNode protocol error) —
     // means the click navigated and the handle's frame died.
@@ -377,24 +431,45 @@ async function checkOneButton(page, handle, target, targetUrl) {
   if (isAnchor) {
     // Anchor expectation: URL change. Tolerate "no mutation"
     // since the OLD page is being replaced.
-    if (!result.urlChanged) {
+    //
+    // Self-anchors (href === current URL, modulo fragment) do
+    // not fire navigation by browser design — the user is
+    // already on the destination. Slice 2 incorrectly flagged
+    // these as FAILs (e.g. a breadcrumb back to /soldiers/new
+    // on /soldiers/new, the "Home" link on /calendar). The
+    // poll loop above also exits without detecting a change.
+    // Treat them as PASS: the click is correctly wired to a
+    // valid destination; the destination just happens to be
+    // the current page.
+    const selfAnchor = target.href && (
+      target.href === surface.path ||
+      target.href === targetUrl ||
+      target.href === surface.path + '#' ||
+      (target.href.startsWith('#') && false) // ignore hash-only jumps
+    );
+    if (selfAnchor) {
+      record(`btn-${idx}-click`, true, {
+        selfAnchor: true,
+        href: target.href,
+        text: target.text,
+      });
+    } else if (!result.urlChanged) {
       // Last-ditch: a navigation may have been in flight when
-      // we read location.href. Wait briefly and retry.
-      await sleep(200);
-      const late = await page.evaluate(() => location.href);
-      if (late === targetUrl) {
-        record(`btn-${idx}-click`, false, {
-          detail: 'anchor click did not navigate',
-          href: target.href,
-          text: target.text,
-        });
-        return { skipped: false };
-      }
+      // we read location.href. The poll loop above already
+      // waited 3s, so if the URL still hasn't changed, the
+      // click really did not navigate.
+      record(`btn-${idx}-click`, false, {
+        detail: 'anchor click did not navigate',
+        href: target.href,
+        text: target.text,
+      });
+      return { skipped: false };
+    } else {
+      record(`btn-${idx}-click`, true, {
+        urlChanged: true,
+        target: target.href,
+      });
     }
-    record(`btn-${idx}-click`, true, {
-      urlChanged: true,
-      target: target.href,
-    });
   } else {
     if (result.mutationCount === 0 && !result.urlChanged) {
       record(`btn-${idx}-click`, false, {
