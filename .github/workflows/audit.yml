@@ -137,7 +137,18 @@ jobs:
       - name: Smoke runner (issue #700 slice 6)
         run: |
           BASE_URL=http://127.0.0.1:8080 just test-smoke-strict
-        timeout-minutes: 15
+        # Raised 15 -> 30 to cover the matrix + a11y probe
+        # slice budgets (`.rpiv/artifacts/plans/
+        # 2026-08-01_button-matrix-a11y-probes.md` slice 4,
+        # Q5 option A). Worst case: matrix probe ~8 min +
+        # a11y probe ~3 min + existing 33-surface baseline
+        # ~12 min = ~23 min. 30 min gives headroom for the
+        # 7-surface matrix rotation day + the
+        # 8-surface a11y rotation day landing in the same
+        # CI cycle. Issue #700 slice 6 originally budgeted
+        # 15 min; the two new probes (slice 2 + slice 3a)
+        # push the worst case over the limit.
+        timeout-minutes: 30
 
       - name: Upload audit reports
         if: always()

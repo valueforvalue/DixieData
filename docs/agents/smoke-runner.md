@@ -326,7 +326,15 @@ pass/fail is internal to the probeFn).
 
 - Issue #700 — the umbrella issue tracking the slice-by-slice
   rollout.
-- `.github/workflows/audit.yml` — CI integration (slice 6).
+- `.rpiv/artifacts/plans/2026-08-01_button-matrix-a11y-probes.md` — the
+  matrix + a11y probe rollout plan (slices 1, 2, 3a, 3b, 4).
+- `audit/smoke_button_matrix.mjs` — slice 1+2 GREEN stub expanded to
+  the real per-button 5-state matrix probe.
+- `audit/smoke_a11y.mjs` — slice 3a WARN-only WCAG 2 AA sweep via
+  `audit/harness.mjs::runAxe()`.
+- `.github/workflows/audit.yml` — CI integration (slice 6) +
+  `timeout-minutes: 30` raise for the matrix + a11y probe budgets
+  (slice 4, Q5 option A).
 - `justfile` — `test-smoke` / `test-smoke-strict` / `test-smoke-test` recipes.
 - `CHANGELOG.md` — per-slice landing notes (slice 1-6 entries).
 - `docs/agents/INDEX.md` — Tier 1 cross-reference.
@@ -335,3 +343,157 @@ pass/fail is internal to the probeFn).
   cost ~25 minutes during slice 2 (when extracting a code
   block for surgical migration, use `git show HEAD:path` not
   the `read` tool).
+
+## The matrix probe (slice 1 + 2)
+
+`audit/smoke_button_matrix.mjs` walks the 28 non-detail surfaces
+in `SURFACES[]` and asserts a 5-state matrix per `button`,
+`[role="button"]`, and `a[href]`. The 10-step algorithm (per the
+plan, Q1):
+
+1. **Spawn the server** against a per-probe `ctx.scratchDir`,
+   seed via `cmd/seed-data --reset --soldiers 5 --articles 2
+   --events 2 --tags 5` (per Q6).
+2. **Visit the surface** with `page.goto(targetUrl, {waitUntil:
+   'domcontentloaded'})`. Surface URLs are derived from the 28-
+   surface `SURFACE_URLS` array (mirrors `SURFACES[]` minus the
+   5 detail surfaces that dedicated per-feature probes cover).
+3. **Pre-expand `<details>`** so buttons inside collapsed panels
+   are visible to the matrix walker.
+4. **Dismiss any auto-opened modals** (feedback-modal, print-
+   config-modal, google-calendar-preferences-modal) so they
+   don't intercept subsequent clicks.
+5. **Install a `MutationObserver`** on `document.body` (one
+   observer per surface, reset before every click) that
+   increments `window.__matrixMutationCount` on every mutation
+   the observer fires (childList + subtree + attributes).
+6. **Enumerate clickables** in source order: `button,
+   [role="button"]` first, then `a[href]`. Cap at 50 per surface
+   (buttons prioritized; anchor budget backfilled from the
+   top of the list). This is the 5-state matrix's "what
+   buttons exist" step.
+7. **For each clickable**, snapshot the pre-click uiids set
+   (every `[id^="page."], [id^="panel."], [id^="tab."]` id).
+   Assert `isVisible()` (per-element `cs.display !==
+   'none'` + `cs.visibility !== 'hidden'` + non-zero
+   `getBoundingClientRect()`) and `isEnabled()` (skip when
+   the button is inside `<fieldset disabled>`). For anchors
+   only, also check `inClosedMegaMenu` (skip if inside
+   `[data-mega-menu-panel].hidden`) and `selfAnchor` (click
+   on a self-link `href === currentUrl` is a PASS by design).
+8. **Focus + click** the element. Anchor clicks get a 3s
+   poll loop reading `location.href` every 150ms (replaces
+   the 100ms-after-click URL read in slice 2's first cut;
+   the original `Promise.all([page.waitForURL, click])` race
+   missed real navigations on `/insights/drilldown` anchors).
+9. **Assert click did something**: anchors expect URL change
+   (or self-anchor pass); buttons expect MutationObserver
+   delta OR URL change. The observer's mutation count and
+   the post-click `location.href` are batched into one
+   `page.evaluate()` round-trip for speed.
+10. **Re-snapshot uiids** (the silent-DOM-wipe assertion,
+    same shape as issue #691). Post-click set must be a
+    superset of pre-click set; any vanished id is a FAIL
+    with the missing ids in the detail.
+
+**5-state matrix per plan Q1:**
+- `isVisible` — assertion 1, skip otherwise.
+- `isEnabled` — assertion 2, skip when inside `<fieldset
+  disabled>`.
+- `focus + document.activeElement === el` — assertion 3,
+  soft-warn on foldout-pattern focus stealing.
+- `click → mutation OR URL change OR x-dixiedata-submit
+  response` within the click-poll window — assertion 4.
+- `post-click uiids ⊇ pre-click uiids` — assertion 5
+  (silent-DOM-wipe class).
+
+**4 defensive filters** prevent the probe from triggering
+real-world side effects:
+- External `href` (`https?://`, `mailto:`, `//`) skipped — no
+  GitHub commit links visited (the `/about` page links to
+  `github.com/valueforvalue/DixieData/commit/<hash>`).
+- `NATIVE_DIALOG_PREFIXES` (`/import/backup`,
+  `/import/shared-archive`, `/import/memorial-json`) skipped
+  — native `OpenFileDialog` would block headless Chromium.
+- `/integrations/google/*` skipped — `google_service.go::Connect()`
+  calls `pkg/browser::OpenURL(authURL)` to `accounts.google.com`,
+  which pops the developer's real Chrome on every probe click.
+- Modals auto-hidden at the start of every surface visit so
+  they don't intercept subsequent clicks.
+
+**Deterministic rotation (per Q5):** `SMOKE_ROTATION` env:
+`ci` (default) = day-of-epoch mod 4, take 7 surfaces
+(28 ÷ 7 = 4-day full-coverage cycle); `local` = first 7;
+`full` = all 28.
+
+**Default mode:** GREEN. 1,143 PASS / 4 candidate FAIL per
+7-surface run (~0.4%). The 4 slice-2 candidate FAILs (the
+2 `/insights/drilldown?scope=...` anchors + the 2
+mega-menu `/insights` / `/about` anchors) were triaged in
+real headed Chromium and confirmed as probe artifacts. The
+probe-side fixes (closed-mega-menu skip + self-anchor pass
++ 3s nav poll) land in `9a8dd494` and eliminate all 4.
+
+**Strict-mode toggle:** `SMOKE_BUTTON_MATRIX_STRICT=1` flips
+to FAIL-mode + exit 1 (preserved from slice 1 for slice 2's
+gate-flip).
+
+## The a11y probe (slice 3a)
+
+`audit/smoke_a11y.mjs` is the WARN-only counterpart to the
+matrix probe. Walks the same 28 non-detail surfaces,
+reuses `audit/harness.mjs::runAxe()` (which handles WCAG
+2 AA + fragment detection in one call). Per-surface
+`ctx.record('a11y:<name>', ok, { violations: [...] })`
+emits axe findings into the JSON summary.
+
+**Default mode is always GREEN.** The probe is
+informational, not a gate. Each per-surface record is
+emitted with `ok: true` regardless of violation count; the
+`warn: true` flag tells the aggregator this surface had
+a11y findings worth surfacing. The JSON summary's
+per-surface `violations` array carries the structured form
+(per-rule id + impact + node count + sample target).
+
+**Strict-mode toggle:** `SMOKE_A11Y_STRICT=1` is wired in
+but currently no-ops (the `hasCritical` check in
+`smoke_a11y.mjs::main()` is hardcoded to `false`).
+This is the slice 3b invariant: the hardcoded `false` is
+the one-line change that flips the probe to a real gate
+once the issue cohort from slice 3a's first run is
+remediated (current cohort: issue #716, the top-nav
+color-contrast family).
+
+**First-run cohort (the slice 3a deliverable):** 1 violation
+family — `color-contrast` (serious) — across 26 of 28
+non-detail surfaces. Affected region: top-nav
+(`.top-brand-title` brand title + nav links +
+`.primary-button.top-nav-primary` CTA + breadcrumb
+separators). All fail WCAG 2 AA contrast against the
+dark-navy top-nav background (`rgba(31,43,56,0.92)`).
+The 2 fragments (`/jobs`, `/research-log`) are skipped by
+`runAxe`'s fragment detection.
+
+**One tracking issue per family** (per plan Q4): issue
+#716 covers the entire top-nav. When the fix lands
+(lighten the top-nav text tokens — sepia 141,116,64 →
+≥180,150,90 — until the 4.5 ratio threshold is met),
+the probe's WARN count drops to 0 and slice 3b can
+gate.
+
+**Surfaces covered:** same 28 non-detail surfaces as the
+matrix probe (per plan Q1; detail-page a11y is covered by
+the per-feature detail probes). The probe uses the
+8-surface day-of-epoch mod 4 rotation (Q5), not the
+7-surface matrix rotation — 28 surfaces ÷ 8 = 3.5-day
+cycle (the last surface of the 4th day is the 7-surface
++ 1 leftover; the next 4-day cycle starts at surface 0
+with 1 day of overlap on the 4th day's leftover).
+
+**Why this probe shape:** the plan splits a11y into
+3a (WARN-only, file the issues) and 3b (gate). Shipping
+the WARN-only probe first surfaces the actual violation
+list — the threshold (`serious`+`critical`) was
+predicated on assumption; the data shows the threshold
+catches the top-nav contrast family. Slice 3b is a
+one-line change after the issue is fixed.
