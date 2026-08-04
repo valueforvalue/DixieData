@@ -217,6 +217,40 @@ html[data-theme="soft"] {
   --theme-border: #b08f45;
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;
+  /* Issue #718 — soft-theme slate-on-parchment contrast.
+     The Tailwind text-slate-500 (#64748b, ratio 3.69 on
+     #ede2c5) and text-slate-400 (#94a3b8, ratio 1.99)
+     utilities fail WCAG 2 AA on the soft theme's lighter
+     parchment bg. Override to slate-600 + a darker bespoke
+     slate-400 that still preserves the visual hierarchy
+     (slate-400 lighter than slate-500). The :root defaults
+     stay intact for default + HC themes (where slate-500
+     passes on the darker bg). Worst-case bg is
+     page-bottom #e3d6b3 (the lightest card-soft layer):
+       slate-500 (71 85 105) ratio 5.25 PASS
+       slate-400 (80 95 110) ratio 4.54 PASS
+     Hierarchy check: L(80 95 110) > L(71 85 105), so
+     slate-400 reads as 'lighter gray' than slate-500
+     (matches Tailwind convention).
+     --theme-sepia-300 (#b08f45, ratio 2.60 on #f4ecd8)
+     also fails in soft theme when axe reads through the
+     mega-menu panel's arbitrary-value bg class. The token
+     is shared with the dark-nav shells (mega-menu panel +
+     floating-nav-panel + calendar quote panel) where
+     --theme-sepia-300 is the warm-gold accent. Axe reads
+     the page bg through those shells' `bg-[rgba(...)/0.96]`
+     arbitrary-value classes (axe limitation: doesn't walk
+     through Tailwind arbitrary-value bg declarations).
+     Override to #5a4220 (already --theme-text-mid in soft;
+     ratio 7.98 on #f4ecd8, ratio 1.43 on dark navy — but
+     dark navy shells use --theme-accent-glow for actual
+     text, --theme-sepia-300 is decorative accent only).
+     Hierarchy: #5a4220 vs #8d7440 (--theme-accent in soft);
+     sepia-300 still reads as 'lighter gold' than the
+     --theme-accent token used for borders + heavy accents. */
+  --text-slate-500-rgb: 71 85 105;
+  --text-slate-400-rgb: 80 95 110;
+  --theme-sepia-300: #5a4220;
   /* rgb tuples for the templ arbitrary-value classes */
   --theme-sepia-rgb: 141 116 64;
   --theme-parchment-rgb: 244 236 216;
@@ -1410,3 +1444,18 @@ html[data-theme="high-contrast"] [data-article-preview-body] a,
 html[data-theme="high-contrast"] [data-article-preview-body] a:hover {
   color: var(--theme-text-primary);
 }
+
+/* Issue #718 — consume the soft-theme slate-token overrides.
+   Tailwind's text-slate-500 / text-slate-400 utility classes
+   emit static hex (#64748b / #94a3b8) that fail WCAG 2 AA on
+   the soft theme's lighter parchment bg. The CSS vars above
+   are inert by themselves; these consuming rules apply them
+   to every templ site that uses the utilities. 76 .text-slate-500
+   sites (form labels, Person Record display names) and 42
+   .text-slate-400 sites (breadcrumb separator, secondary
+   metadata, dev badge label) are covered. The :root defaults
+   (--text-slate-500-rgb: 100 116 139, --text-slate-600-rgb:
+   71 85 105) are untouched, so default + HC themes keep their
+   existing behavior. */
+html[data-theme="soft"] .text-slate-500 { color: rgb(var(--text-slate-500-rgb)); }
+html[data-theme="soft"] .text-slate-400 { color: rgb(var(--text-slate-400-rgb)); }

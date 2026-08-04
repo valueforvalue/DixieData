@@ -2657,6 +2657,100 @@ flips the gate after this cohort is remediated.
 - issue #716 (top-nav color-contrast remediation, 26 of 28 surfaces
   affected in first-run cohort)
 
+### 6.9 Theme-tuned slate tokens fail contrast on lighter parchment bg
+
+**Symptom:** Body content using `text-slate-500` / `text-slate-400`
+Tailwind utility classes fails WCAG 2 AA on the soft theme's
+parchment bg. Axe reports `color-contrast` violations on:
+- `span[itemprop="name"]` (Person Record card display names, 25
+  sites in `about.templ`)
+- `li[itemprop="itemListElement"]` (breadcrumb chain,
+  `components/breadcrumb.templ:32`)
+- `label[for="setup-..."]` (form labels, 76 sites in
+  `entry_form.templ`)
+- `.text-slate-400` (breadcrumb `›` separator, dev badge label,
+  death date subtitles, helper text, 42 sites across 14 templates)
+
+Sample measurements (soft theme, default seed):
+- `.text-slate-500` fg `#64748b` (100,116,139) on bg `#ede2c5`
+  (parchment-mid) = **3.69** (fails AA 4.5 even for large text)
+- `.text-slate-400` fg `#94a3b8` (148,163,184) on bg `#f4ecd8`
+  (page-top) = **2.18** (severely below)
+
+The same classes pass in default + HC themes because the bg is
+darker (`#d7d2c9`/`#c9c2b5`/`#b9b1a3` warmer gray in default,
+`#ffffff`/`#f5f5f5` in HC); slate-500 on `#c9c2b5` = 4.76 passes.
+
+**Why it happens:** `--text-slate-500-rgb: 100 116 139` and
+`--text-slate-600-rgb: 71 85 105` are set in `:root` and inherited
+unchanged by the soft theme override block. The soft theme's
+body bg tokens (`#f4ecd8` / `#ede2c5` / `#e3d6b3`) are
+significantly lighter than the default theme's, so the
+contrast ratio drops below 4.5. Tailwind's `text-slate-500` /
+`text-slate-400` utility classes emit static hex (`#64748b` /
+`#94a3b8`), not CSS vars, so the slate tokens are inert unless
+a consuming rule wires them up.
+
+**Find it:**
+```bash
+SMOKE_ROTATION=full node audit/smoke_a11y.mjs
+# filter JSON summary for color-contrast violations; expect
+# Person Record cards, breadcrumb chain, form labels
+```
+Or grep the templ files:
+```bash
+grep -rn 'text-slate-500\|text-slate-400' internal/templates/
+```
+(76 + 42 sites in the default seed).
+
+**Fix:** Add the slate-token overrides + the consuming rules to
+the `html[data-theme="soft"]` block in `frontend/tailwind.css`.
+```css
+html[data-theme="soft"] {
+  /* ... existing tokens ... */
+  --text-slate-500-rgb: 71 85 105;   /* was Tailwind slate-500 #64748b = 3.69 fail */
+  --text-slate-400-rgb: 80 95 110;   /* was Tailwind slate-400 #94a3b8 = 2.18 fail */
+}
+
+/* At file tail: consume the vars (Tailwind utilities emit
+   static hex; the vars are inert without consumers) */
+html[data-theme="soft"] .text-slate-500 { color: rgb(var(--text-slate-500-rgb)); }
+html[data-theme="soft"] .text-slate-400 { color: rgb(var(--text-slate-400-rgb)); }
+```
+
+The chosen values preserve the Tailwind visual hierarchy
+(slate-400 lighter than slate-500: L(80 95 110)=0.1068 >
+L(71 85 105)=0.0886). Both pass on the worst soft bg
+(`#e3d6b3` page-bottom): slate-500=5.25, slate-400=4.54. The
+`:root` defaults stay intact for default + HC themes.
+
+**Same fix shape generalises:** any future theme with a lighter
+bg (e.g. a new "Light" theme) needs per-theme token overrides
+for every fg color that was tuned for darker bgs. The pattern
+is "add the per-theme var + add the per-theme consuming rule
+at file tail." Document any new theme in
+`docs/agents/theme-system.md` (if it exists; otherwise inline
+in `frontend/tailwind.css`).
+
+**Related sibling class:** §6.8 (region-locked dark-on-dark
+tokens fail contrast on dark-bg shells) is the inverse problem
+— fg tokens tuned for parchment fail on dark shells. Both
+classes share the "per-theme token override" fix shape.
+
+**Regression net:**
+- `SMOKE_ROTATION=full node audit/smoke_a11y.mjs` — JSON
+  summary `summary.warnings[].byRule['color-contrast']` count
+  must be ≤ 4 (residual axe false positives on mega-menu /
+  foldout panel arbitrary-value bg classes; documented
+  separately as a probe-side limitation).
+- `node --test audit/smoke_a11y.test.mjs` — 6/6 pass (the
+  gate-flip regression net for the slice 3b gate posture;
+  STRICT-mode flip unblocked after this cohort clears).
+
+**Real examples:**
+- issue #718 (body-level soft-theme cohort, 8 surfaces affected
+  in first-run; resolved by this fix)
+
 ---
 
 ## 7. Calendar / external API bugs
