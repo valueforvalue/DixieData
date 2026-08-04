@@ -2579,6 +2579,65 @@ display ID if no caption.
 - `5098cf6 fix(a11y): sanitise alt text on the image preview modal`
 - `b353f35 fix(a11y): image thumbs fall back to Person Record alt text`
 
+### 6.8 Region-locked dark-on-dark tokens fail contrast on dark-bg shells
+
+**Symptom:** A region's fg tokens pass contrast on the page's main bg
+(parchment / cream) but fail inside a *local* dark-bg shell (the
+top-nav `.top-shell` carries `bg-[rgb(var(--theme-ink-deep-rgb)/0.92)]`
+per `internal/templates/layout.templ:139`). The same `.gold` brand
+title, `.pill-link` nav links, and `.text-slate-400` separators render
+inside the dark shell and land below WCAG 2 AA 4.5 ratio. Axe reports
+one `color-contrast` rule violation family per shell-region, with N
+affected nodes = N elements inside the shell on that surface (so a
+single failure shape balloons to "26 of 28 surfaces affected").
+
+**Why it happens:** The `--theme-text-primary` / `--theme-accent` /
+`--theme-text-deep` tokens are tuned for the parchment page bg. A dark
+overlay / shell is added on top of the same tokens, and the global
+tokens don't auto-shift for the shell region. Common offenders: brand
+titles using `class="... gold"`, nav links using `class="... pill-link"`,
+CTA buttons using `class="... primary-button"`, separators using
+`class="text-slate-400"` — all designed for cream-on-dark-text-on-cream
+compositions, not dark-shell contexts.
+
+**Find it:** The a11y probe (`audit/smoke_a11y.mjs`) catches this class
+via the `color-contrast` rule. To enumerate suspect elements manually:
+```bash
+grep -rn 'class=".*\(gold\|pill-link\|primary-button\|text-slate-400\)' \
+  internal/templates/ | grep -v "top-nav\|breadcrumb"
+```
+For each match, check the element's nearest dark-bg ancestor (any
+ancestor with a `bg-[rgb(...rgb)/<0.9...)]` class or
+`background:` set to a near-black hex).
+
+**Fix:** Add a single descendant rule block in `frontend/tailwind.css`
+that overrides the 4 fg colors **only inside the dark shell** — do NOT
+change the global `--theme-*` tokens. Example for the top-nav shell:
+```css
+.top-shell .gold { color: #e3c989; }
+.top-shell .pill-link { color: #e6edf3; border-color: rgba(230, 237, 243, 0.45); }
+.top-shell .primary-button.top-nav-primary {
+  color: var(--theme-parchment);
+  background: var(--theme-ink-deep);
+  border: 2px solid var(--theme-parchment);
+}
+.top-shell .text-slate-400 { color: #d1d5db; }
+```
+Verify the new ratios land above 4.5 with the standard WCAG formula
+(linearize sRGB → compute L for fg + bg → `(L_lighter + 0.05) /
+(L_darker + 0.05)`). The shape generalises: any future dark-bg shell
+should grow its own `.shell-region` descendant rule block, not pollute
+the global tokens.
+
+**Regression net:** `SMOKE_ROTATION=full node audit/smoke_a11y.mjs` —
+JSON summary `summary.warnings[].byRule['color-contrast']` must be `0`
+after the fix. Probe is WARN-only by default (slice 3a); slice 3b
+flips the gate after this cohort is remediated.
+
+**Real examples:**
+- issue #716 (top-nav color-contrast remediation, 26 of 28 surfaces
+  affected in first-run cohort)
+
 ---
 
 ## 7. Calendar / external API bugs

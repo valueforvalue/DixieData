@@ -749,6 +749,37 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   .top-brand-title {
     font-size: clamp(2rem, 2vw, 2.4rem);
   }
+  /* Issue #716 — top-nav color-contrast remediation.
+     The .top-shell bg is dark-navy rgba(31,43,56,0.92). The
+     four fg tokens used inside .top-shell fail WCAG 2 AA
+     (4.5) against that bg in the default theme:
+       .top-brand-title.gold          #a88a46 on navy  = 4.37
+       .pill-link.top-nav-link         #22303d on navy  = 1.07
+       .primary-button.top-nav-primary #1f2b38 on gold  = 4.13 (gradient bottom)
+       .text-slate-400                 #94a3b8 on navy  = 5.61 (passes default; flagged under soft)
+     Override each fg in this region only — the same
+     tokens pass on the parchment body bg elsewhere.
+     Verified by audit/smoke_a11y.mjs after the change.
+     Slice 3b (gate flip) is blocked until this lands. */
+  .top-shell .gold { color: #e3c989; }
+  .top-shell .pill-link {
+    color: #e6edf3;
+    border-color: rgba(230, 237, 243, 0.45);
+  }
+  .top-shell .pill-link:hover {
+    background: rgba(230, 237, 243, 0.12);
+    color: #ffffff;
+  }
+  .top-shell .primary-button.top-nav-primary {
+    color: var(--theme-parchment);
+    background: var(--theme-ink-deep);
+    border: 2px solid var(--theme-parchment);
+  }
+  .top-shell .primary-button.top-nav-primary:hover {
+    background: #34465a;
+    border-color: #ffffff;
+  }
+  .top-shell .text-slate-400 { color: #d1d5db; }
   .responsive-two-col {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
