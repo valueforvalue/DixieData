@@ -5149,9 +5149,27 @@ function handleImageUpload(input) {
       .then(async r => {
         const html = await r.text();
         if (!r.ok) throw new Error("HTTP " + r.status);
-        if (r.redirected || r.headers.get("X-DixieData-Redirect") || html.includes("/jobs/")) {
-          showToast("Images imported. Refreshing…", "success");
-          window.location.reload();
+        // The server returns 200 + X-DixieData-Redirect: /jobs/{jobID}
+        // + X-DixieData-Toast: "Importing N image(s)..." when the
+        // image_import job is enqueued. Follow the redirect target
+        // (so the user lands on the job progress page) instead of
+        // reloading the current edit page, where the new images
+        // wouldn't be visible until the background job finishes
+        // + a subsequent reload. Issue: the prior reload made the
+        // upload feel "dependant on save" — the user had to click
+        // Save Changes (which reloaded the edit page after the
+        // background job had completed) to see the new images.
+        const redirectTo = r.headers.get("X-DixieData-Redirect");
+        const toastMessage = r.headers.get("X-DixieData-Toast") || "Images imported. Opening job…";
+        const toastKind = r.headers.get("X-DixieData-Toast-Type") || "info";
+        if (redirectTo || r.redirected || html.includes("/jobs/")) {
+          showToast(toastMessage, toastKind);
+          // Delay the navigation long enough for the toast to be
+          // visually registered (~1.5s); without this delay the
+          // page reload destroys the toast within one frame and
+          // the user sees a flash they can't read.
+          const target = redirectTo || "/";
+          window.setTimeout(() => { window.location.href = target; }, 1500);
           return;
         }
         throw new Error("Unexpected image import response");
