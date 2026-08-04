@@ -1189,6 +1189,12 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	// uses to surface background-job progress).
 	uploadedPaths := readUploadedImagePaths(w, r)
 	if uploadedPaths != nil {
+		debug.FromContext(r.Context()).Debug("appshell: soldier image import",
+			"branch", "web-multipart",
+			"person_record_id", id,
+			"uploaded_paths", len(uploadedPaths),
+			"return", r.URL.Query().Get("return"),
+		)
 		imported, importErr := a.importImagePaths(*soldier, uploadedPaths)
 		if importErr != nil {
 			slog.Error("appshell: soldier image import (web)", "audit", "respond-error", "person_record_id", id, "imported", imported, "err", importErr.Error())
@@ -1206,7 +1212,19 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		},
 	}
 	dupKey := guardedOpenMultipleFilesDialogKey("import_images", pathsOpts)
+	debug.FromContext(r.Context()).Debug("appshell: soldier image import",
+		"branch", "wails-native",
+		"person_record_id", id,
+		"return", r.URL.Query().Get("return"),
+		"opening_native_picker", true,
+	)
 	paths, admitted, ok := a.guardedOpenMultipleFilesDialog(dupKey, pathsOpts)
+	debug.FromContext(r.Context()).Debug("appshell: soldier image import native picker result",
+		"person_record_id", id,
+		"admitted", admitted,
+		"ok", ok,
+		"paths_count", len(paths),
+	)
 	if !admitted {
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
