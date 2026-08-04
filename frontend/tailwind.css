@@ -750,36 +750,62 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
     font-size: clamp(2rem, 2vw, 2.4rem);
   }
   /* Issue #716 — top-nav color-contrast remediation.
-     The .top-shell bg is dark-navy rgba(31,43,56,0.92). The
-     four fg tokens used inside .top-shell fail WCAG 2 AA
-     (4.5) against that bg in the default theme:
-       .top-brand-title.gold          #a88a46 on navy  = 4.37
-       .pill-link.top-nav-link         #22303d on navy  = 1.07
-       .primary-button.top-nav-primary #1f2b38 on gold  = 4.13 (gradient bottom)
-       .text-slate-400                 #94a3b8 on navy  = 5.61 (passes default; flagged under soft)
+     The .top-shell bg is dark-navy rgba(31,43,56,0.92) at
+     92% alpha; the .top-shell also has backdrop-blur so
+     axe reads the effective bg differently than the
+     declared bg. The three top-nav fg tokens used inside
+     .top-shell fail WCAG 2 AA (4.5) against the *effective*
+     bg in the soft theme (the probe's default seed):
+       .top-brand-title.gold          #a88a46 on effective-navy  = 3.42
+       .pill-link.top-nav-link         #22303d on effective-navy  = 1.07
+       .primary-button.top-nav-primary #1f2b38 on gold gradient  = 4.13 (gradient bottom)
      Override each fg in this region only — the same
-     tokens pass on the parchment body bg elsewhere.
-     Verified by audit/smoke_a11y.mjs after the change.
-     Slice 3b (gate flip) is blocked until this lands. */
+     tokens pass on the parchment body bg elsewhere. The
+     .pill-link override also adds a near-opaque (95%) bg
+     because the parent .top-shell 92% alpha + backdrop-blur
+     makes the effective bg too smeared for axe to read
+     consistently across surfaces. The .top-nav-primary
+     override uses literal hex (not var(--theme-parchment))
+     because those vars are undefined in the soft theme
+     override and fall back to the user-agent default.
+     The breadcrumb's text-slate-400 separator is NOT
+     inside .top-shell (see comment below); its a11y issue
+     under soft theme is a separate cohort. Verified by
+     audit/smoke_a11y.mjs after the change. */
   .top-shell .gold { color: #e3c989; }
   .top-shell .pill-link {
     color: #e6edf3;
+    background: rgba(31, 43, 56, 0.95);
     border-color: rgba(230, 237, 243, 0.45);
   }
   .top-shell .pill-link:hover {
-    background: rgba(230, 237, 243, 0.12);
+    background: rgba(74, 90, 106, 0.95);
     color: #ffffff;
   }
   .top-shell .primary-button.top-nav-primary {
-    color: var(--theme-parchment);
-    background: var(--theme-ink-deep);
-    border: 2px solid var(--theme-parchment);
+    /* Use literal hex (not var(--theme-parchment/ink-deep))
+       because those vars are undefined in the soft theme
+       override and fall back to the user-agent default,
+       which axe then reads as a transparent bg + the
+       body text color — ratio 1.18. The top-nav is
+       intentionally theme-agnostic (same dark-navy shell
+       in all 3 themes) so per-theme token overrides would
+       be wrong here. */
+    color: #f6f1e4;
+    background: #1f2b38;
+    border: 2px solid #f6f1e4;
   }
   .top-shell .primary-button.top-nav-primary:hover {
     background: #34465a;
     border-color: #ffffff;
   }
-  .top-shell .text-slate-400 { color: #d1d5db; }
+  /* The text-slate-400 breadcrumb separator (›) in
+     components/breadcrumb.templ:42 is NOT inside
+     .top-shell — the breadcrumb is a sibling of
+     <header class="top-shell"> in layout.templ. The
+     planned override was a no-op; the soft-theme
+     slate-500/400 on body content is a separate
+     cohort filed as a sibling a11y issue. */
   .responsive-two-col {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

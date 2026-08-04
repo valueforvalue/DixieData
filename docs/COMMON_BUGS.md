@@ -2611,23 +2611,42 @@ ancestor with a `bg-[rgb(...rgb)/<0.9...)]` class or
 `background:` set to a near-black hex).
 
 **Fix:** Add a single descendant rule block in `frontend/tailwind.css`
-that overrides the 4 fg colors **only inside the dark shell** — do NOT
-change the global `--theme-*` tokens. Example for the top-nav shell:
+that overrides the fg colors **only inside the dark shell** — do NOT
+change the global `--theme-*` tokens. Example for the top-nav shell
+(verified working example from the issue #716 fix):
 ```css
-.top-shell .gold { color: #e3c989; }
-.top-shell .pill-link { color: #e6edf3; border-color: rgba(230, 237, 243, 0.45); }
-.top-shell .primary-button.top-nav-primary {
-  color: var(--theme-parchment);
-  background: var(--theme-ink-deep);
-  border: 2px solid var(--theme-parchment);
+.top-shell .gold { color: #e3c989; }  /* ratio 6.94 vs effective navy */
+.top-shell .pill-link {
+  color: #e6edf3;
+  /* Near-opaque bg required because .top-shell's 92% alpha
+     + backdrop-blur smears the effective bg so axe reads
+     the page bg through it. Without this bg, axe flags the
+     nav link as transparent-on-parchment (ratio 1.07). */
+  background: rgba(31, 43, 56, 0.95);
+  border-color: rgba(230, 237, 243, 0.45);
 }
-.top-shell .text-slate-400 { color: #d1d5db; }
+.top-shell .primary-button.top-nav-primary {
+  /* Use literal hex (not var(--theme-parchment/ink-deep))
+     because those vars are undefined in the soft theme
+     override and fall back to the user-agent default. */
+  color: #f6f1e4;
+  background: #1f2b38;
+  border: 2px solid #f6f1e4;
+}
 ```
 Verify the new ratios land above 4.5 with the standard WCAG formula
 (linearize sRGB → compute L for fg + bg → `(L_lighter + 0.05) /
 (L_darker + 0.05)`). The shape generalises: any future dark-bg shell
 should grow its own `.shell-region` descendant rule block, not pollute
 the global tokens.
+
+**Important:** the descendant rule must include a `background:`
+override on the interactive element (not just `color:`) when the
+parent shell uses 92% alpha + `backdrop-blur`. Axe reads the
+*effective* bg, not the declared bg, so a transparent-on-blurred-shell
+case is unfixable from the `color:` side alone. The generalises: any
+`bg-[rgb(...)/<1]` + `backdrop-blur` shell needs an opaque-or-near-opaque
+inner bg on the text-bearing children.
 
 **Regression net:** `SMOKE_ROTATION=full node audit/smoke_a11y.mjs` —
 JSON summary `summary.warnings[].byRule['color-contrast']` must be `0`
