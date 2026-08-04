@@ -400,6 +400,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							// results into the targeting panel.
 							<div
 								data-image-upload
+								data-wails-native-upload="true"
 								data-upload-url={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
 								data-results-target={ "#" + uiids.PanelSoldierDetailImages }
 								class="inline"

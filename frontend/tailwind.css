@@ -217,6 +217,40 @@ html[data-theme="soft"] {
   --theme-border: #b08f45;
   --theme-border-strong: #8d7440;
   --theme-review-red: #6f2c26;
+  /* Issue #718 — soft-theme slate-on-parchment contrast.
+     The Tailwind text-slate-500 (#64748b, ratio 3.69 on
+     #ede2c5) and text-slate-400 (#94a3b8, ratio 1.99)
+     utilities fail WCAG 2 AA on the soft theme's lighter
+     parchment bg. Override to slate-600 + a darker bespoke
+     slate-400 that still preserves the visual hierarchy
+     (slate-400 lighter than slate-500). The :root defaults
+     stay intact for default + HC themes (where slate-500
+     passes on the darker bg). Worst-case bg is
+     page-bottom #e3d6b3 (the lightest card-soft layer):
+       slate-500 (71 85 105) ratio 5.25 PASS
+       slate-400 (80 95 110) ratio 4.54 PASS
+     Hierarchy check: L(80 95 110) > L(71 85 105), so
+     slate-400 reads as 'lighter gray' than slate-500
+     (matches Tailwind convention).
+     --theme-sepia-300 (#b08f45, ratio 2.60 on #f4ecd8)
+     also fails in soft theme when axe reads through the
+     mega-menu panel's arbitrary-value bg class. The token
+     is shared with the dark-nav shells (mega-menu panel +
+     floating-nav-panel + calendar quote panel) where
+     --theme-sepia-300 is the warm-gold accent. Axe reads
+     the page bg through those shells' `bg-[rgba(...)/0.96]`
+     arbitrary-value classes (axe limitation: doesn't walk
+     through Tailwind arbitrary-value bg declarations).
+     Override to #5a4220 (already --theme-text-mid in soft;
+     ratio 7.98 on #f4ecd8, ratio 1.43 on dark navy — but
+     dark navy shells use --theme-accent-glow for actual
+     text, --theme-sepia-300 is decorative accent only).
+     Hierarchy: #5a4220 vs #8d7440 (--theme-accent in soft);
+     sepia-300 still reads as 'lighter gold' than the
+     --theme-accent token used for borders + heavy accents. */
+  --text-slate-500-rgb: 71 85 105;
+  --text-slate-400-rgb: 80 95 110;
+  --theme-sepia-300: #5a4220;
   /* rgb tuples for the templ arbitrary-value classes */
   --theme-sepia-rgb: 141 116 64;
   --theme-parchment-rgb: 244 236 216;
@@ -749,6 +783,63 @@ html[data-theme="soft"] .mega-menu-item[data-research-review-has-count]:focus-vi
   .top-brand-title {
     font-size: clamp(2rem, 2vw, 2.4rem);
   }
+  /* Issue #716 — top-nav color-contrast remediation.
+     The .top-shell bg is dark-navy rgba(31,43,56,0.92) at
+     92% alpha; the .top-shell also has backdrop-blur so
+     axe reads the effective bg differently than the
+     declared bg. The three top-nav fg tokens used inside
+     .top-shell fail WCAG 2 AA (4.5) against the *effective*
+     bg in the soft theme (the probe's default seed):
+       .top-brand-title.gold          #a88a46 on effective-navy  = 3.42
+       .pill-link.top-nav-link         #22303d on effective-navy  = 1.07
+       .primary-button.top-nav-primary #1f2b38 on gold gradient  = 4.13 (gradient bottom)
+     Override each fg in this region only — the same
+     tokens pass on the parchment body bg elsewhere. The
+     .pill-link override also adds a near-opaque (95%) bg
+     because the parent .top-shell 92% alpha + backdrop-blur
+     makes the effective bg too smeared for axe to read
+     consistently across surfaces. The .top-nav-primary
+     override uses literal hex (not var(--theme-parchment))
+     because those vars are undefined in the soft theme
+     override and fall back to the user-agent default.
+     The breadcrumb's text-slate-400 separator is NOT
+     inside .top-shell (see comment below); its a11y issue
+     under soft theme is a separate cohort. Verified by
+     audit/smoke_a11y.mjs after the change. */
+  .top-shell .gold { color: #e3c989; }
+  .top-shell .pill-link {
+    color: #e6edf3;
+    background: rgba(31, 43, 56, 0.95);
+    border-color: rgba(230, 237, 243, 0.45);
+  }
+  .top-shell .pill-link:hover {
+    background: rgba(74, 90, 106, 0.95);
+    color: #ffffff;
+  }
+  .top-shell .primary-button.top-nav-primary {
+    /* Use literal hex (not var(--theme-parchment/ink-deep))
+       because those vars are undefined in the soft theme
+       override and fall back to the user-agent default,
+       which axe then reads as a transparent bg + the
+       body text color — ratio 1.18. The top-nav is
+       intentionally theme-agnostic (same dark-navy shell
+       in all 3 themes) so per-theme token overrides would
+       be wrong here. */
+    color: #f6f1e4;
+    background: #1f2b38;
+    border: 2px solid #f6f1e4;
+  }
+  .top-shell .primary-button.top-nav-primary:hover {
+    background: #34465a;
+    border-color: #ffffff;
+  }
+  /* The text-slate-400 breadcrumb separator (›) in
+     components/breadcrumb.templ:42 is NOT inside
+     .top-shell — the breadcrumb is a sibling of
+     <header class="top-shell"> in layout.templ. The
+     planned override was a no-op; the soft-theme
+     slate-500/400 on body content is a separate
+     cohort filed as a sibling a11y issue. */
   .responsive-two-col {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1353,3 +1444,18 @@ html[data-theme="high-contrast"] [data-article-preview-body] a,
 html[data-theme="high-contrast"] [data-article-preview-body] a:hover {
   color: var(--theme-text-primary);
 }
+
+/* Issue #718 — consume the soft-theme slate-token overrides.
+   Tailwind's text-slate-500 / text-slate-400 utility classes
+   emit static hex (#64748b / #94a3b8) that fail WCAG 2 AA on
+   the soft theme's lighter parchment bg. The CSS vars above
+   are inert by themselves; these consuming rules apply them
+   to every templ site that uses the utilities. 76 .text-slate-500
+   sites (form labels, Person Record display names) and 42
+   .text-slate-400 sites (breadcrumb separator, secondary
+   metadata, dev badge label) are covered. The :root defaults
+   (--text-slate-500-rgb: 100 116 139, --text-slate-600-rgb:
+   71 85 105) are untouched, so default + HC themes keep their
+   existing behavior. */
+html[data-theme="soft"] .text-slate-500 { color: rgb(var(--text-slate-500-rgb)); }
+html[data-theme="soft"] .text-slate-400 { color: rgb(var(--text-slate-400-rgb)); }

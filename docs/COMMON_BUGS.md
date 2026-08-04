@@ -2579,6 +2579,178 @@ display ID if no caption.
 - `5098cf6 fix(a11y): sanitise alt text on the image preview modal`
 - `b353f35 fix(a11y): image thumbs fall back to Person Record alt text`
 
+### 6.8 Region-locked dark-on-dark tokens fail contrast on dark-bg shells
+
+**Symptom:** A region's fg tokens pass contrast on the page's main bg
+(parchment / cream) but fail inside a *local* dark-bg shell (the
+top-nav `.top-shell` carries `bg-[rgb(var(--theme-ink-deep-rgb)/0.92)]`
+per `internal/templates/layout.templ:139`). The same `.gold` brand
+title, `.pill-link` nav links, and `.text-slate-400` separators render
+inside the dark shell and land below WCAG 2 AA 4.5 ratio. Axe reports
+one `color-contrast` rule violation family per shell-region, with N
+affected nodes = N elements inside the shell on that surface (so a
+single failure shape balloons to "26 of 28 surfaces affected").
+
+**Why it happens:** The `--theme-text-primary` / `--theme-accent` /
+`--theme-text-deep` tokens are tuned for the parchment page bg. A dark
+overlay / shell is added on top of the same tokens, and the global
+tokens don't auto-shift for the shell region. Common offenders: brand
+titles using `class="... gold"`, nav links using `class="... pill-link"`,
+CTA buttons using `class="... primary-button"`, separators using
+`class="text-slate-400"` — all designed for cream-on-dark-text-on-cream
+compositions, not dark-shell contexts.
+
+**Find it:** The a11y probe (`audit/smoke_a11y.mjs`) catches this class
+via the `color-contrast` rule. To enumerate suspect elements manually:
+```bash
+grep -rn 'class=".*\(gold\|pill-link\|primary-button\|text-slate-400\)' \
+  internal/templates/ | grep -v "top-nav\|breadcrumb"
+```
+For each match, check the element's nearest dark-bg ancestor (any
+ancestor with a `bg-[rgb(...rgb)/<0.9...)]` class or
+`background:` set to a near-black hex).
+
+**Fix:** Add a single descendant rule block in `frontend/tailwind.css`
+that overrides the fg colors **only inside the dark shell** — do NOT
+change the global `--theme-*` tokens. Example for the top-nav shell
+(verified working example from the issue #716 fix):
+```css
+.top-shell .gold { color: #e3c989; }  /* ratio 6.94 vs effective navy */
+.top-shell .pill-link {
+  color: #e6edf3;
+  /* Near-opaque bg required because .top-shell's 92% alpha
+     + backdrop-blur smears the effective bg so axe reads
+     the page bg through it. Without this bg, axe flags the
+     nav link as transparent-on-parchment (ratio 1.07). */
+  background: rgba(31, 43, 56, 0.95);
+  border-color: rgba(230, 237, 243, 0.45);
+}
+.top-shell .primary-button.top-nav-primary {
+  /* Use literal hex (not var(--theme-parchment/ink-deep))
+     because those vars are undefined in the soft theme
+     override and fall back to the user-agent default. */
+  color: #f6f1e4;
+  background: #1f2b38;
+  border: 2px solid #f6f1e4;
+}
+```
+Verify the new ratios land above 4.5 with the standard WCAG formula
+(linearize sRGB → compute L for fg + bg → `(L_lighter + 0.05) /
+(L_darker + 0.05)`). The shape generalises: any future dark-bg shell
+should grow its own `.shell-region` descendant rule block, not pollute
+the global tokens.
+
+**Important:** the descendant rule must include a `background:`
+override on the interactive element (not just `color:`) when the
+parent shell uses 92% alpha + `backdrop-blur`. Axe reads the
+*effective* bg, not the declared bg, so a transparent-on-blurred-shell
+case is unfixable from the `color:` side alone. The generalises: any
+`bg-[rgb(...)/<1]` + `backdrop-blur` shell needs an opaque-or-near-opaque
+inner bg on the text-bearing children.
+
+**Regression net:** `SMOKE_ROTATION=full node audit/smoke_a11y.mjs` —
+JSON summary `summary.warnings[].byRule['color-contrast']` must be `0`
+after the fix. Probe is WARN-only by default (slice 3a); slice 3b
+flips the gate after this cohort is remediated.
+
+**Real examples:**
+- issue #716 (top-nav color-contrast remediation, 26 of 28 surfaces
+  affected in first-run cohort)
+
+### 6.9 Theme-tuned slate tokens fail contrast on lighter parchment bg
+
+**Symptom:** Body content using `text-slate-500` / `text-slate-400`
+Tailwind utility classes fails WCAG 2 AA on the soft theme's
+parchment bg. Axe reports `color-contrast` violations on:
+- `span[itemprop="name"]` (Person Record card display names, 25
+  sites in `about.templ`)
+- `li[itemprop="itemListElement"]` (breadcrumb chain,
+  `components/breadcrumb.templ:32`)
+- `label[for="setup-..."]` (form labels, 76 sites in
+  `entry_form.templ`)
+- `.text-slate-400` (breadcrumb `›` separator, dev badge label,
+  death date subtitles, helper text, 42 sites across 14 templates)
+
+Sample measurements (soft theme, default seed):
+- `.text-slate-500` fg `#64748b` (100,116,139) on bg `#ede2c5`
+  (parchment-mid) = **3.69** (fails AA 4.5 even for large text)
+- `.text-slate-400` fg `#94a3b8` (148,163,184) on bg `#f4ecd8`
+  (page-top) = **2.18** (severely below)
+
+The same classes pass in default + HC themes because the bg is
+darker (`#d7d2c9`/`#c9c2b5`/`#b9b1a3` warmer gray in default,
+`#ffffff`/`#f5f5f5` in HC); slate-500 on `#c9c2b5` = 4.76 passes.
+
+**Why it happens:** `--text-slate-500-rgb: 100 116 139` and
+`--text-slate-600-rgb: 71 85 105` are set in `:root` and inherited
+unchanged by the soft theme override block. The soft theme's
+body bg tokens (`#f4ecd8` / `#ede2c5` / `#e3d6b3`) are
+significantly lighter than the default theme's, so the
+contrast ratio drops below 4.5. Tailwind's `text-slate-500` /
+`text-slate-400` utility classes emit static hex (`#64748b` /
+`#94a3b8`), not CSS vars, so the slate tokens are inert unless
+a consuming rule wires them up.
+
+**Find it:**
+```bash
+SMOKE_ROTATION=full node audit/smoke_a11y.mjs
+# filter JSON summary for color-contrast violations; expect
+# Person Record cards, breadcrumb chain, form labels
+```
+Or grep the templ files:
+```bash
+grep -rn 'text-slate-500\|text-slate-400' internal/templates/
+```
+(76 + 42 sites in the default seed).
+
+**Fix:** Add the slate-token overrides + the consuming rules to
+the `html[data-theme="soft"]` block in `frontend/tailwind.css`.
+```css
+html[data-theme="soft"] {
+  /* ... existing tokens ... */
+  --text-slate-500-rgb: 71 85 105;   /* was Tailwind slate-500 #64748b = 3.69 fail */
+  --text-slate-400-rgb: 80 95 110;   /* was Tailwind slate-400 #94a3b8 = 2.18 fail */
+}
+
+/* At file tail: consume the vars (Tailwind utilities emit
+   static hex; the vars are inert without consumers) */
+html[data-theme="soft"] .text-slate-500 { color: rgb(var(--text-slate-500-rgb)); }
+html[data-theme="soft"] .text-slate-400 { color: rgb(var(--text-slate-400-rgb)); }
+```
+
+The chosen values preserve the Tailwind visual hierarchy
+(slate-400 lighter than slate-500: L(80 95 110)=0.1068 >
+L(71 85 105)=0.0886). Both pass on the worst soft bg
+(`#e3d6b3` page-bottom): slate-500=5.25, slate-400=4.54. The
+`:root` defaults stay intact for default + HC themes.
+
+**Same fix shape generalises:** any future theme with a lighter
+bg (e.g. a new "Light" theme) needs per-theme token overrides
+for every fg color that was tuned for darker bgs. The pattern
+is "add the per-theme var + add the per-theme consuming rule
+at file tail." Document any new theme in
+`docs/agents/theme-system.md` (if it exists; otherwise inline
+in `frontend/tailwind.css`).
+
+**Related sibling class:** §6.8 (region-locked dark-on-dark
+tokens fail contrast on dark-bg shells) is the inverse problem
+— fg tokens tuned for parchment fail on dark shells. Both
+classes share the "per-theme token override" fix shape.
+
+**Regression net:**
+- `SMOKE_ROTATION=full node audit/smoke_a11y.mjs` — JSON
+  summary `summary.warnings[].byRule['color-contrast']` count
+  must be ≤ 4 (residual axe false positives on mega-menu /
+  foldout panel arbitrary-value bg classes; documented
+  separately as a probe-side limitation).
+- `node --test audit/smoke_a11y.test.mjs` — 6/6 pass (the
+  gate-flip regression net for the slice 3b gate posture;
+  STRICT-mode flip unblocked after this cohort clears).
+
+**Real examples:**
+- issue #718 (body-level soft-theme cohort, 8 surfaces affected
+  in first-run; resolved by this fix)
+
 ---
 
 ## 7. Calendar / external API bugs
