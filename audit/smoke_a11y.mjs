@@ -1,21 +1,19 @@
-// audit/smoke_a11y.mjs — Slice 3a (WARN-only by default)
+// audit/smoke_a11y.mjs — Slice 3c follow-up (gate posture
+// flipped to FAIL-mode after #716 + #718 cohorts cleared)
 //
 // WCAG 2 AA a11y sweep via @axe-core/playwright on every
-// probed surface. Speed-rewrite. Mirrors
-// audit/smoke_button_matrix.mjs lifecycle:
+// probed surface. Mirrors audit/smoke_button_matrix.mjs
+// lifecycle:
 //
 //   - One global `audit/harness.mjs::runAxe()` call per
 //     surface (handles WCAG 2 AA tags + fragment detection
 //     in one shot).
 //   - Per-surface `ctx.record('a11y:<name>', ok, { ... })`
 //     into the aggregator's JSON summary.
-//   - Default GREEN: always `ok: true`. The probe is
-//     informational, not a gate. Slice 3b (future PR)
-//     flips to FAIL-mode after the issue cohort from this
-//     run is remediated.
-//   - `SMOKE_A11Y_STRICT=1` flips to FAIL-mode + exit 1
-//     for the future slice 3b gate (preserved here so the
-//     infra is in place).
+//   - Gate posture: any serious or critical violation fails
+//     the probe (exit 1). The slice 3b migration window
+//     (SMOKE_A11Y_STRICT=1 opt-in for FAIL-mode) is closed;
+//     FAIL-mode is now the default and only behavior.
 //   - Same seed-data lifecycle as the matrix probe (Q6).
 //   - Same 8-surface rotation (Q5) — 33 surfaces ÷ 8 = 4-
 //     day cycle via day-of-epoch mod 4.
@@ -54,8 +52,6 @@ import { runAxe } from './harness.mjs';
 const cfg = loadConfig();
 const PORT = process.env.PROBE_PORT ? parseInt(process.env.PROBE_PORT, 10) : cfg.defaultPort;
 const BASE = resolveBaseUrl(cfg).replace(/\/$/, '');
-
-const STRICT = process.env.SMOKE_A11Y_STRICT === '1';
 
 // 33 surfaces, mirroring smoke_button_matrix.mjs SURFACE_URLS
 // (same source of truth per the single-context convention).
@@ -322,13 +318,13 @@ async function main(ctx) {
 
   console.log(`\na11y: ${pass} clean, ${warn} warn, ${totalViolations} total violation(s)`);
 
-  // Slice 3b: gate on serious + critical counts accumulated
-  // by record() above. STRICT (SMOKE_A11Y_STRICT=1) flips to
-  // FAIL mode; default mode stays GREEN for the migration
-  // window so the existing CI is not blocked while teams
-  // triage. Once teams confirm STRICT is stable, the default
-  // posture flips to FAIL-mode in a follow-up.
-  const { ok: probeOk } = gateA11y(STRICT, seriousViolations, criticalViolations);
+  // Slice 3c follow-up: default posture flipped to FAIL-mode
+  // after #716 (top-nav) + #718 (body-level) cohorts were
+  // remediated. The gate is now unconditional — any serious
+  // or critical violation fails the probe. The SMOKE_A11Y_STRICT
+  // env var from slice 3b is retained as a no-op alias for
+  // backward-compat with any tooling that still passes it.
+  const { ok: probeOk } = gateA11y(seriousViolations, criticalViolations);
   return {
     ok: probeOk,
     pass,
@@ -343,12 +339,16 @@ async function main(ctx) {
 // the same file (no new module) because it's only consumed
 // by the probe's main() above + the test in
 // audit/smoke_a11y.test.mjs.
-//   strict=true (SMOKE_A11Y_STRICT=1): fail on any serious
-//                                       or critical violation
-//   strict=false (default migration window): always pass
-export function gateA11y(strict, serious, critical) {
+//
+// Slice 3c follow-up: the default posture flips from
+// GREEN-migration-window to FAIL-mode-on-any-serious+critical.
+// The gate is unconditional — any serious or critical
+// violation fails the probe. The `strict` parameter from
+// slice 3b is removed; the prior SMOKE_A11Y_STRICT=1
+// behavior is now the only behavior (no opt-in needed).
+export function gateA11y(serious, critical) {
   const hasCritical = (serious + critical) > 0;
-  return { ok: !strict || !hasCritical, hasCritical };
+  return { ok: !hasCritical, hasCritical };
 }
 
 // Guard the entry point so importing this module for
