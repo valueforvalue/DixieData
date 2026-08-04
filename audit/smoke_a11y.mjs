@@ -95,6 +95,8 @@ const SURFACE_URLS = [
 let pass = 0;
 let warn = 0;
 let totalViolations = 0;
+let seriousViolations = 0;
+let criticalViolations = 0;
 
 function record(name, ok, details = {}) {
   if (details.warn) {
@@ -106,6 +108,17 @@ function record(name, ok, details = {}) {
   } else {
     pass++;
     console.log(`  PASS ${name}`);
+  }
+  // Slice 3b: accumulate serious + critical counts so the
+  // gate flip in main() can fail on either. Counters are
+  // module-scoped (same pattern as pass/warn/totalViolations)
+  // because the visitSurface call sites fire-and-forget into
+  // record() without surfacing their bySeverity tally up the
+  // call stack. Slice 3a left the gate open (hasCritical =
+  // false) until the slice 3a first-run cohort was remediated.
+  if (details.bySeverity) {
+    seriousViolations += details.bySeverity.serious || 0;
+    criticalViolations += details.bySeverity.critical || 0;
   }
 }
 
@@ -309,15 +322,48 @@ async function main(ctx) {
 
   console.log(`\na11y: ${pass} clean, ${warn} warn, ${totalViolations} total violation(s)`);
 
-  // STRICT mode: fail if any surface had serious or
-  // critical violations. Reserved for slice 3b (future PR).
-  // Default mode: always ok.
-  const hasCritical = false; // computed from records in real impl; left false for slice 3a
-  return { ok: !STRICT || !hasCritical, pass, warn, totalViolations };
+  // Slice 3b: gate on serious + critical counts accumulated
+  // by record() above. STRICT (SMOKE_A11Y_STRICT=1) flips to
+  // FAIL mode; default mode stays GREEN for the migration
+  // window so the existing CI is not blocked while teams
+  // triage. Once teams confirm STRICT is stable, the default
+  // posture flips to FAIL-mode in a follow-up.
+  const { ok: probeOk } = gateA11y(STRICT, seriousViolations, criticalViolations);
+  return {
+    ok: probeOk,
+    pass,
+    warn,
+    totalViolations,
+    serious: seriousViolations,
+    critical: criticalViolations,
+  };
 }
 
-const result = await runProbe({
-  name: 'a11y',
-  probeFn: main,
-});
-process.exit(result.ok ? 0 : 1);
+// Pure gate decision, exported for testability. Kept in
+// the same file (no new module) because it's only consumed
+// by the probe's main() above + the test in
+// audit/smoke_a11y.test.mjs.
+//   strict=true (SMOKE_A11Y_STRICT=1): fail on any serious
+//                                       or critical violation
+//   strict=false (default migration window): always pass
+export function gateA11y(strict, serious, critical) {
+  const hasCritical = (serious + critical) > 0;
+  return { ok: !strict || !hasCritical, hasCritical };
+}
+
+// Guard the entry point so importing this module for
+// unit tests (audit/smoke_a11y.test.mjs) does not spawn
+// the server + browser. Only fire runProbe + process.exit
+// when this file is the entry point, not when it's
+// imported as a module. `process.argv[1]` on Windows uses
+// backslashes; use pathToFileURL to normalize before
+// comparing.
+import { pathToFileURL } from 'node:url';
+const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : null;
+if (import.meta.url === entryUrl) {
+  const result = await runProbe({
+    name: 'a11y',
+    probeFn: main,
+  });
+  process.exit(result.ok ? 0 : 1);
+}
