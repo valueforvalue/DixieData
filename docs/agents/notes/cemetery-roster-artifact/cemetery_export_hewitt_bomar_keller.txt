@@ -1,0 +1,62 @@
+Cemetery Export — Hewitt, Bomar, Keller
+Generated 2026-08-11 from dixiedata.db
+========================================================================
+
+Soldiers with known burial: 30
+Cemeteries represented: 4
+Soldiers with unknown burial: 0
+
+========================================================================
+
+Bomar Point Cemetery, Wilson, Carter County, Oklahoma, USA
+----------------------------------------------------------
+
+  Charles Lewis Brown  (b 1837 | d. 1901) Pvt. | Co. E, 29th TX Cavalry Regiment, C.S.A.
+  William Luther Gilliam  (b 1843 | d. 1927) Unknown | Unknown
+  Nicholas Bishop Gray  (b 1845 | d. 1916) Pvt. | Co. D, 34th AR Infantry Regiment, C.S.A.
+  James F. Greenwood  (b 1847 | d. 1918) Pvt. | unknown
+  Anthony Washington Lawson  (b 1831 | d. 1906) — | —
+  Ephriam P. Lowery  (b 1847 | d. 1929) — | —
+  Andrew Job Means  (b 1837 | d. 1916) — | —
+  Levi G Richardson  (b 1838 | d. 1903) — | —
+  Elisha Dykes Shaw  (b 1841 | d. 1926) — | —
+  Daniel Boone Tipps  (b 1848 | d. 1923) Pvt. | Co. G, 41st TN Infantry Regiment, C.S.A.
+
+Hewitt Cemetery, Wilson, Carter County, Oklahoma, USA
+-----------------------------------------------------
+
+  William Henderson Adamson  (b 1835 | d. 1919) Pvt. | Co. E, 29th TX Cavalry Regiment, C.S.A.
+  John Hays Chatham  (b 1844 | d. 1900) Pvt. | Co. A, 1st Regiment, LA Scouts, C.S.A.
+  James Harvey Finlay  (b 1842 | d. 1923) Pvt. | Co. I, 36th AL Infantry Regiment, C.S.A.
+  Andrew Jackson Holt  (b 1831 | d. 1919) Pvt. | Co. H, 26th AL Infantry Regiment, C.S.A.
+  James Thomas Kimbrell  (b 1846 | d. 1917) Pvt. | Co. A, 2nd Arkansas Cavalry Regiment, C.S.A.
+  John Little  (b 1846 | d. 1918) Pvt. | Co. B, Scott's Texas Mounted Infantry Regiment, C.S.A.
+  Thomas M Lowery  (b 1844 | d. 1911) Pvt. | Co. D, 5th MS Infantry Regiment, C.S.A.
+  Henry Martin McCann  (b 1842 | d. 1915) Pvt. | Co. C, 25th GA Infantry Regiment, C.S.A.
+  Abner Pipes  (b 1831 | d. 1905) — | —
+  James L. Renshaw  (b 1840 | d. 1905) — | —
+  Alfred Newton Sharrock  (b 1839 | d. 1917) 2nd Lt. | Co. C, 11th Texas Infantry Regiment, C.S.A.
+  James Columbus Singleton  (b 1845 | d. 1926) — | —
+  William J. St. John  (b 1841 | d. 1928) — | —
+  T. R. Todd  (b 1845 | d. 1913) — | —
+  James L. Watson  (b 1847 | d. 1930) Pvt. | Co. I, 11th MS Cavalry Regiment, C.S.A.
+
+Keller Cemetery
+---------------
+
+  George Washington Hanks  (b 1831 | d. 1922) — | —
+  John Wesley Walters  (b 1843 | d. 1929) — | —
+
+Keller Cemetery, Carter County, Oklahoma, USA
+---------------------------------------------
+
+  Jesse M. Bull  (b 1835 | d. 1915) Pvt. | Co. D, 17th TX Infantry Regiment, C.S.A.
+  James Martin Foy  (b 1844 | d. 1927) Pvt. | Co. G, 15th AR Volunteer Infantry Regiment, C.S.A.
+  Frankie Gracie Robison  (b 1849 | d. 1926) Pvt. | Co. E, Wilson's TN Cavalry Regiment, C.S.A.
+
+========================================================================
+
+Burial Unknown
+--------------
+
+  (none)

@@ -1,0 +1,1558 @@
+Cemetery Export — Full Database
+Generated 2026-08-11 from dixiedata.db
+========================================================================
+
+Soldiers with known burial: 518
+Cemeteries represented: 243
+Soldiers with unknown burial: 53
+
+========================================================================
+
+Addington Cemetery, Addington, Jefferson County, Oklahoma, USA
+--------------------------------------------------------------
+
+  William Trousdale Armstrong  (b 1827 | d. 1923) Pvt. | Co. G, 22nd Texas Cavalry Regiment, C.S.A.
+  J. W. Brown  (b 1837 | d. 1913) Pvt. | 4th Missouri Cavalry, C.S.A.
+  George Washington Campbell  (b 1830 | d. 1918) 2nd Lt. | Co. D, McCord's 16th Texas Cavalry Regiment, C.S.A.
+  John M. Conley  (b 1845 | d. 1926) Pvt. | Tennessee, C.S.A.
+  Thomas Edwards  (b 1844 | d. 1939) Pvt. | Co. G, 15th AR Volunteer Infantry Regiment, C.S.A.
+  John Paul Garretson  (b 1844 | d. 1915) Pvt. | Co. A, 16th Tennessee Infantry Regiment, C.S.A.
+  William R Golden  (b 1837 | d. 1914) Pvt. | Co. D, 34th Mississippi Infantry Regiment, C.S.A.
+  Benjamin Franklin Lee  (b 1847 | d. 1929) Pvt. | Co. C, 2nd Texas Cavalry Regiment, C.S.A.
+  John Blackburn Pace  (b 1846 | d. 1930) Pvt. | Co. F, 11th Missouri Infantry Regiment, C.S.A.
+  John W. Riley  (b 1843 | d. 1925) Pvt. | Co. D, 36th Alabama Infantry Regiment, C.S.A.
+  Jefferson Columbus Starkey  (b 1837 | d. 1907) Cpl. | Co. E, 12th Texas Cavalry Regiment, C.S.A.
+
+Albion Cemetery, Albion, Red River County, Texas, USA
+-----------------------------------------------------
+
+  William Jasper Rozell  (b 1839 | d. 1915) — | —
+
+Altus Cemetery, Altus, Jackson County, Oklahoma, U.S.A.
+-------------------------------------------------------
+
+  William Marsh Taylor  (b 1841 | d. 1935) Pvt. | Co. H, 12th TN Infantry Regiment, C.S.A.
+
+Annis Chapel Cemetery, Bridgeport, Wise County, Texas, USA
+----------------------------------------------------------
+
+  John Foust Newby  (b 1840 | d. 1890) Pvt. | Capt. William K. Mastin's Company, 2nd TX Cavalry, C.S.A.
+
+Antioch Cemetery, Woodruff, Spartanburg County, South Carolina, USA
+-------------------------------------------------------------------
+
+  Elbert Dixon Anderson  (b 1825 | d. 1896) Pvt. | Co. E, 6th South Carolina Cavalry Regiment, C.S.A.
+
+Antlers City Cemetery, Antlers, Pushmataha County, Oklahoma, USA
+----------------------------------------------------------------
+
+  Robert Simeon Carothers  (b 1847 | d. 1933) Pvt. | Co. B, Ford's Texas Cavalry Regiment, C.S.A.
+
+Ardmore, Chickasaw Nation, Indian Territory
+-------------------------------------------
+
+  UCV Reunion in Ardmore, I.T.  (b 1902 | d. 1902) — | —
+
+Atlee Cemetery, Ringling, Jefferson County, Oklahoma, USA
+---------------------------------------------------------
+
+  John Robert Bateman  (b 1846 | d. 1909) Pvt. | Southern Rights Cavalry, C.S.A.
+
+Barbee Cemetery, Edna Hill, Erath County, Texas, USA
+----------------------------------------------------
+
+  George J. Newby  (b 1825 | d. 1909) Pvt. | —
+
+Bartlesville, Oklahoma, USA
+---------------------------
+
+  Perry Hodge Cole  (b 1848 | d. 1925) Pvt. | Co. D, Arkansas Cavalry Regiment, C.S.A.
+
+Battle Creek Cemetery, Eolian, Stephens County, Texas, USA
+----------------------------------------------------------
+
+  William Pickney Looney  (b — | d. 1909) Pvt. | Co. I, 4th TN Cav. Rgmnt., C.S.A.
+  William Pickney Looney  (b 1839 | d. 1909) Pvt. | Co. H & A, Tennessee Infantry & Cavalry Regiments, C.S.A.
+
+Belleville-Bourland Cemetery, Courtney, Love County, Oklahoma, USA
+------------------------------------------------------------------
+
+  William Martin Groves  (b 1843 | d. 1929) Pvt. | Co. F, 11th Texas Cavalry Regiment, C.S.A.
+
+Berwyn Cemetery, Gene Autry, Carter Co. OK, USA
+-----------------------------------------------
+
+  Andrew Jackson Davis  (b 1842 | d. 1911) Pvt. | Co. A, 2nd MS Inf. Battalion, C.S.A.
+
+Berwyn Cemetery, Gene Autry, Carter County, Oklahoma, U.S.A.
+------------------------------------------------------------
+
+  William Pierce Butler Suggs  (b 1847 | d. 1926) Pvt. | Co. G, 8th Mississippi Cavalry Regiment, C.S.A.
+
+Berwyn Cemetery, Gene Autry, Carter County, Oklahoma, USA
+---------------------------------------------------------
+
+  James T. Johnson  (b 1837 | d. 1910) Pvt. | Co. A, 34th Mississippi Infantry Regiment, C.S.A.
+
+Blanco, Pittsburg County, Oklahoma, USA
+---------------------------------------
+
+  Algenon H. Cherry  (b 1840 | d. 1903) Pvt. | Co. B, 35th Mississippi Infantry Regiment, C.S.A.
+
+Bomar Point Cemetery, Wilson, Carter County, Oklahoma, USA
+----------------------------------------------------------
+
+  Charles Lewis Brown  (b 1837 | d. 1901) Pvt. | Co. E, 29th TX Cavalry Regiment, C.S.A.
+  William Luther Gilliam  (b 1843 | d. 1927) Unknown | Unknown
+  Nicholas Bishop Gray  (b 1845 | d. 1916) Pvt. | Co. D, 34th AR Infantry Regiment, C.S.A.
+  James F. Greenwood  (b 1847 | d. 1918) Pvt. | unknown
+  Anthony Washington Lawson  (b 1831 | d. 1906) — | —
+  Ephriam P. Lowery  (b 1847 | d. 1929) — | —
+  Andrew Job Means  (b 1837 | d. 1916) — | —
+  Levi G Richardson  (b 1838 | d. 1903) — | —
+  Elisha Dykes Shaw  (b 1841 | d. 1926) — | —
+  Daniel Boone Tipps  (b 1848 | d. 1923) Pvt. | Co. G, 41st TN Infantry Regiment, C.S.A.
+
+Bryan County, Oklahoma, USA
+---------------------------
+
+  Alfred Cannon  (b 1847 | d. 0) Pvt. | Co. E, 30th Alabama Infantry Regiment, C.S.A.
+
+Bryan-Lindsey Family Cemetery, Boatman, Mayes County, Oklahoma, USA
+-------------------------------------------------------------------
+
+  Riley Wise Lindsey  (b 1832 | d. 1927) 2nd Lt. | Co. K, 1st Cherokee Mounted Rifles Regiment, C.S.A.
+
+Buffalo Cemetery, Sayre, Beckham County, Oklahoma, USA
+------------------------------------------------------
+
+  Henry Fox White  (b 1841 | d. 1931) Pvt. | Co. F, 4th Mississippi Infantry Regiment, C.S.A.
+
+Byars Cemetery, Byars, McClain County, Oklahoma, USA
+----------------------------------------------------
+
+  John William “JW” Lokey  (b 1845 | d. 1935) Cpl. | Co. B, 20th Georgia Infantry Regiment, C.S.A.
+
+Callisburg CemeteryCallisburg, Cooke County, Texas, USA
+-------------------------------------------------------
+
+  William Simpson Thomas  (b 1839 | d. 1896) Pvt. | Co. C, 2nd Texas Cavalry Regiment, C.S.A.
+
+Carlisle Cemetery, Carlisle, Nicholas County, Kentucky, USA
+-----------------------------------------------------------
+
+  Robert Barr  (b 1842 | d. 1919) Pvt. | Co. B, Clay's Kentucky Cavalry Battalion, C.S.A.
+
+Cecil Chapel Cemetery, Vandervoort, Polk County, Arkansas, USA
+--------------------------------------------------------------
+
+  Daniel McDuffie  (b 1831 | d. 1916) — | —
+
+Cement Cemetery, Cement, Caddo County, Oklahoma, USA
+----------------------------------------------------
+
+  Patrick H. Morris  (b 1839 | d. 1910) Pvt. | —
+
+Cheek Cemetery, Lone Grove Township, Carter County, Oklahoma, USA
+-----------------------------------------------------------------
+
+  James Pinkney Collins  (b 1845 | d. 1913) Pvt. | Co. I, 49th North Carolina Infantry Regiment, C.S.A.
+
+City of Lubbock Cemetery, Lubbock, Lubbock County, Texas, USA
+-------------------------------------------------------------
+
+  Monroe Wheeler  (b 1843 | d. 1931) Pvt. | Co. A, 28th Texas Cavalry Regiment, C.S.A.
+
+Clay County, Texas, U.S.A.
+--------------------------
+
+  Martin Jackson Welch  (b 1843 | d. 1897) Pvt. | Co. C., 24th MS Cavalry Regiment, Moorman's Battalion, C.S.A.
+
+Clear Creek Cemetery, Flynn, Leon County, Texas, USA
+----------------------------------------------------
+
+  Hedley Ezekiel White  (b 1833 | d. 1909) Pvt. | Co. E, Waul's Infantry, TX Legion
+
+Clinton Oaks Cemetery, Tulsa, Tulsa County, Oklahoma, USA
+---------------------------------------------------------
+
+  John Warren Hall  (b 1845 | d. 1931) Pvt. | Co. I, 4th Tennessee Infantry Regiment, C.S.A.
+
+Colbert Garden of Memory Cemetery, Colbert, Bryan County, Oklahoma, USA
+-----------------------------------------------------------------------
+
+  Stephen B. Allen  (b 1831 | d. 1926) Pvt. | Co. C, 32nd Arkansas Infantry Regiment, C.S.A.
+  William Henderson Bacon  (b 1845 | d. 1924) Pvt. | Co. G, 1st Cherokee Cavalry Regiment, C.S.A.
+  Daniel H. Collins  (b 1839 | d. 1921) Pvt. | Co. C, 11th Texas Infantry Regiment, C.S.A.
+
+Confederate Cemetery, Fredericksburg, City of Fredericksburg, Virginia, USA
+---------------------------------------------------------------------------
+
+  Dabney Herndon Maury  (b 1822 | d. 1900) Maj. General | Confederate States Army
+
+Cornish Cemetery, Cornish, Jefferson County, Oklahoma, USA
+----------------------------------------------------------
+
+  Evan Aaron Brown  (b 1851 | d. 1914) Pvt. | Co. B, General Throckmorton's TX Cavalry Regiment, C.S.A.
+  Alexander C. Carpenter  (b 1837 | d. 1917) Pvt. | Co. G, 3rd MO Cavalry Regiment, C.S.A.
+  John Greer Cummins  (b 1832 | d. 1910) Pvt. | Co. A, 9th Texas Cavalry Regiment (trans. to Quartermaster's Dept.), C.S.A.
+  Rice Eason  (b 1842 | d. 1925) Cpl. | Co. E, 10th GA Infantry Regiment, C.S.A.
+  William Robertson Harris Sr.  (b 1844 | d. 1931) — | Co. G, 3rd MO Cavalry Regiment, C.S.A.
+  Silas Hudson  (b 1847 | d. 1906) Pvt. | Co. F, 14th TX Cavalry, Johnson's Mounted Volunteers, 1st Regiment, Johnson's Brigade, C.S.A.
+  Lucian Mixon King  (b 1837 | d. 1917) Pvt. | Co. H, 13th MS Infantry Regiment, C.S.A.
+  James H. Magness  (b 1845 | d. 1922) Pvt. | Co. E, Schnabel's Battalion, MO Cavalry, C.S.A.
+  Thaddeus Sobieski McKasson  (b 1844 | d. 1924) Pvt. | Co. G, 22nd TX Dismounted Cavalry, C.S.A.
+  Remeus Uberto Mundell  (b 1845 | d. 1917) — | —
+  Martin L. Newman  (b 1845 | d. 1927) Pvt. | Co. A, Benevide's TX Cavalry Regiment, C.S.A.
+  William Ritter  (b 1844 | d. 1902) Pvt. | Co. H, 33rd AR Infantry Regiment, C.S.A.
+  Asher E. Robertson  (b 1839 | d. 1903) Pvt. | Co. H, 2nd Texas Cavalry Regiment, C.S.A.
+  Clark Smith  (b 1842 | d. 1912) Cpl. | Co. D, 31st MS Infantry Regiment, C.S.A.
+  Fleet Cooper Stevens  (b 1844 | d. 1934) Pvt. | Co. C, 18th AL Infantry Regiment, C.S.A.
+  John Richie Thatcher  (b 1844 | d. 1912) Pvt. | Co. I, Walker's 40th TN Infantry Regiment, C.S.A.
+  William Baxter Underwood  (b 1845 | d. 1909) Pvt. | Co. C, Puckett's GA Cavalry Battalion, C.S.A.
+
+Crossroads Cemetery, Hughes County, Oklahoma, U.S.A.
+----------------------------------------------------
+
+  Sampson Robinson Carmichael  (b 1835 | d. 1916) Pvt. | 2nd Regiment, 27th Brigade, Moseley's Texas State Troops, C.S.A.
+
+Crow Cemetery, Orr, Love County, Oklahoma, USA
+----------------------------------------------
+
+  William Nathan Choate  (b 1845 | d. 1932) Pvt. | Co. I, Cook's 1st TX Artillery Regiment, C.S.A.
+
+Cummings Cemetery, Maud, Pottawatomie County, Oklahoma, USA
+-----------------------------------------------------------
+
+  Lewis Myers “Dock” Doyle  (b 1837 | d. 1921) Pvt. | Co. A, 1st Missouri Scouts, C.S.A.
+
+Daingerfield Cemetery, Daingerfield, Morris County, Texas, USA
+--------------------------------------------------------------
+
+  Newton Rufus Anderson  (b 1829 | d. 1901) Pvt. | Co. A, 27th TX Cavalry Regiment, C.S.A.
+
+Dewey Cemetery, Dewey, Washington County, Oklahoma, USA
+-------------------------------------------------------
+
+  Abraham Benjamin “AB” Jones  (b 1834 | d. 1912) — | —
+
+Dewey Cemetery, Strong City, Roger Mills County, Oklahoma, USA
+--------------------------------------------------------------
+
+  Jack Shakleford Hewitt  (b 1830 | d. 1904) Sgt. | Co. F, 31st Louisiana Infantry Regiment, C.S.A.
+
+Dibble Cemetery, Dibble, McClain County, Oklahoma, USA
+------------------------------------------------------
+
+  William Samuel White  (b 1839 | d. 1911) Pvt. | 1st Regiment, 21st Brigade, Texas State Troops, C.S.A.
+
+Dido Cemetery, Dido, Tarrant County, Texas, USA
+-----------------------------------------------
+
+  Henderson B Alverson  (b 1816 | d. 1910) Pvt. | Co. C, 18th Mississippi Infantry Regiment, C.S.A.
+
+Dixie Cemetery, Loco, Stephens County, Oklahoma, US
+---------------------------------------------------
+
+  Thomas Jefferson Burnes  (b 1843 | d. 1937) Pvt. | Co. A, 5th AL Infantry Battalion, C.S.A.
+  William Gove Clampitt  (b 1844 | d. 1905) Sgt. | 1st Arkansas Mounted Volunteers, C.S.A.
+  Augustus F. Samples  (b 1843 | d. 1926) Pvt. | Capt. Gibson's Co., Griffin's Light Artillery Regiment, C.S.A.
+
+Dixie Cemetery, Loco, Stephens County, Oklahoma, USA
+----------------------------------------------------
+
+  William Jones  (b 1847 | d. 1925) Pvt. | Unknown
+  William M. Price  (b 1841 | d. 1917) Cpl. | Co. E, 29th TX Cavalry Regiment, C.S.A.
+  James Marion Richardson  (b 1831 | d. 1922) Pvt. | Co. C, 11th TX Infantry and Cavalry Volunteers, C.S.A.
+  Jane G. Traywick  (b 1877 | d. 1937) — | —
+  Syon Perry Traywick  (b 1841 | d. 1923) Pvt. | Co. K, 11th AL Infantry Regiment, C.S.A.
+
+Dora Cemetery, Konawa Township, Seminole County, Oklahoma, USA
+--------------------------------------------------------------
+
+  Leonidas H. Wood  (b 1842 | d. 1916) Pvt. | Co. K, 50th Alabama Infantry Regiment, C.S.A.
+
+Doyle Family Cemetery, Atoka County, Oklahoma, USA
+--------------------------------------------------
+
+  Capt Burton Doyle  (b 1813 | d. 1874) Cpt. | Co. B, 9th Missouri Cavalry Regiment, State Guard, C.S.A.
+
+Drake-Nebo Cemetery, Drake, Murray County, Oklahoma, USA
+--------------------------------------------------------
+
+  Henry Douglas Moore  (b 1837 | d. 1916) Pvt. | Co. G, 4th Arkansas Infantry Regiment, C.S.A.
+  James Cleyborn Parrish  (b 1845 | d. 1903) — | —
+
+Dreamland Cemetery, Canyon, Randall County, Texas, USA
+------------------------------------------------------
+
+  Robert Martin Key  (b 1838 | d. 1922) — | —
+
+East Hill Cemetery, Roff, Pontotoc County, Oklahoma, USA
+--------------------------------------------------------
+
+  Robert B. Brown  (b 1840 | d. 1906) Pvt. | Co. G, 30th Alabama Infantry Regiment, C.S.A.
+  Willoughby Randolph Fletcher  (b 1933 | d. 1926) Pvt. | Co. D, 3rd TX Cav. Rgmnt., C.S.A.
+  Robert H J Hacker  (b 1827 | d. 1908) Pvt. | Co. H, 8th Arkansas Cavalry Regiment, C.S.A.
+
+Eastview Memorial Park, Vernon, Wilbarger County, Texas, USA
+------------------------------------------------------------
+
+  D. Henry Feely  (b 1827 | d. 1911) Pvt. | General Price
+
+Ego-Coleman Cemetery, Coleman, Johnston County, Oklahoma, USA
+-------------------------------------------------------------
+
+  Ebenezer R. “Eben” Johnson  (b 1844 | d. 1907) Pvt. | Co. I, 36th Mississippi Infantry Regiment, C.S.A.
+
+Era Cemetery, Era, Cooke County, Texas, USA
+-------------------------------------------
+
+  John William Blanton  (b 1840 | d. 1926) Pvt. | Co. A, 37th Tennessee, C.S.A.
+
+Fairlawn Cemetery, Comanche, Stephens County, Oklahoma, USA
+-----------------------------------------------------------
+
+  David P. Mabry  (b 1847 | d. 1925) — | —
+
+Fairlawn Cemetery, Elk City, Beckham County, Oklahoma, USA
+----------------------------------------------------------
+
+  Sterling Masterson Abernathy  (b 1847 | d. 1923) Pvt. | Co. A, Terry's Texas Cavalry Regiment, C.S.A.
+
+Fairlawn Cemetery, Oklahoma City, Oklahoma County, Oklahoma, USA
+----------------------------------------------------------------
+
+  Thomas Franklin Berry  (b 1832 | d. 1917) Cpt. | Co. A, Duke's 2nd Kentucky Cavalry Regiment, C.S.A.
+  Henry Marshall Furman  (b 1850 | d. 1916) — | —
+
+Fairmount Cemetery, Hollis, Harmon County, Oklahoma, USA
+--------------------------------------------------------
+
+  Thomas Scott  (b 1846 | d. 1926) Pvt. | Co. E, 8th Louisiana Cavalry Regiment, C.S.A.
+
+Fairview Cemetery, Double Springs, Winston County, Alabama, USA
+---------------------------------------------------------------
+
+  John A. Howell  (b 1840 | d. 1878) Pvt. | Co. K, 56th AL Infantry Regiment, C.S.A.
+
+Fairview Cemetery, Dustin, Hughes County, Oklahoma, USA
+-------------------------------------------------------
+
+  Thomas Butler King  (b 1840 | d. 1927) Pvt. | Co. H, 7th Tennessee Infantry Regiment, C.S.A.
+
+Fairview Cemetery, Gainesville, Cooke County, Texas, USA
+--------------------------------------------------------
+
+  John Elijah Logsdon  (b 1839 | d. 1912) Pvt. | Co. C, 9th Texas Infantry Regiment, C.S.A.
+
+Fairview Cemetery, Shawnee, Pottawatomie County, Oklahoma, USA
+--------------------------------------------------------------
+
+  John Casmos  (b 1843 | d. 1905) Pvt. | Co. E, 9th Alabama Volunteer Infantry Regiment, C.S.A.
+
+Faxon Cemetery, Faxon, Comanche County, Oklahoma, U.S.A.
+--------------------------------------------------------
+
+  Seth Morris  (b 1844 | d. 1928) Pvt. | White's Company, Berry's Texas Battalion, C.S.A.
+
+Featherston Cemetery, Featherston, Pittsburg County, Oklahoma, USA
+------------------------------------------------------------------
+
+  Charles Henry Featherston  (b 1828 | d. 1894) Cpt. | Co. H, Young's 11th Texas Cavalry Regiment, C.S.A.
+
+Finn&#39;s Point National Cemetery, Pennsville, Salem County, New Jersey, USA
+-----------------------------------------------------------------------------
+
+  John Napoleon Hallum  (b 1838 | d. 1863) Cpl. | Co. A, 27th Alabama Infantry Regiment, C.S.A.
+
+Foster CemeteryFoster, Garvin County, Oklahoma, USA
+---------------------------------------------------
+
+  William Edward Kimbrell  (b 1836 | d. 1927) Pvt. | Co. A, Gordon's Arkansas Cavalry Regiment, C.S.A.
+
+Francis Cedar Grove Cemetery, Francis, Pontotoc County, Oklahoma, USA
+---------------------------------------------------------------------
+
+  Armstred Washington Baugh  (b 1839 | d. 1924) Pvt. | Co. A, 14th Texas Infantry Regiment, C.S.A.
+  James Madison Chronister  (b 1842 | d. 1908) Pvt. | Co. B, 15th Arkansas Infantry Regiment, C.S.A.
+
+Franks Cemetery, Franks, Pontotoc County, Oklahoma, USA
+-------------------------------------------------------
+
+  John Morgan Richardson  (b 1845 | d. 1917) Pvt. | 9th Texas Cavalry Regiment, C.S.A.
+
+Friendship Cemetery, Biardstown, Lamar County, Texas, USA
+---------------------------------------------------------
+
+  Thomas Henry Skidmore  (b 1836 | d. 1909) Capt. | Co. C, 29th TX Cavalry Regiment, C.S.A.
+
+Friendship Cemetery, Columbus, Lowndes County, Mississippi, USA
+---------------------------------------------------------------
+
+  Stephen Dill Lee  (b 1833 | d. 1908) Lt. General | Confederate States Army
+
+Garden of Memories Cemetery, Lufkin, Angelina County, Texas, USA
+----------------------------------------------------------------
+
+  James Nathaniel Rozell  (b 1844 | d. 1892) Private | Co. A, 15th TX Cavalry Regiment, C.S.A.
+
+Gethsemane Cemetery, Caddo, Bryan County, Oklahoma, USA
+-------------------------------------------------------
+
+  David William Petty  (b 1843 | d. 1923) Pvt. | Co. G, 17th TX Infantry Regiment, C.S.A.
+
+Glenwood Cemetery, Forreston, Ellis County, Texas, USA
+------------------------------------------------------
+
+  Wyatt C. Harvey  (b 1840 | d. 1915) Pvt. | Co. G, 56th Virginia Infantry Regiment, C.S.A.
+
+Graceland Cemetery, Bridgeport, Caddo County, Oklahoma, USA
+-----------------------------------------------------------
+
+  Joseph Wilson Kerr  (b 1844 | d. 1928) Pvt. | Co. M, 7th Alabama Cavalry Regiment, C.S.A.
+
+Grady Cemetery, Grady, Jefferson County, Oklahome, U.S.A.
+---------------------------------------------------------
+
+  John Turner Dunford  (b 1838 | d. 1898) Pvt. | Co. K, 3rd AR Cavalry Regiment, C.S. A.
+  Boston Steel Scott  (b 1847 | d. 1936) Pvt. | Co. I, 22nd VA Cavalry Regiment, C.S. A.
+  James Simeon Wammack  (b 1846 | d. 1926) Pvt. | Co. G, 7th MO Cavalry Regiment, C.S.A.
+  James Monroe Wardlow  (b 1846 | d. 1891) Pvt. | Co. G, 31st TN Inf. Rgmnt., C.S.A.
+  Jackson W. Wooten  (b 1837 | d. 1912) Pvt. | Co. K, 41st AL Infantry Regiment, C.S.A.
+
+Grandfield Memorial Cemetery, Grandfield, Tillman County, Oklahoma, USA
+-----------------------------------------------------------------------
+
+  Samuel T. Grant  (b 1830 | d. 1925) Pvt. | Co. D, Confederate Army
+
+Green Hill Cemetery, Davis, Murray County, Oklahoma, USA
+--------------------------------------------------------
+
+  Henry Harrison Allen  (b 1840 | d. 1923) Pvt. | Co. G, 5th Georgia Infantry Regiment, C.S.A.
+  William Columbus Driver  (b 1846 | d. 1931) Pvt. | Co. K, 11th GA Infantry Regiment, C.S.A.
+  John C. Jordan  (b 1843 | d. 1908) Pvt. | Co. B, 15th Arkansas Infantry Regiment, C.S.A.
+
+Green Valley Cemetery, Kiowa County, Oklahoma, U.S.A.
+-----------------------------------------------------
+
+  Francis Marion Askew  (b 1846 | d. 1912) Pvt. | Confederate Army
+
+Greenhill Cemetery, Muskogee, Muskogee County, Oklahoma, USA
+------------------------------------------------------------
+
+  Theodore Frelinghuysen Brewer  (b 1845 | d. 1928) Pvt. | Co. I, 21st & 22nd Tennessee Cavalry Regiment, C.S.A.
+  James H. Jaggers  (b 1842 | d. 1931) Pvt. | Co. B, 4th South Carolina Cavalry Regiment, C.S.A.
+
+Greenlawn Cemetery, Checotah, McIntosh County, Oklahoma, USA
+------------------------------------------------------------
+
+  Dydamus Fletcher Crowell  (b 1838 | d. 1913) Surgeon | Co. A, 1st Alabama Infantry Regiment, C.S.A.
+
+Greenwood Cemetery, Dallas, Dallas County, Texas, USA
+-----------------------------------------------------
+
+  William Lewis Cabell  (b 1827 | d. 1911) Brig. General | Trans-Mississippi Division, C.S.A.
+
+Greenwood Cemetery, Hot Springs, Garland County, Arkansas, USA
+--------------------------------------------------------------
+
+  Benjamin Hardy Mitchell  (b 1844 | d. 1927) Pvt. | Co. G, 15th TN Cav. Rgmnt., C.S.A.
+
+Harmony Cemetery, Winchester, Franklin County, Tennessee, USA
+-------------------------------------------------------------
+
+  Newton Alexander Money  (b 1843 | d. 1933) Pvt. | Co. D, 34th Tennessee Infantry Regiment, C.S.A.
+
+Hastings Cemetery, Hastings, Jefferson County, Oklahoma, USA
+------------------------------------------------------------
+
+  Seaborn L. Davenport  (b 1829 | d. 1910) Pvt. | Co. D, 1st & 2nd Texas Infantry Regiments, C.S.A.
+  Thomas D. Holley  (b 1844 | d. 1917) — | —
+  Samuel W. Kinder  (b 1833 | d. 1911) Pvt. | Co. H, 2nd Missouri Infantry Regiment, C.S.A.
+
+Headrick Cemetery, Headrick, Jackson County, Oklahoma, USA
+----------------------------------------------------------
+
+  William Jasper Shelton  (b 1829 | d. 1904) 1st Sgt. | Co. B, 5th AL Cavalry Regiment, C.S.A.
+
+Hennepin Cemetery, Turner Township, Murray County, Oklahoma, USA
+----------------------------------------------------------------
+
+  Samuel Jackson Ashton  (b 1832 | d. 1898) Pvt. | Co. G, 58th Alabama Infantry Regiment, C.S.A.
+  John Pearl Holder  (b 1841 | d. 1912) — | —
+  Alfred Columbus Meeks  (b 1844 | d. 1909) Pvt. | Co. D, Ham's MS Cav. Rgmnt, C.S.A.
+
+Hewitt Cemetery, Wilson, Carter County, Oklahoma, USA
+-----------------------------------------------------
+
+  William Henderson Adamson  (b 1835 | d. 1919) Pvt. | Co. E, 29th TX Cavalry Regiment, C.S.A.
+  John Hays Chatham  (b 1844 | d. 1900) Pvt. | Co. A, 1st Regiment, LA Scouts, C.S.A.
+  James Harvey Finlay  (b 1842 | d. 1923) Pvt. | Co. I, 36th AL Infantry Regiment, C.S.A.
+  Andrew Jackson Holt  (b 1831 | d. 1919) Pvt. | Co. H, 26th AL Infantry Regiment, C.S.A.
+  James Thomas Kimbrell  (b 1846 | d. 1917) Pvt. | Co. A, 2nd Arkansas Cavalry Regiment, C.S.A.
+  John Little  (b 1846 | d. 1918) Pvt. | Co. B, Scott's Texas Mounted Infantry Regiment, C.S.A.
+  Thomas M Lowery  (b 1844 | d. 1911) Pvt. | Co. D, 5th MS Infantry Regiment, C.S.A.
+  Henry Martin McCann  (b 1842 | d. 1915) Pvt. | Co. C, 25th GA Infantry Regiment, C.S.A.
+  Abner Pipes  (b 1831 | d. 1905) — | —
+  James L. Renshaw  (b 1840 | d. 1905) — | —
+  Alfred Newton Sharrock  (b 1839 | d. 1917) 2nd Lt. | Co. C, 11th Texas Infantry Regiment, C.S.A.
+  James Columbus Singleton  (b 1845 | d. 1926) — | —
+  William J. St. John  (b 1841 | d. 1928) — | —
+  T. R. Todd  (b 1845 | d. 1913) — | —
+  James L. Watson  (b 1847 | d. 1930) Pvt. | Co. I, 11th MS Cavalry Regiment, C.S.A.
+
+Hickory Cemetery, Hickory, Murray County, Oklahoma, USA
+-------------------------------------------------------
+
+  Dewitt C. Lee  (b 1839 | d. 1912) Pvt. | Co. K, 11th Mississippi Infantry Regiment, C.S.A.
+
+Highland Cemetery, Durant, Bryan County, Oklahoma, USA
+------------------------------------------------------
+
+  William E Morgan  (b 1826 | d. 1918) Col. | Co. G, 56th Virginia Infantry Regiment, C.S.A.
+  William Morris Wood  (b 1844 | d. 1905) Pvt. | Co. I, 12th Kentucky Cavalry Regiment, C.S.A.
+
+Highland Cemetery, Iowa Park, Wichita County, Texas, USA
+--------------------------------------------------------
+
+  Holbert Cole  (b 1842 | d. 1930) Pvt. | Co. H, Gordon's 1st MO Cavalry Regiment, C.S.A.
+
+Highland Cemetery, Lawton, Comanche County, Oklahoma, U.S.A.
+------------------------------------------------------------
+
+  James Driscol  (b 1848 | d. 1925) Pvt. | Co. D, Anderson's Texas Cavalry Regiment, C.S.A.
+
+Highland Cemetery, Lawton, Comanche County, Oklahoma, USA
+---------------------------------------------------------
+
+  Henry Clay Crawford  (b 1844 | d. 1927) Cpl. | Co. G, 28th North Carolina Infantry Regiment, C.S.A.
+  James M. Driscol  (b 1848 | d. 1925) Pvt. | Co. D, Border's Texas Cavalry Regiment, C.S.A.
+
+Holdenville Cemetery, Holdenville, Hughes County, Oklahoma, USA
+---------------------------------------------------------------
+
+  Adam Henry Bradley  (b 1842 | d. 1911) Sgt. | Co. I, 50th North Carolina Infantry Regiment, C.S.A.
+
+Hopewell Cemetery, Ashville, St. Clair County, Alabama, USA
+-----------------------------------------------------------
+
+  Orrin Micajah Sansom  (b 1825 | d. 1883) Pvt. | Co. D, 19th Alabama Infantry Regiment, C.S.A.
+
+Indiahoma IOOF CemeteryIndiahoma, Comanche County, Oklahoma, USA
+----------------------------------------------------------------
+
+  Robert Henry Pitts  (b 1841 | d. 1926) Pvt. | Co. C, 9th MS Vol Infantry Regiment, C.S.A.
+
+Iona Cemetery, Murray County, Oklahoma, USA
+-------------------------------------------
+
+  Levi O Franklin  (b 1840 | d. 1916) — | —
+
+Joy Cemetery, Joy, Clay County, Texas, USA
+------------------------------------------
+
+  James Osborn Goad  (b 1838 | d. 1901) Private | Co. G, 1st TX Infantry Regiment, C.S.A.
+
+Keller Cemetery
+---------------
+
+  George Washington Hanks  (b 1831 | d. 1922) — | —
+  John Wesley Walters  (b 1843 | d. 1929) — | —
+
+Keller Cemetery, Carter County, Oklahoma, USA
+---------------------------------------------
+
+  Jesse M. Bull  (b 1835 | d. 1915) Pvt. | Co. D, 17th TX Infantry Regiment, C.S.A.
+  James Martin Foy  (b 1844 | d. 1927) Pvt. | Co. G, 15th AR Volunteer Infantry Regiment, C.S.A.
+  Frankie Gracie Robison  (b 1849 | d. 1926) Pvt. | Co. E, Wilson's TN Cavalry Regiment, C.S.A.
+
+Kemp Cemetery, Tuscaloosa County, Alabama, USA
+----------------------------------------------
+
+  William Thomas Kemp  (b 1841 | d. 1898) Pvt. | Co. A, 10th AL Infantry Regiment, C.S.A.
+
+King Cemetery, Riverdale, Clayton County, Georgia, USA
+------------------------------------------------------
+
+  James R. Farlow  (b 1839 | d. 1915) Pvt. | Co. A & E, 9th Battalion, Georgia Artillery, C.S.A.
+
+Kiowa City Cemetery, Kiowa, Pittsburg County, Oklahoma, USA
+-----------------------------------------------------------
+
+  Edward Lloyd Thomas  (b 1825 | d. 1898) Brig. General | Co. S, 4th Georgia Infantry Battalion, C.S.A.
+
+Kiowa, Oklahoma. Exact place of burial not clear.
+-------------------------------------------------
+
+  George Washington Allen  (b 1839 | d. 1921) Pvt. | Co. C, 6th Tennessee Infantry Regiment, C.S.A.
+
+Konawa Memorial Cemetery, Konawa, Seminole County, Oklahoma, USA
+----------------------------------------------------------------
+
+  Joseph Henry Grogan  (b 1847 | d. 1918) Pvt. | Co. H, 42nd Virginia Infantry Regiment, C.S.A.
+
+Lakeview Cemetery, Marietta, Love County, Oklahoma, USA
+-------------------------------------------------------
+
+  Henry K. Campbell  (b 1846 | d. 1931) Pvt. | Co. C, Bass' Texas Infantry Regiment, C.S.A.
+  William Pinkney Cochran  (b 1848 | d. 1925) Pvt. | Co. B, Georgia Infantry Regiment, C.S. A.
+
+Lamar Cemetery, Lamar, Hughes County, Oklahoma, USA
+---------------------------------------------------
+
+  Phillip Parker Dunford  (b 1842 | d. 1913) Pvt. | Co. I, 1st Arkansas Mounted Rifles, C.S.A.
+
+Lebanon Cemetery, Lebanon, Marshall County, Oklahoma, USA
+---------------------------------------------------------
+
+  James Goldsmith Whitehouse Hewitt  (b 1842 | d. 1906) Pvt. | Co. G, 43rd Alabama Infantry Regiment, C.S.A.
+  William H. Walker  (b 1840 | d. 1906) Pvt. | Co. K, 30th Texas Cavalry Regiment, C.S.A.
+
+LeFlore Family Burying Ground, Coal County, Oklahoma, USA
+---------------------------------------------------------
+
+  Henry C. LeFlore  (b 1840 | d. 1923) Pvt. | Co. D, 2nd Choctaw Cavalry Regiment, C.S.A.
+
+Legate Cemetery, Hoxbar, Love County, Oklahoma, USA
+---------------------------------------------------
+
+  W. W. Williams  (b 1837 | d. 1903) Pvt. | Co. C, 16th TX Cavalry Regiment, C.S.A.
+
+Leon Cemetery, Leon, Love County, Oklahoma, USA
+-----------------------------------------------
+
+  Benjamin Franklin Carter  (b — | d. 1918) Pvt. | Co. E, 8th TN Infantry Regiment, C.S.A.
+  Elbert Augustus Parker  (b 1843 | d. 1910) Pvt. | Co. C, 19th LA Inf. Rgmnt., C.S.A.
+
+Letitia Cemetery, Lawton, Comanche County, Oklahoma, USA
+--------------------------------------------------------
+
+  James A. Myers  (b 1843 | d. 1934) Pvt. | Co. C, 19th AL Infantry Regiment, C.S.A.
+
+Lexington Cemetery, Fayette Co. KY, U.S.A.
+------------------------------------------
+
+  John Richard Deering  (b 1842 | d. 1917) Lieut. | Co. K, 12th MS Inf. Rgmnt., C.S.A.
+
+Lightning Ridge Cemetery, Roff, Pontotoc County, Oklahoma, USA
+--------------------------------------------------------------
+
+  George Washington Herrell  (b 1833 | d. 1902) Pvt. | Co. F, 34th Arkansas Infantry Regiment, C.S.A.
+
+Little Mound Cemetery, Gilmer, Upshur County, Texas, USA
+--------------------------------------------------------
+
+  Emma Sansom-Johnson  (b 1847 | d. 1900) — | —
+
+Locke Cemetery, Antlers, Pushmataha County, Oklahoma, USA
+---------------------------------------------------------
+
+  Victor Murat “Uncle Dick” Locke  (b 1844 | d. 1929) Pvt. | Co. H, 3rd Tennessee Cavalry Regiment, C.S.A.
+
+Lockesburg, Sevier County, Arkansas, USA
+----------------------------------------
+
+  William Esom Dooley  (b 1838 | d. 1915) Pvt. | Co. F, 19th Mississippi Infantry Regiment, C.S.A.
+
+Loco Cemetery, Loco, Stephens County, Oklahoma, USA
+---------------------------------------------------
+
+  Green Washington Bradshaw  (b 1832 | d. 1921) Pvt. | Co. D, 13th Texas Infantry Regiment, C.S.A.
+
+Lone Grove Cemetery, Lone Grove, Carter County, Oklahoma, USA
+-------------------------------------------------------------
+
+  William Rufus Ellis  (b 1833 | d. 1912) Pvt. | Co. A, 32nd Mississippi Infantry Regiment, C.S.A.
+  William M. Harper  (b 1839 | d. 1921) Pvt. | Co. E, 8th Kentucky Infantry Regiment, C.S.A.
+  Rufus Morgan High  (b 1839 | d. 1916) Pvt. | Co. E, 6th (& 2nd) Texas Cavalry Regiment, C.S.A.
+  Matthew Drake Langford  (b 1839 | d. 1923) Pvt. | Co. G, 10th Arkansas Infantry Regiment, C.S.A.
+  Amos N. Powell  (b 1849 | d. 1925) Pvt. | MS Infantry, State Troops
+  Jacob Smith Skaggs  (b 1845 | d. 1914) Pvt. | Co. A, 11th Texas Cavalry Regiment, C.S.A.
+  Frank C. A. Troop  (b 1827 | d. 1911) Pvt. | Co. B, 23rd TN Infantry Regiment, C.S.A.
+
+Lone Wolf Cemetery, Lone Wolf, Kiowa County, Oklahoma, USA
+----------------------------------------------------------
+
+  William Pouncey Stapleton  (b 1847 | d. 1921) Pvt. | Co. A, 3rd Mississippi Cavalry Regiment, C.S.A.
+
+Mannsville Cemetery, Mannsville, Johnston County, Oklahoma, USA
+---------------------------------------------------------------
+
+  Samuel Wood Dunagan  (b 1844 | d. 1921) Pvt. | Co. D, 16th Arkansas Cavalry Regiment, C.S.A.
+
+Marlow Cemetery, Marlow, Stephens County, Oklahoma, USA
+-------------------------------------------------------
+
+  Elijah Onesimus Dill  (b 1843 | d. 1923) Pvt. | Co. H, 14th Texas Cavalry Regiment, C.S.A.
+
+Marlow Cemetery. Marlow, Stephens County, Oklahoma, USA
+-------------------------------------------------------
+
+  Thomas Howard Carpenter  (b 1835 | d. 1922) Pvt. | 9th TX Field Artillery, C.S.A.
+  James Howard Pinchback  (b 1843 | d. 1919) Pvt. | Co. K, 8th Texas Cavalry Regiment, C.S.A.
+
+McCoy Cemetery, Sallisaw, Sequoyah County, Oklahoma, USA
+--------------------------------------------------------
+
+  Oscar Fitzaland Adair  (b 1848 | d. 1923) Pvt. | Co. I, 1st Cherokee Cavalry Regiment, C.S.A.
+
+McGee Cemetery, Stratford, Garvin County, Oklahoma, USA
+-------------------------------------------------------
+
+  Whitten Wilson “Whit” Hyden  (b 1845 | d. 1917) Pvt. | Co. A, 1st Battalion, Shelby's Brigade, C.S.A.
+  James J. Rotenberry  (b 1843 | d. 1919) Pvt. | Co. D, 20th Alabama Infantry Regiment, C.S.A.
+
+McMillan Cemetery, McMillan, Marshall County, Oklahoma, U.S.A.
+--------------------------------------------------------------
+
+  Richard Madison Roy  (b 1848 | d. 1908) Pvt. | 23rd AR Cavalry Regiment, C.S.A.
+
+Memorial Park Cemetery, Tulsa, Tulsa County, Oklahoma, USA
+----------------------------------------------------------
+
+  Ruth D. Clement  (b 1873 | d. 1953) — | —
+
+Merriman Cemetery, Ranger, Eastland County, Texas, USA
+------------------------------------------------------
+
+  Henry Washington Williford  (b 1842 | d. 1941) Pvt. | Co. G, 69th Alabama Infantry Regiment, C.S.A.
+
+Milburn, Oklahoma, USA
+----------------------
+
+  Thomas W. Collins  (b 1835 | d. 1919) Pvt. | Co. A, 2nd Choctaw Cavalry Regiment, C.S.A.
+
+Mill Creek Cemetery, Mill Creek, Johnston County, Oklahoma, USA
+---------------------------------------------------------------
+
+  Anderson A. Arnold  (b 1832 | d. 1904) Pvt. | Co. A, 21st Georgia Infantry Regiment, C.S.A.
+  Joseph Shores Hunter  (b 1825 | d. 1902) Pvt. | Morris' Texas Cavalry, C.S.A.; Co. K, 1st Texas Mounted Volunteers (Mexican War)
+
+Milo Cemetery, Milo, Carter County, Oklahoma, U.S.A.
+----------------------------------------------------
+
+  William Henderson Blanton  (b 1843 | d. 1927) Pvt. | Co. M, 1st Palmetto Sharpshooters, C.S.A.
+
+Milo Cemetery, Milo, Carter County, Oklahoma, USA
+-------------------------------------------------
+
+  Thomas Jefferson Jolley  (b 1834 | d. 1919) Pvt. | Co. K, 31st Mississippi Infantry Regiment, C.S.A.
+
+Mollie Gann Cemetery, Hatfield, Polk County, Arkansas, USA
+----------------------------------------------------------
+
+  William Ambrose Harwell  (b 1843 | d. 1922) Pvt. | Co. K, 11th TN Cavalry Regiment, C.S.A.
+
+Morris Cemetery, Morris, Okmulgee County, Oklahoma, USA
+-------------------------------------------------------
+
+  Robert E. Pauley  (b 1840 | d. 1930) Pvt. | Co. C, 26th South Carolina Infantry Regiment, C.S.A.
+
+Morse Cemetery, Okemah, Okfuskee County, Oklahoma, USA
+------------------------------------------------------
+
+  John F Bacon  (b 1844 | d. 1926) Pvt. | Co. B, 66th Georgia Infantry Regiment, C.S.A.
+
+Mount Hope Cemetery, Fay, Dewey County, Oklahoma, USA
+-----------------------------------------------------
+
+  Andrew Jackson Abercrombie  (b 1846 | d. 1920) Pvt. | Co. C, Cobb's Legion, Georgia Cavalry, C.S.A.
+
+Mount Moriah Cemetery, Troy, Obion County, Tennessee, US
+--------------------------------------------------------
+
+  James A. Moore  (b 1816 | d. 1879) 1st Lt. | Co. H, 1st TN Infantry Regiment, C.S.A.
+
+Mount Olive Cemetery, Healdton, Carter County, Oklahoma, USA
+------------------------------------------------------------
+
+  George W. Allen  (b 1843 | d. 1913) Pvt. | Co. A, 18th TX Volunteers
+  William Henry Coaly  (b 1841 | d. 1912) Pvt. | Unknown
+  Charles Hobart Heald  (b 1843 | d. 1922) Pvt. | Co. I, 2nd Choctaw Infantry Regiment, C.S.A.
+  James R. Murray  (b 1843 | d. 1925) Pvt. | Co. G, 5th AR Infantry Regiment, C.S.A.
+  James H. Rector  (b 1846 | d. 1924) Sgt. | Co. B, 6th MO Cavalry Regiment, C.S.A.
+  Richard Thomas Rickets  (b 1843 | d. 1921) Pvt. | Co. H, 29th Texas Cavalry Regiment, C.S.A.
+  Peter Wildman Rozell  (b 1821 | d. 1906) Private | Unknown
+  Andrew Jackson Shrader  (b 1847 | d. 1921) Pvt. | Co. F, 22nd VA Cavalry Regiment, C.S.A.
+
+Mount Olivet Baptist Church Cemetery #1, Dallas, Paulding County, Georgia, USA
+------------------------------------------------------------------------------
+
+  Thomas Crayton Howell  (b 1831 | d. 1916) Private | Co. A, 40th GA Volunteers, C.S.A.
+
+Mount Olivet Cemetery, Fort Worth, Tarrant County, Texas, U.S.A.
+----------------------------------------------------------------
+
+  David Maltravers Rumph  (b 1846 | d. 1932) 2nd Lt. | Co. E, 3rd Georgia Reserves Infantry Regiment, C.S.A.
+
+Mount Olivet Cemetery, Pauls Valley, Garvin County, Oklahoma, USA
+-----------------------------------------------------------------
+
+  John L. Ladd  (b 1832 | d. 1915) Pvt. | Co. B, 10th Virginia Infantry Regiment, C.S.A.
+
+Mountain View Cemetery, Mountain View, Kiowa County, Oklahoma, USA
+------------------------------------------------------------------
+
+  James Marion Reynolds  (b 1823 | d. 1909) Capt. | Co. B, 9th Tennessee Cavalry Regiment, C.S.A.
+
+Myrtle Springs Cemetery, Quitman, Wood County, Texas, USA
+---------------------------------------------------------
+
+  John Wesley Rozell  (b 1845 | d. 1913) Private | Co. B, 10th TX Cavalry Regiment, C.S.A.
+
+Nazareth Presbyterian Church Cemetery. Moore, Spartanburg County, South Carolina, USA
+-------------------------------------------------------------------------------------
+
+  Thomas Pinkney Gaston  (b 1815 | d. 1897) 1st Lt. | Co. G, 5th Regiment, South Carolina State Troops
+
+Nelda Cemetery, Durwood, Carter County, Oklahoma, USA
+-----------------------------------------------------
+
+  William Monroe Pritchard  (b 1847 | d. 1914) Pvt. | Co. A, 31st Mississippi Infantry Regiment, C.S.A.
+
+New Mexico, USA
+---------------
+
+  William Pollard Loden  (b 1842 | d. 1910) Pvt. | Co. G, 16th Alabama Infantry Regiment, C.S.A.
+
+Newport Cemetery, Lone Grove, Carter County, Oklahoma, USA
+----------------------------------------------------------
+
+  Thomas David Arnold  (b 1839 | d. 1917) Sgt. | Co. G, 3rd Arkansas Cavalry Regiment, C.S.A.
+  James Tomme Avery  (b 1842 | d. 1922) Pvt. | Co. D, 13th
+  James Tomme Avery  (b 1842 | d. 1922) Pvt. | Co. D, 13th Alabama Infantry Regiment, C.S.A.
+  Thomas Jackson Morris  (b 1818 | d. 1902) — | —
+
+North Deep Red Cemetery, Manitou, Tillman County, Oklahoma, USA
+---------------------------------------------------------------
+
+  William Wheeler Stradley  (b 1844 | d. 1923) Pvt. | Co. G, 26th Tennessee Infantry Regiment, C.S.A.
+
+Oak Grove Cemetery, Empire City, Stephens County, Oklahoma, USA
+---------------------------------------------------------------
+
+  Napoleon Bonapart Fisher  (b 1840 | d. 1925) — | —
+
+Oak Grove Cemetery, Lexington, City of Lexington, Virginia, USA
+---------------------------------------------------------------
+
+  Thomas Jonathan "Stonewall" Jackson  (b 1824 | d. 1863) Lt. General | Army of Northern Virginia
+
+Oak Hill Cemetery, Siloam Springs, Benton County, Arkansas, USA
+---------------------------------------------------------------
+
+  William Alexander Coe  (b 1845 | d. 1931) Pvt. | Co. B, 28th Tennessee Infantry Regiment, C.S.A.
+
+Oak Hill Cemetery, Whitewright, Fannin County, Texas, USA
+---------------------------------------------------------
+
+  William Washington Godwin  (b 1840 | d. 1920) Pvt. | Co. C, 18th AL Infantry Regiment, C.S.A.
+
+Oak Hill Memorial Park, McAlester, Pittsburg County, Oklahoma, USA
+------------------------------------------------------------------
+
+  Benjamin Hawley Bailey  (b 1839 | d. 1930) Pvt. | Co. A, Indiana
+  Richard Benjamin Coleman  (b 1845 | d. 1933) Pvt. | Co. F, 1st Missouri Cavalry Regiment; Co. D, 8th Missouri Infantry, C.S.A.
+  Daniel Morris Hailey  (b 1841 | d. 1919) Pvt. | Co. A, 8th Louisiana Cavalry Regiment, C.S.A.
+  Erastus Poe “Edgar” Harris  (b 1835 | d. 1898) Capt. | Co. C, 2nd Missouri Cavalry, C.S.A.
+
+Oakland and Fraternal Historic Cemetery Park, Little Rock, Pulaski County, Arkansas, USA
+----------------------------------------------------------------------------------------
+
+  Jacob F. W. Rozell  (b 1835 | d. 1862) Pvt. | Co. A, 15th TX Cavalry Regiment, C.S.A.
+
+Oakland Cemetery, Dallas, Dallas County, Texas, USA
+---------------------------------------------------
+
+  Samuel Westbrook Beckham  (b 1846 | d. 1926) Pvt. | Co. L, 11th MS Cavalry Regiment, C.S.A.
+
+Oaklawn Cemetery, Sulphur, Murray County, Oklahoma, USA
+-------------------------------------------------------
+
+  Levi Samuel Easley  (b 1837 | d. 1924) Pvt. | Co. I, 16th Mississippi Infantry Regiment, C.S.A.
+  William H. Frier  (b 1842 | d. 1920) Pvt. | Co. E, 7th Florida Infantry Regiment, C.S.A.
+  William Malcolm Guy  (b 1845 | d. 1918) Pvt. | Co. F, 17th Mississippi Infantry Regiment, C.S.A.
+
+Oaklawn Cemetery, Wynnewood, Garvin County, Oklahoma, USA
+---------------------------------------------------------
+
+  James Reuben Bondurant  (b 1836 | d. 1917) Pvt. | 8th Missouri Cavalry Regiment, C.S.A.
+  Ephraim Jones Elliott  (b 1846 | d. 1923) Pvt. | Co. B, 1st Palmetto Sharpshooters (Jenkins's), C.S.A.
+  Lewis N. Gammell  (b 1844 | d. 1942) Pvt. | Co. F, 5th Georgia Reserve Infantry Regiment, C.S.A.
+  John Townes Gregg  (b 1836 | d. 1909) Captain | Co. F, 31st TX Cavalry Regiment, C.S.A.
+  Larkin Hoffman  (b 1841 | d. 1911) Pvt. | Co. E, 6th Texas Cavalry Battalion, C.S.A.
+  Benjamin Morris Horsman  (b 1841 | d. 1918) Pvt. | Co. K, 5th Missouri Infantry Regiment, C.S.A.
+  Samuel John Kendall  (b 1843 | d. 1905) Pvt. | Co. G, 1st Tennessee Infantry Regiment, C.S.A.
+  James Leonidas Kennedy  (b 1841 | d. 1913) Captain | Co. B, 32nd MS Infantry Regiment, C.S.A.
+  J M Martin  (b 1848 | d. 1922) — | —
+  Andrew Jackson McClendon  (b 1843 | d. 1920) — | —
+  Perkins W McCoy  (b 1839 | d. 1918) — | —
+  Michael McMenamin  (b 1830 | d. 1924) — | —
+
+Oaklawn Cemetery, Wynnewood, Garvin County, Oklahoma, USA (?)
+-------------------------------------------------------------
+
+  Andrew Jackson Chandler  (b — | d. 1900) Pvt. | Co. H, 19th Arkansas Infantry Volunteer Regiment, C.S.A.
+
+Oakman Cemetery, Oakman, Pontotoc County, Oklahoma, USA
+-------------------------------------------------------
+
+  William Allen Gann  (b 1847 | d. 1925) Pvt. | Co. B, 10th AL Cavalry Regiment, C.S.A.
+
+Oakwood Cemetery, Whitesboro, Grayson County, Texas, USA
+--------------------------------------------------------
+
+  David McGill Lawrence  (b 1840 | d. 1895) Pvt. | Co. E, 17th Tennessee Infantry Regiment, C.S.A.
+
+Odd Fellows Cemetery, Antlers, Pushmataha County, Oklahoma, USA
+---------------------------------------------------------------
+
+  Nathaniel G. Walker  (b 1845 | d. 1931) Pvt. | Co. K, 30th Texas Cavalry Regiment, C.S.A.
+
+Oil Town Cemetery, Saratoga, Hardin County, Texas, USA
+------------------------------------------------------
+
+  William Alexander Walston  (b 1833 | d. 1925) Pvt. | Co. D, 31st Alabama Infantry Regiment, C.S.A.
+
+Oklahoma or Texas (date of death and burial place unknown)
+----------------------------------------------------------
+
+  William H. Conn  (b 1840 | d. 1916) Pvt. | Co. H, 12th Arkansas Infantry Regiment, C.S.A.
+
+Oklahoma, details not known.
+----------------------------
+
+  Isaac S. Caldwell  (b 1843 | d. 1916) Pvt. | Co. G, 18th Alabama Infantry Regiment, C.S.A.
+
+Old Talihina CemeteryTalihina, Le Flore County, Oklahoma, USA
+-------------------------------------------------------------
+
+  Daniel Parker Allen  (b — | d. 1890) Pvt. | Co. A, 15th TX Cavalry Regiment, C.S.A.
+
+Olustee Cemetery, Olustee, Jackson County, Oklahoma, USA
+--------------------------------------------------------
+
+  Wesley Samuel Adams  (b 1829 | d. 1919) Pvt. | Capt. Moody's Company, Pickett's Division, Army of Northern Virginia, C.S.A.
+
+Orr Cemetery, Orr, Love County, Oklahoma, USA
+---------------------------------------------
+
+  Robert Kyle Briscoe  (b 1825 | d. 1900) 1st Lt. | 14th TX Brigade, Texas State Troops, C.S.A.
+  Robert Kyle Briscoe  (b 1825 | d. 1900) 1st Lieut. | Capt. James M. Huey's Company, 14th Brigade, Texas State Troops, C.S.A.
+  George T. Fowler  (b 1844 | d. 1932) Pvt. | Co. I, 14th MS Infantry Regiment, C.S.A.
+  Lewis Levi Goins  (b 1846 | d. 1928) — | —
+  William M. Haney  (b 1834 | d. 1912) Pvt. | Co. B, 22nd Tennessee Infantry Battalion, C.S.A.
+  James Washington Hays  (b 1840 | d. 1929) — | —
+  William Harrison Hodges  (b 1847 | d. 1937) — | —
+  George Washington Roberts  (b 1848 | d. 1933) — | —
+  Francis Marion Walker  (b 1840 | d. 1906) Pvt. | Co. B, 11th TX Cavalry Regiment, C.S.A.
+
+Oswalt Cemetery, Oswalt, Love County, Oklahoma, USA
+---------------------------------------------------
+
+  Samuel Sampson Blankenship  (b 1838 | d. 1913) Pvt. | Co. C, 5th Alabama Cavalry, Patterson's Regiment, C.S.A.
+
+Ozro Cemetery, Maypearl, Ellis County, Texas, USA
+-------------------------------------------------
+
+  Benjamin C. Morris  (b 1815 | d. 1888) Pvt. | Co. K, 19th AL Infantry Regiment, C.S.A.
+
+Palacios Cemetery, Palacios, Matagorda County, Texas, USA
+---------------------------------------------------------
+
+  Adolphus Henry Law  (b 1844 | d. 1927) Pvt. | Co. E, 12th Texas Dragoons, C.S.A.
+
+Palmer Cemetery, Sulphur, Murray County, Oklahoma, USA
+------------------------------------------------------
+
+  William I. Kelley  (b 1844 | d. 1926) Pvt. | Co. G, 12th South Carolina Infantry Regiment, C.S.A.
+
+Paoli Cemetery, Paoli, Garvin County, Oklahoma, USA
+---------------------------------------------------
+
+  James Knox Jackson  (b 1841 | d. 1904) Pvt. | Co. C, 11th Texas Cavalry Regiment, C.S.A.
+
+Parsons Creek Cemetery, Linn County, Missouri, USA
+--------------------------------------------------
+
+  Spencer Clifton Cherry  (b 1834 | d. 1911) Sgt. | Co. K, 2nd Missouri Infantry Regiment, C.S.A.
+
+Pecan Cemetery, Lawton, Comanche County, Oklahoma, U.S.A.
+---------------------------------------------------------
+
+  Giles Pulaski Reynolds VanZandt  (b 1832 | d. 1906) Pvt. | Co. E, 8th MO Infantry Regiment, C.S.A.
+
+Pilot Point Community Cemetery, Pilot Point, Denton County, Texas, USA
+----------------------------------------------------------------------
+
+  Daniel Jesse Kendall  (b 1846 | d. 1923) Pvt. | Co. H, 34th Texas Cavalry Regiment, C.S.A.
+
+Pine Torch Cemetery, Lawrence County, Alabama, USA
+--------------------------------------------------
+
+  Joseph Monroe Howell  (b 1825 | d. 1899) Pvt. | Boyle's Regiment, 56th AL Partisan Rangers, C.S.A.
+
+Pioneer Cemetery, Pioneer, Eastland County, Texas, USA
+------------------------------------------------------
+
+  Henry Clay Littlefield  (b 1844 | d. 1929) Pvt. | Co. F, 19th Texas Cavalry Regiment, C.S.A.
+
+Pleasant Valley Cemetery, Havana, Yell County, Arkansas, USA
+------------------------------------------------------------
+
+  Hugh Martin Cherry  (b 1840 | d. 0) Pvt. | Co. E, 16th Missouri Infantry Regiment, C.S.A.
+
+Pleasant Valley Cemetery, Pittsburg, Pittsburg County, Oklahoma, USA
+--------------------------------------------------------------------
+
+  John Edward Doyle  (b 1846 | d. 1929) Pvt. | Co. A, 1st Missouri Cavalry Battalion, C.S.A.
+
+Pleasant Valley Cemetery, Wheatland, Oklahoma County, Oklahoma, USA
+-------------------------------------------------------------------
+
+  James Oliver Dobbs  (b 1844 | d. 1921) Pvt. | Co. I, 19th AL Infantry Regiment, C.S.A.
+
+Pooleville Cemetery, Carter Co., OK
+-----------------------------------
+
+  Robert Thompson  (b 1830 | d. 1897) Pvt. | Co. C, 2nd Battalion, TN Cav., C.S.A.
+
+Pooleville Cemetery, Pooleville, Carter County, Oklahoma, USA
+-------------------------------------------------------------
+
+  Valda Barnett  (b 1844 | d. 1900) Pvt. | Co. C, 43rd Georgia Volunteer Infantry Regiment, C.S.A.
+  J. L. Bartee  (b 1827 | d. 1906) 1st Sgt. | Co. E, 4th Alabama Reserves, C.S.A.
+  James Barter  (b 1845 | d. 1892) Pvt. | Co. A, 178th Regiment, West Virginia State Troops, C.S.A.
+  J. B. Bell  (b 1832 | d. 1920) Pvt. | Co. D, 40th Alabama Infantry Regiment, C.S.A.
+  W. H. Bennet  (b 1830 | d. 1900) Pvt. | Co. K, 2nd Tennessee Cavalry Regiment, C.S.A.
+  J. M. Black  (b 1845 | d. 1900) Pvt. | Co. D, Texas Reserve Corps, Oklahoma Infantry Regiment, C.S.A.
+  George Byrd  (b 1839 | d. 1899) Pvt. | Co. K, 6th Tennessee Infantry Regiment, C.S.A.
+  James Monroe Calley  (b 1845 | d. 1918) Pvt. | Co. I, 2nd Alabama Cavalry Regiment, C.S.A.
+  John Calley  (b 1847 | d. 1924) Pvt. | Alabama Artillery
+  Aaron Richard Clubb  (b 1828 | d. 1911) Pvt. | Captain J. M. Daniels' 9th Texas Artillery Regiment, C.S.A.
+  L. Coleman  (b 1840 | d. 1899) Pvt. | Co. H, 32nd Georgia Volunteer Infantry Regiment, C.S.A.
+  Lafayette Washington Coleman  (b 1839 | d. 1915) Pvt. | Co. E, 21st Alabama Infantry Regiment, C.S.A.
+  George W. Conway  (b 1830 | d. 1892) Pvt. | Co. G, 46th Alabama Infantry Regiment, C.S.A.
+  A. Daniel  (b 1844 | d. 1901) Cpl. | 22nd Tennessee Infantry Regiment, C.S.A.
+  Albert W. Daniels  (b 1839 | d. 1899) Pvt. | Co. K, 2nd Georgia Volunteer Cavalry Regiment, C.S.A.
+  William Riley Eaves  (b 1830 | d. 1911) Pvt. | Co. I, 31st Texas Cavalry Regiment, C.S.A.
+  Zede Kirk Elmore  (b 1846 | d. 1921) Pvt. | Co. B, 28th Virginia Infantry Regiment, C.S.A.
+  Jacob C Gardner  (b 1826 | d. 1899) Cpl. | Co. E, 45th Georgia Infantry Regiment, C.S.A.
+  Isaac Garrison  (b 1830 | d. 1910) Pvt. | Co. B, 28th Tennessee Infantry Regiment, C.S.A.
+  James Griffith  (b 1843 | d. 1901) Pvt. | Co. G, 2nd Mississippi State Cavalry Regiment, C.S.A.
+  William Griffith  (b 1831 | d. 1907) Pvt. | Co. E, 7th Battalion, Mississippi Infantry, C.S.A.
+  William Houston Harris  (b 1849 | d. 1933) Pvt. | Co. F, 3rd Kentucky Infantry Regiment, C.S.A.
+  Hamilton Charles Higginbotham  (b 1844 | d. 1894) Cpl. | Co. G, 30th Alabama Infantry Regiment, C.S.A.
+  Elisha L. Higgins  (b 1847 | d. 1909) Pvt. | Co. A, 2nd Virginia Regiment, State Troops, C.S.A.
+  John T. Holeman  (b 1847 | d. 1903) Pvt. | Co. B, 30th Tennessee Infantry Regiment, C.S.A.
+  David H. Holliday  (b 1845 | d. 1906) Pvt. | Co. E, 34th Georgia Infantry Regiment, C.S.A.
+  Mark Jackson  (b 1827 | d. 1899) Pvt. | Alabama Volunteer Infantry, C.S.A.
+  George Jarvis  (b 1843 | d. 1908) Pvt. | Co. G, 20th Alabama Infantry Regiment, C.S.A.
+  Ezekiel Eli Lamkin  (b 1842 | d. 1923) Pvt. | Co. E, 8th Texas Cavalry Regiment, C.S.A.
+  W. C. Layton  (b 1847 | d. 1903) Pvt. | Stock's Co., 17th Battalion, Georgia Infantry Regiment, C.S.A.
+  Jonas Brown McCurley  (b 1812 | d. 1899) Pvt. | Denton Rangers, 21st Brigade, Texas State Troops, C.S.A.
+  William Arthur Measels  (b 1845 | d. 1920) Pvt. | Co. C, 10th Oklahoma Cavalry, C.S.A.
+  J. A. Morgan  (b 1847 | d. 1906) Pvt. | Co. H, 6th Mississippi Cavalry Regiment, C.S.A.
+  John M Needham  (b 1840 | d. 1900) Pvt. | Co. C, Woods' Cavalry Regiment, C.S.A.
+  Robert Franklin Overstreet  (b 1849 | d. 1901) Pvt. | Co. B, 2nd Missouri Infantry Regiment, C.S.A.
+  William Pickens  (b 1840 | d. 1896) Pvt. | Co. E, 60th Tennessee Infantry Regiment, C.S.A.
+  James Pierce  (b 1846 | d. 1919) Pvt. | Co. K, 62nd Alabama Infantry Regiment, C.S.A.
+  L. Y. Pierce  (b 1846 | d. 1919) Pvt. | Co. G, 5th Georgia Reserve Regiment, C.S.A.
+  L. B. Roberson  (b 1846 | d. 1900) Pvt. | 1st Battalion, Georgia Reserve Cavalry, C.S.A.
+  Leroy Roberson  (b 1843 | d. 1905) Pvt. | Co. D, 9th Battalion, Georgia Volunteer Artillery Regiment, C.S.A.
+  T A Scott  (b 1838 | d. 1920) Pvt. | Pvt. Co. E, 8th Louisiana Cavalry Regiment, C.S.A.
+  Joe Taylor  (b 1846 | d. 1902) Pvt. | Storey Co., 17th Brigade, Texas State Troops, C.S.A.
+  Robert Wiley Trout  (b 1812 | d. 1897) Pvt. | Co. D, Cherokee Legion, Georgia State Guards, C.S.A.
+  J. A. Watkins  (b 1841 | d. 1892) Pvt. | Co. E, 1st Battalion, Arkansas Cavalry Regiment, C.S.A.
+  Jim Wells  (b 1847 | d. 1899) Pvt. | D. M. Reed's Co., Alabama Reserve Regiment, C.S.A.
+  W. Williams  (b 1839 | d. 1900) Pvt. | Co. K, 33rd Texas Cavalry Regiment, C.S.A.
+  Amos E. Womack  (b 1843 | d. 1897) Pvt. | Co. H, 23rd Tennessee Infantry, Martin's Regiment, C.S.A.
+
+Port Sullivan Cemetery, Branchville, Milam County, Texas, USA
+-------------------------------------------------------------
+
+  James Knox Walston  (b 1846 | d. 1921) Pvt. | Co. D, 31st AL Infantry Regiment, C.S.A.
+
+Powell Cemetery, Powell, Marshall County, Oklahoma, USA
+-------------------------------------------------------
+
+  Alfred Miles Carroll  (b 1842 | d. 1917) Pvt. | Co. A, 5th Tennessee Infantry Regiment, C.S.A.
+
+Provence Cemetery, Ardmore, Carter County, Oklahoma, USA
+--------------------------------------------------------
+
+  William Joshua Ginn  (b 1841 | d. 1905) Pvt. | Co. G, 8th Alabama Infantry Regiment, C.S.A.
+  Dudley Simmons Hopkins  (b 1841 | d. 1913) — | —
+  R. R. Jones  (b 1847 | d. 1926) — | —
+  Robert M. Michael  (b 1848 | d. 1936) Pvt. | Co. A, 1st AL Cadet Battalion, C.S.A.
+  Lillia Elizabeth Rogers  (b 1850 | d. 1933) — | —
+  Joseph Johnson Wilson  (b 1846 | d. 1918) Pvt. | Co. B, 1st Missouri Cavalry Battalion, C.S.A.
+
+Quay Cemetery, Quay County, New Mexico, U.S.A.
+----------------------------------------------
+
+  Robert Donnell Maxwell  (b 1840 | d. 1908) Pvt. | Co. K, 17th TN Infantry Regiment
+
+Ravia Cemetery, Ravia, Johnston County, Oklahoma, USA
+-----------------------------------------------------
+
+  Samuel Asberry Kitchens  (b 1840 | d. 1916) Pvt. | Co. E, 17th Tennessee Infantry Regiment, C.S.A.
+  William Seth Kitchens  (b 1841 | d. 1918) — | —
+
+Reck Cemetery, Wilson, Carter County, Oklahoma, USA
+---------------------------------------------------
+
+  Henry Elliott Williams  (b 1850 | d. 1930) Pvt. | 33rd AR Infantry Regiment, C.S.A.
+  Isaac Hillman Willingham  (b 1837 | d. 1898) Pvt. | Co. C, 1st MS Cavalry Regiment, C.S.A.
+  William B. Wilson  (b 1839 | d. 1920) Pvt. | Co. K, 6th TX Cavalry Regiment, C.S.A.
+
+Reed Cemetery, Reed, Greer County, Oklahoma, USA
+------------------------------------------------
+
+  Jesse Carter Farrar Pruitt  (b 1843 | d. 1922) Pvt. | Co. D, 5th MS Infantry Regiment, C.S.A.
+
+Restland Cemetery, Boswell, Choctaw County, Oklahoma, USA
+---------------------------------------------------------
+
+  Robert William Adair  (b 1835 | d. 1927) 2nd Lt. | Co. A, 2nd MS Infantry Regiment; Co. C, 3rd MS Cavalry Regiment, C.S.A.
+
+Ringling Memorial Cemetery, Ringling, OK
+----------------------------------------
+
+  Anderson Felix Ormsby  (b 1836 | d. 1922) Pvt. | Co. C, 11th MO Cavalry Regiment, C.S.A.
+
+Riverside Cemetery, Mangum, Greer County, Oklahoma, USA
+-------------------------------------------------------
+
+  Allison Carr Bennett  (b 1840 | d. 1929) Pvt. | Co. B, 3rd Missouri Cavalry Regiment, C.S.A.
+
+Robert Hanks Family Cemetery, Webbers Falls, Muskogee County, Oklahoma, USA
+---------------------------------------------------------------------------
+
+  John Henry Eiffert  (b 1814 | d. 1915) Pvt. | Co. A, 29th Tennessee Infantry Regiment, C.S.A.
+
+Rochester Cemetery, Rochester, Haskell County, Texas, USA
+---------------------------------------------------------
+
+  Andrew Jackson Hanson  (b 1838 | d. 1917) Pvt. | Capt. Robinson's Cavalry, TX Frontier Guards, C.S.A.
+
+Rock Creek Cemetery, Duncan, Stephens County, Oklahoma, USA
+-----------------------------------------------------------
+
+  William Artice Cook  (b 1839 | d. 1918) Pvt. | Co. G, 20th Texas Cavalry Regiment (Bass' Regiment), C.S.A.
+
+Rock Island Confederate Cemetery, Rock Island, Rock Island County, Illinois, USA
+--------------------------------------------------------------------------------
+
+  Barney Morgan  (b 1839 | d. 1865) Pvt. | Co. F, Freeman's Regiment, MO Cavalry, C.S.A.
+
+Roosevelt Cemetery, Roosevelt, Kiowa County, Oklahoma, USA
+----------------------------------------------------------
+
+  John Wright Briggs  (b 1833 | d. 1916) Pvt. | Co. H, 23rd Arkansas Infantry Regiment, C.S.A.
+
+Rose Hill Burial Park, Oklahoma City, Oklahoma County, Oklahoma, USA
+--------------------------------------------------------------------
+
+  William Davenport Matthews  (b 1846 | d. 1930) Pvt. | Co. F, 2nd Kentucky Cavalry Regiment, C.S.A.
+
+Rose Hill Cemetery, Ardmore, Carter County, Oklahoma, USA
+---------------------------------------------------------
+
+  Hinton H. Atkinson  (b 1831 | d. 1907) Pvt. | Co. F, 7th Arkansas Cavalry Regiment, C.S.A.
+  Riddle Daniel Baker  (b 1840 | d. 1921) 1st Lt. | Co. A, 15th TN Infantry Regiment, C.S.A.
+  George McKindree Barnett  (b 1844 | d. 1932) Pvt. | Co. A, 3rd Missouri Cavalry Regiment, C.S.A.
+  James T. Baugh  (b 1842 | d. 1916) Pvt. | Co. E, 23rd Texas Cavalry Regiment, C.S.A.
+  John Campbell Boucher  (b 1840 | d. 1923) Cpl. | Co. F & A, 8th Missouri Cavalry Regiment (Shelly's Missouri Cavalry), C.S.A.
+  Henry Clay Brown  (b 1845 | d. 1912) Pvt. | Co. D, 10th Kentucky Cavalry Regiment, C.S.A.
+  George Halsey Bruce  (b 1841 | d. 1919) Pvt. | Co. E, 8th Texas Cavalry Regiment, C.S.A.
+  Thomas A. Cameron  (b 1844 | d. 1921) Cpl. | Co. E, 31st Mississippi Infantry Regiment, C.S.A.
+  William Rhodes Campbell  (b 1830 | d. 1904) Pvt. | Co. E, 20th Texas Cavalry Regiment (Bass' Regiment), C.S.A.
+  Robert Hutchings Carter  (b 1831 | d. 1922) Cpl. | Co. D and E, 1st GA Infantry Regiment, Phillip's Legion, C.S.A.
+  Andrew J Couch  (b 1838 | d. 1918) Pvt. | Co. B, 11th TX Cavalry Regiment, C.S.A.
+  William Allen Daniel  (b 1844 | d. 1919) Pvt. | Co. A, Moreland's Alabama Cavalry Regiment, C.S.A.
+  Robert R. Davis  (b 1843 | d. 1916) Pvt. | General Forrest's Cavalry, C.S.A.
+  William Lewis Edwards  (b 1836 | d. 1920) — | —
+  Samuel Newton Ellis  (b 1847 | d. 1923) Cpl. | Fagan's Regiment, Arkansas Cavalry, C.S.A.
+  John E Eslick  (b 1846 | d. 1928) Pvt. | Co. D, 6th Missouri Cavalry Regiment, C.S.A.
+  Creed Fulton Fraley  (b 1847 | d. 1911) Pvt. | Prentice's Cavalry Battalion, C.S.A.
+  Harrison Montgomery Frensley  (b 1842 | d. 1926) Pvt. | Co. C, 12th Kentucky Cavalry Regiment, C.S.A.
+  John Lafayette Galt  (b 1847 | d. 1923) Pvt. | Co. F, 1st Georgia Infantry State Troops, C.S.A.
+  Cassius Buchanan “Buck” Gardenhire  (b 1847 | d. 1931) Pvt. | Co. C, 16th Louisiana Cavalry Regiment, C.S.A.
+  William Christian Gentry  (b 1837 | d. 1917) Pvt. | Co. B, 29th MS Inf. Rgmnt., C.S.A.
+  Thomas Lacy Gladney  (b 1840 | d. 1919) Pvt. | Co. G, 10th Texas Cavalry Regiment (Locke's Regiment), C.S.A.
+  James W. Golledge  (b 1842 | d. 1916) Pvt. | Co. D, 3rd Texas Infantry Regiment, C.S.A.
+  James Foster Hardeman  (b 1849 | d. 1927) Pvt. | Co. C, 22nd Arkansas Cavalry Regiment, C.S.A.
+  Thomas Elezar Hardeman  (b 1839 | d. 1928) 2nd Lt. | Co. C, 17th & 21st Arkansas Infantry Regiment, C.S.A.
+  Elijah Pedigo Hardy  (b 1831 | d. 1903) 1st Lieut. | Co. A, Capt. DeVerdis' 52nd GA Infantry Regiment, C.S.A.
+  Reuben Hardy  (b 1847 | d. 1926) Pvt. | Co. H, 6th Mississippi Cavalry Regiment, C.S.A.
+  Samuel Houston Hargis  (b 1842 | d. 1934) Pvt. | Co D, 2nd AR Mounted Rifles Infantry Regiment, C.S.A.
+  Alva B. Harper  (b 1843 | d. 1919) Pvt. | Co. B, 1st Missouri Infantry Regiment, C.S.A.
+  George William Harper  (b 1844 | d. 1921) Pvt. | Co. A, 12th Tennessee Infantry Regiment, C.S.A.
+  Benjamin M. Jackson  (b 1836 | d. 1903) Pvt. | Co. A, 9th Texas Infantry Regiment, C.S.A.
+  James Madison Jameson  (b 1847 | d. 1926) Pvt. | Co. C, Phillips' Legion, Georgia Cavalry, C.S.A.
+  Zachary Taylor Jones  (b 1842 | d. 1915) Pvt. | Missouri Cavalry
+  George Washington Kerbo  (b 1843 | d. 1915) Pvt. | Co. I, 27th Alabama Infantry Regiment, C.S.A.
+  Martin Van Buren King  (b 1843 | d. 1930) Pvt. | Co. A, 27th Alabama Infantry Regiment, C.S.A.
+  David Gideon Layman  (b 1846 | d. 1933) Pvt. | Capt. Stone's Regiment, Botetourt County, Virginia Home Guards, C.S.A.
+  John Wesley Layton  (b 1837 | d. 1921) Pvt. | Charlie Price's Company, J.T. Coffee's Regiment, Missouri Cavalry, C.S.A.
+  James Madison Fay Loyd  (b 1846 | d. 1927) Pvt. | Co. C, 14th Missouri Cavalry Regiment, C.S.A.
+  Spencer D. Mitchell  (b 1837 | d. 1913) Pvt. | Co. C, 25th Tennessee Infantry Regiment, C.S.A.
+  Elmore C Moody  (b 1844 | d. 1925) — | —
+  Lafayette Brownfield Musgrave  (b 1839 | d. 1917) Pvt. | Co. H, 10th Missouri Infantry Regiment, C.S.A. (also Co. E)
+  Joe J. Nelms  (b 1842 | d. 1915) Pvt. | Company A, 26th Alabama Infantry Regiment, C.S.A.
+  Aaron Odom  (b 1836 | d. 1913) Pvt. | Co. E, 25th GA Infantry Regiment, C.S.A.
+  Jacob W. Palmer  (b 1820 | d. 1903) Pvt. | Co. A, 12th Tennessee Cavalry Regiment, C.S.A.
+  George David Pettitt  (b 1834 | d. 1910) Pvt. | Co. C, 1st Tennessee Cavalry Regiment, C.S.A.
+  John R. Pulliam  (b 1841 | d. 1918) Capt. | Co. C, 2nd Texas Cavalry Regiment, C.S.A.
+  Alvin Finley Pyeatt  (b 1844 | d. 1908) Pvt. | Co. H, 15th Arkansas Infantry Regiment, C.S.A.
+  William Henry Pyeatt  (b 1842 | d. 1914) Sgt. | Co. H, 15th Arkansas Infantry Regiment, C.S.A.
+  John J. Read  (b 1835 | d. 1921) Pvt. | Co. B, Walker's Texas Cavalry Battalion, C.S.A.
+  William G Ridge  (b 1833 | d. 1914) Pvt. | Co. B, Bass' TX Infantry Regiment, C.S.A.
+  George M. Roberts  (b 1841 | d. 1926) Pvt. | Co. H, 1st Missouri State Guards, C.S.A.
+  Richard Lafayette Rogers  (b 1850 | d. 1924) Private | Co. A, 39th North Carolina Infantry Regiment, C.S.A.
+  Robert Scales  (b 1838 | d. 1910) Pvt. | Co. E, 13th Mississippi Infantry Regiment, C.S.A.
+  David P. Smith  (b 1834 | d. 1913) Sgt. | Co. D, 8th Georgia Infantry Regiment, C.S.A.
+  John Willis Smith  (b 1846 | d. 1905) Pvt. | Co. G, 28th Mississippi Cavalry Regiment, C.S.A.
+  Johnathan M Smith  (b 1840 | d. 1902) Pvt. | Co. C, 31st Mississippi Infantry Regiment, C.S.A.
+  Charles A Wall  (b 1849 | d. 1914) Pvt. | Mabry's Tennessee Artillery Regiment, C.S.A.
+  Matthew Michigo Webb  (b 1844 | d. 1916) Pvt. | Co. E, 10th Confederate Regiment, C.S.A.
+  William Miles Wells  (b 1840 | d. 1916) Pvt. | Co. H, 40th Alabama Infantry Regiment, C.S.A.
+  James Monroe West  (b 1844 | d. 1924) Pvt. | Co. A, Terry's Texas Rangers Regiment, C.S.A.
+  Robert H. West  (b 1848 | d. 1905) Pvt. | Co. C, 6th Texas Cavalry Regiment, C.S.A.
+  William McDonald Wheeler  (b 1838 | d. 1918) — | —
+  Allen White  (b 1839 | d. 1926) Pvt. | Co. A, 9th Missouri Infantry Regiment, C.S.A.
+  Wiley R. Wood  (b 1842 | d. 1922) Sgt. | Co. E, 16th Tennessee Cavalry Regiment, C.S.A.
+
+Rose Hill Cemetery, Chickasha, Grady County, Oklahoma, USA
+----------------------------------------------------------
+
+  James C. Bilbo  (b 1819 | d. 1902) Pvt. | Co. K, 15th Confederate Cavalry, C.S.A.
+  George G. Buchanan  (b 1844 | d. 1916) Pvt. | Co. D, 5th South Carolina Infantry Regiment, C.S.A.
+  John S. Campbell  (b 1845 | d. 1900) 2nd Lt. | Co. H, 16th Missouri Infantry Regiment, C.S.A.
+  Martin Hayes Duke  (b 1845 | d. 1913) Pvt. | Co. G, Mississippi Cavalry, C.S.A.
+  William Marvin Johnson  (b 1844 | d. 1929) Pvt. | Co. B, 20th Texas Infantry Regiment, C.S.A.
+
+Rosedale Cemetery, Ada, Pontotoc County, Oklahoma, USA
+------------------------------------------------------
+
+  William Leander Byrd  (b 1844 | d. 1915) Adjutant | 1st Choctaw Regiment, Cooper's Brigade, E. Kirby Smith's Corps, C.S.A.
+  William Anderson Golden  (b 1848 | d. 1908) Pvt. | Co. C, 1st Battalion, Maryland Artillery, C.S.A.
+  Joe R. Lawrence  (b 1833 | d. 1908) Pvt. | Capt. S. W. Thompson's Co., 1st Choctaw Regiment, C.S.A.
+  John Wesley Sharrock  (b 1837 | d. 1921) Pvt. | Co. C, 11th Texas Cavalry Battalion, C.S.A.
+
+Ryan Cemetery, Ryan, Jefferson County, Oklahoma, USA
+----------------------------------------------------
+
+  Samuel T. Carlile  (b 1847 | d. 1901) Pvt. | Co. G, 63rd Alabama Infantry Regiment, C.S.A.
+  Francis Marion Cash  (b 1840 | d. 1923) Sgt. | Co. K, 14th Arkansas Infantry Regiment, C.S.A.
+  William Carroll Downey  (b 1832 | d. 1900) Pvt. | Co. H, 43rd Alabama Infantry Regiment, C.S.A.
+  James S. Gillespie  (b 1844 | d. 1917) Sgt. | Co. A, 5th Tennessee Cavalry Regiment, C.S.A.
+  Robert Garrett Goodloe  (b 1838 | d. 1917) Pvt. | Co. B, 2nd Alabama Infantry Regiment, C.S.A.
+  Henry Marshall Gresham  (b 1846 | d. 1923) Pvt. | Capt. Corput's Artillery, Johnson's Battalion, C.S.A.
+  James F. Pendleton  (b 1837 | d. 1918) Pvt. | Co. E, 1st Missouri Cavalry Regiment. C.S.A.
+  William Bennett Sullivan  (b 1846 | d. 1938) Pvt. | Co. G, Jackman's Arkansas Cavalry Regiment, C.S.A.
+  William Alexander Walker  (b 1846 | d. 1928) Pvt. | Co. E, 5th Tennessee Cavalry Regiment, C.S.A.
+  Benjamin F. Willis  (b 1842 | d. 1925) Pvt. | 11th Tennessee Regiment, Vaughn's Brigade, C.S.A.
+
+San Ysidro Cemetery, Pleasanton, Atascosa County, Texas, USA
+------------------------------------------------------------
+
+  Rayborn A. “Ike” Goins  (b 1833 | d. 1906) Pvt. | 8th Texas Cavalry Regiment, C.S.A.
+
+Sharon United Methodist Church Cemetery, Reidville, Spartanburg County, South Carolina, USA
+-------------------------------------------------------------------------------------------
+
+  James Milligan Anderson  (b 1835 | d. 1922) Pvt. | Co. B, 13th South Carolina Infantry Regiment, C.S.A.
+
+Simon Cemetery, Burney Township, Love County, Oklahoma, USA
+-----------------------------------------------------------
+
+  Benjamin Franklin Hudgins  (b 1827 | d. 1911) Sgt. | Co. G, 3rd GA Cavalry Regiment, C.S.A.
+  William Jordan Moore  (b 1846 | d. 1934) Pvt. | Co. D, 11th Mississippi Cavalry Regiment, C.S.A.
+
+South Heights Cemetery, Sapulpa, Creek County, Oklahoma, USA
+------------------------------------------------------------
+
+  Monroe F. Burch  (b 1842 | d. 1930) Pvt. | Co. E, 16th Missouri Infantry Regiment, C.S.A.; Co. D, 10th Missouri Cavalry Regiment, C.S.A.
+
+Spring Creek Cemetery, Era, Cooke County, Texas, USA
+----------------------------------------------------
+
+  E. B. Gaston  (b 1842 | d. 1915) Sgt. | Co. H, 6th South Carolina Cavalry Regiment, C.S.A.
+  Edward Baxter Gaston  (b 1842 | d. 1915) Sgt. | Co. H, 6th South Carolina Cavalry Regiment, C.S.A.
+
+Springer Cemetery, Springer, Carter County, Oklahoma, USA
+---------------------------------------------------------
+
+  William H. Eskew  (b 1837 | d. 1908) Pvt. | Co. C, 1st Mounted Tennessee Cavalry Regiment, C.S.A.
+  Ransom Thompson Reeves  (b 1846 | d. 1930) Pvt. | Co. L, 6th Georgia Cavalry Regiment, C.S.A.
+
+Springs Chapel Cemetery, Hugo, Choctaw County, Oklahoma, USA
+------------------------------------------------------------
+
+  James L. Clark  (b 1848 | d. 1932) Pvt. | Co. F, Wisdom's Georgia Infantry Regiment, C.S.A.
+  Elijah R. Hendricks  (b 1841 | d. 1906) Pvt. | Co. G, 19th Texas Cavalry Regiment, C.S.A.
+
+Springwood Cemetery, Greenville, Greenville County, South Carolina, USA
+-----------------------------------------------------------------------
+
+  William Denny Gaston  (b 1840 | d. 1902) Pvt. | Co. D, Palmetto Sharp Shooters, South Carolina, C.S.A.
+
+Star Cemetery, Star, Haskell County, Oklahoma, USA
+--------------------------------------------------
+
+  G. W. Thompson  (b 1847 | d. 1917) — | —
+
+Stigler, Haskell County, Oklahoma
+---------------------------------
+
+  T. M. Chappell  (b 1850 | d. 1915) Capt. | Co. H, 46th North Carolina Infantry Regiment, C.S.A.
+
+Stigler, Haskell County, Oklahoma (burial place unknown)
+--------------------------------------------------------
+
+  James H. Coleman  (b 1839 | d. 1915) Pvt. | Co. B, 4th Missouri Cavalry Regiment, C.S.A.
+
+Stilwell Cemetery, Stilwell, Adair County, Oklahoma, USA
+--------------------------------------------------------
+
+  Amon Hale Bacon  (b 1849 | d. 1933) Pvt. | Phillip's Company, Brooke's Arkansas Regiment, C.S.A.
+
+Summit View Cemetery, Guthrie, Logan County, Oklahoma, USA
+----------------------------------------------------------
+
+  Thomas S. Jones  (b 1840 | d. 1918) — | —
+
+Tatum Cemetery, Tatum, Lea County, New Mexico, USA
+--------------------------------------------------
+
+  William Calloway “Bill” Collum  (b 1848 | d. 1935) Pvt. | Capt. Burke's Co., 5th & 8th Arkansas Cavalry Regiment, C.S.A.
+
+Temple Masonic Cemetery, Temple, Cotton County, Oklahoma, USA
+-------------------------------------------------------------
+
+  John T Green  (b 1841 | d. 1929) Pvt. | Co. A, 5th Tennessee Infantry Regiment, C.S.A.
+  James Edward Peters  (b 1829 | d. 1916) — | —
+
+Terral Cemetery, Terral, Jefferson County, Oklahoma, USA
+--------------------------------------------------------
+
+  George Washington Reaves  (b 1841 | d. 1904) Pvt. | Co. C, Waul's Texas Legion, C.S.A.
+  Frank Allison Robison  (b 1846 | d. 1936) Pvt. | Capers' Louisiana Cavalry, C.S.A.
+
+Texas State Cemetery, Austin, Travis County, Texas, USA
+-------------------------------------------------------
+
+  Albert Sidney Johnston  (b 1803 | d. 1862) General | Confederate States Army
+  Fielding Scott Presley  (b 1832 | d. 1915) Pvt. | Co. D, 47th Alabama Infantry Regiment, C.S.A.
+  Frances Marion White  (b 1845 | d. 1914) Pvt. | Co. D, 29th Texas Cavalry Regiment, C.S.A.
+  Thomas Newton Wilson  (b 1843 | d. 1910) Pvt. | Co. C, 11th Texas Cavalry Regiment, C.S.A.
+
+Tishomingo City Cemetery, Tishomingo, Johnston County, Oklahoma, USA
+--------------------------------------------------------------------
+
+  Butler Boyd  (b 1844 | d. 1914) Pvt. | Co. A, 1st KY Confederate Cavalry, C.S.A.
+  Winfield Scott Hamilton  (b 1845 | d. 1905) Pvt. | Co. A, 1st Arkansas Infantry Regiment, C.S.A.
+  Edward Ruthwin Lucas  (b 1836 | d. 1914) 1st Lieut. | Co. K, 11th Alabama Infantry Regiment, C.S.A.
+
+Troy Cemetery, Troy, Johnston County, Oklahoma, USA
+---------------------------------------------------
+
+  Andrew Pickens Pitts  (b 1835 | d. 1915) Pvt. | Co. G, 31st Mississippi Infantry Regiment, C.S.A.
+  William H. Powers  (b 1832 | d. 1924) Pvt. | Co. G, 4th TN Infantry Regiment, C.S.A.
+
+True Cemetery, Young County, Texas, USA
+---------------------------------------
+
+  John William Hill  (b 1844 | d. 1922) Pvt. | Co. A, 21st Texas Infantry Regiment, C.S.A.
+
+Union Hill Cemetery, Callisburg, Cooke County, Texas, USA
+---------------------------------------------------------
+
+  Anderson Lewers Gaston  (b 1845 | d. 1909) Pvt. | Co. D, Palmetto Sharp Shooters, South Carolina, C.S.A.
+
+University Chapel Museum, Lexington, City of Lexington, Virginia, USA
+---------------------------------------------------------------------
+
+  Robert Edward Lee  (b 1807 | d. 1870) General | Confederate States Army
+
+Unknown
+-------
+
+  William Cushenberry Kirkwood  (b 1837 | d. 2026) Pvt. | Co. D, 4th Kentucky Cavalry Regiment, C.S.A.
+  Thomas Calhoun Youree  (b 1835 | d. 1921) Pvt. | Co. E, 5th Kentucky Cavalry Regiment, C.S.A.
+
+Unknown; died in Arkansas
+-------------------------
+
+  William H. Newby  (b 1830 | d. 1864) Pvt. | Capt. Richard L. Sullivan's Co., Cedar Hill Cavalry Home Guard, C.S.A.
+
+Ural Cemetery, Beckham County, Oklahoma, USA
+--------------------------------------------
+
+  William Pearl Francis  (b 1845 | d. 1923) Pvt. | Co. C, 29th Texas Cavalry Regiment, C.S.A.
+
+Walnut Creek Cemetery, Rendon, Tarrant County, Texas, USA
+---------------------------------------------------------
+
+  Hiram Lawrence May  (b 1836 | d. 1920) Pvt. | Co E, 25th TX Cavalry Regiment, C.S.A.
+
+Wanette Cemetery, Wanette, Pottawatomie County, Oklahoma, USA
+-------------------------------------------------------------
+
+  Andrew Jackson Bailey  (b 1830 | d. 1921) Sgt. | Co. G, 31st Tennessee, C.S.A.
+
+Warrenton Cemetery, Warrenton, Fauquier County, Virginia, USA
+-------------------------------------------------------------
+
+  Lunsford Lindsay Lomax  (b 1835 | d. 1913) Maj. General | Confederate States Army
+
+Waukomis Cemetery, Waukomis, Garfield County, Oklahoma, USA
+-----------------------------------------------------------
+
+  Benjamin Allen Jones  (b 1840 | d. 1921) Pvt. | Co. E, 1st Kentucky Cavalry Regiment, C.S.A.
+
+Waurika Cemetery, Waurika, Jefferson County, Oklahoma, USA
+----------------------------------------------------------
+
+  William A. Lankford  (b 1835 | d. 1925) Pvt. | Co. E, 2nd Arkansas Infantry Regiment, C.S.A.
+
+Welty Cemetery, Welty, Okfuskee County, Oklahoma, U.S.A.
+--------------------------------------------------------
+
+  James A. J. Williams  (b 1847 | d. 1925) Pvt. | Co. E, 1st Mississippi Cavalry Regiment, C.S.A.
+
+West Hill Cemetery, Roff, Pontotoc County, Oklahoma, USA
+--------------------------------------------------------
+
+  Matthew Lilburn Maxwell  (b 1845 | d. 1910) — | —
+
+West Hill Cemetery, Sherman, Grayson County, Texas, USA
+-------------------------------------------------------
+
+  James Williamson Vaden  (b 1842 | d. 1918) Pvt. | Co. C, 11th TX Cavalry Regiment, C.S.A.
+
+Westview Cemetery, Atoka, Atoka County, Oklahoma, USA
+-----------------------------------------------------
+
+  William Matthew “Matt” Davis  (b 1837 | d. 1905) Pvt. | Co. A, 20th Arkansas Infantry Regiment, C.S.A.
+
+Wetumka Cemetery, Wetumka, Hughes County, Oklahoma, USA
+-------------------------------------------------------
+
+  William S. Jarrett  (b 1845 | d. 1914) Pvt. | Co. B, 8th North Carolina Infantry Regiment, C.S.A.
+
+Wetumka CemeteryWetumka, Hughes County, Oklahoma, USA
+-----------------------------------------------------
+
+  Moses LaFayette Baugh  (b 1846 | d. 1924) Pvt. | Haney's Co., Texas Cavalry Regiment, C.S.A.
+
+Willis Cemetery, Willis, Marshall County, Oklahoma, USA
+-------------------------------------------------------
+
+  Jasper Newton Askew  (b 1845 | d. 1925) Pvt. | Co. A, 26th & 35th Alabama Infantry Regiment, C.S.A.
+
+Willow View Cemetery, Cleveland County, Oklahoma, USA
+-----------------------------------------------------
+
+  John C. Hoffman  (b 1842 | d. 1910) Pvt. | Co. E, Alexander's 34th Texas Cavalry Regiment, C.S.A.
+
+Wolf Creek Cemetery, Roberta, Bryan County, Oklahoma, USA
+---------------------------------------------------------
+
+  Michael C. Whittle  (b 1821 | d. 1918) Pvt. | Co. H, 27th Mississippi Infantry Regiment, C.S.A.
+
+Woodberry Forest Cemetery, Madill, Marshall County, Oklahoma, USA
+-----------------------------------------------------------------
+
+  Andrew Jackson Ables  (b 1844 | d. 1926) Pvt. | Co. D, 19th AL Infantry Regiment, C.S.A.
+  Jahue Ballard Everett  (b 1844 | d. 1930) Pvt. | Co. B, 15th Arkansas Infantry Regiment, C.S.A.
+  Richard Catesby Wiggs  (b 1838 | d. 1904) 1st Lieut. | Co. B, 11th TX Cavalry Regiment, C.S.A.
+
+Woodford Cemetery, Woodford, Carter County, Oklahoma, USA
+---------------------------------------------------------
+
+  David Avery Hood  (b 1842 | d. 1918) Pvt. | Co. B, 4th Alabama Infantry Regiment, C.S.A.
+  Allen McClain Speake  (b 1844 | d. 1903) Pvt. | Co. I, 3rd Missouri Cavalry Regiment, C.S.A.
+  William R. Wallace  (b 1844 | d. 1904) Pvt. | Co. G, 11th Missouri Cavalry Regiment, C.S.A.
+
+Woodland Cemetery, Cleveland, Pawnee County, Oklahoma, USA
+----------------------------------------------------------
+
+  John W. Jordan  (b 1843 | d. 1923) Pvt. | Co. F, 2nd Cherokee Mounted Volunteer Regiment, C.S.A.
+
+Wynnewood View Cemetery, Garvin County, Oklahoma, USA
+-----------------------------------------------------
+
+  David Monroe Jackson  (b 1842 | d. 1922) Pvt. | Co. A, Baylor's 2nd Arizona Cavalry Regiment, C.S.A.
+
+Wynnewood View CemeteryGarvin County, Oklahoma, USA
+---------------------------------------------------
+
+  James Daniel Kennedy  (b 1836 | d. 1915) Lieut. | Co. B, 10th Alabama Infantry Regiment, C.S.A.
+
+Zion Hill Cemetery, Peaster, Parker County, Texas, USA
+------------------------------------------------------
+
+  Elijah Jackson  (b 1818 | d. 1912) Pvt. | Co. A, Griffin's 2nd Texas Infantry Battalion, C.S.A.
+
+========================================================================
+
+Burial Unknown
+--------------
+
+  Dallas Butler Berry  (b 1848 | d. 1938) Pvt. | Co. E, Alabama Cavalry  [burial: Cemetery location unclear....]
+  Sterling Berry  (b — | d. 1932) Pvt. | Co. F, 39th TN Mounted Infantry Regiment, C.S.A.  [burial: Burial site unknown...]
+  Francis Marion Caldwell  (b 1846 | d. 1916) Pvt. | Co. A, 7th Texas Infantry Regiment, C.S.A.  [burial: Bower, Oklahoma; cemetery not known....]
+  John Calhoun  (b 1832 | d. 1903) Pvt. | Co. C, 3rd Mississippi Infantry Regiment, C.S.A.  [burial: Coalgate, Oklahoma, cemetery unknown....]
+  Samuel Calhoun  (b 1845 | d. 1899) Pvt. | Co. A, 154th Tennessee Infantry Regiment, C.S.A.  [burial: Choctaw Nation, Indian Territory, USA, cemetery not known....]
+  Elijah S. Cannan  (b 1840 | d. 1926) Pvt. | Co. I, 1st Kentucky Cavalry Regiment, C.S.A.  [burial: Helena, Alfalfa County, Oklahoma, USA (cemetery not known)...]
+  G. N. Cannon  (b 1834 | d. 1921) Pvt. | Co. A, 3rd Arkansas Cavalry Regiment, C.S.A.  [burial: Sulphur, Murray County, Oklahoma, USA (cemetery not known)...]
+  G. W. Cannon  (b 1845 | d. 0) Pvt. | Co. A, 3rd Tennessee Cavalry Regiment, C.S.A.  [burial: Stilwell Cemetery, Stilwell, Adair County, Oklahoma, USA (ce...]
+  James Daniel Capshaw  (b 1845 | d. 1899) Pvt. | Colonel Reynolds' Regiment, Confederate States Arm  [burial: Cleveland County, Oklahoma, USA (cemetery not known)...]
+  W. I. Carder  (b 1833 | d. 1924) Pvt. | Co. A, 40th Georgia Infantry Regiment, C.S.A.  [burial: Antlers, Pushmataha County, Oklahoma, USA (cemetery details ...]
+  G. A. Carlisle  (b 1844 | d. 1925) Pvt. | Co. I, 37th Alabama Infantry Regiment, C.S.A.  [burial: Terral, Jefferson County, Oklahoma, USA (cemetery unknown)...]
+  William L. Carr  (b 1842 | d. 1922) Pvt. | Co. D & E, 10th Texas & 14th Texas Dismounted Cavalry Regiment, C.S.A.  [burial: Wimer, Oklahoma (cemetery not known)...]
+  John S. Chambers  (b 1838 | d. 1916) Pvt. | Co. B, 12th South Carolina Infantry Regiment, C.S.A.  [burial: Muskogee County, Oklahoma, cemetery unknown....]
+  Edward A. Chapman  (b 1845 | d. 1921) Pvt. | Co. A, Border's Texas Cavalry Regiment, C.S.A.  [burial: Coleman, Atoka County, Oklahoma, USA (Cemetery unknown)...]
+  Felix A. Charles  (b 1846 | d. 1920) Pvt. | Co. F, 47th Arkansas Cavalry Regiment, C.S.A.  [burial: Marshall County, Oklahoma, USA (cemetery unknown)...]
+  Jesse Cherry  (b 1827 | d. 1879) Pvt. | Co. G, 1st Battalion, AR Infantry Regiment, C.S.A.  [burial: Burial Details Unknown...]
+  Robert Prior Childers  (b 1845 | d. 1919) Pvt. | 2nd Co. D, 1st Cherokee Mounted Volunteers, C.S.A.  [burial: Antlers, Pushmataha County, Oklahoma, USA (cemetery not know...]
+  W. M. Childers  (b 1838 | d. 1917) Pvt. | Co. D, 45th Mississippi Infantry Regiment, C.S.A.  [burial: Latimer County, Oklahoma, USA (cemetery not known)...]
+  John Childress  (b — | d. 1898) 3rd Lieutenant | Co. I, 1st Cherokee Mounted Rifles Regiment, C.S.A.  [burial: Sequoyah County, Oklahoma, USA (cemetery unknown)...]
+  Ingram Chandler Chipman  (b 1837 | d. 1927) Pvt. | Co. E, 5th Texas Rangers, C.S.A.  [burial: Carizzo Springs, Texas, USA (cemetery unknown)...]
+  Robert Cindle  (b — | d. 1902) Pvt. | Capt. Hughey's Co., 45th Arkansas Cavalry Regiment, C.S.A.  [burial: Checotah, McIntosh County, Oklahoma, USA (cemetery unknown)...]
+  Leonard H. Clark  (b — | d. 1907) 1st Lt. | Co. D, 13th Alabama Infantry Regiment, C.S.A.  [burial: Oakland, Marshall County, Oklahoma, USA (cemetery not known)...]
+  Samuel Carson Clark  (b — | d. 1899) Pvt. | Co. L, 16th North Carolina Infantry Regiment, C.S.A.  [burial: Durant, Bryan County, Oklahoma, USA (cemetery unknown)...]
+  Armsted B. Cobb  (b 1844 | d. 1923) Pvt. | Co. A, 1st South Carolina Cavalry Regiment, C.S.A.  [burial: Riverside Cemetery, Mangum, Greer County, Oklahoma, USA (cem...]
+  Robert P. Cochran  (b 1833 | d. 1917) Pvt. | Co. D, 43rd Mississippi Infantry Regiment, C.S.A.  [burial: Oklahoma, cemetery unknown....]
+  Harmon Cock  (b 1845 | d. 1927) Pvt. | Co. K, 2nd Texas Infantry & Cavalry Regiments, C.S.A.  [burial: Calera, Bryan County, Oklahoma (cemetery unknown)...]
+  James Polk Cockburn  (b 1844 | d. 1931) Pvt. | Co. E, Arkansas Cavalry Regiment, C.S.A.  [burial: Broken Bow, McCurtain Country, Oklahoma, USA (cemetery not k...]
+  George William Cockrum  (b 1845 | d. 1918) Pvt. | Co. D, 9th Texas Cavalry Regiment, C.S.A.  [burial: Welling, Cherokee County, Oklahoma, USA (cemetery unknown)...]
+  A. Coffee  (b 1846 | d. 1923) Pvt. | Co. C, 12th Tennessee Cavalry Regiment, C.S.A.  [burial: Died in Hanna, Oklahoma, USA (cemetery unknown)...]
+  Colton Coffee  (b 1839 | d. 1915) Pvt. | Co. E, 26th Tennessee Infantry Regiment, C.S.A.  [burial: Comanche, Stephens County, Oklahoma, USA (cemetery unknown)...]
+  James M Coffee  (b 1830 | d. 1886) Pvt. | Co. E, 4th Arkansas Cavalry Regiment, C.S.A.  [burial: Henderson County, Texas, USA (cemetery unknown)...]
+  James Madison Coffee  (b 1842 | d. 1916) Pvt. | Co. C, 16th Missouri Infantry Regiment, C.S.A.  [burial: Ardmore, Carter County, Oklahoma, USA (cemetery unknown)...]
+  Thomas A. Coffee  (b 1844 | d. 1917) Pvt. | Co. C, 8th Alabama Cavalry Regiment, C.S.A.  [burial: Roff, Pontotoc County, Oklahoma, USA (cemetery unknown)...]
+  James Frank Coffman  (b 1844 | d. 1925) Pvt. | Co. H, 26th Alabama Infantry Regiment, C.S.A.  [burial: Burneyville, Love County, Oklahoma, USA (cemetery unknown)...]
+  F. M. Cohee  (b 1849 | d. 1917) Pvt. | Co. A, 1st Texas Cavalry Regiment, C.S.A.  [burial: Oklahoma City, Oklahoma, USA (cemetery unknown)...]
+  Samuel Houston Coleman  (b — | d. 1910) Pvt. | Co. K, 29th Texas Dismounted Cavalry Regiment, C.S.A.  [burial: Idabel, Oklahoma, USA (burial details unknown)...]
+  Dallas Henry Collier  (b 1843 | d. 1922) Pvt. | Co. C, 11th Texas Infantry Regiment, C.S.A.  [burial: Norman, Cleveland County, Oklahoma, USA (burial details unkn...]
+  J. R. Collins  (b 1846 | d. 1926) Pvt. | Co.s F & B, Cherokee Legion, Haney's Georgia Regiment, C.S.A.  [burial: Willis Cemetery, Willis, Marshall County, Oklahoma, USA (bur...]
+  Pinkney Collum  (b 1836 | d. 1916) Pvt. | Co. B, 39th Georgia Infantry Regiment, C.S.A.  [burial: Sulphur, Murray County, Oklahoma, USA (cemetery not known)...]
+  Robert B. Colvard  (b 1848 | d. 1933) Pvt. | Capt. Jake Beam's Arkansas Cavalry Regiment, C.S.A.  [burial: Oklahoma City, Oklahoma, USA (cemetery unknown)...]
+  Thomas C. Conant  (b 1844 | d. 1930) Pvt. | Co. F, 1st Georgia Infantry Regiment, C.S.A.  [burial: Ardmore, Carter County, Oklahoma, USA (cemetery unknown)...]
+  William Conley  (b 1843 | d. 1917) Pvt. | Co. K, 25th Tennessee Cavalry Regiment, C.S.A.  [burial: Fort Towson, Oklahoma, USA (cemetery unknown)...]
+  J. B. Cook  (b 1834 | d. 1923) Pvt. | Co. C, 3rd Kentucky Infantry Regiment, C.S.A.  [burial: Verden, Caddo County, Oklahoma, USA (cemetery unknown)...]
+  John P. Cook  (b 1836 | d. 1916) Pvt. | Co. B, 40th Alabama Infantry Regiment, C.S.A.  [burial: Oklahoma City, Oklahoma, USA (cemetery unknown)...]
+  Joseph A. Cook  (b — | d. 1900) Pvt. | Louisiana Regiment  [burial: McAlester, Pittsburg County, Oklahoma, USA (cemetery unknown...]
+  William Benjamin Franklin Cook  (b — | d. 1913) Pvt. | Co. F, 24th South Carolina Infantry Regiment, C.S.A.  [burial: Wilburton, Latimer County, Oklahoma, USA (cemetery not known...]
+  James M. Cooper  (b 1839 | d. 1924) Pvt. | Co. A, 51st Virginia Infantry Regiment, C.S.A.  [burial: Choctaw, Oklahoma County, Oklahoma, USA (cemetery unknown)...]
+  Joseph S. Cooper  (b 1843 | d. 1926) Pvt. | Co. B, 4th Mississippi Cavalry Regiment, C.S.A.  [burial: Bixby, Tulsa County, Oklahoma, USA (cemetery unknown)...]
+  William Henry Hawkins  (b 1846 | d. 1909) Pvt. | Co. A, 15th MO Cavalry Regiment, C.S.A.  [burial: Burial Details Unknown...]
+  William Josiah Malone  (b 1837 | d. 1902) Pvt. | Co E, 43rd Tennessee Infantry Regiment, C.S.A.  [burial: Burial details unknown....]
+  James Calvin Minnix  (b 1827 | d. 1917) Pvt. | Co. D, 17th TX Infantry Regiment, C.S.A.  [burial: Burial Details Unknown....]
+  John D. Pate  (b 1834 | d. 1871) Private | Co. K, 22nd TX Infantry Regiment  [burial: Burial Details Unknown...]
+  James Riley Williams  (b 1834 | d. 1918) Pvt. | Co. A, 9th Kentucky Cavalry Regiment, C.S.A.  [burial: Burial Details Unknown...]
